@@ -1,0 +1,15 @@
+{
+  "providers": {
+    "console": true,
+    "discord": true,
+    "fivemanage": false,
+    "fivemstats": false
+  },
+  "minLevel": "info",
+  "includeIp": false,
+  "discord": {
+    "name": "ai-core",
+    "avatar": ""
+  },
+  "fivemstatsResource": "tgiann-fivem-stats-script"
+}

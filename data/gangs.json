@@ -1,0 +1,10 @@
+{
+  "ballas": {
+    "label": "Ballas",
+    "grades": [{ "label": "Recruit" }, { "label": "Enforcer" }, { "label": "Shot Caller" }, { "label": "Boss", "boss": true }]
+  },
+  "vagos": {
+    "label": "Vagos",
+    "grades": [{ "label": "Recruit" }, { "label": "Enforcer" }, { "label": "Shot Caller" }, { "label": "Boss", "boss": true }]
+  }
+}

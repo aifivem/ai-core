@@ -1,0 +1,57 @@
+# ai-core
+
+The framework resource: accounts (FiveM id), characters and the character screen, money accounts with a ledger, multi-job and multi-gang with duty, paycheck, ACL mirror, persistence, exports and events. Uses the database through `@aicore-fivem/mysql` (own pool; needs its `add_convar_permission` line). Design and reasoning: `docs/research/core-design.md`, `multijob.md`, `data-management.md` in the server repo.
+
+## Decisions
+
+- The account key is the FiveM id (`fivem:` identifier, owner decision); connecting without one is refused in `playerConnecting`. license and discord are stored next to it for bridges.
+- The character screen is part of ai-core (owner decision: UI now, not a separate script) and follows `docs/design.md` (Dark Minimal): full-screen night Los Santos background (`branding.background`), server brand and tagline (`branding` in settings), a row of character cards and dashed "new character" cards, create and delete as centred dialogs. Card portraits come from an appearance resource (ai-appearance): ai-core emits `characterScreen (src, charIds)` each time the screen loads and shows what arrives on `ai-core:client:characterPortrait (charId, url)` (only `https://nui-img/` urls); a card without one shows the silhouette. Behind the NUI the player waits in a private routing bucket (`50000 + source`, population off, strict lockdown); no spawnmanager.
+- Default accounts `cash`, `bank`, `black_money`, `crypto` (owner decision), defined in `data/accounts.json`. Character accounts start with the type's starting amount; job and gang accounts start empty and load once at start, so the society money exports stay synchronous.
+- Money is memory-first: a change is checked and applied synchronously, then one transaction (atomic `balance = balance + ?` + ledger row) is queued at once on the account's own write queue. Only ai-core writes balances.
+- Jobs: several per character up to `maxJobs` (one when `multiJob` is off, a new job replaces the old), at most one on duty, salary only from the on-duty job. Duty is runtime state, off after joining unless `restoreDuty`; the last duty job is kept in metadata (`lastDutyJob`). The unemployed job is never stored. Gangs follow the same rules with one active gang (saved).
+- Memberships are mirrored to ACL principals `ai.job.<name>` and `ai.job.<name>.<grade>` (every grade up to the player's), same for gangs, on `player.<source>`.
+- Position and metadata are written by the periodic flush (`saveIntervalMinutes`), on unload, on resource stop and on txAdmin shutdown; money and memberships are written as they change.
+- Panel content (`data/settings.json`, `accounts.json`, `jobs.json`, `gangs.json`) is kept by ai-core's own `AdminPanel` (`resource/server/content`) and edited live in the panel; ai-core also hosts the panel for every other script (`resource/server/admin/CLAUDE.md`).
+- Dev test commands `aicore_switch`, `aicore_job`, `aicore_duty`, `aicore_money`, `aicore_gang`, `aicore_db [slow]` (database statistics of every resource) are restricted, answer in the server console and exist only until the admin panel covers them.
+- The ESX/QB/Qbox bridge is part of ai-core (owner decision): it `provide`s `es_extended`, `qb-core` and `qbx_core` and answers their exports, core objects and events from Lua files in `bridge/`, so other scripts use ai-core as their framework (`.claude/rules/lua-bridges.md`, `docs/research/compatibility.md`).
+- Every ai-* resource logs through ai-core (`Log` export, lib `aiLog`), like tgiann-core: resources name channels, ai-core sends to the providers its panel turns on (`data/logs.json`: console, Discord, Fivemanage, FiveM Stats; minimum level, ip on/off). Webhook urls and the Fivemanage key are panel-edited too, but in `data/secrets.json` (git-ignored: `discordWebhooks` by `<resource>/<channel>`, `<resource>` or `default`, `fivemanageKey`); env.cfg is not used for them (owner decision). ai-core logs its own events (characters, money, jobs, gangs, client errors) from its local events in `logs/coreEvents.ts`.
+
+## Contracts
+
+- Exports: typed in `@aicore-fivem/shared` `exports.ts` (`AiCoreServerExports`, `AiCoreClientExports`), registered in `resource/server/exports.ts` and `client/playerState.ts`.
+- Server local events (`CORE.*` in `@aicore-fivem/shared`): `playerLoaded (src, CharacterInfo)`, `playerUnloaded (src, charId, "dropped" | "switch")`, `moneyChanged (src, account, balance, delta, reason)`, `jobsChanged`, `dutyChanged`, `gangsChanged`, `activeGangChanged`. Client: `client:playerLoaded (AiPlayerData)`, `client:playerUnloaded`.
+- Player data channel to the owner's client: snapshot at load, then `(key, value)` deltas; `money` travels as patches of the changed accounts only (`PLAYER_DATA_PATCH_EVENT`). Client side: lib `onPlayerData` / `getPlayerData`, `GetPlayerData` export for late starters.
+- GlobalState `ai:duty:<job>`: on-duty count per job.
+- Client exports `ShowPrompt(id, text)` / `HidePrompt(id)` (lib `showPrompt` / `hidePrompt`): the right-side prompt UI, one interaction keybind (`aicore_interact_E`) tells the resource of the prompt on top through `ai-core:client:promptPressed (resource, id)`; a stopped resource's prompts go with it.
+- Client local event `ai-core:client:cache (key, value)`: ai-core's one 100 ms watcher of ped, vehicle, seat and weapon feeds every resource's lib `cache`.
+- Character screen portraits: server local `characterScreen (src, charIds)`, client local `client:characterPortrait (charId, url)`; the client keeps them until a character spawns and sends them with the open payload and as `portrait` messages.
+- Callbacks: `ai-core:characters`, `createCharacter`, `selectCharacter`, `deleteCharacter`; server → client `ai-core:client:spawn (SpawnPoint)`, `ai-core:client:openCharacters`.
+- NUI contract: `resource/common/nui.ts`; the open message carries `{ screen, texts, portraits }` (lang table from `loadLocaleTexts`).
+- `ai-core:clientError` (client → server): client script errors, logged on channel `clientErrors` (level error) as `[client error] <resource>: ...` with the player.
+- Exports `Log(channel, message, { level, source, target, metadata })` and `LogChannels({ [channel]: { dataset, active } })`; types in `@aicore-fivem/shared` `logs.ts`.
+- Tables: `ai_core_users`, `ai_core_characters` (soft delete `deleted_at`), `ai_core_accounts` (`owner_type` character/job/gang, `owner_id` as text), `ai_core_transactions`, `ai_core_character_jobs`, `ai_core_character_gangs`.
+
+## Pitfalls
+
+- `ai_core_accounts.owner_id` is text: compare with `CAST(id AS CHAR) COLLATE utf8mb4_unicode_ci` in joins. Without the cast the unique key is not used; without the COLLATE the cast takes the connection's `utf8mb4_general_ci` and MariaDB refuses the comparison ("Illegal mix of collations").
+- `mysql.transaction` answers `false` on rollback without throwing; `Account.change` turns that into an error so the write queue logs it.
+- `RegisterCommand` replies go to the server console: `chat` does not run on this server (`resources_useSystemChat false`).
+
+## Entry points
+
+- Connection, character screen callbacks, load/unload/switch: `resource/server/player/session.ts`; card data `player/screen.ts`.
+- Loaded player: `player/player.ts` (with `wallet.ts`, `../jobs/jobSet.ts`, `../jobs/gangSet.ts`).
+- Money: `money/account.ts` (one account), `money/book.ts` (loading, job/gang accounts).
+- Panel content and defaults: `content/index.ts`.
+- Saving: `persistence.ts`; paycheck `jobs/paycheck.ts`.
+- Logs: dispatch `logs/index.ts`, providers `logs/discord.ts` (rate-limited queue per webhook) and `logs/services.ts` (Fivemanage batches, FiveM Stats, console), settings and webhook lookup `logs/settings.ts`.
+- Client: boot `resource/client/index.ts`, screen and spawn `client/characters.ts`, scene/camera `client/scene.ts`.
+- NUI: `web/src/features/characters/` (store, actions, panel); browser preview `bun run webdev` with `?view=create|delete|error`.
+
+<!--
+Rules (this comment may stay in the copy):
+- Delete a section that would stay empty. No file, function or column lists: what reading the code shows does not go here.
+- No dates, phases, TODOs or "changed/removed" notes; current truth in imperative form.
+- Past 150 lines, move section-specific parts into a sub-folder CLAUDE.md (resource/client/CLAUDE.md,
+  resource/server/CLAUDE.md, web/CLAUDE.md); it loads automatically when a file in that folder is read.
+-->

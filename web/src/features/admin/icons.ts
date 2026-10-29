@@ -1,0 +1,52 @@
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import {
+  faBriefcase,
+  faCamera,
+  faCircleDot,
+  faFloppyDisk,
+  faGear,
+  faIdCard,
+  faLocationDot,
+  faMapLocationDot,
+  faMoneyBillWave,
+  faPalette,
+  faPeopleGroup,
+  faPlaneArrival,
+  faRankingStar,
+  faScaleBalanced,
+  faScissors,
+  faServer,
+  faShirt,
+  faSliders,
+  faStore,
+  faTag,
+  faUsers,
+  faWallet,
+} from "@fortawesome/free-solid-svg-icons";
+
+/** Icons a schema may name (Font Awesome solid, without `fa-`); add a name here when a schema uses a new one. */
+const ICONS: Record<string, IconDefinition> = {
+  briefcase: faBriefcase,
+  camera: faCamera,
+  "floppy-disk": faFloppyDisk,
+  gear: faGear,
+  "id-card": faIdCard,
+  "location-dot": faLocationDot,
+  "map-location-dot": faMapLocationDot,
+  "money-bill-wave": faMoneyBillWave,
+  palette: faPalette,
+  "people-group": faPeopleGroup,
+  "plane-arrival": faPlaneArrival,
+  "ranking-star": faRankingStar,
+  "scale-balanced": faScaleBalanced,
+  scissors: faScissors,
+  server: faServer,
+  shirt: faShirt,
+  sliders: faSliders,
+  store: faStore,
+  tag: faTag,
+  users: faUsers,
+  wallet: faWallet,
+};
+
+export const iconOf = (name: string): IconDefinition => ICONS[name] ?? faCircleDot;

@@ -1,0 +1,43 @@
+{
+  "unemployed": {
+    "label": "Civilian",
+    "type": "none",
+    "defaultDuty": true,
+    "grades": [{ "label": "Freelancer", "salary": 10 }]
+  },
+  "police": {
+    "label": "Police",
+    "type": "leo",
+    "defaultDuty": false,
+    "grades": [
+      { "label": "Recruit", "salary": 50 },
+      { "label": "Officer", "salary": 75 },
+      { "label": "Sergeant", "salary": 100 },
+      { "label": "Lieutenant", "salary": 125 },
+      { "label": "Chief", "salary": 150, "boss": true }
+    ]
+  },
+  "ambulance": {
+    "label": "EMS",
+    "type": "ems",
+    "defaultDuty": false,
+    "grades": [
+      { "label": "Recruit", "salary": 50 },
+      { "label": "Paramedic", "salary": 75 },
+      { "label": "Doctor", "salary": 100 },
+      { "label": "Surgeon", "salary": 125 },
+      { "label": "Chief", "salary": 150, "boss": true }
+    ]
+  },
+  "mechanic": {
+    "label": "Mechanic",
+    "type": "mechanic",
+    "defaultDuty": false,
+    "grades": [
+      { "label": "Recruit", "salary": 50 },
+      { "label": "Novice", "salary": 75 },
+      { "label": "Experienced", "salary": 100 },
+      { "label": "Owner", "salary": 150, "boss": true }
+    ]
+  }
+}

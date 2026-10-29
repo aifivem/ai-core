@@ -1,0 +1,53 @@
+{
+  "branding": {
+    "name": "Los Santos",
+    "subtitle": "Roleplay",
+    "tagline": "A city of opportunity",
+    "taglineSub": "People • Stories • A second chance",
+    "background": "skyline"
+  },
+  "characters": {
+    "slots": 3,
+    "canDelete": true,
+    "minAge": 18
+  },
+  "jobs": {
+    "multiJob": true,
+    "maxJobs": 3,
+    "unemployed": "unemployed",
+    "restoreDuty": false
+  },
+  "gangs": {
+    "multiGang": true,
+    "maxGangs": 2
+  },
+  "paycheck": {
+    "intervalMinutes": 15,
+    "account": "bank",
+    "fromJobAccount": false
+  },
+  "saveIntervalMinutes": 5,
+  "spawn": {
+    "default": {
+      "x": -1035.71,
+      "y": -2731.87,
+      "z": 13.76,
+      "heading": 330.0
+    },
+    "select": {
+      "ped": {
+        "x": -813.97,
+        "y": 176.22,
+        "z": 76.74,
+        "heading": -7.5
+      },
+      "camera": {
+        "x": -814.02,
+        "y": 179.56,
+        "z": 77.4,
+        "heading": 198.5
+      },
+      "fov": 40
+    }
+  }
+}

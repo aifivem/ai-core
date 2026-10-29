@@ -1,0 +1,38 @@
+/** NUI contract of ai-core (client script <-> web), shared by both sides. */
+
+/** Client -> NUI messages: `{ action, data }`. */
+export const NuiMessage = {
+  /** data: CharacterScreen */
+  openCharacters: "openCharacters",
+  closeCharacters: "closeCharacters",
+  /** data: { id: number, url: string }, a character's portrait arrived (from an appearance resource). */
+  portrait: "portrait",
+  /** data: { panels: AdminPanelSnapshot[], texts }, the admin panel opens. */
+  adminOpen: "adminOpen",
+  /** data: AdminDelta, a record changed (by any admin or the script itself). */
+  adminDelta: "adminDelta",
+  /** data: { key, text, button }, a prompt appears (or its text changes) on the right. */
+  promptShow: "promptShow",
+  /** data: key */
+  promptHide: "promptHide",
+} as const;
+
+/** NUI -> client callbacks (fetch `https://ai-core/<name>`), each answers `{ ok, error? }` or data. */
+export const NuiCallback = {
+  /** () -> CharacterScreen | null, the screen asks for its data once it is mounted. */
+  ready: "ready",
+  /** (CreateCharacterInput) -> CharacterActionResult */
+  create: "create",
+  /** (characterId) -> CharacterActionResult */
+  select: "select",
+  /** (characterId) -> CharacterActionResult, then the screen is reloaded. */
+  remove: "remove",
+  /** ({ resource, patch }) -> AdminResult */
+  adminApply: "adminApply",
+  /** () -> true, the panel closed. */
+  adminClose: "adminClose",
+  /** ({ from: "ped" | "camera", ground?: boolean }) -> { x, y, z, heading }, the admin's position for a point field. */
+  adminPosition: "adminPosition",
+  /** ({ x, y, z, heading? }) -> true, teleports the admin to a point. */
+  adminTeleport: "adminTeleport",
+} as const;
