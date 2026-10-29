@@ -47,4 +47,6 @@ export const NuiCallback = {
   adminTeleport: "adminTeleport",
   /** ({ value }) -> true, the menu pick (item id) or input values; null when closed. */
   dialogAnswer: "dialogAnswer",
+  /** ({ id }) -> true, the pointer or focus moved onto a menu item. */
+  dialogHover: "dialogHover",
 } as const;

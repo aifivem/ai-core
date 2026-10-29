@@ -173,6 +173,8 @@ try{
 	const MENU_EVENTS = {
 		/** Client local: (resource, requestId, itemId | null) the player picked an item or closed the menu. */
 		menuResult: "ai-core:client:menuResult",
+		/** Client local: (resource, requestId, itemId) the pointer or focus is on an item (previews). */
+		menuHover: "ai-core:client:menuHover",
 		/** Client local: (resource, requestId, values | null) the player confirmed or closed the input dialog. */
 		inputResult: "ai-core:client:inputResult"
 	};
@@ -258,19 +260,25 @@ try{
 	var Requests = class {
 		resource = GetCurrentResourceName();
 		waiting = /* @__PURE__ */ new Map();
+		hovers = /* @__PURE__ */ new Map();
 		nextId = 0;
 		constructor() {
 			const answer = (owner, id, value) => {
 				if (owner !== this.resource || typeof id !== "number") return;
 				this.waiting.get(id)?.(value);
 				this.waiting.delete(id);
+				this.hovers.delete(id);
 			};
+			on(MENU_EVENTS.menuHover, (owner, id, item) => {
+				if (owner === this.resource && typeof id === "number" && typeof item === "string") this.hovers.get(id)?.(item);
+			});
 			on(MENU_EVENTS.menuResult, answer);
 			on(MENU_EVENTS.inputResult, answer);
 		}
-		ask(open, read) {
+		ask(open, read, onHover) {
 			const id = ++this.nextId;
 			this.waiting.set(id, read);
+			if (onHover) this.hovers.set(id, onHover);
 			open(id);
 		}
 	};
@@ -460,7 +468,9 @@ try{
 		/** ({ x, y, z, heading? }) -> true, teleports the admin to a point. */
 		adminTeleport: "adminTeleport",
 		/** ({ value }) -> true, the menu pick (item id) or input values; null when closed. */
-		dialogAnswer: "dialogAnswer"
+		dialogAnswer: "dialogAnswer",
+		/** ({ id }) -> true, the pointer or focus moved onto a menu item. */
+		dialogHover: "dialogHover"
 	};
 
 // resource/client/playerState.ts
@@ -774,6 +784,9 @@ try{
 			SendNUIMessage({ action: NuiMessage.dialogClose });
 			emit(current.kind === "menu" ? MENU_EVENTS.menuResult : MENU_EVENTS.inputResult, current.resource, current.id, value);
 		}
+		hover(item) {
+			if (this.current?.kind === "menu" && typeof item === "string") emit(MENU_EVENTS.menuHover, this.current.resource, this.current.id, item);
+		}
 		/** A stopped resource's open dialog closes with it. */
 		drop(resource) {
 			if (this.current?.resource === resource) this.answer(null);
@@ -790,6 +803,10 @@ try{
 	});
 	RegisterNuiCallback(NuiCallback.dialogAnswer, (data, cb) => {
 		dialogs.answer(isObj(data) ? data.value : null);
+		cb(true);
+	});
+	RegisterNuiCallback(NuiCallback.dialogHover, (data, cb) => {
+		dialogs.hover(isObj(data) ? data.id : null);
 		cb(true);
 	});
 	on("onClientResourceStop", (resource) => dialogs.drop(resource));

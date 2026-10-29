@@ -50,6 +50,10 @@ class Dialogs {
     emit(current.kind === "menu" ? MENU_EVENTS.menuResult : MENU_EVENTS.inputResult, current.resource, current.id, value);
   }
 
+  hover(item: unknown): void {
+    if (this.current?.kind === "menu" && typeof item === "string") emit(MENU_EVENTS.menuHover, this.current.resource, this.current.id, item);
+  }
+
   /** A stopped resource's open dialog closes with it. */
   drop(resource: string): void {
     if (this.current?.resource === resource) this.answer(null);
@@ -69,6 +73,10 @@ registerExport("OpenInput", (id: unknown, request: unknown) => {
 
 RegisterNuiCallback(NuiCallback.dialogAnswer, (data: unknown, cb: (r: unknown) => void) => {
   dialogs.answer(isObj(data) ? data.value : null);
+  cb(true);
+});
+RegisterNuiCallback(NuiCallback.dialogHover, (data: unknown, cb: (r: unknown) => void) => {
+  dialogs.hover(isObj(data) ? data.id : null);
   cb(true);
 });
 on("onClientResourceStop", (resource: string) => dialogs.drop(resource));

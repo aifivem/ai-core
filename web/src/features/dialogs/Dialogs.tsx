@@ -11,6 +11,7 @@ import { MENU_MOCK } from "../../dev/dialogMock";
 import { iconOf } from "../admin/icons";
 
 const answer = (value: unknown) => void fetchNui(NuiCallback.dialogAnswer, { value }, { mockData: true });
+const hover = (id: string) => void fetchNui(NuiCallback.dialogHover, { id }, { mockData: true });
 const MENU_OPTIONS = { mockData: MENU_MOCK, mockDelay: 200 };
 
 /** A resource's menu: a list on the right; click picks, Escape closes (answers null). */
@@ -34,6 +35,8 @@ function MenuPanel({ menu }: { menu: MenuRequest }) {
             role="menuitem"
             disabled={item.disabled}
             onClick={() => answer(item.id)}
+            onMouseEnter={() => hover(item.id)}
+            onFocus={() => hover(item.id)}
             className="flex items-center gap-[1.2vh] rounded-[0.8vh] px-[1.2vh] py-[1vh] text-left transition-colors duration-150 hover:bg-raised disabled:opacity-40"
           >
             {icon && <FontAwesomeIcon icon={icon} className="w-[1.8vh] text-[1.5vh] text-accent" />}

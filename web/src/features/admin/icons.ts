@@ -13,6 +13,11 @@ import {
   faCar,
   faCarSide,
   faCircleDot,
+  faWrench,
+  faDroplet,
+  faToolbox,
+  faGauge,
+  faSprayCan,
   faComments,
   faFlask,
   faEye,
@@ -93,6 +98,12 @@ const ICONS: Record<string, IconDefinition> = {
   tag: faTag,
   users: faUsers,
   wallet: faWallet,
+  wrench: faWrench,
+  droplet: faDroplet,
+  toolbox: faToolbox,
+  gauge: faGauge,
+  "spray-can": faSprayCan,
+  "circle-dot": faCircleDot,
 };
 
 export const iconOf = (name: string): IconDefinition => ICONS[name] ?? faCircleDot;
