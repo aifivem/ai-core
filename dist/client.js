@@ -245,6 +245,9 @@ try{
 		return hash;
 	}
 
+// ../../../packages/lib/src/client/vehicleProps.ts
+	const MOD_TYPES = Array.from({ length: 50 }, (_, i) => i);
+
 // ../../../packages/lib/src/fivem/playerData.ts
 /**
 	* ai-core's per-player channel: the server pushes `(key, value)` of `AiPlayerData` to the owner's client. One net

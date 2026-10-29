@@ -1,5 +1,11 @@
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
+  faCarRear,
+  faSquareParking,
+  faGasPump,
+  faScrewdriverWrench,
+  faLock,
+  faKey,
   faBox,
   faBoxOpen,
   faBriefcase,
@@ -42,6 +48,12 @@ import {
 
 /** Icons a schema may name (Font Awesome solid, without `fa-`); add a name here when a schema uses a new one. */
 const ICONS: Record<string, IconDefinition> = {
+  "car-rear": faCarRear,
+  "square-parking": faSquareParking,
+  "gas-pump": faGasPump,
+  "screwdriver-wrench": faScrewdriverWrench,
+  lock: faLock,
+  key: faKey,
   eye: faEye,
   utensils: faUtensils,
   "heart-pulse": faHeartPulse,
