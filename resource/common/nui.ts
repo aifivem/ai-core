@@ -20,6 +20,11 @@ export const NuiMessage = {
   /** data: { label, duration }, the progress bar starts. */
   progressShow: "progressShow",
   progressHide: "progressHide",
+  /** data: MenuRequest */
+  menuOpen: "menuOpen",
+  /** data: InputRequest */
+  inputOpen: "inputOpen",
+  dialogClose: "dialogClose",
 } as const;
 
 /** NUI -> client callbacks (fetch `https://ai-core/<name>`), each answers `{ ok, error? }` or data. */
@@ -40,4 +45,6 @@ export const NuiCallback = {
   adminPosition: "adminPosition",
   /** ({ x, y, z, heading? }) -> true, teleports the admin to a point. */
   adminTeleport: "adminTeleport",
+  /** ({ value }) -> true, the menu pick (item id) or input values; null when closed. */
+  dialogAnswer: "dialogAnswer",
 } as const;

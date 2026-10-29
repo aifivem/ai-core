@@ -169,6 +169,14 @@ try{
 		worldChangesCallback: (resource) => `${resource}:admin:worldChanges`
 	};
 
+// ../../../packages/shared/src/menu.ts
+	const MENU_EVENTS = {
+		/** Client local: (resource, requestId, itemId | null) the player picked an item or closed the menu. */
+		menuResult: "ai-core:client:menuResult",
+		/** Client local: (resource, requestId, values | null) the player confirmed or closed the input dialog. */
+		inputResult: "ai-core:client:inputResult"
+	};
+
 // ../../../packages/lib/src/client/cache.ts
 /** The unarmed "weapon" hash: cached as `false`. */
 	const UNARMED = GetHashKey("WEAPON_UNARMED") | 0;
@@ -244,6 +252,29 @@ try{
 		await waitFor(() => HasModelLoaded(hash) || void 0, timeoutMs);
 		return hash;
 	}
+
+// ../../../packages/lib/src/client/menu.ts
+/** Menus and input dialogs this resource asked ai-core for, waiting for the player's answer. */
+	var Requests = class {
+		resource = GetCurrentResourceName();
+		waiting = /* @__PURE__ */ new Map();
+		nextId = 0;
+		constructor() {
+			const answer = (owner, id, value) => {
+				if (owner !== this.resource || typeof id !== "number") return;
+				this.waiting.get(id)?.(value);
+				this.waiting.delete(id);
+			};
+			on(MENU_EVENTS.menuResult, answer);
+			on(MENU_EVENTS.inputResult, answer);
+		}
+		ask(open, read) {
+			const id = ++this.nextId;
+			this.waiting.set(id, read);
+			open(id);
+		}
+	};
+	const requests = new Requests();
 
 // ../../../packages/lib/src/client/vehicleProps.ts
 	const MOD_TYPES = Array.from({ length: 50 }, (_, i) => i);
@@ -403,7 +434,12 @@ try{
 		notify: "notify",
 		/** data: { label, duration }, the progress bar starts. */
 		progressShow: "progressShow",
-		progressHide: "progressHide"
+		progressHide: "progressHide",
+		/** data: MenuRequest */
+		menuOpen: "menuOpen",
+		/** data: InputRequest */
+		inputOpen: "inputOpen",
+		dialogClose: "dialogClose"
 	};
 	/** NUI -> client callbacks (fetch `https://ai-core/<name>`), each answers `{ ok, error? }` or data. */
 	const NuiCallback = {
@@ -422,7 +458,9 @@ try{
 		/** ({ from: "ped" | "camera", ground?: boolean }) -> { x, y, z, heading }, the admin's position for a point field. */
 		adminPosition: "adminPosition",
 		/** ({ x, y, z, heading? }) -> true, teleports the admin to a point. */
-		adminTeleport: "adminTeleport"
+		adminTeleport: "adminTeleport",
+		/** ({ value }) -> true, the menu pick (item id) or input values; null when closed. */
+		dialogAnswer: "dialogAnswer"
 	};
 
 // resource/client/playerState.ts
@@ -665,6 +703,96 @@ try{
 		});
 	});
 	registerExport("HideProgress", () => SendNUIMessage({ action: NuiMessage.progressHide }));
+
+// resource/client/menu.ts
+	const isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+	function toMenu(v) {
+		if (!isObj(v) || typeof v.title !== "string" || !Array.isArray(v.items)) return null;
+		const items = v.items.flatMap((i) => isObj(i) && typeof i.id === "string" && typeof i.label === "string" ? [{
+			id: i.id,
+			label: logSafe(i.label, 80),
+			icon: typeof i.icon === "string" ? i.icon : void 0,
+			description: typeof i.description === "string" ? logSafe(i.description, 160) : void 0,
+			disabled: i.disabled === true
+		}] : []);
+		return {
+			title: logSafe(v.title, 60),
+			items: items.slice(0, 40)
+		};
+	}
+	function toInput(v) {
+		if (!isObj(v) || typeof v.title !== "string" || !Array.isArray(v.fields)) return null;
+		const fields = v.fields.flatMap((f) => {
+			if (!isObj(f) || typeof f.name !== "string" || typeof f.label !== "string") return [];
+			const placeholder = typeof f.placeholder === "string" ? f.placeholder : void 0;
+			if (f.type === "number") return [{
+				name: f.name,
+				label: f.label,
+				type: "number",
+				min: typeof f.min === "number" ? f.min : void 0,
+				max: typeof f.max === "number" ? f.max : void 0,
+				placeholder
+			}];
+			return [{
+				name: f.name,
+				label: f.label,
+				type: "text",
+				maxLength: typeof f.maxLength === "number" ? f.maxLength : 120,
+				placeholder
+			}];
+		});
+		return {
+			title: logSafe(v.title, 60),
+			fields: fields.slice(0, 8),
+			confirm: typeof v.confirm === "string" ? logSafe(v.confirm, 30) : "OK"
+		};
+	}
+	/**
+	* The menu and input dialog every resource opens through lib `menu` / `input`: one at a time; opening a new one answers
+	* the previous request with null. The answer goes back to the asking resource as a local event.
+	*/
+	var Dialogs = class {
+		current = null;
+		open(kind, resource, id, data) {
+			this.answer(null);
+			this.current = {
+				kind,
+				resource,
+				id
+			};
+			SetNuiFocus(true, true);
+			SendNUIMessage({
+				action: kind === "menu" ? NuiMessage.menuOpen : NuiMessage.inputOpen,
+				data
+			});
+		}
+		answer(value) {
+			const current = this.current;
+			if (!current) return;
+			this.current = null;
+			SetNuiFocus(false, false);
+			SendNUIMessage({ action: NuiMessage.dialogClose });
+			emit(current.kind === "menu" ? MENU_EVENTS.menuResult : MENU_EVENTS.inputResult, current.resource, current.id, value);
+		}
+		/** A stopped resource's open dialog closes with it. */
+		drop(resource) {
+			if (this.current?.resource === resource) this.answer(null);
+		}
+	};
+	const dialogs = new Dialogs();
+	registerExport("OpenMenu", (id, request) => {
+		const menu = toMenu(request);
+		if (typeof id === "number" && menu) dialogs.open("menu", GetInvokingResource() || ResourceName, id, menu);
+	});
+	registerExport("OpenInput", (id, request) => {
+		const input = toInput(request);
+		if (typeof id === "number" && input) dialogs.open("input", GetInvokingResource() || ResourceName, id, input);
+	});
+	RegisterNuiCallback(NuiCallback.dialogAnswer, (data, cb) => {
+		dialogs.answer(isObj(data) ? data.value : null);
+		cb(true);
+	});
+	on("onClientResourceStop", (resource) => dialogs.drop(resource));
 
 // resource/client/scene.ts
 	const MODELS = {

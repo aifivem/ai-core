@@ -5,6 +5,7 @@ import "./admin";
 import "./cacheWatch";
 import "./prompts";
 import "./notify";
+import "./menu";
 import { openCharacters } from "./characters";
 import { announceUnloaded } from "./playerState";
 
