@@ -9,7 +9,10 @@ import {
   faCircleDot,
   faComments,
   faFlask,
+  faEye,
   faFloppyDisk,
+  faUtensils,
+  faHeartPulse,
   faGear,
   faGun,
   faHammer,
@@ -39,6 +42,9 @@ import {
 
 /** Icons a schema may name (Font Awesome solid, without `fa-`); add a name here when a schema uses a new one. */
 const ICONS: Record<string, IconDefinition> = {
+  eye: faEye,
+  utensils: faUtensils,
+  "heart-pulse": faHeartPulse,
   box: faBox,
   "box-open": faBoxOpen,
   "table-cells": faTableCells,

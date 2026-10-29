@@ -4,6 +4,7 @@ import { CORE } from "@aicore-fivem/shared";
 import "./admin";
 import "./cacheWatch";
 import "./prompts";
+import "./notify";
 import { openCharacters } from "./characters";
 import { announceUnloaded } from "./playerState";
 

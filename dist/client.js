@@ -48,6 +48,8 @@ try{
 			return value === void 0 ? match : String(value);
 		});
 	}
+	/** One parsed value as an `args` result: `[value]`, or null to refuse the call. */
+	const asArgs = (value) => value === null ? null : [value];
 	/** Console output prefixed with the resource name, so server logs show where a line came from. */
 	function createLogger(resource) {
 		const prefix = `[${resource}]`;
@@ -143,6 +145,8 @@ try{
 		createCharacterCallback: "ai-core:createCharacter",
 		deleteCharacterCallback: "ai-core:deleteCharacter",
 		selectCharacterCallback: "ai-core:selectCharacter",
+		/** Server -> client: (notification: Notification) a notification card on the player's screen. */
+		clientNotifyEvent: "ai-core:client:notify",
 		/** Server -> client: (spawn: SpawnPoint) puts the loaded character into the world. */
 		spawnEvent: "ai-core:client:spawn",
 		/** Server -> client: () the character was let go (switch); show the character screen again. */
@@ -226,6 +230,19 @@ try{
 	/** Another resource's exports while it runs, null when it does not (an optional dependency). */
 	function optionalExport(resource) {
 		return isResourceStarted(resource) ? globalThis.exports[resource] : null;
+	}
+
+// ../../../packages/lib/src/client/streaming.ts
+/**
+	* Loads a model and resolves with its hash. Rejects when the model does not exist or does not load in time.
+	* Call `SetModelAsNoLongerNeeded(hash)` once the entity is created.
+	*/
+	async function requestModel(model, timeoutMs = 1e4) {
+		const hash = typeof model === "number" ? model : GetHashKey(model);
+		if (!IsModelInCdimage(hash)) throw new Error(`model ${model} does not exist`);
+		RequestModel(hash);
+		await waitFor(() => HasModelLoaded(hash) || void 0, timeoutMs);
+		return hash;
 	}
 
 // ../../../packages/lib/src/fivem/playerData.ts
@@ -316,19 +333,6 @@ try{
 		}
 	};
 
-// ../../../packages/lib/src/client/streaming.ts
-/**
-	* Loads a model and resolves with its hash. Rejects when the model does not exist or does not load in time.
-	* Call `SetModelAsNoLongerNeeded(hash)` once the entity is created.
-	*/
-	async function requestModel(model, timeoutMs = 1e4) {
-		const hash = typeof model === "number" ? model : GetHashKey(model);
-		if (!IsModelInCdimage(hash)) throw new Error(`model ${model} does not exist`);
-		RequestModel(hash);
-		await waitFor(() => HasModelLoaded(hash) || void 0, timeoutMs);
-		return hash;
-	}
-
 // ../../../packages/lib/src/fivem/locale.ts
 /** Convar holding the language (`setr ai:locale "en"` in misc.cfg); replicated so clients read it too. */
 	const LOCALE_CONVAR = "ai:locale";
@@ -391,7 +395,12 @@ try{
 		/** data: { key, text, button }, a prompt appears (or its text changes) on the right. */
 		promptShow: "promptShow",
 		/** data: key */
-		promptHide: "promptHide"
+		promptHide: "promptHide",
+		/** data: Notification */
+		notify: "notify",
+		/** data: { label, duration }, the progress bar starts. */
+		progressShow: "progressShow",
+		progressHide: "progressHide"
 	};
 	/** NUI -> client callbacks (fetch `https://ai-core/<name>`), each answers `{ ok, error? }` or data. */
 	const NuiCallback = {
@@ -616,6 +625,43 @@ try{
 		if (typeof id === "string") prompts.hide(GetInvokingResource() || ResourceName, id);
 	});
 	on("onClientResourceStop", (resource) => prompts.drop(resource));
+
+// resource/client/notify.ts
+	const KINDS = [
+		"success",
+		"error",
+		"info",
+		"warning"
+	];
+	function toNotification(v) {
+		if (typeof v !== "object" || v === null || !("text" in v) || typeof v.text !== "string") return null;
+		const kind = "kind" in v && KINDS.includes(v.kind) ? v.kind : "info";
+		const title = "title" in v && typeof v.title === "string" ? logSafe(v.title, 60) : void 0;
+		const duration = "duration" in v && typeof v.duration === "number" ? Math.min(3e4, Math.max(1e3, v.duration)) : 4e3;
+		return {
+			text: logSafe(v.text, 300),
+			title,
+			kind,
+			duration
+		};
+	}
+	/** Notification cards and the progress bar for every resource (lib `notify` / `progress`); ai-core only draws them. */
+	const show = (n) => n && SendNUIMessage({
+		action: NuiMessage.notify,
+		data: n
+	});
+	registerExport("Notify", (n) => show(toNotification(n)));
+	onServerEvent(CORE.clientNotifyEvent, { args: ([n]) => asArgs(toNotification(n)) }, (n) => show(n));
+	registerExport("ShowProgress", (label, duration) => {
+		if (typeof label === "string" && typeof duration === "number") SendNUIMessage({
+			action: NuiMessage.progressShow,
+			data: {
+				label: logSafe(label, 60),
+				duration
+			}
+		});
+	});
+	registerExport("HideProgress", () => SendNUIMessage({ action: NuiMessage.progressHide }));
 
 // resource/client/scene.ts
 	const MODELS = {

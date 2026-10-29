@@ -2,6 +2,7 @@ import { createMemoryHistory, createRootRoute, createRoute, createRouter } from 
 import { App } from "./App";
 import { AdminRoot } from "./features/admin/AdminRoot";
 import { Prompts } from "./features/prompts/Prompts";
+import { Notifications } from "./features/notify/Notifications";
 
 /**
  * Where the admin panel is (script, tab, record) lives in the router; memory history (NUI has no url), the browser
@@ -12,6 +13,7 @@ const rootRoute = createRootRoute({
     <>
       <App />
       <Prompts />
+      <Notifications />
       <AdminRoot />
     </>
   ),

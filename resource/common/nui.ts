@@ -15,6 +15,11 @@ export const NuiMessage = {
   promptShow: "promptShow",
   /** data: key */
   promptHide: "promptHide",
+  /** data: Notification */
+  notify: "notify",
+  /** data: { label, duration }, the progress bar starts. */
+  progressShow: "progressShow",
+  progressHide: "progressHide",
 } as const;
 
 /** NUI -> client callbacks (fetch `https://ai-core/<name>`), each answers `{ ok, error? }` or data. */
