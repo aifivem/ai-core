@@ -3,7 +3,6 @@ import { cp, readFile, writeFile, access } from "node:fs/promises";
 import fg from "fast-glob";
 import { dirname, extname } from "node:path";
 import type Package from "../package.json";
-import { generateInterface } from "./typegen.ts";
 import { waitFor } from "@overextended/core/utils";
 
 function reduceArray(name: string, files?: string[]): string {
@@ -56,8 +55,10 @@ let buildCount = 0;
 let fxmanifest = "";
 
 export default async function () {
-  // Runs after the last bundle: two with a client side, one for a server-only resource.
-  if (++buildCount < (existsSync("./resource/client/index.ts") ? 2 : 1)) return;
+  // Runs after the last bundle: one per side that has resource/<side>/index.ts.
+  const hasClient = existsSync("./resource/client/index.ts");
+  const hasServer = existsSync("./resource/server/index.ts");
+  if (++buildCount < Number(hasClient) + Number(hasServer)) return;
 
   const { name, author, version, license, description, fxDependencies, fxProvide, fxFiles, fxVersion }: typeof Package & {
     fxDependencies?: string[];
@@ -68,12 +69,10 @@ export default async function () {
     /** Extra files outside public/ that clients may download or other resources include (`@name/path`). */
     fxFiles?: string[];
   } = JSON.parse(await readFile("./package.json", "utf8"));
-  const hasClient = await access("./resource/client/index.ts").then(
-    () => true,
-    () => false,
-  );
 
-  const files = await generateDirectoryGlobs("public");
+  // public/ is optional: static files players may download, copied to dist/.
+  const hasPublic = existsSync("./public");
+  const files = hasPublic ? await generateDirectoryGlobs("public") : [];
   let web;
 
   try {
@@ -107,21 +106,17 @@ game 'gta5'
 node_version '22'
 
 ${hasClient ? `client_script 'dist/client.js'
-` : ``}server_script 'dist/server.js'
-${web ? `ui_page 'dist/web/index.html'` : ``}
+` : ``}${hasServer ? `server_script 'dist/server.js'
+` : ``}${web ? `ui_page 'dist/web/index.html'` : ``}
 ${reduceArray("dependencies", fxDependencies)}${reduceArray("files", files)}${(fxProvide ?? []).map((n) => `provide '${n}'
 `).join("")}`;
 
   if (body === fxmanifest) return;
 
-  generateInterface("public");
-
   console.log(`Generated new fxmanifest.lua`);
   fxmanifest = body;
 
-  await cp("./public", "./dist", {
-    recursive: true,
-  });
+  if (hasPublic) await cp("./public", "./dist", { recursive: true });
 
   await writeFile("./fxmanifest.lua", body);
   await writeFile(".yarn.installed", new Date().toISOString());

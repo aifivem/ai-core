@@ -25262,28 +25262,13 @@ function patchPlayerData(source, key, patch) {
 	emitNet(PLAYER_DATA_PATCH_EVENT, source, key, patch);
 }
 
-// resource/common/resource.ts
-const ResourceName = GetCurrentResourceName();
-const ResourceContext = IsDuplicityVersion() ? "server" : "client";
-
-// resource/common/utils.ts
-function LoadFile(path) {
-	path = path.replace("public/", "dist/");
-	const file = LoadResourceFile(ResourceName, path);
-	if (!file) throw new Error(`Failed to load file "${path}" (file not found)`);
-	switch (path.slice(path.lastIndexOf(".") + 1)) {
-		case "js": return new Function(file)();
-		case "json": return JSON.parse(file);
-	}
-	throw new Error(`Failed to load file "${path}" (invalid extension type)`);
-}
-
-// resource/common/config.ts
-const Config = LoadFile("public/config.json");
-
 // resource/common/locale.ts
 /** This resource's lang texts: `Locale("NOTIFY_NO_MONEY", price)`; keys typed from locales/en.json. */
 const Locale = createLocale();
+
+// resource/common/resource.ts
+const ResourceName = GetCurrentResourceName();
+const ResourceContext = IsDuplicityVersion() ? "server" : "client";
 
 // resource/server/player/registry.ts
 /** Every online player with a loaded character, by server id, character id and citizen id. */

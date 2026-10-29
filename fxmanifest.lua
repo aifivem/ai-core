@@ -17,11 +17,10 @@ dependencies {
 
 files {
 	'locales/*.json',
-	'dist/*.json',
 	'dist/web/*.html',
-	'dist/web/backgrounds/*.jpg',
 	'dist/web/assets/*.js',
 	'dist/web/assets/*.css',
 	'dist/web/assets/*.woff',
 	'dist/web/assets/*.woff2',
+	'dist/web/backgrounds/*.jpg',
 }
