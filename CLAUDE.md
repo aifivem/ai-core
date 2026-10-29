@@ -35,7 +35,7 @@ The framework resource: accounts (FiveM id), characters and the character screen
 
 - `ai_core_accounts.owner_id` is text: compare with `CAST(id AS CHAR) COLLATE utf8mb4_unicode_ci` in joins. Without the cast the unique key is not used; without the COLLATE the cast takes the connection's `utf8mb4_general_ci` and MariaDB refuses the comparison ("Illegal mix of collations").
 - `mysql.transaction` answers `false` on rollback without throwing; `Account.change` turns that into an error so the write queue logs it.
-- `RegisterCommand` replies go to the server console: `chat` does not run on this server (`resources_useSystemChat false`).
+- `RegisterCommand` replies of the dev commands go to the server console (`print`), not to ai-chat; the system chat is off (`resources_useSystemChat false`) because ai-chat provides `chat`.
 
 ## Entry points
 
