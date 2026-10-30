@@ -19,6 +19,7 @@ import "./interaction";
 import "./scopes";
 import "./versions";
 import "./world";
+import "./phone";
 import "./devCommands";
 
 resetDutyCounts(jobs.keys());

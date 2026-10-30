@@ -1,0 +1,102 @@
+import { isResourceStarted, registerExport } from "@aicore-fivem/lib/server";
+import { isRecord } from "@aicore-fivem/lib/shared";
+import type {
+  PhoneAdapter,
+  PhoneMail,
+  PhoneNotification,
+} from "@aicore-fivem/shared";
+import { log } from "../log";
+import { lbPhone } from "./adapters/lb-phone";
+import { tgiannPhone } from "./adapters/tgiann-phone";
+
+/** Supported phones in detection order; a new phone = one adapter file and one line here. */
+const PHONES: readonly PhoneAdapter[] = [tgiannPhone, lbPhone];
+
+/**
+ * ai-core's phone layer: scripts ask a player's number, send mails, texts and notifications through ai-core (lib
+ * `phone`); the first running phone answers. With none running every call answers null / false.
+ */
+function run<T>(
+  what: string,
+  fn: (adapter: PhoneAdapter) => T,
+  fallback: T,
+): T {
+  const adapter = PHONES.find((a) => isResourceStarted(a.resource));
+  if (!adapter) return fallback;
+  try {
+    return fn(adapter);
+  } catch (error) {
+    log.error(`${adapter.resource} ${what} failed`, error);
+    return fallback;
+  }
+}
+
+const toMail = (v: unknown): PhoneMail | null =>
+  isRecord(v) && typeof v.subject === "string" && typeof v.message === "string"
+    ? {
+        sender: typeof v.sender === "string" ? v.sender : "",
+        subject: v.subject.slice(0, 120),
+        message: v.message.slice(0, 4000),
+      }
+    : null;
+const toNotification = (v: unknown): PhoneNotification | null =>
+  isRecord(v) && typeof v.title === "string"
+    ? {
+        title: v.title.slice(0, 80),
+        message: typeof v.message === "string" ? v.message.slice(0, 500) : "",
+        app: typeof v.app === "string" ? v.app : undefined,
+      }
+    : null;
+/** A server id or a phone number -> the number. */
+const numberOf = (to: unknown): string | null =>
+  typeof to === "number"
+    ? run("number", (a) => a.number(to), null)
+    : typeof to === "string" && to
+      ? to
+      : null;
+
+registerExport("GetPhoneNumber", (source: unknown) =>
+  typeof source === "number"
+    ? run("number", (a) => a.number(source), null)
+    : null,
+);
+registerExport("GetSourceByPhone", (number: unknown) =>
+  typeof number === "string"
+    ? run("sourceOf", (a) => a.sourceOf(number), null)
+    : null,
+);
+registerExport(
+  "HasPhone",
+  (source: unknown) =>
+    typeof source === "number" &&
+    run("hasPhone", (a) => a.hasPhone(source), false),
+);
+registerExport("SendPhoneMail", (to: unknown, mail: unknown) => {
+  const number = numberOf(to);
+  const m = toMail(mail);
+  return (
+    number !== null &&
+    m !== null &&
+    run("mail", (a) => a.mail(number, m), false)
+  );
+});
+registerExport(
+  "SendPhoneMessage",
+  (from: unknown, to: unknown, text: unknown) => {
+    const number = numberOf(to);
+    return (
+      typeof from === "string" &&
+      typeof text === "string" &&
+      number !== null &&
+      run("message", (a) => a.message(from, number, text.slice(0, 1000)), false)
+    );
+  },
+);
+registerExport("PhoneNotify", (source: unknown, notification: unknown) => {
+  const n = toNotification(notification);
+  return (
+    typeof source === "number" &&
+    n !== null &&
+    run("notify", (a) => a.notify(source, n), false)
+  );
+});

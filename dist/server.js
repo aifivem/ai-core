@@ -344,7 +344,7 @@ function toPatch(value) {
 		default: return null;
 	}
 }
-const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$7 = resourceExport(CORE.resource), ERR = {
+const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$8 = resourceExport(CORE.resource), ERR = {
 	type: "ADMIN_ERR_TYPE",
 	range: "ADMIN_ERR_RANGE",
 	length: "ADMIN_ERR_LENGTH",
@@ -358,7 +358,7 @@ const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(va
 		if (cached && Date.now() - cached.at < 2e3) return cached.values.size > 0 ? cached.values : null;
 		let list = [];
 		try {
-			list = core$7.GetLookupValues(source);
+			list = core$8.GetLookupValues(source);
 		} catch {}
 		let values = new Set(Array.isArray(list) ? list.filter((v) => typeof v == "string") : []);
 		return this.lists.set(source, {
@@ -560,7 +560,7 @@ function writeSchema(resource, name, text, log) {
 	(0, node_fs_promises.mkdir)(dir, { recursive: !0 }).then(() => (0, node_fs_promises.writeFile)(`${dir}/${name}.schema.json`, text, "utf8")).catch((error) => log.error(`writing ${resource}/${path} failed`, error));
 }
 // ../../../packages/lib/src/server/admin/panel.ts
-const core$6 = resourceExport(CORE.resource), DEFAULT_KEY = "^[a-z0-9_]{2,32}$";
+const core$7 = resourceExport(CORE.resource), DEFAULT_KEY = "^[a-z0-9_]{2,32}$";
 function imported(spec, value) {
 	let base = clone(spec.newRecord ?? {}), out = {};
 	for (let name of Object.keys(spec.sections)) {
@@ -581,7 +581,7 @@ var AdminPanel = class {
 	constructor(schema) {
 		this.schema = schema;
 		for (let [name, spec] of Object.entries(schema.files)) this.load(name, spec);
-		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges)), setImmediate(() => core$6.RegisterAdminPanel(this.resource));
+		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges)), setImmediate(() => core$7.RegisterAdminPanel(this.resource));
 	}
 	get(file) {
 		return this.data.get(file) ?? {};
@@ -667,7 +667,7 @@ var AdminPanel = class {
 		let spec = this.schema.files[file], data = this.get(file), value = key === void 0 ? data : data[key] ?? null;
 		this.dataFiles.get(file)?.write(data);
 		for (let handler of this.handlers.get(file) ?? []) handler(key, value);
-		if (core$6.AdminPanelChanged({
+		if (core$7.AdminPanelChanged({
 			resource: this.resource,
 			file,
 			key,
@@ -699,7 +699,7 @@ function notify(source, text, kind = "info", duration) {
 }
 resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/online.ts
-const core$4 = resourceExport(CORE.resource);
+const core$5 = resourceExport(CORE.resource);
 var OnlinePlayers = class {
 	players = new Map();
 	onDuty = new Map();
@@ -708,7 +708,7 @@ var OnlinePlayers = class {
 		if (this.started) return;
 		this.started = !0;
 		let load = (source, character) => {
-			this.put(source, character, (core$4.GetJobs(source) ?? []).map((m) => m.job), (core$4.GetGangs(source) ?? []).map((m) => m.gang)), this.setDuty(source, core$4.GetDutyJob(source));
+			this.put(source, character, (core$5.GetJobs(source) ?? []).map((m) => m.job), (core$5.GetGangs(source) ?? []).map((m) => m.gang)), this.setDuty(source, core$5.GetDutyJob(source));
 		};
 		on(CORE.playerLoadedEvent, load), on(CORE.playerUnloadedEvent, (source) => this.drop(source)), on(CORE.jobsChangedEvent, (source, jobs) => {
 			let player = this.players.get(source);
@@ -717,8 +717,8 @@ var OnlinePlayers = class {
 			let player = this.players.get(source);
 			player && (player.gangs = gangs.map((m) => m.gang));
 		}), on(CORE.dutyChangedEvent, (source, job) => this.setDuty(source, job));
-		for (let source of core$4.GetLoadedSources()) {
-			let character = core$4.GetCharacter(source);
+		for (let source of core$5.GetLoadedSources()) {
+			let character = core$5.GetCharacter(source);
 			character && load(source, character);
 		}
 	}
@@ -15326,7 +15326,7 @@ var GlobalGroup$1 = class extends Mirror {
 		GlobalState.set(this.prefix + id, value ?? null, !0), this.put(id, value);
 	}
 };
-resourceExport(CORE.resource);
+resourceExport(CORE.resource), resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/index.ts
 var WriteQueue = class {
 	onError;
@@ -15969,7 +15969,7 @@ const num = (min, max) => ({
 			])]
 		}
 	]
-}, ID$1 = "^[a-z0-9_]{2,32}$", text$4 = (max, min = 1) => ({
+}, ID$1 = "^[a-z0-9_]{2,32}$", text$6 = (max, min = 1) => ({
 	type: "text",
 	min,
 	max
@@ -15985,7 +15985,7 @@ const num = (min, max) => ({
 	of: {
 		type: "object",
 		fields: {
-			label: text$4(48),
+			label: text$6(48),
 			salary: int(0, 1e6),
 			boss: {
 				type: "bool",
@@ -16030,10 +16030,10 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 					branding: {
 						type: "object",
 						fields: {
-							name: text$4(32),
-							subtitle: text$4(32),
-							tagline: text$4(48, 0),
-							taglineSub: text$4(64, 0),
+							name: text$6(32),
+							subtitle: text$6(32),
+							tagline: text$6(48, 0),
+							taglineSub: text$6(64, 0),
 							background: {
 								type: "enum",
 								values: ["skyline", "wet-drive"]
@@ -16138,7 +16138,7 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 					}]
 				},
 				sections: {
-					label: text$4(48),
+					label: text$6(48),
 					type: {
 						type: "text",
 						max: 32,
@@ -16157,7 +16157,7 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 					salary: 0
 				}] },
 				sections: {
-					label: text$4(48),
+					label: text$6(48),
 					grades
 				}
 			},
@@ -16171,7 +16171,7 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 					allowNegative: !1
 				},
 				sections: {
-					label: text$4(48),
+					label: text$6(48),
 					start: int(0, 1e8),
 					allowNegative: bool
 				}
@@ -16181,10 +16181,10 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 				sync: "all",
 				labelPath: "description",
 				sections: {
-					resource: text$4(64),
-					description: text$4(120, 0),
-					defaultKey: text$4(32, 0),
-					mapper: text$4(32),
+					resource: text$6(64),
+					description: text$6(120, 0),
+					defaultKey: text$6(32, 0),
+					mapper: text$6(32),
 					key: {
 						type: "text",
 						min: 0,
@@ -16805,7 +16805,7 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 const first = (value) => Array.isArray(value) ? value[0] : value, isTrue = (value) => first(value) === !0, number = (value, fallback = 0) => {
 	let v = first(value);
 	return typeof v == "number" && Number.isFinite(v) ? v : fallback;
-}, text$3 = (value, fallback) => typeof value == "string" ? value : fallback, metadata = (value) => isRecord(value) ? { ...value } : {};
+}, text$5 = (value, fallback) => typeof value == "string" ? value : fallback, metadata = (value) => isRecord(value) ? { ...value } : {};
 function rows(value) {
 	return (Array.isArray(value) ? value : isRecord(value) ? Object.values(value) : []).filter(isRecord);
 }
@@ -16827,7 +16827,7 @@ function stack(row, labelOf) {
 }
 function definition(raw, name) {
 	return isRecord(raw) ? {
-		name: text$3(raw.name, name),
+		name: text$5(raw.name, name),
 		label: label(raw.label, name),
 		weight: number(raw.weight),
 		unique: raw.unique === !0 || raw.stack === !1,
@@ -17133,12 +17133,12 @@ const FILE$1 = "commands", PARAM_TYPES = new Set([
 	"playerId",
 	"string",
 	"longString"
-]), text$2 = (value, max) => typeof value == "string" ? value.slice(0, max) : "", names = (value) => Array.isArray(value) ? value.filter((n) => typeof n == "string" && /^[\w.:-]{1,64}$/.test(n)).map((n) => n.toLowerCase()) : [];
+]), text$4 = (value, max) => typeof value == "string" ? value.slice(0, max) : "", names = (value) => Array.isArray(value) ? value.filter((n) => typeof n == "string" && /^[\w.:-]{1,64}$/.test(n)).map((n) => n.toLowerCase()) : [];
 function readParam(value) {
 	return !isRecord(value) || typeof value.name != "string" || typeof value.type != "string" || !PARAM_TYPES.has(value.type) ? null : {
-		name: text$2(value.name, 32),
+		name: text$4(value.name, 32),
 		type: value.type,
-		help: text$2(value.help, 120),
+		help: text$4(value.help, 120),
 		optional: value.optional === !0
 	};
 }
@@ -17149,7 +17149,7 @@ function readInfo(value) {
 	let params = Array.isArray(value.params) ? value.params.map(readParam).filter((p) => p !== null) : [], aces = Array.isArray(value.aces) ? value.aces.filter((a) => typeof a == "string" && /^[\w.:-]{1,64}$/.test(a)) : null;
 	return {
 		names: list,
-		help: text$2(value.help, 200),
+		help: text$4(value.help, 200),
 		params,
 		aces
 	};
@@ -17235,15 +17235,15 @@ registerExport("RegisterCommands", (resource, list) => {
 	infos.length !== list.length && log$3.warn(`${resource}: ${list.length - infos.length} command(s) with an invalid description skipped`), commandRegistry.register(resource, infos);
 }), on("onResourceStop", (resource) => commandRegistry.drop(resource)), on("onServerResourceStart", () => commandRegistry.refreshSoon());
 // resource/server/admin/external.ts
-const ID = /^[a-z0-9_.-]{2,48}$/i, text$1 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, pageUrl = (v) => typeof v == "string" && v.startsWith("https://") ? v.slice(0, 300) : void 0;
+const ID = /^[a-z0-9_.-]{2,48}$/i, text$3 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, pageUrl = (v) => typeof v == "string" && v.startsWith("https://") ? v.slice(0, 300) : void 0;
 function toPanel(id, v, resource) {
-	let command = text$1(v.command, 64)?.replace(/^\//, ""), url = pageUrl(v.url), label = text$1(v.label, 48);
+	let command = text$3(v.command, 64)?.replace(/^\//, ""), url = pageUrl(v.url), label = text$3(v.label, 48);
 	return !label || !command && !url ? null : {
 		id,
 		resource,
 		label,
-		icon: text$1(v.icon, 32),
-		description: text$1(v.description, 160),
+		icon: text$3(v.icon, 32),
+		description: text$3(v.description, 160),
 		command,
 		url
 	};
@@ -17278,7 +17278,7 @@ const externalPanels = new class {
 		let records = panel.get("externalPanels");
 		return isRecord(records) ? Object.entries(records).flatMap(([id, v]) => {
 			if (!isRecord(v)) return [];
-			let resource = text$1(v.resource, 64) ?? "";
+			let resource = text$3(v.resource, 64) ?? "";
 			if (resource && GetResourceState(resource) !== "started") return [];
 			let found = toPanel(`panel:${id}`, v, resource);
 			return found ? [found] : [];
@@ -17362,10 +17362,10 @@ const FILE = "keybinds", NAME = /^[\w.-]{1,64}$/, KEYBOARD = new Set([
 	"MOUSE_EXTRABTN5",
 	"IOM_WHEEL_UP",
 	"IOM_WHEEL_DOWN"
-]), text = (value, max) => typeof value == "string" && value.length <= max ? value : null;
+]), text$2 = (value, max) => typeof value == "string" && value.length <= max ? value : null;
 function readKeybind(value) {
 	if (!isRecord(value)) return null;
-	let resource = text(value.resource, 64), name = text(value.name, 64), description = text(value.description, 120), defaultKey = text(value.defaultKey, 32), mapper = text(value.mapper, 32);
+	let resource = text$2(value.resource, 64), name = text$2(value.name, 64), description = text$2(value.description, 120), defaultKey = text$2(value.defaultKey, 32), mapper = text$2(value.mapper, 32);
 	return !resource || !name || !NAME.test(name) || description === null || defaultKey === null || !mapper ? null : {
 		resource,
 		name,
@@ -18945,6 +18945,76 @@ registerExport("GetWeather", () => {
 		minute: typeof t.minute == "number" ? t.minute : 0
 	} : null;
 }), registerExport("SetTime", (hour, minute) => typeof hour == "number" && call("setTime", Math.floor(hour) % 24, typeof minute == "number" ? Math.floor(minute) % 60 : 0) !== !1 && isResourceStarted(SYSTEM)), registerExport("SetBlackout", (on) => call("setBlackout", on === !0) !== !1 && isResourceStarted(SYSTEM)), registerExport("FreezeTime", (on) => call("setTimeFreeze", on === !0) !== !1 && isResourceStarted(SYSTEM));
+// resource/server/phone/adapters/lb-phone.ts
+const phone$1 = (name, ...args) => callExport("lb-phone", name, ...args), text$1 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, lbPhone = {
+	resource: "lb-phone",
+	number: (source) => text$1(phone$1("GetEquippedPhoneNumber", source)),
+	sourceOf: (number) => {
+		let s = phone$1("GetSourceFromNumber", number);
+		return typeof s == "number" ? s : null;
+	},
+	hasPhone: (source) => phone$1("HasPhoneItem", source) === !0,
+	mail: (to, m) => phone$1("SendMail", {
+		to,
+		sender: m.sender,
+		subject: m.subject,
+		message: m.message
+	}) !== !1,
+	message: (from, to, body) => phone$1("SendMessage", from, to, body) !== !1,
+	notify: (source, n) => phone$1("SendNotification", source, {
+		app: n.app,
+		title: n.title,
+		content: n.message
+	}) != null
+}, phone = (name, ...args) => callExport("tgiann-phone", name, ...args), text = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, PHONES = [{
+	resource: "tgiann-phone",
+	number: (source) => text(phone("GetPhoneNumber", source)),
+	sourceOf: (number) => {
+		let s = phone("GetSourceByNumber", number);
+		return typeof s == "number" ? s : null;
+	},
+	hasPhone: (source) => phone("HasPhone", source) === !0,
+	mail: (to, m) => phone("SendMail", {
+		to,
+		from: m.sender,
+		subject: m.subject,
+		message: m.message
+	}) !== !1,
+	message: (from, to, body) => phone("SendSms", from, to, { body }) !== !1,
+	notify: (source, n) => phone("SendNotification", source, {
+		app: n.app,
+		title: n.title,
+		content: n.message
+	}) != null
+}, lbPhone];
+function run(what, fn, fallback) {
+	let adapter = PHONES.find((a) => isResourceStarted(a.resource));
+	if (!adapter) return fallback;
+	try {
+		return fn(adapter);
+	} catch (error) {
+		return log$3.error(`${adapter.resource} ${what} failed`, error), fallback;
+	}
+}
+const toMail = (v) => isRecord(v) && typeof v.subject == "string" && typeof v.message == "string" ? {
+	sender: typeof v.sender == "string" ? v.sender : "",
+	subject: v.subject.slice(0, 120),
+	message: v.message.slice(0, 4e3)
+} : null, toNotification = (v) => isRecord(v) && typeof v.title == "string" ? {
+	title: v.title.slice(0, 80),
+	message: typeof v.message == "string" ? v.message.slice(0, 500) : "",
+	app: typeof v.app == "string" ? v.app : void 0
+} : null, numberOf = (to) => typeof to == "number" ? run("number", (a) => a.number(to), null) : typeof to == "string" && to ? to : null;
+registerExport("GetPhoneNumber", (source) => typeof source == "number" ? run("number", (a) => a.number(source), null) : null), registerExport("GetSourceByPhone", (number) => typeof number == "string" ? run("sourceOf", (a) => a.sourceOf(number), null) : null), registerExport("HasPhone", (source) => typeof source == "number" && run("hasPhone", (a) => a.hasPhone(source), !1)), registerExport("SendPhoneMail", (to, mail) => {
+	let number = numberOf(to), m = toMail(mail);
+	return number !== null && m !== null && run("mail", (a) => a.mail(number, m), !1);
+}), registerExport("SendPhoneMessage", (from, to, text) => {
+	let number = numberOf(to);
+	return typeof from == "string" && typeof text == "string" && number !== null && run("message", (a) => a.message(from, number, text.slice(0, 1e3)), !1);
+}), registerExport("PhoneNotify", (source, notification) => {
+	let n = toNotification(notification);
+	return typeof source == "number" && n !== null && run("notify", (a) => a.notify(source, n), !1);
+});
 // resource/server/devCommands.ts
 const log = createLogger("ai-core:dev");
 function reply(source, text) {
