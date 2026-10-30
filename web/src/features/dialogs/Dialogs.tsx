@@ -1,20 +1,20 @@
-import { useEffect, useState } from "react"
-import { motion } from "motion/react"
-import { fetchNui, useNuiEvent } from "fivem-nui-react"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import type { InputRequest, MenuRequest } from "@aicore-fivem/shared"
-import { NuiCallback, NuiMessage } from "../../../../resource/common/nui"
-import { Button } from "../../components/ui/button"
-import { Dialog } from "../../components/ui/dialog"
-import { Input } from "../../components/ui/input"
-import { MENU_MOCK } from "../../dev/dialogMock"
-import { iconOf } from "../admin/icons"
+import { useEffect, useState } from "react";
+import { motion } from "motion/react";
+import { fetchNui, useNuiEvent } from "fivem-nui-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import type { InputRequest, MenuRequest } from "@aicore-fivem/shared";
+import { NuiCallback, NuiMessage } from "../../../../resource/common/nui";
+import { Button } from "../../components/ui/button";
+import { Dialog } from "../../components/ui/dialog";
+import { Input } from "../../components/ui/input";
+import { MENU_MOCK } from "../../dev/dialogMock";
+import { iconOf } from "../admin/icons";
 
 const answer = (value: unknown) =>
-  void fetchNui(NuiCallback.dialogAnswer, { value }, { mockData: true })
+  void fetchNui(NuiCallback.dialogAnswer, { value }, { mockData: true });
 const hover = (id: string) =>
-  void fetchNui(NuiCallback.dialogHover, { id }, { mockData: true })
-const MENU_OPTIONS = { mockData: MENU_MOCK, mockDelay: 200 }
+  void fetchNui(NuiCallback.dialogHover, { id }, { mockData: true });
+const MENU_OPTIONS = { mockData: MENU_MOCK, mockDelay: 200 };
 
 /** A resource's menu (tgiann-core menu): title pill and a list on the right; hover fills a row green; click picks, Escape closes (answers null). */
 function MenuPanel({ menu }: { menu: MenuRequest }) {
@@ -42,7 +42,7 @@ function MenuPanel({ menu }: { menu: MenuRequest }) {
       </header>
       <div className="flex max-h-[60vh] flex-col gap-[0.4vh] overflow-y-auto rounded-[1.4vh] bg-panel p-[0.6vh]">
         {menu.items.map((item) => {
-          const icon = item.icon ? iconOf(item.icon) : null
+          const icon = item.icon ? iconOf(item.icon) : null;
           return (
             <button
               key={item.id}
@@ -70,30 +70,30 @@ function MenuPanel({ menu }: { menu: MenuRequest }) {
                 )}
               </span>
             </button>
-          )
+          );
         })}
       </div>
     </motion.section>
-  )
+  );
 }
 
 function InputPanel({ input }: { input: InputRequest }) {
-  const [values, setValues] = useState<Record<string, string>>({})
+  const [values, setValues] = useState<Record<string, string>>({});
   const parsed = Object.fromEntries(
     input.fields.map((f) => [
       f.name,
       f.type === "number"
         ? Number(values[f.name] ?? "")
         : (values[f.name] ?? "").trim(),
-    ])
-  )
+    ]),
+  );
   const valid = input.fields.every((f) =>
     f.type === "number"
       ? Number.isFinite(parsed[f.name]) &&
         values[f.name] !== undefined &&
         values[f.name] !== ""
-      : String(parsed[f.name] ?? "") !== ""
-  )
+      : String(parsed[f.name] ?? "") !== "",
+  );
   return (
     <Dialog
       open
@@ -103,8 +103,8 @@ function InputPanel({ input }: { input: InputRequest }) {
       <form
         className="flex flex-col gap-[1.4vh]"
         onSubmit={(e) => {
-          e.preventDefault()
-          if (valid) answer(parsed)
+          e.preventDefault();
+          if (valid) answer(parsed);
         }}
       >
         {input.fields.map((f, i) => (
@@ -131,33 +131,37 @@ function InputPanel({ input }: { input: InputRequest }) {
         </Button>
       </form>
     </Dialog>
-  )
+  );
 }
 
 /** The menu and input dialog other resources open (lib `menu` / `input`). */
 export function Dialogs() {
-  const [menu, setMenu] = useState<MenuRequest | null>(null)
-  const [input, setInput] = useState<InputRequest | null>(null)
+  const [menu, setMenu] = useState<MenuRequest | null>(null);
+  const [input, setInput] = useState<InputRequest | null>(null);
 
   // The client checked both shapes (resource/client/menu.ts).
-  useNuiEvent<MenuRequest>(NuiMessage.menuOpen, (m) => setMenu(m), MENU_OPTIONS)
-  useNuiEvent<InputRequest>(NuiMessage.inputOpen, (m) => setInput(m))
+  useNuiEvent<MenuRequest>(
+    NuiMessage.menuOpen,
+    (m) => setMenu(m),
+    MENU_OPTIONS,
+  );
+  useNuiEvent<InputRequest>(NuiMessage.inputOpen, (m) => setInput(m));
   useNuiEvent(NuiMessage.dialogClose, () => {
-    setMenu(null)
-    setInput(null)
-  })
+    setMenu(null);
+    setInput(null);
+  });
 
   useEffect(() => {
-    if (!menu) return
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && answer(null)
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [menu])
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && answer(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menu]);
 
   return (
     <>
       {menu && <MenuPanel menu={menu} />}
       {input && <InputPanel input={input} />}
     </>
-  )
+  );
 }

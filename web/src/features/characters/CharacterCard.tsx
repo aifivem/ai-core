@@ -1,22 +1,22 @@
-import { useState } from "react"
-import { AnimatePresence, motion } from "motion/react"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faPlus } from "@fortawesome/free-solid-svg-icons"
-import type { CharacterCard as Card } from "@aicore-fivem/shared"
-import { Tooltip } from "../../components/ui/tooltip"
-import { useLang } from "../../lib/lang"
-import { cn } from "../../lib/utils"
+import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
+import type { CharacterCard as Card } from "@aicore-fivem/shared";
+import { Tooltip } from "../../components/ui/tooltip";
+import { useLang } from "../../lib/lang";
+import { cn } from "../../lib/utils";
 
 const initialsOf = (card: Card): string =>
-  `${card.firstname.charAt(0)}${card.lastname.charAt(0)}`.toUpperCase()
+  `${card.firstname.charAt(0)}${card.lastname.charAt(0)}`.toUpperCase();
 
 interface Props {
-  card: Card
-  portrait: string | undefined
-  selected: boolean
-  busy: boolean
-  onSelect: () => void
-  onPlay: () => void
+  card: Card;
+  portrait: string | undefined;
+  selected: boolean;
+  busy: boolean;
+  onSelect: () => void;
+  onPlay: () => void;
 }
 
 /** A saved character in the slot row (tgiann-multichar CharSlot): round portrait or initials; name and job float above while hovered or picked. */
@@ -28,9 +28,9 @@ export function CharacterCard({
   onSelect,
   onPlay,
 }: Props) {
-  const t = useLang()
-  const [hover, setHover] = useState(false)
-  const name = `${card.firstname} ${card.lastname}`
+  const t = useLang();
+  const [hover, setHover] = useState(false);
+  const name = `${card.firstname} ${card.lastname}`;
   return (
     <div className="relative flex w-[10.6vh] flex-col items-center">
       <AnimatePresence initial={false}>
@@ -77,7 +77,7 @@ export function CharacterCard({
           "relative rounded-full border-[0.3vh] p-0 transition-[border-color,opacity,transform] duration-150 ease-out enabled:active:[transform:scale(0.96)] disabled:cursor-not-allowed disabled:opacity-50",
           selected
             ? "border-tgi-green"
-            : "border-transparent hover:border-white/30"
+            : "border-transparent hover:border-white/30",
         )}
       >
         <span className="relative flex size-[10vh] items-center justify-center overflow-hidden rounded-full bg-[#2b2b2b]">
@@ -100,7 +100,7 @@ export function CharacterCard({
         )}
       </button>
     </div>
-  )
+  );
 }
 
 /** A free slot: a green plus in a faint circle that opens the creation screen. */
@@ -108,10 +108,10 @@ export function CreateCard({
   busy,
   onCreate,
 }: {
-  busy: boolean
-  onCreate: () => void
+  busy: boolean;
+  onCreate: () => void;
 }) {
-  const t = useLang()
+  const t = useLang();
   return (
     <Tooltip content={t("CHAR_CREATE_TITLE")}>
       <button
@@ -124,5 +124,5 @@ export function CreateCard({
         <FontAwesomeIcon icon={faPlus} className="text-[2.6vh]" />
       </button>
     </Tooltip>
-  )
+  );
 }

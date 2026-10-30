@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/client"
-import type { VehicleKeysClientAdapter } from "@aicore-fivem/shared"
+import { callExport } from "@aicore-fivem/lib/client";
+import type { VehicleKeysClientAdapter } from "@aicore-fivem/shared";
 
 /** Quasar qs-vehiclekeys client exports by plate and model name (untested on ai-core). */
 export const qsVehicleKeys: VehicleKeysClientAdapter = {
@@ -10,13 +10,13 @@ export const qsVehicleKeys: VehicleKeysClientAdapter = {
       "GiveKeys",
       plate,
       GetDisplayNameFromVehicleModel(GetEntityModel(vehicle)),
-      true
+      true,
     ),
   remove: (vehicle, plate) =>
     void callExport(
       "qs-vehiclekeys",
       "RemoveKeys",
       plate,
-      GetDisplayNameFromVehicleModel(GetEntityModel(vehicle))
+      GetDisplayNameFromVehicleModel(GetEntityModel(vehicle)),
     ),
-}
+};

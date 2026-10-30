@@ -1,56 +1,57 @@
-import { useMemo, useState } from "react"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
+import { useMemo, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faChevronRight,
   faLock,
   faMagnifyingGlass,
   faPlus,
   faTrash,
-} from "@fortawesome/free-solid-svg-icons"
-import type { AdminPanelSnapshot, TabSpec } from "@aicore-fivem/shared"
-import { Button } from "../../components/ui/button"
-import { VirtualList } from "../../components/VirtualList"
-import { cn } from "../../lib/utils"
-import { goTo } from "./actions"
-import { Editor } from "./Editor"
-import { iconOf } from "./icons"
-import { getAt } from "./path"
-import { CreateDialog, DeleteDialog } from "./RecordDialogs"
+} from "@fortawesome/free-solid-svg-icons";
+import type { AdminPanelSnapshot, TabSpec } from "@aicore-fivem/shared";
+import { Button } from "../../components/ui/button";
+import { VirtualList } from "../../components/VirtualList";
+import { cn } from "../../lib/utils";
+import { goTo } from "./actions";
+import { Editor } from "./Editor";
+import { iconOf } from "./icons";
+import { getAt } from "./path";
+import { CreateDialog, DeleteDialog } from "./RecordDialogs";
 
-type T = (key: string, ...args: Array<string | number>) => string
+type T = (key: string, ...args: Array<string | number>) => string;
 
 interface Props {
-  panel: AdminPanelSnapshot
-  tab: TabSpec
-  selected: string | undefined
-  t: T
+  panel: AdminPanelSnapshot;
+  tab: TabSpec;
+  selected: string | undefined;
+  t: T;
 }
 
 /** A records file: searchable list on the left, the picked record's editor on the right. */
 export function RecordsView({ panel, tab, selected, t }: Props) {
-  const spec = panel.schema.files[tab.file]
-  const records = (panel.data[tab.file] ?? {}) as Record<string, unknown>
-  const [search, setSearch] = useState("")
-  const [creating, setCreating] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const spec = panel.schema.files[tab.file];
+  const records = (panel.data[tab.file] ?? {}) as Record<string, unknown>;
+  const [search, setSearch] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const labelOf = (key: string): string => {
     const label = spec?.labelPath
       ? getAt(records[key], spec.labelPath)
-      : undefined
-    return typeof label === "string" && label ? label : key
-  }
+      : undefined;
+    return typeof label === "string" && label ? label : key;
+  };
   const keys = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = search.trim().toLowerCase();
     return Object.keys(records)
       .filter(
-        (key) => !q || key.includes(q) || labelOf(key).toLowerCase().includes(q)
+        (key) =>
+          !q || key.includes(q) || labelOf(key).toLowerCase().includes(q),
       )
-      .sort((a, b) => labelOf(a).localeCompare(labelOf(b)))
+      .sort((a, b) => labelOf(a).localeCompare(labelOf(b)));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- labelOf reads records
-  }, [records, search])
-  const record = selected !== undefined ? records[selected] : undefined
+  }, [records, search]);
+  const record = selected !== undefined ? records[selected] : undefined;
   const locked =
-    selected !== undefined && (spec?.locked ?? []).includes(selected)
+    selected !== undefined && (spec?.locked ?? []).includes(selected);
 
   return (
     <div className="flex min-h-0 flex-1 gap-[2vh]">
@@ -95,8 +96,8 @@ export function RecordsView({ panel, tab, selected, t }: Props) {
           renderItem={(key) => {
             const sub = tab.listSub
               ? getAt(records[key], tab.listSub)
-              : undefined
-            const active = key === selected
+              : undefined;
+            const active = key === selected;
             return (
               <button
                 type="button"
@@ -105,14 +106,14 @@ export function RecordsView({ panel, tab, selected, t }: Props) {
                   "flex min-h-[6.4vh] w-full items-center gap-[1.2vh] rounded-[0.9vh] px-[1.4vh] py-[1vh] text-left transition-[background-color] duration-150 ease-out",
                   active
                     ? "bg-tgi-green-15"
-                    : "bg-surface [box-shadow:inset_0_0_0_1px_rgba(255,255,255,0.06)] hover:bg-[#202020]"
+                    : "bg-surface [box-shadow:inset_0_0_0_1px_rgba(255,255,255,0.06)] hover:bg-[#202020]",
                 )}
               >
                 <span className="flex min-w-0 flex-1 flex-col gap-[0.4vh]">
                   <span
                     className={cn(
                       "truncate text-[1.5vh] leading-[1.2] font-semibold",
-                      active && "text-tgi-green"
+                      active && "text-tgi-green",
                     )}
                   >
                     {labelOf(key)}
@@ -125,12 +126,12 @@ export function RecordsView({ panel, tab, selected, t }: Props) {
                   icon={faChevronRight}
                   className={cn(
                     "text-[1.2vh]",
-                    active ? "text-tgi-green" : "text-text-4"
+                    active ? "text-tgi-green" : "text-text-4",
                   )}
                   aria-hidden
                 />
               </button>
-            )
+            );
           }}
         />
       </div>
@@ -209,5 +210,5 @@ export function RecordsView({ panel, tab, selected, t }: Props) {
         tab={tab.id}
       />
     </div>
-  )
+  );
 }

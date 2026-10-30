@@ -1,42 +1,42 @@
-import { useEffect } from "react"
-import { useParams, useSearch } from "@tanstack/react-router"
-import { motion } from "motion/react"
-import { useNuiEvent } from "fivem-nui-react"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faDoorOpen } from "@fortawesome/free-solid-svg-icons"
+import { useEffect } from "react";
+import { useParams, useSearch } from "@tanstack/react-router";
+import { motion } from "motion/react";
+import { useNuiEvent } from "fivem-nui-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faDoorOpen } from "@fortawesome/free-solid-svg-icons";
 import type {
   AdminDelta,
   AdminPanelSnapshot,
   ExternalPanel,
   Lookups,
-} from "@aicore-fivem/shared"
-import { NuiMessage } from "../../../../resource/common/nui"
-import { mockAdminOpen } from "../../dev/adminMock"
-import { store, useAppSelector } from "../../store"
-import { changed } from "../../store/admin"
-import { closePanel, openPanel } from "./actions"
-import { Dashboard } from "./Dashboard"
-import { Editor } from "./Editor"
-import { usePanelLang } from "./lang"
-import { RecordsView } from "./RecordsView"
-import { Sidebar } from "./Sidebar"
-import { TableView } from "./TableView"
+} from "@aicore-fivem/shared";
+import { NuiMessage } from "../../../../resource/common/nui";
+import { mockAdminOpen } from "../../dev/adminMock";
+import { store, useAppSelector } from "../../store";
+import { changed } from "../../store/admin";
+import { closePanel, openPanel } from "./actions";
+import { Dashboard } from "./Dashboard";
+import { Editor } from "./Editor";
+import { usePanelLang } from "./lang";
+import { RecordsView } from "./RecordsView";
+import { Sidebar } from "./Sidebar";
+import { TableView } from "./TableView";
 
 // One options object: a new one per render would re-subscribe (and re-fire the browser mock) on every render.
-const OPEN_OPTIONS = { mockData: mockAdminOpen(), mockDelay: 300 }
+const OPEN_OPTIONS = { mockData: mockAdminOpen(), mockDelay: 300 };
 
-const NO_LOOKUPS: Lookups = { item: [], job: [], gang: [], account: [] }
+const NO_LOOKUPS: Lookups = { item: [], job: [], gang: [], account: [] };
 
 function onOpen(value: unknown): void {
-  if (typeof value !== "object" || value === null) return
+  if (typeof value !== "object" || value === null) return;
   const { panels, texts, lookups, external } = value as {
-    panels?: unknown
-    texts?: unknown
-    lookups?: unknown
-    external?: unknown
-  }
+    panels?: unknown;
+    texts?: unknown;
+    lookups?: unknown;
+    external?: unknown;
+  };
   // ai-core builds these objects itself; only the outer shape is checked.
-  if (!Array.isArray(panels)) return
+  if (!Array.isArray(panels)) return;
   openPanel(
     panels as AdminPanelSnapshot[],
     typeof texts === "object" && texts !== null
@@ -45,8 +45,8 @@ function onOpen(value: unknown): void {
     typeof lookups === "object" && lookups !== null
       ? { ...NO_LOOKUPS, ...(lookups as Partial<Lookups>) }
       : NO_LOOKUPS,
-    Array.isArray(external) ? (external as ExternalPanel[]) : []
-  )
+    Array.isArray(external) ? (external as ExternalPanel[]) : [],
+  );
 }
 
 function onDelta(value: unknown): void {
@@ -55,34 +55,34 @@ function onDelta(value: unknown): void {
     value !== null &&
     typeof (value as AdminDelta).resource === "string"
   )
-    store.dispatch(changed(value as AdminDelta))
+    store.dispatch(changed(value as AdminDelta));
 }
 
 /** The admin panel: client messages, Esc to close, and the large centred panel (sidebar, header, editor). */
 export function AdminRoot() {
-  const open = useAppSelector((state) => state.admin.open)
-  const picking = useAppSelector((state) => state.admin.picking)
-  const coreTexts = useAppSelector((state) => state.admin.texts)
-  const external = useAppSelector((state) => state.admin.external)
-  const { resource, tab: tabId, id: externalId } = useParams({ strict: false })
-  const { key } = useSearch({ strict: false })
+  const open = useAppSelector((state) => state.admin.open);
+  const picking = useAppSelector((state) => state.admin.picking);
+  const coreTexts = useAppSelector((state) => state.admin.texts);
+  const external = useAppSelector((state) => state.admin.external);
+  const { resource, tab: tabId, id: externalId } = useParams({ strict: false });
+  const { key } = useSearch({ strict: false });
   const panel = useAppSelector((state) =>
-    state.admin.panels.find((p) => p.resource === resource)
-  )
-  const t = usePanelLang(resource)
+    state.admin.panels.find((p) => p.resource === resource),
+  );
+  const t = usePanelLang(resource);
 
-  useNuiEvent(NuiMessage.adminOpen, onOpen, OPEN_OPTIONS)
-  useNuiEvent(NuiMessage.adminDelta, onDelta)
+  useNuiEvent(NuiMessage.adminOpen, onOpen, OPEN_OPTIONS);
+  useNuiEvent(NuiMessage.adminDelta, onDelta);
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
     const onKey = (event: KeyboardEvent) =>
-      event.key === "Escape" && !event.defaultPrevented && closePanel()
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [open])
+      event.key === "Escape" && !event.defaultPrevented && closePanel();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
-  if (!open) return null
+  if (!open) return null;
   if (picking)
     return (
       <div className="pointer-events-none absolute inset-x-0 bottom-[3vh] flex justify-center">
@@ -90,23 +90,23 @@ export function AdminRoot() {
           {coreTexts.ADMIN_FREECAM_HELP ?? ""}
         </span>
       </div>
-    )
-  const tab = panel?.schema.tabs.find((item) => item.id === tabId)
-  const kind = tab ? panel?.schema.files[tab.file]?.kind : undefined
+    );
+  const tab = panel?.schema.tabs.find((item) => item.id === tabId);
+  const kind = tab ? panel?.schema.files[tab.file]?.kind : undefined;
   const page = externalId
     ? external.find((e) => e.id === externalId)
-    : undefined
-  const dashboard = !tab && !page
+    : undefined;
+  const dashboard = !tab && !page;
   const title = page
     ? page.label
     : tab
       ? t(tab.label)
-      : (coreTexts.ADMIN_DASHBOARD ?? "")
+      : (coreTexts.ADMIN_DASHBOARD ?? "");
   const subtitle = page
     ? (page.description ?? page.resource)
     : tab
       ? t(tab.desc)
-      : (coreTexts.ADMIN_DASHBOARD_DESC ?? "")
+      : (coreTexts.ADMIN_DASHBOARD_DESC ?? "");
 
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-black/40">
@@ -193,5 +193,5 @@ export function AdminRoot() {
         </main>
       </motion.div>
     </div>
-  )
+  );
 }

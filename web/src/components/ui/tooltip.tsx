@@ -1,13 +1,13 @@
-import type { ReactNode } from "react"
-import { Tooltip as TooltipPrimitive } from "radix-ui"
+import type { ReactNode } from "react";
+import { Tooltip as TooltipPrimitive } from "radix-ui";
 
 /** TGIANN tooltip (tgiann-ui components.md): `#161616`, ring, 1.2vh text, 300 ms delay; names an icon-only button. */
 export function Tooltip({
   content,
   children,
 }: {
-  content: string
-  children: ReactNode
+  content: string;
+  children: ReactNode;
 }) {
   return (
     <TooltipPrimitive.Provider delayDuration={300}>
@@ -23,5 +23,5 @@ export function Tooltip({
         </TooltipPrimitive.Portal>
       </TooltipPrimitive.Root>
     </TooltipPrimitive.Provider>
-  )
+  );
 }

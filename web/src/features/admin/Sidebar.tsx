@@ -1,27 +1,27 @@
-import { useState } from "react"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
+import { useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faFilter,
   faGauge,
   faShieldHalved,
-} from "@fortawesome/free-solid-svg-icons"
-import type { AdminPanelSnapshot } from "@aicore-fivem/shared"
-import { ScrollArea } from "../../components/ui/scroll-area"
-import { cn } from "../../lib/utils"
-import { useAppSelector } from "../../store"
-import { goDashboard, goTo } from "./actions"
-import { iconOf } from "./icons"
+} from "@fortawesome/free-solid-svg-icons";
+import type { AdminPanelSnapshot } from "@aicore-fivem/shared";
+import { ScrollArea } from "../../components/ui/scroll-area";
+import { cn } from "../../lib/utils";
+import { useAppSelector } from "../../store";
+import { goDashboard, goTo } from "./actions";
+import { iconOf } from "./icons";
 
 const fill = (texts: Record<string, string>, key: string): string =>
-  texts[key] ?? key
+  texts[key] ?? key;
 
 const row = (active: boolean) =>
   cn(
     "flex h-[5vh] items-center gap-[1.2vh] rounded-[0.9vh] px-[1.4vh] text-left text-[1.5vh] transition-[background-color,color] duration-150 ease-out",
     active
       ? "bg-tgi-green-15 font-semibold text-tgi-green"
-      : "font-medium text-text-2 hover:bg-white/5 hover:text-text"
-  )
+      : "font-medium text-text-2 hover:bg-white/5 hover:text-text",
+  );
 
 /**
  * Brand block, the dashboard, a filter over scripts, then every script with its tabs (tgiann-core admin sidebar); the
@@ -32,26 +32,26 @@ export function Sidebar({
   tab,
   dashboard,
 }: {
-  resource: string | undefined
-  tab: string | undefined
-  dashboard: boolean
+  resource: string | undefined;
+  tab: string | undefined;
+  dashboard: boolean;
 }) {
   const all: AdminPanelSnapshot[] = useAppSelector(
-    (state) => state.admin.panels
-  )
-  const core = useAppSelector((state) => state.admin.texts)
-  const [filter, setFilter] = useState("")
-  const q = filter.trim().toLocaleLowerCase()
+    (state) => state.admin.panels,
+  );
+  const core = useAppSelector((state) => state.admin.texts);
+  const [filter, setFilter] = useState("");
+  const q = filter.trim().toLocaleLowerCase();
   const panels = q
     ? all.filter(
         (p) =>
           p.resource.includes(q) ||
           fill(p.texts, p.schema.title).toLocaleLowerCase().includes(q) ||
           p.schema.tabs.some((t) =>
-            fill(p.texts, t.label).toLocaleLowerCase().includes(q)
-          )
+            fill(p.texts, t.label).toLocaleLowerCase().includes(q),
+          ),
       )
-    : all
+    : all;
   return (
     <nav className="flex w-[28vh] shrink-0 flex-col border-r border-white/8 bg-header">
       <div className="flex h-[7.6vh] shrink-0 items-center gap-[1.2vh] border-b border-white/8 px-[1.8vh]">
@@ -131,7 +131,7 @@ export function Sidebar({
                   </span>
                 </span>
                 {panel.schema.tabs.map((item) => {
-                  const active = panel.resource === resource && item.id === tab
+                  const active = panel.resource === resource && item.id === tab;
                   return (
                     <button
                       key={item.id}
@@ -149,13 +149,13 @@ export function Sidebar({
                         {fill(panel.texts, item.label)}
                       </span>
                     </button>
-                  )
+                  );
                 })}
               </div>
-            )
+            ),
           )}
         </div>
       </ScrollArea>
     </nav>
-  )
+  );
 }

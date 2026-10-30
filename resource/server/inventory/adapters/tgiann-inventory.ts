@@ -1,6 +1,6 @@
-import { callExport } from "@aicore-fivem/lib/server"
-import type { InventoryAdapter, InventoryRef } from "@aicore-fivem/shared"
-import { definition, definitions, isTrue, number, rows, stack } from "../parse"
+import { callExport } from "@aicore-fivem/lib/server";
+import type { InventoryAdapter, InventoryRef } from "@aicore-fivem/shared";
+import { definition, definitions, isTrue, number, rows, stack } from "../parse";
 
 /**
  * tgiann-inventory (server/exports.lua, shared/shared.lua of 2.4.1). Stacks are `{ slot, name, amount, info }`
@@ -8,24 +8,24 @@ import { definition, definitions, isTrue, number, rows, stack } from "../parse"
  * Usable items: tgiann-inventory calls the framework (`ESX.UseItem` / QB `CanUseItem`), which ai-core's bridge answers.
  */
 
-const RESOURCE = "tgiann-inventory"
+const RESOURCE = "tgiann-inventory";
 
 const call = (name: string, ...args: unknown[]): unknown =>
-  callExport(RESOURCE, name, ...args)
+  callExport(RESOURCE, name, ...args);
 
 /** `Items(name)` asserts on an unknown item: a missing item is null here, not an error. */
 function item(name: string): unknown {
   try {
-    return call("Items", name)
+    return call("Items", name);
   } catch {
-    return null
+    return null;
   }
 }
 
 const itemsOf = (ref: InventoryRef): unknown =>
   typeof ref === "number"
     ? call("GetPlayerItems", ref)
-    : call("GetInventoryItems", ref)
+    : call("GetInventoryItems", ref);
 
 export const tgiannInventory: InventoryAdapter = {
   resource: RESOURCE,
@@ -39,14 +39,14 @@ export const tgiannInventory: InventoryAdapter = {
   canCarryItem: (ref, name, count) =>
     isTrue(call("CanCarryItem", ref, name, count)),
   getItems: (ref) => {
-    const labels = new Map<string, string>()
+    const labels = new Map<string, string>();
     const labelOf = (name: string): string => {
-      let text = labels.get(name)
+      let text = labels.get(name);
       if (text === undefined)
-        labels.set(name, (text = definition(item(name), name)?.label ?? name))
-      return text
-    }
-    return rows(itemsOf(ref)).flatMap((row) => stack(row, labelOf) ?? [])
+        labels.set(name, (text = definition(item(name), name)?.label ?? name));
+      return text;
+    };
+    return rows(itemsOf(ref)).flatMap((row) => stack(row, labelOf) ?? []);
   },
   clearInventory: (ref) => void call("ClearInventory", ref),
   registerStash: (stash) =>
@@ -57,13 +57,13 @@ export const tgiannInventory: InventoryAdapter = {
       stash.slots,
       stash.maxWeight,
       undefined,
-      stash.jobs.length ? stash.jobs : undefined
+      stash.jobs.length ? stash.jobs : undefined,
     ),
   openInventory: (source, ref) => {
-    if (typeof ref === "number") call("ForceOpenInventoryById", source, ref)
-    else call("ForceOpenInventory", source, "stash", ref)
-    return true
+    if (typeof ref === "number") call("ForceOpenInventoryById", source, ref);
+    else call("ForceOpenInventory", source, "stash", ref);
+    return true;
   },
   getItemDefinition: (name) => definition(item(name), name),
   getItemDefinitions: () => definitions(call("Items")),
-}
+};

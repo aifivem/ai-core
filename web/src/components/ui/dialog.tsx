@@ -1,12 +1,12 @@
-import type { ReactNode } from "react"
-import { Dialog as DialogPrimitive } from "radix-ui"
+import type { ReactNode } from "react";
+import { Dialog as DialogPrimitive } from "radix-ui";
 
 interface DialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  title: string
-  description?: string
-  children: ReactNode
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  description?: string;
+  children: ReactNode;
 }
 
 /** TGIANN modal (tgiann-ui components.md): 0.6 black scrim, solid panel, display-font title; Escape and the scrim close it. */
@@ -40,5 +40,5 @@ export function Dialog({
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
-  )
+  );
 }

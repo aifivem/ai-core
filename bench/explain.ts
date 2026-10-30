@@ -1,8 +1,8 @@
 // `bun bench/explain.ts` in ai-core: EXPLAIN of ai-core's per-login queries on the seeded stress database.
-import { createConnection } from "../../../../packages/mysql/node_modules/mysql2/promise"
-import { connection, STRESS_DB } from "./stubs"
+import { createConnection } from "../../../../packages/mysql/node_modules/mysql2/promise";
+import { connection, STRESS_DB } from "./stubs";
 
-const db = await createConnection({ uri: connection(STRESS_DB) })
+const db = await createConnection({ uri: connection(STRESS_DB) });
 const queries: [string, string, unknown[]][] = [
   [
     "user by fivem",
@@ -37,10 +37,10 @@ const queries: [string, string, unknown[]][] = [
     "SELECT id, amount FROM ai_core_transactions WHERE account_id = ? ORDER BY created_at DESC LIMIT 20",
     [4242],
   ],
-]
+];
 for (const [name, sql, params] of queries) {
-  const [rows] = await db.query(`EXPLAIN ${sql}`, params)
-  console.log(`\n${name}`)
+  const [rows] = await db.query(`EXPLAIN ${sql}`, params);
+  console.log(`\n${name}`);
   console.table(
     (rows as Record<string, unknown>[]).map((r) => ({
       table: r.table,
@@ -48,7 +48,7 @@ for (const [name, sql, params] of queries) {
       key: r.key,
       rows: r.rows,
       Extra: r.Extra,
-    }))
-  )
+    })),
+  );
 }
-await db.end()
+await db.end();

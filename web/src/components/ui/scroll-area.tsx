@@ -1,6 +1,6 @@
-import type { ComponentProps } from "react"
-import { ScrollArea as ScrollAreaPrimitive } from "radix-ui"
-import { cn } from "../../lib/utils"
+import type { ComponentProps } from "react";
+import { ScrollArea as ScrollAreaPrimitive } from "radix-ui";
+import { cn } from "../../lib/utils";
 
 /** Radix scroll area: a thin round `#333` thumb that shows while scrolling, content keeps its full width. */
 export function ScrollArea({
@@ -32,5 +32,5 @@ export function ScrollArea({
       </ScrollAreaPrimitive.Scrollbar>
       <ScrollAreaPrimitive.Corner />
     </ScrollAreaPrimitive.Root>
-  )
+  );
 }

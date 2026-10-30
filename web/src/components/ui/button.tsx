@@ -1,8 +1,8 @@
-import type { ComponentProps } from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faCircleNotch } from "@fortawesome/free-solid-svg-icons"
-import { cn } from "../../lib/utils"
+import type { ComponentProps } from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCircleNotch } from "@fortawesome/free-solid-svg-icons";
+import { cn } from "../../lib/utils";
 
 /**
  * TGIANN buttons (docs/design.md): pill shapes; `primary` is the view's one filled green action, `secondary` and
@@ -32,13 +32,13 @@ const buttonVariants = cva(
     },
     compoundVariants: [{ variant: "icon", className: "h-[3.6vh]" }],
     defaultVariants: { variant: "secondary", size: "md" },
-  }
-)
+  },
+);
 
 interface ButtonProps
   extends ComponentProps<"button">, VariantProps<typeof buttonVariants> {
   /** Shows a spinner next to the label and disables the button while an action runs. */
-  busy?: boolean
+  busy?: boolean;
 }
 
 export function Button({
@@ -64,5 +64,5 @@ export function Button({
       )}
       {children}
     </button>
-  )
+  );
 }

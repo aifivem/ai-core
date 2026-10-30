@@ -1,4 +1,4 @@
-import type { MenuRequest } from "@aicore-fivem/shared"
+import type { MenuRequest } from "@aicore-fivem/shared";
 
 /** Browser preview only: `?view=menu` shows a job menu. */
 export const MENU_MOCK: MenuRequest | undefined =
@@ -23,4 +23,4 @@ export const MENU_MOCK: MenuRequest | undefined =
           },
         ],
       }
-    : undefined
+    : undefined;

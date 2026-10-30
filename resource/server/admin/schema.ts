@@ -1,18 +1,18 @@
-import type { DataSpec, PanelSchema, WidgetSpec } from "@aicore-fivem/shared"
-import { DEFAULT_SCENE } from "../content/scene"
-import { sceneSection, sceneTab } from "./sceneSchema"
+import type { DataSpec, PanelSchema, WidgetSpec } from "@aicore-fivem/shared";
+import { DEFAULT_SCENE } from "../content/scene";
+import { sceneSection, sceneTab } from "./sceneSchema";
 
 /** ai-core's own panel: server settings, spawn points, character screen scene, job rules, jobs, gangs and money accounts (`data/*.json`). */
 
-const ID = "^[a-z0-9_]{2,32}$"
-const text = (max: number, min = 1): DataSpec => ({ type: "text", min, max })
+const ID = "^[a-z0-9_]{2,32}$";
+const text = (max: number, min = 1): DataSpec => ({ type: "text", min, max });
 const int = (min: number, max: number): DataSpec => ({
   type: "number",
   min,
   max,
   integer: true,
-})
-const bool: DataSpec = { type: "bool" }
+});
+const bool: DataSpec = { type: "bool" };
 const grades: DataSpec = {
   type: "list",
   min: 1,
@@ -25,7 +25,7 @@ const grades: DataSpec = {
       boss: { type: "bool", optional: true },
     },
   },
-}
+};
 
 const gradeRows = (salary: boolean): WidgetSpec[] => [
   {
@@ -47,15 +47,15 @@ const gradeRows = (salary: boolean): WidgetSpec[] => [
       ]
     : []),
   { widget: "switch", path: "boss", label: "ADMIN_F_BOSS" },
-]
+];
 
 /** `accounts`: the account types at start, offered where an account is picked; `inventories` / `keySystems`: the adapters. */
 export function coreSchema(
   accounts: string[],
   inventories: string[] = [],
-  keySystems: string[] = []
+  keySystems: string[] = [],
 ): PanelSchema {
-  const accountOptions = accounts.map((value) => ({ value, label: value }))
+  const accountOptions = accounts.map((value) => ({ value, label: value }));
   return {
     title: "ADMIN_CORE_TITLE",
     icon: "server",
@@ -750,5 +750,5 @@ export function coreSchema(
         },
       },
     ],
-  }
+  };
 }

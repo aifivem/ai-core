@@ -1,5 +1,5 @@
-import type { CharacterScreen } from "@aicore-fivem/shared"
-import en from "../../../locales/en.json"
+import type { CharacterScreen } from "@aicore-fivem/shared";
+import en from "../../../locales/en.json";
 
 /** Browser preview only (`bun run dev` in web/): a fake client answering the NUI callbacks. */
 export const MOCK_SCREEN: CharacterScreen = {
@@ -76,30 +76,30 @@ export const MOCK_SCREEN: CharacterScreen = {
       lastPlayed: null,
     },
   ],
-}
+};
 
 export async function mockFetch(
   name: string,
-  data?: unknown
+  data?: unknown,
 ): Promise<unknown> {
-  await new Promise((resolve) => setTimeout(resolve, 300))
+  await new Promise((resolve) => setTimeout(resolve, 300));
   // Views of the in-game UIs (admin, prompts, menu, notifications) preview without the character screen.
-  const params = new URLSearchParams(window.location.search)
+  const params = new URLSearchParams(window.location.search);
   if (name === "ready")
     return ["admin", "prompt", "menu", "notify"].includes(
-      params.get("view") ?? ""
+      params.get("view") ?? "",
     )
       ? null
-      : { screen: MOCK_SCREEN, texts: en, scene: params.has("scene") }
+      : { screen: MOCK_SCREEN, texts: en, scene: params.has("scene") };
   if (name === "remove")
-    return { ok: true, screen: { ...MOCK_SCREEN, characters: [] } }
+    return { ok: true, screen: { ...MOCK_SCREEN, characters: [] } };
   if (
     name === "create" &&
     typeof data === "object" &&
     data !== null &&
     (data as { firstname?: string }).firstname === "Taken"
   ) {
-    return { ok: false, error: "CHAR_ERR_SLOT_TAKEN" }
+    return { ok: false, error: "CHAR_ERR_SLOT_TAKEN" };
   }
-  return { ok: true }
+  return { ok: true };
 }

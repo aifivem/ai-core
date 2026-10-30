@@ -1,12 +1,12 @@
-import { useState } from "react"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faCircleExclamation } from "@fortawesome/free-solid-svg-icons"
-import { Button } from "../../components/ui/button"
-import { Dialog } from "../../components/ui/dialog"
-import { Input } from "../../components/ui/input"
-import { createRecord, deleteRecord } from "./actions"
+import { useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCircleExclamation } from "@fortawesome/free-solid-svg-icons";
+import { Button } from "../../components/ui/button";
+import { Dialog } from "../../components/ui/dialog";
+import { Input } from "../../components/ui/input";
+import { createRecord, deleteRecord } from "./actions";
 
-type T = (key: string, ...args: Array<string | number>) => string
+type T = (key: string, ...args: Array<string | number>) => string;
 
 /** "Police Department" -> "police_department": the key a new record gets from its name. */
 const keyFrom = (name: string): string =>
@@ -16,10 +16,10 @@ const keyFrom = (name: string): string =>
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "")
-    .slice(0, 32)
+    .slice(0, 32);
 
 function ErrorLine({ text }: { text: string | null }) {
-  if (!text) return null
+  if (!text) return null;
   return (
     <p
       role="alert"
@@ -28,17 +28,17 @@ function ErrorLine({ text }: { text: string | null }) {
       <FontAwesomeIcon icon={faCircleExclamation} aria-hidden />
       {text}
     </p>
-  )
+  );
 }
 
 interface CreateProps {
-  open: boolean
-  onClose: () => void
-  t: T
-  title: string
-  resource: string
-  file: string
-  tab: string
+  open: boolean;
+  onClose: () => void;
+  t: T;
+  title: string;
+  resource: string;
+  file: string;
+  tab: string;
 }
 
 /** A new record: the name players see, and the key it is saved under (made from the name, editable). */
@@ -51,32 +51,32 @@ export function CreateDialog({
   file,
   tab,
 }: CreateProps) {
-  const [name, setName] = useState("")
-  const [key, setKey] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const finalKey = key ?? keyFrom(name)
+  const [name, setName] = useState("");
+  const [key, setKey] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const finalKey = key ?? keyFrom(name);
   const reset = () => {
-    setName("")
-    setKey(null)
-    setError(null)
-    onClose()
-  }
+    setName("");
+    setKey(null);
+    setError(null);
+    onClose();
+  };
   const submit = async () => {
     if (!name.trim() || finalKey.length < 2)
-      return setError(t("ADMIN_ERR_NAME"))
-    setBusy(true)
+      return setError(t("ADMIN_ERR_NAME"));
+    setBusy(true);
     const result = await createRecord(
       resource,
       file,
       tab,
       finalKey,
-      name.trim()
-    )
-    setBusy(false)
-    if (result.ok) reset()
-    else setError(t(result.error))
-  }
+      name.trim(),
+    );
+    setBusy(false);
+    if (result.ok) reset();
+    else setError(t(result.error));
+  };
   return (
     <Dialog
       open={open}
@@ -120,21 +120,21 @@ export function CreateDialog({
         </Button>
       </div>
     </Dialog>
-  )
+  );
 }
 
 interface DeleteProps {
-  open: boolean
-  onClose: () => void
-  t: T
-  action: string
+  open: boolean;
+  onClose: () => void;
+  t: T;
+  action: string;
   /** What deleting leaves behind; the generic text when absent. */
-  description?: string
-  name: string
-  resource: string
-  file: string
-  tab: string
-  recordKey: string
+  description?: string;
+  name: string;
+  resource: string;
+  file: string;
+  tab: string;
+  recordKey: string;
 }
 
 /** Deletes ask first and say what goes; the button repeats the action. */
@@ -150,15 +150,15 @@ export function DeleteDialog({
   tab,
   recordKey,
 }: DeleteProps) {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const submit = async () => {
-    setBusy(true)
-    const result = await deleteRecord(resource, file, tab, recordKey)
-    setBusy(false)
-    if (result.ok) onClose()
-    else setError(t(result.error))
-  }
+    setBusy(true);
+    const result = await deleteRecord(resource, file, tab, recordKey);
+    setBusy(false);
+    if (result.ok) onClose();
+    else setError(t(result.error));
+  };
   return (
     <Dialog
       open={open}
@@ -176,5 +176,5 @@ export function DeleteDialog({
         </Button>
       </div>
     </Dialog>
-  )
+  );
 }

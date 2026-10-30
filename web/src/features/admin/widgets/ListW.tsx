@@ -1,16 +1,16 @@
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons"
-import type { WidgetSpec } from "@aicore-fivem/shared"
-import { Button } from "../../../components/ui/button"
-import { useEditor } from "../context"
-import { NumberW, SwitchW, TextW, useField } from "./basic"
-import { PointW } from "./more"
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import type { WidgetSpec } from "@aicore-fivem/shared";
+import { Button } from "../../../components/ui/button";
+import { useEditor } from "../context";
+import { NumberW, SwitchW, TextW, useField } from "./basic";
+import { PointW } from "./more";
 
-type Spec = Extract<WidgetSpec, { widget: "list" }>
+type Spec = Extract<WidgetSpec, { widget: "list" }>;
 
 /** One control of a row; the label sits above it so a row of several numbers stays readable. */
 function RowControl({ spec, path }: { spec: WidgetSpec; path: string }) {
-  const { t } = useEditor()
+  const { t } = useEditor();
   const control =
     spec.widget === "text" ? (
       <TextW spec={spec} path={path} />
@@ -20,8 +20,8 @@ function RowControl({ spec, path }: { spec: WidgetSpec; path: string }) {
       <SwitchW spec={spec} path={path} />
     ) : spec.widget === "point" ? (
       <PointW spec={spec} path={path} />
-    ) : null
-  if (!control) return null
+    ) : null;
+  if (!control) return null;
   return (
     <label
       className={`flex flex-col gap-[0.4vh] ${spec.widget === "text" || spec.widget === "point" ? "min-w-0 flex-1" : "shrink-0"}`}
@@ -35,15 +35,15 @@ function RowControl({ spec, path }: { spec: WidgetSpec; path: string }) {
         {control}
       </div>
     </label>
-  )
+  );
 }
 
 /** Rows of the same shape (job grades, route checkpoints): edit in place, remove one, add one at the end. */
 export function ListW({ spec }: { spec: Spec }) {
-  const { t } = useEditor()
-  const [value, save] = useField(spec.path)
-  const rows = Array.isArray(value) ? value : []
-  const full = spec.max !== undefined && rows.length >= spec.max
+  const { t } = useEditor();
+  const [value, save] = useField(spec.path);
+  const rows = Array.isArray(value) ? value : [];
+  const full = spec.max !== undefined && rows.length >= spec.max;
   return (
     <div className="flex flex-col gap-[0.8vh] pb-[0.4vh]">
       {rows.map((_, index) => (
@@ -85,5 +85,5 @@ export function ListW({ spec }: { spec: Spec }) {
         {t(spec.addLabel)}
       </Button>
     </div>
-  )
+  );
 }

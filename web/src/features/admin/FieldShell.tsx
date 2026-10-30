@@ -1,22 +1,22 @@
-import type { ReactNode } from "react"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
+import type { ReactNode } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCircleCheck,
   faCircleExclamation,
   faCircleNotch,
-} from "@fortawesome/free-solid-svg-icons"
-import { cn } from "../../lib/utils"
-import { useAppSelector } from "../../store"
-import { fieldId } from "./actions"
-import { useEditor } from "./context"
+} from "@fortawesome/free-solid-svg-icons";
+import { cn } from "../../lib/utils";
+import { useAppSelector } from "../../store";
+import { fieldId } from "./actions";
+import { useEditor } from "./context";
 
 interface Props {
-  path: string
-  label: string
-  hint?: string
+  path: string;
+  label: string;
+  hint?: string;
   /** Label left, control right (switches, numbers, selects); else the control sits under the label. */
-  inline?: boolean
-  children: ReactNode
+  inline?: boolean;
+  children: ReactNode;
 }
 
 /** Label, hint, the field's save state (saving, saved, refused with the reason) and its control. */
@@ -27,14 +27,14 @@ export function FieldShell({
   inline = false,
   children,
 }: Props) {
-  const { resource, file, key, t } = useEditor()
-  const id = fieldId(resource, file, key, path)
+  const { resource, file, key, t } = useEditor();
+  const id = fieldId(resource, file, key, path);
   // A list shows the state of its rows too (a refused grade name appears under the list).
   const state = useAppSelector(
     (s) =>
       s.admin.fields[id] ??
-      Object.entries(s.admin.fields).find(([k]) => k.startsWith(`${id}.`))?.[1]
-  )
+      Object.entries(s.admin.fields).find(([k]) => k.startsWith(`${id}.`))?.[1],
+  );
   const status = (
     <span className="inline-flex w-[1.4vh] justify-center text-[1.15vh]">
       {state?.status === "saving" && (
@@ -53,13 +53,13 @@ export function FieldShell({
         />
       )}
     </span>
-  )
+  );
   return (
     <div className="flex flex-col gap-[1vh] py-[1.3vh]">
       <div
         className={cn(
           "flex gap-[1.6vh]",
-          inline ? "items-center justify-between" : "flex-col gap-[1vh]"
+          inline ? "items-center justify-between" : "flex-col gap-[1vh]",
         )}
       >
         {label ? (
@@ -90,5 +90,5 @@ export function FieldShell({
         </span>
       )}
     </div>
-  )
+  );
 }

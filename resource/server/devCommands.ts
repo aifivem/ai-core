@@ -1,19 +1,19 @@
-import { addCommand } from "@aicore-fivem/lib/server"
-import { createLogger } from "@aicore-fivem/lib/shared"
-import { collectQueryStats } from "@aicore-fivem/mysql"
-import { Locale } from "common"
-import { players } from "./player/registry"
-import { switchCharacter } from "./player/session"
+import { addCommand } from "@aicore-fivem/lib/server";
+import { createLogger } from "@aicore-fivem/lib/shared";
+import { collectQueryStats } from "@aicore-fivem/mysql";
+import { Locale } from "common";
+import { players } from "./player/registry";
+import { switchCharacter } from "./player/session";
 
 /**
  * Developer test commands (ai-core admins), only until the admin panel covers these. Players never use commands.
  * Each acts on the caller, or on `id` (server id) when given.
  */
-const log = createLogger("ai-core:dev")
+const log = createLogger("ai-core:dev");
 
 /** The answer goes to the server console (chat may not run); the caller sees it there or in txAdmin's live console. */
 function reply(source: number, text: string): void {
-  log.info(`${source > 0 ? `src ${source}: ` : ""}${text}`)
+  log.info(`${source > 0 ? `src ${source}: ` : ""}${text}`);
 }
 
 const id = {
@@ -21,9 +21,9 @@ const id = {
   type: "playerId",
   help: Locale("COMMAND_P_ID"),
   optional: true,
-} as const
+} as const;
 const result = (value: unknown): string =>
-  value ? JSON.stringify(value) : "no character"
+  value ? JSON.stringify(value) : "no character";
 
 addCommand(
   "aicore_switch",
@@ -31,10 +31,10 @@ addCommand(
   (source, args) => {
     reply(
       source,
-      switchCharacter(args.id ?? source) ? "switched" : "no character"
-    )
-  }
-)
+      switchCharacter(args.id ?? source) ? "switched" : "no character",
+    );
+  },
+);
 
 addCommand(
   "aicore_job",
@@ -50,9 +50,9 @@ addCommand(
   (source, args) =>
     reply(
       source,
-      result(players.get(args.id ?? source)?.jobs.set(args.job, args.grade))
-    )
-)
+      result(players.get(args.id ?? source)?.jobs.set(args.job, args.grade)),
+    ),
+);
 
 addCommand(
   "aicore_duty",
@@ -70,10 +70,10 @@ addCommand(
       result(
         players
           .get(args.id ?? source)
-          ?.jobs.setDuty(args.job === "off" ? null : args.job)
-      )
-    )
-)
+          ?.jobs.setDuty(args.job === "off" ? null : args.job),
+      ),
+    ),
+);
 
 addCommand(
   "aicore_money",
@@ -96,11 +96,11 @@ addCommand(
             args.account,
             args.amount,
             "DEV_COMMAND",
-            `src:${source}`
-          )
-      )
-    )
-)
+            `src:${source}`,
+          ),
+      ),
+    ),
+);
 
 addCommand(
   "aicore_gang",
@@ -116,9 +116,9 @@ addCommand(
   (source, args) =>
     reply(
       source,
-      result(players.get(args.id ?? source)?.gangs.set(args.gang, args.grade))
-    )
-)
+      result(players.get(args.id ?? source)?.gangs.set(args.gang, args.grade)),
+    ),
+);
 
 /** Database statistics of every resource (queries, time, slow ones); `aicore_db slow` lists recent slow queries. */
 addCommand(
@@ -137,14 +137,14 @@ addCommand(
   },
   async (source, args) => {
     for (const r of await collectQueryStats()) {
-      const avg = r.queries ? (r.totalMs / r.queries).toFixed(2) : "0"
+      const avg = r.queries ? (r.totalMs / r.queries).toFixed(2) : "0";
       reply(
         source,
-        `${r.resource}: ${r.queries} queries, ${r.totalMs.toFixed(0)} ms total, avg ${avg} ms, ${r.slow} slow, ${r.errors} errors`
-      )
+        `${r.resource}: ${r.queries} queries, ${r.totalMs.toFixed(0)} ms total, avg ${avg} ms, ${r.slow} slow, ${r.errors} errors`,
+      );
       if (args.slow === "slow")
         for (const q of r.recentSlow.slice(-5))
-          reply(source, `  ${q.ms} ms  ${q.sql}`)
+          reply(source, `  ${q.ms} ms  ${q.sql}`);
     }
-  }
-)
+  },
+);

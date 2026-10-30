@@ -1,7 +1,7 @@
 import {
   VEHICLE_KEYS_CLIENT_EVENT,
   type VehicleKeysAdapter,
-} from "@aicore-fivem/shared"
+} from "@aicore-fivem/shared";
 
 /**
  * A key system with only a client API: the server half forwards to the player's client, where ai-core's client adapter
@@ -18,7 +18,7 @@ export const clientKeys = (resource: string): VehicleKeysAdapter => ({
         "give",
         t.netId,
         t.plate,
-        purpose
+        purpose,
       )
     ),
   remove: (source, t) =>
@@ -26,4 +26,4 @@ export const clientKeys = (resource: string): VehicleKeysAdapter => ({
       t.netId !== null &&
       emitNet(VEHICLE_KEYS_CLIENT_EVENT, source, "remove", t.netId, t.plate)
     ),
-})
+});

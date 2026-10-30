@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/client"
-import type { VehicleKeysClientAdapter } from "@aicore-fivem/shared"
+import { callExport } from "@aicore-fivem/lib/client";
+import type { VehicleKeysClientAdapter } from "@aicore-fivem/shared";
 
 /** Brutal keys client exports by plate (untested on ai-core). */
 export const brutalKeys: VehicleKeysClientAdapter = {
@@ -8,4 +8,4 @@ export const brutalKeys: VehicleKeysClientAdapter = {
     void callExport("brutal_keys", "addVehicleKey", plate, "car"),
   remove: (_vehicle, plate) =>
     void callExport("brutal_keys", "removeKey", plate, true),
-}
+};

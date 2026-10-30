@@ -1,20 +1,20 @@
-import { Select as SelectPrimitive } from "radix-ui"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faCheck, faChevronDown } from "@fortawesome/free-solid-svg-icons"
-import { cn } from "../../lib/utils"
+import { Select as SelectPrimitive } from "radix-ui";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCheck, faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import { cn } from "../../lib/utils";
 
 interface Option {
-  value: string
-  label: string
+  value: string;
+  label: string;
 }
 
 interface SelectProps {
-  value: string | undefined
-  options: Option[]
-  onChange: (value: string) => void
-  placeholder?: string
-  className?: string
-  "aria-label"?: string
+  value: string | undefined;
+  options: Option[];
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+  "aria-label"?: string;
 }
 
 /** Radix select in TGIANN: pill trigger, floating `#161616` list, the picked row in green text. */
@@ -33,7 +33,7 @@ export function Select({
         aria-label={props["aria-label"]}
         className={cn(
           "flex h-[3.6vh] w-full items-center justify-between gap-[0.8vh] rounded-full border border-white/8 bg-[#2222224D] px-[1.4vh] text-[1.35vh] text-text transition-[border-color] duration-150 hover:border-white/14 data-[placeholder]:text-text-4 data-[state=open]:border-tgi-green-40",
-          className
+          className,
         )}
       >
         <SelectPrimitive.Value placeholder={placeholder} />
@@ -71,5 +71,5 @@ export function Select({
         </SelectPrimitive.Content>
       </SelectPrimitive.Portal>
     </SelectPrimitive.Root>
-  )
+  );
 }

@@ -1,27 +1,27 @@
-import { AnimatePresence, motion } from "motion/react"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
+import { AnimatePresence, motion } from "motion/react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBuildingColumns,
   faCakeCandles,
   faMoneyBill,
   faVenusMars,
   type IconDefinition,
-} from "@fortawesome/free-solid-svg-icons"
-import type { CharacterCard } from "@aicore-fivem/shared"
-import { useLang } from "../../lib/lang"
+} from "@fortawesome/free-solid-svg-icons";
+import type { CharacterCard } from "@aicore-fivem/shared";
+import { useLang } from "../../lib/lang";
 
-const money = (value: number): string => `$${value.toLocaleString("en-US")}`
+const money = (value: number): string => `$${value.toLocaleString("en-US")}`;
 /** "1994-05-12" -> "12/05/1994". */
-const dateOf = (iso: string): string => iso.split("-").reverse().join("/")
+const dateOf = (iso: string): string => iso.split("-").reverse().join("/");
 
 function StatRow({
   icon,
   label,
   value,
 }: {
-  icon: IconDefinition
-  label: string
-  value: string
+  icon: IconDefinition;
+  label: string;
+  value: string;
 }) {
   return (
     <div className="flex items-center gap-[1.4vh]">
@@ -35,16 +35,16 @@ function StatRow({
         </span>
       </div>
     </div>
-  )
+  );
 }
 
 /** Left column (tgiann-multichar CharDetails): the picked character's slot, name, job and stats. */
 export function CharacterDetails({
   card,
 }: {
-  card: CharacterCard | undefined
+  card: CharacterCard | undefined;
 }) {
-  const t = useLang()
+  const t = useLang();
   return (
     <AnimatePresence mode="wait" initial={false}>
       {card && (
@@ -95,5 +95,5 @@ export function CharacterDetails({
         </motion.div>
       )}
     </AnimatePresence>
-  )
+  );
 }

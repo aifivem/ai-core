@@ -1,5 +1,5 @@
-import type { CharacterScene, SceneSpot } from "@aicore-fivem/shared"
-import { bool, int, num, record, str, vec4 } from "./parse"
+import type { CharacterScene, SceneSpot } from "@aicore-fivem/shared";
+import { bool, int, num, record, str, vec4 } from "./parse";
 
 /** The character screen scene (settings section `characterScene`): parsing and the default scene. */
 
@@ -20,7 +20,7 @@ export const WEATHERS = [
   "SNOWLIGHT",
   "XMAS",
   "HALLOWEEN",
-]
+];
 
 const spot = (
   x: number,
@@ -35,7 +35,7 @@ const spot = (
     angle: number,
     target: number,
     sway: number,
-  ]
+  ],
 ): SceneSpot => ({
   ped: { x, y, z, heading },
   anim,
@@ -49,7 +49,7 @@ const spot = (
   blurNear: 0,
   blurFar: 2,
   blurStrength: 100,
-})
+});
 
 /** A Vinewood hills terrace over the city at night, five characters side by side. */
 export const DEFAULT_SCENE: CharacterScene = {
@@ -63,7 +63,7 @@ export const DEFAULT_SCENE: CharacterScene = {
       -20.9096,
       "timetable@mime@01_gc",
       "idle_a",
-      [1.15, -0.05, 0, 0.4, 17]
+      [1.15, -0.05, 0, 0.4, 17],
     ),
     spot(
       -281.9063,
@@ -72,7 +72,7 @@ export const DEFAULT_SCENE: CharacterScene = {
       -45.4143,
       "amb@world_human_leaning@male@wall@back@foot_up@idle_a",
       "idle_a",
-      [1.15, 0.2, -46, 0.4, 20]
+      [1.15, 0.2, -46, 0.4, 20],
     ),
     spot(
       -282.8329,
@@ -81,7 +81,7 @@ export const DEFAULT_SCENE: CharacterScene = {
       -63.5697,
       "anim@scripted@freemode_npc@fix_agy_ig4_lamar@",
       "lean_wall_idle_03_lamar",
-      [1, 0.2, 22, 0.4, 18]
+      [1, 0.2, 22, 0.4, 18],
     ),
     spot(
       -283.7728,
@@ -90,7 +90,7 @@ export const DEFAULT_SCENE: CharacterScene = {
       -64.6121,
       "amb@world_human_leaning@male@wall@back@hands_together@idle_b",
       "idle_e",
-      [1.7, -0.1, 22, 0.25, 16]
+      [1.7, -0.1, 22, 0.25, 16],
     ),
     spot(
       -284.6422,
@@ -99,13 +99,13 @@ export const DEFAULT_SCENE: CharacterScene = {
       -29.6066,
       "misscarstealfinale",
       "packer_idle_1_trevor",
-      [1.75, 0.25, 10, 0.35, 19]
+      [1.75, 0.25, 10, 0.35, 19],
     ),
   ],
-}
+};
 
 function readSpot(raw: unknown, fallback: SceneSpot): SceneSpot {
-  const s = record(raw)
+  const s = record(raw);
   return {
     ped: vec4(s.ped, fallback.ped),
     anim:
@@ -121,16 +121,16 @@ function readSpot(raw: unknown, fallback: SceneSpot): SceneSpot {
     blurNear: num(s.blurNear, fallback.blurNear, 0, 50),
     blurFar: num(s.blurFar, fallback.blurFar, 0, 100),
     blurStrength: num(s.blurStrength, fallback.blurStrength, 0, 100),
-  }
+  };
 }
 
 export function readScene(raw: unknown): CharacterScene {
-  const s = record(raw)
-  const time = record(s.time)
-  const list = Array.isArray(s.spots) ? s.spots.slice(0, 10) : []
+  const s = record(raw);
+  const time = record(s.time);
+  const list = Array.isArray(s.spots) ? s.spots.slice(0, 10) : [];
   const spots = list.map((value, i) =>
-    readSpot(value, DEFAULT_SCENE.spots[i] ?? DEFAULT_SCENE.spots[0]!)
-  )
+    readSpot(value, DEFAULT_SCENE.spots[i] ?? DEFAULT_SCENE.spots[0]!),
+  );
   return {
     fov: num(s.fov, DEFAULT_SCENE.fov, 20, 90),
     time: {
@@ -142,5 +142,5 @@ export function readScene(raw: unknown): CharacterScene {
         : DEFAULT_SCENE.time.weather,
     },
     spots: spots.length ? spots : DEFAULT_SCENE.spots,
-  }
+  };
 }

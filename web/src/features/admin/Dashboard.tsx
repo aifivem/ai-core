@@ -1,57 +1,57 @@
-import { useMemo, useState } from "react"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
+import { useMemo, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowUpRightFromSquare,
   faChevronRight,
   faMagnifyingGlass,
-} from "@fortawesome/free-solid-svg-icons"
+} from "@fortawesome/free-solid-svg-icons";
 import type {
   AdminPanelSnapshot,
   ExternalPanel,
   WidgetSpec,
-} from "@aicore-fivem/shared"
-import { ScrollArea } from "../../components/ui/scroll-area"
-import { useAppSelector } from "../../store"
-import { goTo, openExternal } from "./actions"
-import { iconOf } from "./icons"
+} from "@aicore-fivem/shared";
+import { ScrollArea } from "../../components/ui/scroll-area";
+import { useAppSelector } from "../../store";
+import { goTo, openExternal } from "./actions";
+import { iconOf } from "./icons";
 
 interface Hit {
-  kind: "tab" | "setting"
-  resource: string
-  tab: string
-  title: string
-  where: string
-  icon: string
+  kind: "tab" | "setting";
+  resource: string;
+  tab: string;
+  title: string;
+  where: string;
+  icon: string;
 }
 
 const text = (
   panel: AdminPanelSnapshot,
   core: Record<string, string>,
-  key: string
-): string => panel.texts[key] ?? core[key] ?? key
-const norm = (s: string) => s.toLocaleLowerCase()
+  key: string,
+): string => panel.texts[key] ?? core[key] ?? key;
+const norm = (s: string) => s.toLocaleLowerCase();
 
 /** Every field label of a tab, list rows included. */
 function labels(fields: WidgetSpec[]): string[] {
   return fields.flatMap((f) => [
     f.label,
     ...(f.widget === "list" ? f.rows.map((r) => r.label) : []),
-  ])
+  ]);
 }
 
 /** Tabs and settings of every script matching the query (labels in the script's language). */
 function search(
   panels: AdminPanelSnapshot[],
   core: Record<string, string>,
-  query: string
+  query: string,
 ): Hit[] {
-  const q = norm(query.trim())
-  if (!q) return []
-  const hits: Hit[] = []
+  const q = norm(query.trim());
+  if (!q) return [];
+  const hits: Hit[] = [];
   for (const panel of panels) {
-    const title = text(panel, core, panel.schema.title)
+    const title = text(panel, core, panel.schema.title);
     for (const tab of panel.schema.tabs) {
-      const tabLabel = text(panel, core, tab.label)
+      const tabLabel = text(panel, core, tab.label);
       if (
         norm(tabLabel).includes(q) ||
         norm(text(panel, core, tab.desc)).includes(q) ||
@@ -65,10 +65,10 @@ function search(
           title: tabLabel,
           where: title,
           icon: tab.icon,
-        })
+        });
       for (const card of tab.cards)
         for (const label of labels(card.fields)) {
-          const name = text(panel, core, label)
+          const name = text(panel, core, label);
           if (norm(name).includes(q))
             hits.push({
               kind: "setting",
@@ -77,21 +77,21 @@ function search(
               title: name,
               where: `${title} › ${tabLabel}`,
               icon: card.icon,
-            })
+            });
         }
     }
   }
-  return hits.slice(0, 80)
+  return hits.slice(0, 80);
 }
 
 function ScriptCard({
   panel,
   core,
 }: {
-  panel: AdminPanelSnapshot
-  core: Record<string, string>
+  panel: AdminPanelSnapshot;
+  core: Record<string, string>;
 }) {
-  const first = panel.schema.tabs[0]
+  const first = panel.schema.tabs[0];
   return (
     <button
       type="button"
@@ -138,15 +138,15 @@ function ScriptCard({
         )}
       </div>
     </button>
-  )
+  );
 }
 
 function ExternalCard({
   panel,
   t,
 }: {
-  panel: ExternalPanel
-  t: (key: string) => string
+  panel: ExternalPanel;
+  t: (key: string) => string;
 }) {
   return (
     <button
@@ -177,34 +177,37 @@ function ExternalCard({
         {t("ADMIN_OPEN_PANEL")}
       </span>
     </button>
-  )
+  );
 }
 
 /** The panel's home: search over every script's tabs and settings, script cards, and other scripts' panels. */
 export function Dashboard() {
-  const panels = useAppSelector((state) => state.admin.panels)
-  const external = useAppSelector((state) => state.admin.external)
-  const core = useAppSelector((state) => state.admin.texts)
+  const panels = useAppSelector((state) => state.admin.panels);
+  const external = useAppSelector((state) => state.admin.external);
+  const core = useAppSelector((state) => state.admin.texts);
   const t = (key: string, ...args: string[]) =>
     (core[key] ?? key).replace(
       /\{(\d+)\}/g,
-      (_, i: string) => args[Number(i)] ?? ""
-    )
-  const [query, setQuery] = useState("")
-  const hits = useMemo(() => search(panels, core, query), [panels, core, query])
-  const q = norm(query.trim())
+      (_, i: string) => args[Number(i)] ?? "",
+    );
+  const [query, setQuery] = useState("");
+  const hits = useMemo(
+    () => search(panels, core, query),
+    [panels, core, query],
+  );
+  const q = norm(query.trim());
   const scripts = q
     ? panels.filter(
         (p) =>
           norm(text(p, core, p.schema.title)).includes(q) ||
-          p.resource.includes(q)
+          p.resource.includes(q),
       )
-    : panels
+    : panels;
   const others = q
     ? external.filter(
-        (e) => norm(e.label).includes(q) || norm(e.resource).includes(q)
+        (e) => norm(e.label).includes(q) || norm(e.resource).includes(q),
       )
-    : external
+    : external;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-[1.6vh]">
@@ -249,7 +252,7 @@ export function Dashboard() {
                     {t(
                       hit.kind === "tab"
                         ? "ADMIN_RESULT_TAB"
-                        : "ADMIN_RESULT_SETTING"
+                        : "ADMIN_RESULT_SETTING",
                     )}
                   </span>
                 </button>
@@ -291,5 +294,5 @@ export function Dashboard() {
         </div>
       </ScrollArea>
     </div>
-  )
+  );
 }

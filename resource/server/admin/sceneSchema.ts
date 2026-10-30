@@ -1,5 +1,5 @@
-import type { DataSpec, TabSpec, WidgetSpec } from "@aicore-fivem/shared"
-import { DEFAULT_SCENE, WEATHERS } from "../content/scene"
+import type { DataSpec, TabSpec, WidgetSpec } from "@aicore-fivem/shared";
+import { DEFAULT_SCENE, WEATHERS } from "../content/scene";
 
 /** Panel part of the character screen scene (settings section `characterScene`). */
 
@@ -7,13 +7,13 @@ const num = (min: number, max: number): DataSpec => ({
   type: "number",
   min,
   max,
-})
+});
 const int = (min: number, max: number): DataSpec => ({
   type: "number",
   min,
   max,
   integer: true,
-})
+});
 
 export const sceneSection: DataSpec = {
   type: "object",
@@ -51,7 +51,7 @@ export const sceneSection: DataSpec = {
       },
     },
   },
-}
+};
 
 /** The spots are one list shown in three cards (place, camera, blur); each card edits its own fields of the same rows. */
 const spots = (rows: WidgetSpec[]): WidgetSpec => ({
@@ -63,7 +63,7 @@ const spots = (rows: WidgetSpec[]): WidgetSpec => ({
   addLabel: "ADMIN_ADD_SPOT",
   rowLabel: "ADMIN_ROW_SPOT",
   max: 10,
-})
+});
 
 export const sceneTab: TabSpec = {
   id: "scene",
@@ -239,4 +239,4 @@ export const sceneTab: TabSpec = {
       ],
     },
   ],
-}
+};

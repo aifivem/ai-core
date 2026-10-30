@@ -1,12 +1,12 @@
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import type { CardSpec } from "@aicore-fivem/shared"
-import { useEditor } from "./context"
-import { Field } from "./Field"
-import { iconOf } from "./icons"
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import type { CardSpec } from "@aicore-fivem/shared";
+import { useEditor } from "./context";
+import { Field } from "./Field";
+import { iconOf } from "./icons";
 
 /** A section card (tgiann-core SectionCard): icon box, title, one sentence on what it does in the game, then its fields as an inset row list. */
 export function Card({ card }: { card: CardSpec }) {
-  const { t } = useEditor()
+  const { t } = useEditor();
   return (
     <section className="relative flex flex-col gap-[1.4vh] rounded-[1.2vh] bg-surface p-[1.6vh] [box-shadow:0_0_0_1px_rgba(255,255,255,0.07)]">
       <header className="flex items-center gap-[1.4vh]">
@@ -30,5 +30,5 @@ export function Card({ card }: { card: CardSpec }) {
         ))}
       </div>
     </section>
-  )
+  );
 }

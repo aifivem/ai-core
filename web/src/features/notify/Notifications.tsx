@@ -1,20 +1,20 @@
-import { useEffect, useState } from "react"
-import { AnimatePresence, motion } from "motion/react"
-import { useNuiEvent } from "fivem-nui-react"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { useNuiEvent } from "fivem-nui-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCircleCheck,
   faCircleExclamation,
   faCircleInfo,
   faTriangleExclamation,
   type IconDefinition,
-} from "@fortawesome/free-solid-svg-icons"
-import type { Notification, NotificationKind } from "@aicore-fivem/shared"
-import { NuiMessage } from "../../../../resource/common/nui"
-import { NOTIFY_MOCK, PROGRESS_MOCK } from "../../dev/notifyMock"
+} from "@fortawesome/free-solid-svg-icons";
+import type { Notification, NotificationKind } from "@aicore-fivem/shared";
+import { NuiMessage } from "../../../../resource/common/nui";
+import { NOTIFY_MOCK, PROGRESS_MOCK } from "../../dev/notifyMock";
 
 interface Card extends Notification {
-  id: number
+  id: number;
 }
 
 /** Kind = left edge, icon badge and icon colour (TGIANN NotifBox). */
@@ -42,23 +42,23 @@ const LOOK: Record<
     edge: "border-l-white/40",
     badge: "bg-white/10 text-text-2",
   },
-}
-let nextId = 0
-const NOTIFY_OPTIONS = { mockData: NOTIFY_MOCK, mockDelay: 200 }
-const PROGRESS_OPTIONS = { mockData: PROGRESS_MOCK, mockDelay: 200 }
+};
+let nextId = 0;
+const NOTIFY_OPTIONS = { mockData: NOTIFY_MOCK, mockDelay: 200 };
+const PROGRESS_OPTIONS = { mockData: PROGRESS_MOCK, mockDelay: 200 };
 
 function NotificationCard({
   card,
   onDone,
 }: {
-  card: Card
-  onDone: (id: number) => void
+  card: Card;
+  onDone: (id: number) => void;
 }) {
-  const look = LOOK[card.kind]
+  const look = LOOK[card.kind];
   useEffect(() => {
-    const timer = setTimeout(() => onDone(card.id), card.duration ?? 4000)
-    return () => clearTimeout(timer)
-  }, [card, onDone])
+    const timer = setTimeout(() => onDone(card.id), card.duration ?? 4000);
+    return () => clearTimeout(timer);
+  }, [card, onDone]);
   return (
     <motion.div
       layout
@@ -89,38 +89,38 @@ function NotificationCard({
         </span>
       </div>
     </motion.div>
-  )
+  );
 }
 
 /** Notification cards top right and the progress bar bottom centre, for every resource (lib `notify` / `progress`). */
 export function Notifications() {
-  const [cards, setCards] = useState<Card[]>([])
+  const [cards, setCards] = useState<Card[]>([]);
   const [bar, setBar] = useState<{
-    label: string
-    duration: number
-    key: number
-  } | null>(null)
+    label: string;
+    duration: number;
+    key: number;
+  } | null>(null);
   const remove = (id: number) =>
-    setCards((prev) => prev.filter((c) => c.id !== id))
+    setCards((prev) => prev.filter((c) => c.id !== id));
 
   // The client checked the shape (resource/client/notify.ts); the mock sends a list.
   useNuiEvent(
     NuiMessage.notify,
     (data: Notification | Notification[]) => {
-      const list = Array.isArray(data) ? data : [data]
+      const list = Array.isArray(data) ? data : [data];
       setCards((prev) =>
-        [...prev, ...list.map((n) => ({ ...n, id: ++nextId }))].slice(-5)
-      )
+        [...prev, ...list.map((n) => ({ ...n, id: ++nextId }))].slice(-5),
+      );
     },
-    NOTIFY_OPTIONS
-  )
+    NOTIFY_OPTIONS,
+  );
   useNuiEvent(
     NuiMessage.progressShow,
     (data: { label: string; duration: number }) =>
       setBar({ ...data, key: ++nextId }),
-    PROGRESS_OPTIONS
-  )
-  useNuiEvent(NuiMessage.progressHide, () => setBar(null))
+    PROGRESS_OPTIONS,
+  );
+  useNuiEvent(NuiMessage.progressHide, () => setBar(null));
 
   return (
     <>
@@ -156,5 +156,5 @@ export function Notifications() {
         )}
       </AnimatePresence>
     </>
-  )
+  );
 }

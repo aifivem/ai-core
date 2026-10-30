@@ -1,5 +1,5 @@
 // The resource's `common` path alias for bun: the server modules the bench imports only read `ResourceName` from it.
-import { plugin } from "bun"
+import { plugin } from "bun";
 
 plugin({
   name: "ai-core-common",
@@ -7,6 +7,6 @@ plugin({
     build.module("common", () => ({
       exports: { ResourceName: "ai-core" },
       loader: "object",
-    }))
+    }));
   },
-})
+});

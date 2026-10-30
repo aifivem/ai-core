@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/server"
-import type { VehicleKeysAdapter } from "@aicore-fivem/shared"
+import { callExport } from "@aicore-fivem/lib/server";
+import type { VehicleKeysAdapter } from "@aicore-fivem/shared";
 
 /** Qbox's qbx_vehiclekeys server exports take the vehicle entity (untested on ai-core). */
 export const qbxVehicleKeys: VehicleKeysAdapter = {
@@ -14,4 +14,4 @@ export const qbxVehicleKeys: VehicleKeysAdapter = {
       t.vehicle !== null &&
       callExport("qbx_vehiclekeys", "RemoveKeys", source, t.vehicle)
     ),
-}
+};

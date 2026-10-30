@@ -1,12 +1,12 @@
-import type { ReactNode } from "react"
-import type { Transition } from "motion/react"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
+import type { ReactNode } from "react";
+import type { Transition } from "motion/react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCircleNotch,
   type IconDefinition,
-} from "@fortawesome/free-solid-svg-icons"
-import { cn } from "../lib/utils"
-import { Tooltip } from "./ui/tooltip"
+} from "@fortawesome/free-solid-svg-icons";
+import { cn } from "../lib/utils";
+import { Tooltip } from "./ui/tooltip";
 
 /** Building blocks of a full-screen screen (docs/design.md "Panels", tgiann-multichar). */
 
@@ -15,8 +15,8 @@ export function ScreenHeader({
   title,
   desc,
 }: {
-  title: string
-  desc?: string
+  title: string;
+  desc?: string;
 }) {
   return (
     <div className="flex flex-col gap-[1vh]">
@@ -29,7 +29,7 @@ export function ScreenHeader({
         </p>
       )}
     </div>
-  )
+  );
 }
 
 const VIGNETTES = {
@@ -41,20 +41,20 @@ const VIGNETTES = {
     "bg-[radial-gradient(circle,rgba(0,0,0,0)_0%,rgba(0,0,0,0)_55%,rgba(0,0,0,0.55)_100%)]",
   sceneLeft:
     "bg-[linear-gradient(90deg,rgba(0,0,0,0.7)_0%,rgba(0,0,0,0.3)_25%,rgba(0,0,0,0)_45%)]",
-}
+};
 
 /** Darkens the screen edges so white text stays readable over the picture or the scene. */
 export function Vignette({
   variant = "radial",
 }: {
-  variant?: keyof typeof VIGNETTES
+  variant?: keyof typeof VIGNETTES;
 }) {
   return (
     <div
       aria-hidden
       className={cn("pointer-events-none absolute inset-0", VIGNETTES[variant])}
     />
-  )
+  );
 }
 
 /** Text with a round dark icon button (back, quit), top right of a screen. */
@@ -64,10 +64,10 @@ export function RoundAction({
   onClick,
   disabled,
 }: {
-  label: string
-  icon: IconDefinition
-  onClick: () => void
-  disabled?: boolean
+  label: string;
+  icon: IconDefinition;
+  onClick: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
@@ -83,7 +83,7 @@ export function RoundAction({
         <FontAwesomeIcon icon={icon} className="text-[1.7vh]" />
       </span>
     </button>
-  )
+  );
 }
 
 /** Dark rounded bar that holds a screen's main buttons (bottom right). */
@@ -91,38 +91,38 @@ export function PillBar({
   children,
   className,
 }: {
-  children: ReactNode
-  className?: string
+  children: ReactNode;
+  className?: string;
 }) {
   return (
     <div
       className={cn(
         "flex h-[6vh] w-max items-center gap-[1vh] rounded-full bg-black/60 p-[0.5vh]",
-        className
+        className,
       )}
     >
       {children}
     </div>
-  )
+  );
 }
 
 const PILL = {
   green: "bg-tgi-green text-tgi-green-text enabled:hover:bg-tgi-green-hover",
   dark: "bg-white/20 text-text-2 enabled:hover:bg-white/30 enabled:hover:text-text",
   danger: "bg-danger-solid text-text enabled:hover:bg-[#dc2626]",
-}
+};
 
 interface PillButtonProps {
-  label: string
-  onClick: () => void
-  variant?: keyof typeof PILL
-  icon?: IconDefinition
-  disabled?: boolean
+  label: string;
+  onClick: () => void;
+  variant?: keyof typeof PILL;
+  icon?: IconDefinition;
+  disabled?: boolean;
   /** Spinner while this button's request runs. */
-  pending?: boolean
+  pending?: boolean;
   /** Round icon button; the label becomes its tooltip. */
-  iconOnly?: boolean
-  className?: string
+  iconOnly?: boolean;
+  className?: string;
 }
 
 /** A button of the pill bar: green main action, dark or red secondary ones. */
@@ -147,7 +147,7 @@ export function PillButton({
         "flex h-full items-center justify-center gap-[0.8vh] rounded-full text-[1.4vh] font-bold whitespace-nowrap uppercase transition-[background-color,color,opacity,transform] duration-150 ease-out enabled:active:[transform:scale(0.96)] disabled:cursor-not-allowed disabled:opacity-40",
         iconOnly ? "w-[5vh] px-0" : "px-[3vh]",
         PILL[variant],
-        className
+        className,
       )}
     >
       {pending ? (
@@ -166,8 +166,8 @@ export function PillButton({
       )}
       {!iconOnly && label}
     </button>
-  )
-  return iconOnly ? <Tooltip content={label}>{button}</Tooltip> : button
+  );
+  return iconOnly ? <Tooltip content={label}>{button}</Tooltip> : button;
 }
 
 /**
@@ -180,16 +180,16 @@ const springSoft = {
   bounce: 0,
   opacity: { type: "tween", duration: 0.3, ease: "easeOut" },
   filter: { type: "tween", duration: 0.3, ease: "easeOut" },
-} as Transition
+} as Transition;
 
 /** Screen columns rising in on open (opacity, small lift, light blur). */
 export const screenEnter = {
   initial: { opacity: 0, y: "0.8vh", filter: "blur(4px)" },
   animate: { opacity: 1, y: "0vh", filter: "blur(0px)" },
-} as const
+} as const;
 
 /** Stagger between screen columns, 100 ms per column. */
 export const columnDelay = (index: number): Transition => ({
   ...springSoft,
   delay: Math.min(index * 0.1, 0.3),
-})
+});

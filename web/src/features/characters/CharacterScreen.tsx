@@ -1,7 +1,7 @@
-import { AnimatePresence, motion } from "motion/react"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { faCity, faPlay, faTrashCan } from "@fortawesome/free-solid-svg-icons"
-import type { Branding } from "@aicore-fivem/shared"
+import { AnimatePresence, motion } from "motion/react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCity, faPlay, faTrashCan } from "@fortawesome/free-solid-svg-icons";
+import type { Branding } from "@aicore-fivem/shared";
 import {
   PillBar,
   PillButton,
@@ -9,21 +9,21 @@ import {
   Vignette,
   columnDelay,
   screenEnter,
-} from "../../components/Screen"
-import { useLang } from "../../lib/lang"
-import { cn } from "../../lib/utils"
-import { play, selectCard } from "./actions"
-import { CharacterCard, CreateCard } from "./CharacterCard"
-import { CharacterDetails } from "./CharacterDetails"
-import { CreateDialog } from "./CreateDialog"
-import { DeleteDialog } from "./DeleteDialog"
-import { update, useScreen } from "./store"
+} from "../../components/Screen";
+import { useLang } from "../../lib/lang";
+import { cn } from "../../lib/utils";
+import { play, selectCard } from "./actions";
+import { CharacterCard, CreateCard } from "./CharacterCard";
+import { CharacterDetails } from "./CharacterDetails";
+import { CreateDialog } from "./CreateDialog";
+import { DeleteDialog } from "./DeleteDialog";
+import { update, useScreen } from "./store";
 
 /** Server name, subtitle and tagline, bottom left. */
 function Brand({ branding }: { branding: Branding }) {
   const tagline = [branding.tagline, branding.taglineSub]
     .filter(Boolean)
-    .join(" · ")
+    .join(" · ");
   return (
     <div className="flex items-center gap-[1.2vh]">
       <FontAwesomeIcon icon={faCity} className="text-[3.2vh] text-tgi-green" />
@@ -38,7 +38,7 @@ function Brand({ branding }: { branding: Branding }) {
         )}
       </div>
     </div>
-  )
+  );
 }
 
 /** A refused action (a lang key), top centre (tgiann NotifBox line). */
@@ -58,22 +58,22 @@ function ErrorLine({ text }: { text: string }) {
     >
       {text}
     </motion.div>
-  )
+  );
 }
 
 /** Character select (docs/design.md, tgiann-multichar): title and details left, slot row bottom centre, actions bottom right. */
 export function CharacterScreen() {
-  const t = useLang()
+  const t = useLang();
   const { open, screen, selected, view, busy, error, portraits, scene } =
-    useScreen()
-  if (!open || !screen) return null
+    useScreen();
+  if (!open || !screen) return null;
 
-  const slots = Array.from({ length: screen.slots }, (_, i) => i + 1)
-  const card = screen.characters.find((c) => c.id === selected)
+  const slots = Array.from({ length: screen.slots }, (_, i) => i + 1);
+  const card = screen.characters.find((c) => c.id === selected);
   const deleting =
     view.kind === "delete"
       ? screen.characters.find((c) => c.id === view.characterId)
-      : undefined
+      : undefined;
 
   return (
     <div className={cn("absolute inset-0 animate-fade", !scene && "bg-page")}>
@@ -110,7 +110,7 @@ export function CharacterScreen() {
             className="flex min-h-0 items-end justify-center gap-[2vh] pb-[1vh]"
           >
             {slots.map((slot) => {
-              const character = screen.characters.find((c) => c.slot === slot)
+              const character = screen.characters.find((c) => c.slot === slot);
               if (!character)
                 return (
                   <CreateCard
@@ -120,7 +120,7 @@ export function CharacterScreen() {
                       update({ view: { kind: "create", slot }, error: null })
                     }
                   />
-                )
+                );
               return (
                 <CharacterCard
                   key={slot}
@@ -131,7 +131,7 @@ export function CharacterScreen() {
                   onSelect={() => selectCard(character.id)}
                   onPlay={() => void play(character.id)}
                 />
-              )
+              );
             })}
           </motion.div>
           <motion.div
@@ -174,5 +174,5 @@ export function CharacterScreen() {
         {error && <ErrorLine key={error} text={t(error)} />}
       </AnimatePresence>
     </div>
-  )
+  );
 }

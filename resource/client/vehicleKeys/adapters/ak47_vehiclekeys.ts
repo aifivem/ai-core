@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/client"
-import type { VehicleKeysClientAdapter } from "@aicore-fivem/shared"
+import { callExport } from "@aicore-fivem/lib/client";
+import type { VehicleKeysClientAdapter } from "@aicore-fivem/shared";
 
 /** ak47_vehiclekeys client exports by plate (second argument: a local vehicle) (untested on ai-core). */
 export const ak47VehicleKeys: VehicleKeysClientAdapter = {
@@ -9,13 +9,13 @@ export const ak47VehicleKeys: VehicleKeysClientAdapter = {
       "ak47_vehiclekeys",
       "GiveKey",
       plate,
-      !NetworkGetEntityIsNetworked(vehicle)
+      !NetworkGetEntityIsNetworked(vehicle),
     ),
   remove: (vehicle, plate) =>
     void callExport(
       "ak47_vehiclekeys",
       "RemoveKey",
       plate,
-      !NetworkGetEntityIsNetworked(vehicle)
+      !NetworkGetEntityIsNetworked(vehicle),
     ),
-}
+};

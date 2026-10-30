@@ -1,7 +1,7 @@
-import type { TabSpec } from "@aicore-fivem/shared"
-import { ScrollArea } from "../../components/ui/scroll-area"
-import { Card } from "./Card"
-import { EditorCtx, type EditorContext } from "./context"
+import type { TabSpec } from "@aicore-fivem/shared";
+import { ScrollArea } from "../../components/ui/scroll-area";
+import { Card } from "./Card";
+import { EditorCtx, type EditorContext } from "./context";
 
 /** One column of cards over a settings object or one record, every field saving live. */
 export function Editor({ tab, ctx }: { tab: TabSpec; ctx: EditorContext }) {
@@ -15,5 +15,5 @@ export function Editor({ tab, ctx }: { tab: TabSpec; ctx: EditorContext }) {
         </div>
       </ScrollArea>
     </EditorCtx.Provider>
-  )
+  );
 }

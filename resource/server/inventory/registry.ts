@@ -1,8 +1,8 @@
-import type { InventoryAdapter } from "@aicore-fivem/shared"
-import { aiInventory } from "./adapters/ai-inventory"
-import { oxInventory } from "./adapters/ox_inventory"
-import { qbInventory } from "./adapters/qb-inventory"
-import { tgiannInventory } from "./adapters/tgiann-inventory"
+import type { InventoryAdapter } from "@aicore-fivem/shared";
+import { aiInventory } from "./adapters/ai-inventory";
+import { oxInventory } from "./adapters/ox_inventory";
+import { qbInventory } from "./adapters/qb-inventory";
+import { tgiannInventory } from "./adapters/tgiann-inventory";
 
 /**
  * Every supported inventory, in detection order: `auto` uses the first one running. ai-inventory comes first
@@ -14,4 +14,4 @@ export const INVENTORIES: readonly InventoryAdapter[] = [
   tgiannInventory,
   oxInventory,
   qbInventory,
-]
+];

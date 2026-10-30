@@ -1,7 +1,7 @@
-import { callExport } from "@aicore-fivem/lib/server"
-import { isRecord } from "@aicore-fivem/lib/shared"
-import type { InventoryAdapter, InventoryRef } from "@aicore-fivem/shared"
-import { isTrue, number, rows, stack } from "../parse"
+import { callExport } from "@aicore-fivem/lib/server";
+import { isRecord } from "@aicore-fivem/lib/shared";
+import type { InventoryAdapter, InventoryRef } from "@aicore-fivem/shared";
+import { isTrue, number, rows, stack } from "../parse";
 
 /**
  * qb-inventory (server/functions.lua of 2.2.3). Player items live in qb-core's `PlayerData.items`; other inventories
@@ -10,23 +10,23 @@ import { isTrue, number, rows, stack } from "../parse"
  * ai-core's bridge answers.
  */
 
-const RESOURCE = "qb-inventory"
+const RESOURCE = "qb-inventory";
 const call = (name: string, ...args: unknown[]): unknown =>
-  callExport(RESOURCE, name, ...args)
+  callExport(RESOURCE, name, ...args);
 
 function itemsOf(ref: InventoryRef): unknown {
   if (typeof ref === "string") {
-    const inventory = call("GetInventory", ref)
-    return isRecord(inventory) ? inventory.items : undefined
+    const inventory = call("GetInventory", ref);
+    return isRecord(inventory) ? inventory.items : undefined;
   }
-  const player = callExport("qb-core", "GetPlayer", ref)
+  const player = callExport("qb-core", "GetPlayer", ref);
   return isRecord(player) && isRecord(player.PlayerData)
     ? player.PlayerData.items
-    : undefined
+    : undefined;
 }
 
 const stacksOf = (ref: InventoryRef) =>
-  rows(itemsOf(ref)).flatMap((row) => stack(row, (name) => name) ?? [])
+  rows(itemsOf(ref)).flatMap((row) => stack(row, (name) => name) ?? []);
 
 export const qbInventory: InventoryAdapter = {
   resource: RESOURCE,
@@ -41,7 +41,7 @@ export const qbInventory: InventoryAdapter = {
       ? number(call("GetItemCount", ref, item))
       : stacksOf(ref).reduce(
           (sum, s) => (s.name === item ? sum + s.count : sum),
-          0
+          0,
         ),
   canCarryItem: (ref, item, count) =>
     isTrue(call("CanAddItem", ref, item, count)),
@@ -58,10 +58,10 @@ export const qbInventory: InventoryAdapter = {
       slots: stash.slots,
     }),
   openInventory: (source, ref) => {
-    if (typeof ref === "number") call("OpenInventoryById", source, ref)
-    else call("OpenInventory", source, ref)
-    return true
+    if (typeof ref === "number") call("OpenInventoryById", source, ref);
+    else call("OpenInventory", source, ref);
+    return true;
   },
   getItemDefinition: () => null,
   getItemDefinitions: () => ({}),
-}
+};

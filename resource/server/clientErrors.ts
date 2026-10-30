@@ -1,7 +1,7 @@
-import { onClientEvent } from "@aicore-fivem/lib/server"
-import { logSafe } from "@aicore-fivem/lib/shared"
-import { CORE } from "@aicore-fivem/shared"
-import { coreLog } from "./logs"
+import { onClientEvent } from "@aicore-fivem/lib/server";
+import { logSafe } from "@aicore-fivem/lib/shared";
+import { CORE } from "@aicore-fivem/shared";
+import { coreLog } from "./logs";
 
 /**
  * Client script errors go to the log system (channel `clientErrors`), with who got them. Each client sends a line
@@ -21,7 +21,7 @@ onClientEvent(
     coreLog(
       "clientErrors",
       `[client error] ${logSafe(resource, 64)}: ${logSafe(text, 4000)}`,
-      { level: "error", source }
-    )
-  }
-)
+      { level: "error", source },
+    );
+  },
+);

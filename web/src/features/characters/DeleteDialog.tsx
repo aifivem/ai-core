@@ -1,19 +1,19 @@
-import { Dialog as DialogPrimitive } from "radix-ui"
-import { faTrashCan } from "@fortawesome/free-solid-svg-icons"
-import type { CharacterCard } from "@aicore-fivem/shared"
-import { PillBar, PillButton } from "../../components/Screen"
-import { useLang } from "../../lib/lang"
-import { remove } from "./actions"
-import { update, useScreen } from "./store"
+import { Dialog as DialogPrimitive } from "radix-ui";
+import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
+import type { CharacterCard } from "@aicore-fivem/shared";
+import { PillBar, PillButton } from "../../components/Screen";
+import { useLang } from "../../lib/lang";
+import { remove } from "./actions";
+import { update, useScreen } from "./store";
 
 /**
  * Deleting a character for good (TGIANN confirm popup): dark scrim, the question in the middle, a pill bar under it.
  * The safe choice keeps the character; Escape and a click on the scrim keep it too.
  */
 export function DeleteDialog({ card }: { card: CharacterCard | undefined }) {
-  const t = useLang()
-  const { busy } = useScreen()
-  const keep = () => !busy && update({ view: { kind: "list" }, error: null })
+  const t = useLang();
+  const { busy } = useScreen();
+  const keep = () => !busy && update({ view: { kind: "list" }, error: null });
   return (
     <DialogPrimitive.Root
       open={card !== undefined}
@@ -56,5 +56,5 @@ export function DeleteDialog({ card }: { card: CharacterCard | undefined }) {
         </DialogPrimitive.Overlay>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
-  )
+  );
 }

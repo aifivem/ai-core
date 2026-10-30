@@ -1,12 +1,12 @@
-import { resourceExport } from "@aicore-fivem/lib/server"
-import { isRecord } from "@aicore-fivem/lib/shared"
-import { CORE, type InventoryAdapter } from "@aicore-fivem/shared"
-import { definition, definitions, stack } from "../parse"
+import { resourceExport } from "@aicore-fivem/lib/server";
+import { isRecord } from "@aicore-fivem/lib/shared";
+import { CORE, type InventoryAdapter } from "@aicore-fivem/shared";
+import { definition, definitions, stack } from "../parse";
 
 /** ai-inventory, the default inventory (own exports, `@aicore-fivem/shared` `AiInventoryServerExports`). */
 
-const RESOURCE = "ai-inventory"
-const inv = () => resourceExport(RESOURCE)
+const RESOURCE = "ai-inventory";
+const inv = () => resourceExport(RESOURCE);
 
 export const aiInventory: InventoryAdapter = {
   resource: RESOURCE,
@@ -20,10 +20,10 @@ export const aiInventory: InventoryAdapter = {
   canCarryItem: (ref, item, count, metadata) =>
     inv().CanCarryItem(ref, item, count, metadata) === true,
   getItems: (ref) => {
-    const list: unknown = inv().GetItems(ref)
+    const list: unknown = inv().GetItems(ref);
     return Array.isArray(list)
       ? list.filter(isRecord).flatMap((row) => stack(row, (name) => name) ?? [])
-      : []
+      : [];
   },
   clearInventory: (ref) => inv().ClearInventory(ref),
   registerStash: (stash) =>
@@ -32,14 +32,14 @@ export const aiInventory: InventoryAdapter = {
       stash.label,
       stash.slots,
       stash.maxWeight,
-      stash.jobs
+      stash.jobs,
     ),
   openInventory: (source, ref) => inv().OpenInventory(source, ref) === true,
   getItemDefinition: (name) => definition(inv().Items(name), name),
   getItemDefinitions: () => definitions(inv().Items()),
   registerUsableItem: (name, handler) =>
     inv().RegisterUsableItem(name, handler),
-}
+};
 
 // ai-inventory's use event carries the needs an item gives; scripts listen to ai-core's event only.
 on(
@@ -49,8 +49,8 @@ on(
     name: string,
     _slot: number,
     _metadata: unknown,
-    status: unknown
+    status: unknown,
   ) => {
-    emit(CORE.itemUsedEvent, source, name, isRecord(status) ? status : null)
-  }
-)
+    emit(CORE.itemUsedEvent, source, name, isRecord(status) ? status : null);
+  },
+);

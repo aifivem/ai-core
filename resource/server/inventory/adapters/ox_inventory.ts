@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/server"
-import type { InventoryAdapter } from "@aicore-fivem/shared"
+import { callExport } from "@aicore-fivem/lib/server";
+import type { InventoryAdapter } from "@aicore-fivem/shared";
 import {
   definition,
   definitions,
@@ -8,7 +8,7 @@ import {
   number,
   rows,
   stack,
-} from "../parse"
+} from "../parse";
 
 /**
  * ox_inventory (modules/inventory/server.lua, server.lua, modules/items/server.lua of 2.48.1). `AddItem` /
@@ -16,9 +16,9 @@ import {
  * Qbox `CanUseItem`), which ai-core's bridge answers.
  */
 
-const RESOURCE = "ox_inventory"
+const RESOURCE = "ox_inventory";
 const call = (name: string, ...args: unknown[]): unknown =>
-  callExport(RESOURCE, name, ...args)
+  callExport(RESOURCE, name, ...args);
 
 export const oxInventory: InventoryAdapter = {
   resource: RESOURCE,
@@ -33,7 +33,7 @@ export const oxInventory: InventoryAdapter = {
     isTrue(call("CanCarryItem", ref, item, count, metadata)),
   getItems: (ref) =>
     rows(call("GetInventoryItems", ref)).flatMap(
-      (row) => stack(row, (name) => name) ?? []
+      (row) => stack(row, (name) => name) ?? [],
     ),
   clearInventory: (ref) => void call("ClearInventory", ref),
   registerStash: (stash) =>
@@ -46,7 +46,7 @@ export const oxInventory: InventoryAdapter = {
       undefined,
       stash.jobs.length
         ? Object.fromEntries(stash.jobs.map((job) => [job, 0]))
-        : undefined
+        : undefined,
     ),
   // forceOpenInventory answers the opened inventory's id, nothing when it could not open.
   openInventory: (source, ref) =>
@@ -55,9 +55,9 @@ export const oxInventory: InventoryAdapter = {
         "forceOpenInventory",
         source,
         typeof ref === "number" ? "player" : "stash",
-        ref
-      )
+        ref,
+      ),
     ) != null,
   getItemDefinition: (name) => definition(call("Items", name), name),
   getItemDefinitions: () => definitions(call("Items")),
-}
+};

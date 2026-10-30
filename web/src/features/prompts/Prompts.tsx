@@ -1,53 +1,53 @@
-import { useState } from "react"
-import { AnimatePresence, motion } from "motion/react"
-import { useNuiEvent } from "fivem-nui-react"
-import { NuiMessage } from "../../../../resource/common/nui"
-import { mockPrompts } from "../../dev/promptMock"
+import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { useNuiEvent } from "fivem-nui-react";
+import { NuiMessage } from "../../../../resource/common/nui";
+import { mockPrompts } from "../../dev/promptMock";
 
 interface Prompt {
-  key: string
-  text: string
-  button: string
+  key: string;
+  text: string;
+  button: string;
 }
 
 const toPrompt = (value: unknown): Prompt | null => {
-  if (typeof value !== "object" || value === null) return null
-  const { key, text, button } = value as Record<string, unknown>
+  if (typeof value !== "object" || value === null) return null;
+  const { key, text, button } = value as Record<string, unknown>;
   return typeof key === "string" &&
     typeof text === "string" &&
     typeof button === "string"
     ? { key, text, button }
-    : null
-}
+    : null;
+};
 
 // Stable mock reference: a new object per render would re-fire the browser mock.
-const SHOW_OPTIONS = { mockData: mockPrompts(), mockDelay: 300 }
+const SHOW_OPTIONS = { mockData: mockPrompts(), mockDelay: 300 };
 
 /**
  * Prompts on the right edge, middle height (tgiann-core draw text pill): the key in a round cap, the action next to it.
  * The last shown one is on top, has the green key cap and is the one the interaction key acts on.
  */
 export function Prompts() {
-  const [prompts, setPrompts] = useState<Prompt[]>([])
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
 
   useNuiEvent(
     NuiMessage.promptShow,
     (value: unknown) => {
-      const list = Array.isArray(value) ? value : [value]
+      const list = Array.isArray(value) ? value : [value];
       for (const item of list) {
-        const prompt = toPrompt(item)
+        const prompt = toPrompt(item);
         if (prompt)
           setPrompts((prev) => [
             ...prev.filter((p) => p.key !== prompt.key),
             prompt,
-          ])
+          ]);
       }
     },
-    SHOW_OPTIONS
-  )
+    SHOW_OPTIONS,
+  );
   useNuiEvent(NuiMessage.promptHide, (key: unknown) =>
-    setPrompts((prev) => prev.filter((p) => p.key !== key))
-  )
+    setPrompts((prev) => prev.filter((p) => p.key !== key)),
+  );
 
   return (
     <div className="pointer-events-none absolute inset-y-0 right-[3vh] flex flex-col-reverse items-end justify-center gap-[0.8vh]">
@@ -77,5 +77,5 @@ export function Prompts() {
         ))}
       </AnimatePresence>
     </div>
-  )
+  );
 }

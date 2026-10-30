@@ -1,69 +1,69 @@
-import { memo, useMemo, useState } from "react"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
+import { memo, useMemo, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faImage,
   faMagnifyingGlass,
   faPalette,
-} from "@fortawesome/free-solid-svg-icons"
-import type { WidgetSpec } from "@aicore-fivem/shared"
-import { Button } from "../../../components/ui/button"
-import { Dialog } from "../../../components/ui/dialog"
-import { Popover } from "../../../components/ui/popover"
-import { Select } from "../../../components/ui/select"
-import { VirtualList } from "../../../components/VirtualList"
-import { cn } from "../../../lib/utils"
-import blips from "../blips.json"
-import { useEditor } from "../context"
-import { useField } from "./basic"
+} from "@fortawesome/free-solid-svg-icons";
+import type { WidgetSpec } from "@aicore-fivem/shared";
+import { Button } from "../../../components/ui/button";
+import { Dialog } from "../../../components/ui/dialog";
+import { Popover } from "../../../components/ui/popover";
+import { Select } from "../../../components/ui/select";
+import { VirtualList } from "../../../components/VirtualList";
+import { cn } from "../../../lib/utils";
+import blips from "../blips.json";
+import { useEditor } from "../context";
+import { useField } from "./basic";
 
-type Spec = Extract<WidgetSpec, { widget: "blip" }>
+type Spec = Extract<WidgetSpec, { widget: "blip" }>;
 interface Sprite {
-  id: number
-  name: string
-  ext: string
+  id: number;
+  name: string;
+  ext: string;
 }
 interface Color {
-  id: number
-  hex: string
-  name: string
+  id: number;
+  hex: string;
+  name: string;
 }
 // The FiveM blip reference (docs.fivem.net/docs/game-references/blips): sprite pictures and blip colours.
-const SPRITES: Sprite[] = blips.sprites.filter((s) => s.name !== "radar_empty")
-const COLORS: Color[] = blips.colors
-const COLS = 8
-const url = (s: Sprite) => `${blips.base}${s.name}.${s.ext}`
-const label = (s: Sprite) => s.name.replace(/^radar_/, "").replace(/_/g, " ")
+const SPRITES: Sprite[] = blips.sprites.filter((s) => s.name !== "radar_empty");
+const COLORS: Color[] = blips.colors;
+const COLS = 8;
+const url = (s: Sprite) => `${blips.base}${s.name}.${s.ext}`;
+const label = (s: Sprite) => s.name.replace(/^radar_/, "").replace(/_/g, " ");
 
 interface BlipValue {
-  sprite: number
-  color: number
-  scale: number
+  sprite: number;
+  color: number;
+  scale: number;
 }
 const toBlip = (v: unknown): BlipValue => {
   const r =
-    typeof v === "object" && v !== null ? (v as Record<string, unknown>) : {}
+    typeof v === "object" && v !== null ? (v as Record<string, unknown>) : {};
   return {
     sprite: typeof r.sprite === "number" ? r.sprite : 1,
     color: typeof r.color === "number" ? r.color : 0,
     scale: typeof r.scale === "number" ? r.scale : 0.8,
-  }
-}
+  };
+};
 
 const Icon = memo(function Icon({
   sprite,
   size,
 }: {
-  sprite: number
-  size: string
+  sprite: number;
+  size: string;
 }) {
-  const s = blips.sprites.find((x) => x.id === sprite)
+  const s = blips.sprites.find((x) => x.id === sprite);
   if (!s)
     return (
       <span
         style={{ width: size, height: size }}
         className="rounded-full bg-white/10"
       />
-    )
+    );
   // A few sprites have no picture in the reference: the cell stays empty instead of a broken image.
   return (
     <img
@@ -74,30 +74,30 @@ const Icon = memo(function Icon({
       onError={(e) => (e.currentTarget.style.visibility = "hidden")}
       style={{ width: size, height: size, objectFit: "contain" }}
     />
-  )
-})
+  );
+});
 
 /** A map blip: picture (searchable grid of every sprite), colour (swatches) and size, previewed as the game shows it. */
 export function BlipW({ spec, path }: { spec: Spec; path: string }) {
-  const { t } = useEditor()
-  const [value, save] = useField(path)
-  const blip = toBlip(value)
-  const [picking, setPicking] = useState(false)
-  const [colors, setColors] = useState(false)
-  const [query, setQuery] = useState("")
+  const { t } = useEditor();
+  const [value, save] = useField(path);
+  const blip = toBlip(value);
+  const [picking, setPicking] = useState(false);
+  const [colors, setColors] = useState(false);
+  const [query, setQuery] = useState("");
   const rows = useMemo(() => {
-    const q = query.trim().toLocaleLowerCase()
+    const q = query.trim().toLocaleLowerCase();
     const found = q
       ? SPRITES.filter((s) => label(s).includes(q) || String(s.id) === q)
-      : SPRITES
-    const out: Sprite[][] = []
+      : SPRITES;
+    const out: Sprite[][] = [];
     for (let i = 0; i < found.length; i += COLS)
-      out.push(found.slice(i, i + COLS))
-    return out
-  }, [query])
-  const color = COLORS.find((c) => c.id === blip.color)
-  const sprite = blips.sprites.find((s) => s.id === blip.sprite)
-  const put = (patch: Partial<BlipValue>) => save({ ...blip, ...patch })
+      out.push(found.slice(i, i + COLS));
+    return out;
+  }, [query]);
+  const color = COLORS.find((c) => c.id === blip.color);
+  const sprite = blips.sprites.find((s) => s.id === blip.sprite);
+  const put = (patch: Partial<BlipValue>) => save({ ...blip, ...patch });
 
   return (
     <div className="flex items-center gap-[0.8vh]">
@@ -143,12 +143,12 @@ export function BlipW({ spec, path }: { spec: Spec; path: string }) {
               title={c.name}
               aria-label={c.name}
               onClick={() => {
-                put({ color: c.id })
-                setColors(false)
+                put({ color: c.id });
+                setColors(false);
               }}
               className={cn(
                 "size-[2.4vh] rounded-full transition-transform duration-150 hover:[transform:scale(1.15)]",
-                c.id === blip.color && "[box-shadow:0_0_0_0.2vh_var(--green)]"
+                c.id === blip.color && "[box-shadow:0_0_0_0.2vh_var(--green)]",
               )}
               style={{ background: c.hex }}
             />
@@ -198,13 +198,13 @@ export function BlipW({ spec, path }: { spec: Spec; path: string }) {
                     type="button"
                     title={`${s.id} ${label(s)}`}
                     onClick={() => {
-                      put({ sprite: s.id })
-                      setPicking(false)
+                      put({ sprite: s.id });
+                      setPicking(false);
                     }}
                     className={cn(
                       "flex h-[6.8vh] flex-col items-center justify-center gap-[0.4vh] rounded-[0.8vh] bg-white/3 transition-colors duration-150 hover:bg-white/8",
                       s.id === blip.sprite &&
-                        "bg-tgi-green-15 [box-shadow:inset_0_0_0_1px_var(--green)]"
+                        "bg-tgi-green-15 [box-shadow:inset_0_0_0_1px_var(--green)]",
                     )}
                   >
                     <Icon sprite={s.id} size="3vh" />
@@ -219,5 +219,5 @@ export function BlipW({ spec, path }: { spec: Spec; path: string }) {
         </div>
       </Dialog>
     </div>
-  )
+  );
 }

@@ -1,11 +1,11 @@
-import { existsSync } from "node:fs"
-import { defineConfig, type UserConfig } from "tsdown"
-import postBuild from "./scripts/postBuild.ts"
+import { existsSync } from "node:fs";
+import { defineConfig, type UserConfig } from "tsdown";
+import postBuild from "./scripts/postBuild.ts";
 
 const config: Record<string, UserConfig> = {
   resource: {
     outExtensions() {
-      return { js: ".js" }
+      return { js: ".js" };
     },
     minify: false,
     outputOptions: {
@@ -41,16 +41,16 @@ const config: Record<string, UserConfig> = {
         name: "aicore-no-cardinal",
         transform(code: string, id: string) {
           if (!id.replaceAll("\\", "/").endsWith("mysql2/lib/helpers.js"))
-            return null
+            return null;
           return code.replace(
             /require\(`cardinal\$\{REQUIRE_TERMINATOR\}`\)/,
-            '(() => { throw new Error("cardinal disabled"); })()'
-          )
+            '(() => { throw new Error("cardinal disabled"); })()',
+          );
         },
       },
     ],
   },
-}
+};
 
 function createConfig(name: string): UserConfig {
   return {
@@ -66,12 +66,12 @@ function createConfig(name: string): UserConfig {
       ...config[name]?.outputOptions,
     },
     onSuccess: postBuild,
-  }
+  };
 }
 
 // A server-only resource has no resource/client/index.ts and builds no client bundle.
 const sides = existsSync("./resource/client/index.ts")
   ? ["client", "server"]
-  : ["server"]
+  : ["server"];
 
-export default defineConfig(sides.map(createConfig))
+export default defineConfig(sides.map(createConfig));

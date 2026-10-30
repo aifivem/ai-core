@@ -1,21 +1,21 @@
-import { useState } from "react"
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
+import { useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCrosshairs,
   faLocationArrow,
   faVideo,
   faXmark,
-} from "@fortawesome/free-solid-svg-icons"
-import type { WidgetSpec } from "@aicore-fivem/shared"
-import { Button } from "../../../components/ui/button"
-import { Input } from "../../../components/ui/input"
-import { Tooltip } from "../../../components/ui/tooltip"
-import { myPosition, pickPoint, teleport, type Point } from "../actions"
-import { useEditor } from "../context"
-import { useField } from "./basic"
-import { LookupBox, useLookup } from "./lookup"
+} from "@fortawesome/free-solid-svg-icons";
+import type { WidgetSpec } from "@aicore-fivem/shared";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Tooltip } from "../../../components/ui/tooltip";
+import { myPosition, pickPoint, teleport, type Point } from "../actions";
+import { useEditor } from "../context";
+import { useField } from "./basic";
+import { LookupBox, useLookup } from "./lookup";
 
-type Spec<W extends WidgetSpec["widget"]> = Extract<WidgetSpec, { widget: W }>
+type Spec<W extends WidgetSpec["widget"]> = Extract<WidgetSpec, { widget: W }>;
 
 /** Names picked from a lookup list (jobs, items...): only listed values can be added; chips show their labels. */
 function LookupTagsW({
@@ -23,27 +23,27 @@ function LookupTagsW({
   path,
   source,
 }: {
-  spec: Spec<"tags">
-  path: string
-  source: NonNullable<Spec<"tags">["lookup"]>
+  spec: Spec<"tags">;
+  path: string;
+  source: NonNullable<Spec<"tags">["lookup"]>;
 }) {
-  const { t } = useEditor()
-  const [value, save] = useField(path)
+  const { t } = useEditor();
+  const [value, save] = useField(path);
   const tags = Array.isArray(value)
     ? value.filter((v): v is string => typeof v === "string")
-    : []
-  const [query, setQuery] = useState("")
-  const { all } = useLookup(source, "")
+    : [];
+  const [query, setQuery] = useState("");
+  const { all } = useLookup(source, "");
   const label = (name: string) =>
-    all.find((o) => o.value === name)?.label ?? name
+    all.find((o) => o.value === name)?.label ?? name;
   return (
     <LookupBox
       source={source}
       query={query}
       onQuery={setQuery}
       onPick={(option) => {
-        setQuery("")
-        if (!tags.includes(option.value)) save([...tags, option.value])
+        setQuery("");
+        if (!tags.includes(option.value)) save([...tags, option.value]);
       }}
       empty={t("ADMIN_LOOKUP_EMPTY")}
       anchor={(input) => (
@@ -78,35 +78,35 @@ function LookupTagsW({
                 input.value === "" &&
                 tags.length
               )
-                save(tags.slice(0, -1))
-              input.onKeyDown(event)
+                save(tags.slice(0, -1));
+              input.onKeyDown(event);
             }}
           />
         </div>
       )}
     />
-  )
+  );
 }
 
 /** Free names typed one by one: Enter or comma adds, the x removes, Backspace on an empty box drops the last. */
 export function TagsW({ spec, path }: { spec: Spec<"tags">; path: string }) {
   if (spec.lookup)
-    return <LookupTagsW spec={spec} path={path} source={spec.lookup} />
-  return <FreeTagsW spec={spec} path={path} />
+    return <LookupTagsW spec={spec} path={path} source={spec.lookup} />;
+  return <FreeTagsW spec={spec} path={path} />;
 }
 
 function FreeTagsW({ spec, path }: { spec: Spec<"tags">; path: string }) {
-  const { t } = useEditor()
-  const [value, save] = useField(path)
+  const { t } = useEditor();
+  const [value, save] = useField(path);
   const tags = Array.isArray(value)
     ? value.filter((v): v is string => typeof v === "string")
-    : []
-  const [draft, setDraft] = useState("")
+    : [];
+  const [draft, setDraft] = useState("");
   const add = () => {
-    const name = draft.trim().replace(/,$/, "")
-    setDraft("")
-    if (name && !tags.includes(name)) save([...tags, name])
-  }
+    const name = draft.trim().replace(/,$/, "");
+    setDraft("");
+    if (name && !tags.includes(name)) save([...tags, name]);
+  };
   return (
     <div className="flex min-h-[3.6vh] flex-wrap items-center gap-[0.6vh] rounded-[1.8vh] border border-white/8 bg-[#2222224D] p-[0.4vh] transition-[border-color] duration-150 focus-within:border-tgi-green-40">
       {tags.map((tag) => (
@@ -137,28 +137,28 @@ function FreeTagsW({ spec, path }: { spec: Spec<"tags">; path: string }) {
         }
         onBlur={add}
         onKeyDown={(event) => {
-          if (event.key === "Enter") add()
+          if (event.key === "Enter") add();
           if (event.key === "Backspace" && draft === "" && tags.length)
-            save(tags.slice(0, -1))
+            save(tags.slice(0, -1));
         }}
       />
     </div>
-  )
+  );
 }
 
 const isPoint = (v: unknown): v is Point =>
   typeof v === "object" &&
   v !== null &&
   ["x", "y", "z"].every(
-    (k) => typeof (v as Record<string, unknown>)[k] === "number"
-  )
+    (k) => typeof (v as Record<string, unknown>)[k] === "number",
+  );
 
 /** A place in the world: read only coordinates, "Use my position" (or the camera's) and a teleport there. */
 export function PointW({ spec, path }: { spec: Spec<"point">; path: string }) {
-  const { t } = useEditor()
-  const [value, save] = useField(path)
-  const point = isPoint(value) ? value : null
-  const fmt = (n: number) => n.toFixed(2)
+  const { t } = useEditor();
+  const [value, save] = useField(path);
+  const point = isPoint(value) ? value : null;
+  const fmt = (n: number) => n.toFixed(2);
   return (
     <div className="flex items-center gap-[0.8vh]">
       <Input
@@ -176,10 +176,10 @@ export function PointW({ spec, path }: { spec: Spec<"point">; path: string }) {
         onClick={async () => {
           const here = await myPosition(
             spec.from === "camera" ? "camera" : "ped",
-            spec.ground === true
-          )
+            spec.ground === true,
+          );
           if (here)
-            save(spec.heading ? here : { x: here.x, y: here.y, z: here.z })
+            save(spec.heading ? here : { x: here.x, y: here.y, z: here.z });
         }}
       >
         <FontAwesomeIcon
@@ -195,13 +195,13 @@ export function PointW({ spec, path }: { spec: Spec<"point">; path: string }) {
             variant="icon"
             aria-label={t("ADMIN_PICK_FREECAM")}
             onClick={async () => {
-              const picked = await pickPoint(spec.ground !== true)
+              const picked = await pickPoint(spec.ground !== true);
               if (picked)
                 save(
                   spec.heading
                     ? picked
-                    : { x: picked.x, y: picked.y, z: picked.z }
-                )
+                    : { x: picked.x, y: picked.y, z: picked.z },
+                );
             }}
           >
             <FontAwesomeIcon icon={faVideo} aria-hidden />
@@ -219,5 +219,5 @@ export function PointW({ spec, path }: { spec: Spec<"point">; path: string }) {
         </Button>
       </Tooltip>
     </div>
-  )
+  );
 }
