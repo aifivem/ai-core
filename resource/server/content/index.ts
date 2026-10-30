@@ -3,6 +3,7 @@ import type { AccountTypeDefinition, Branding, CharacterScene, GangDefinition, G
 import { ResourceName } from "common";
 import { coreSchema } from "../admin/schema";
 import { INVENTORIES } from "../inventory/registry";
+import { KEY_SYSTEMS } from "../vehicleKeys/registry";
 import { log } from "../log";
 import { bool, ID_PATTERN, int, record, str, vec4, type Vec4 } from "./parse";
 import { readScene } from "./scene";
@@ -18,6 +19,8 @@ export interface Settings {
   saveIntervalMinutes: number;
   /** `auto` or the resource name of the inventory ai-core's inventory layer uses. */
   inventory: string;
+  /** `auto` or the resource name of the key system ai-core's vehicle key layer uses. */
+  vehicleKeys: string;
   spawn: { default: Vec4 };
   characterScene: CharacterScene;
 }
@@ -58,6 +61,7 @@ function readSettings(raw: unknown): Settings {
     },
     saveIntervalMinutes: int(s.saveIntervalMinutes, 5, 1, 60),
     inventory: str(s.inventory, "auto", 32),
+    vehicleKeys: str(s.vehicleKeys, "auto", 32),
     spawn: {
       default: vec4(spawn.default, { x: -1035.71, y: -2731.87, z: 13.76, heading: 330 }),
     },
@@ -114,7 +118,11 @@ function follow<T>(file: string, target: Map<string, T>, read: (value: Record<st
 // The pay account select lists the account types that exist at start.
 const startAccounts = Object.keys(record(new DataFile(ResourceName, "accounts", log).read()));
 
-export const panel = new AdminPanel(coreSchema(startAccounts, INVENTORIES.map((adapter) => adapter.resource)));
+export const panel = new AdminPanel(coreSchema(
+  startAccounts,
+  INVENTORIES.map((adapter) => adapter.resource),
+  KEY_SYSTEMS.map((adapter) => adapter.resource),
+));
 
 export const settings: Settings = readSettings(panel.get("settings"));
 panel.onChange("settings", (_key, value) => Object.assign(settings, readSettings(value)));

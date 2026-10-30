@@ -61,7 +61,7 @@ try{
 	}
 
 // ../../../packages/lib/src/client/netEvent.ts
-	const log$6 = createLogger(GetCurrentResourceName());
+	const log$7 = createLogger(GetCurrentResourceName());
 	/**
 	* Whether the net event being handled came from the server (read it before the first `await`). On a client only
 	* events from the server carry a source (65535 in the docs); a local emit by any resource carries none.
@@ -72,14 +72,14 @@ try{
 		onNet(name, (...raw) => {
 			if (!fromServer() || !handler) return;
 			const args = parse ? parse(raw) : [];
-			if (!args) return log$6.warn(`event ${name} from the server had invalid arguments`);
-			Promise.resolve().then(() => handler(...args)).catch((error) => log$6.error(`event ${name} failed`, error));
+			if (!args) return log$7.warn(`event ${name} from the server had invalid arguments`);
+			Promise.resolve().then(() => handler(...args)).catch((error) => log$7.error(`event ${name} failed`, error));
 		});
 	}
 
 // ../../../packages/lib/src/client/callback.ts
 	const resource$1 = GetCurrentResourceName();
-	const log$5 = createLogger(resource$1);
+	const log$6 = createLogger(resource$1);
 	const pending = /* @__PURE__ */ new Map();
 	let nextId = 0;
 	onNet(responseEvent(resource$1), (id, ok, result) => {
@@ -162,6 +162,12 @@ try{
 	};
 	/** GlobalState key holding the resource name of the active inventory (null while none runs). */
 	const INVENTORY_STATE_KEY = "ai:inventory";
+
+// ../../../packages/shared/src/vehicleKeys.ts
+/** GlobalState key holding the resource name of the active key system (null while none runs). */
+	const VEHICLE_KEYS_STATE_KEY = "ai:vehicleKeys";
+	/** Server -> client: ("give" | "remove", netId, plate) for key systems with a client API only. */
+	const VEHICLE_KEYS_CLIENT_EVENT = "ai-core:client:vehicleKeys";
 
 // ../../../packages/shared/src/admin.ts
 /** Event names of the admin panel (owned by ai-core). */
@@ -304,7 +310,7 @@ try{
 	* (measured with 1,000,000 zones): zones sit in a grid of 64 m cells and a check looks only at the player's cell and
 	* the zones the player is in.
 	*/
-	const log$4 = createLogger(GetCurrentResourceName());
+	const log$5 = createLogger(GetCurrentResourceName());
 
 // ../../../packages/lib/src/fivem/exports.ts
 	function registerExport(name, handler) {
@@ -1049,7 +1055,7 @@ try{
 	};
 
 // resource/client/inventory/index.ts
-	const log$3 = createLogger("ai-core");
+	const log$4 = createLogger("ai-core");
 	/** The client half of the inventory layer: follows the inventory the server picked (GlobalState). */
 	var ClientInventory = class {
 		adapters;
@@ -1072,7 +1078,7 @@ try{
 			try {
 				return fn(adapter);
 			} catch (error) {
-				log$3.error(`${adapter.resource} ${what} failed`, error);
+				log$4.error(`${adapter.resource} ${what} failed`, error);
 				return fallback;
 			}
 		}
@@ -1087,6 +1093,37 @@ try{
 	AddStateBagChangeHandler(INVENTORY_STATE_KEY, "global", (_bag, _key, value) => inventory.set(value));
 	registerExport("OpenInventory", () => inventory.open());
 	registerExport("HasItem", (item, count) => typeof item === "string" && inventory.has(item, typeof count === "number" && count > 0 ? count : 1));
+
+// resource/client/vehicleKeys/index.ts
+	const log$3 = createLogger("ai-core");
+	/** Key systems with only a client API, one adapter file each (server list: `server/vehicleKeys/registry.ts`). */
+	const ADAPTERS = [];
+	/** The client half of the vehicle key layer: follows the key system the server picked (GlobalState). */
+	var ClientKeys = class {
+		current = null;
+		pick(resource) {
+			this.current = ADAPTERS.find((a) => a.resource === resource) ?? null;
+		}
+		async apply(action, netId, plate) {
+			const adapter = this.current;
+			if (!adapter) return;
+			const vehicle = await waitFor(() => NetworkDoesEntityExistWithNetworkId(netId) ? NetToVeh(netId) : void 0, 5e3).catch(() => 0);
+			if (!vehicle) return;
+			try {
+				adapter[action](vehicle, plate);
+			} catch (error) {
+				log$3.error(`${adapter.resource} ${action} key failed`, error);
+			}
+		}
+	};
+	const keys = new ClientKeys();
+	keys.pick(GlobalState[VEHICLE_KEYS_STATE_KEY]);
+	AddStateBagChangeHandler(VEHICLE_KEYS_STATE_KEY, "global", (_bag, _key, value) => keys.pick(value));
+	onServerEvent(VEHICLE_KEYS_CLIENT_EVENT, { args: ([action, netId, plate]) => (action === "give" || action === "remove") && typeof netId === "number" && typeof plate === "string" ? [
+		action,
+		netId,
+		plate
+	] : null }, (action, netId, plate) => keys.apply(action, netId, plate));
 
 // resource/client/sceneCamera.ts
 	const MOVE_MS = 500;

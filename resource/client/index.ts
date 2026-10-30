@@ -8,6 +8,7 @@ import "./prompts";
 import "./notify";
 import "./menu";
 import "./inventory";
+import "./vehicleKeys";
 import { openCharacters } from "./characters";
 import { announceUnloaded } from "./playerState";
 

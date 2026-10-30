@@ -141,5 +141,6 @@
       }
     ]
   },
-  "inventory": "auto"
+  "inventory": "auto",
+  "vehicleKeys": "auto"
 }

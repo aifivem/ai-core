@@ -224,6 +224,12 @@ function toCreateCharacter(value) {
 	};
 }
 
+// ../../../packages/shared/src/vehicleKeys.ts
+/** GlobalState key holding the resource name of the active key system (null while none runs). */
+const VEHICLE_KEYS_STATE_KEY = "ai:vehicleKeys";
+/** Server -> client: ("give" | "remove", netId, plate) for key systems with a client API only. */
+const VEHICLE_KEYS_CLIENT_EVENT = "ai-core:client:vehicleKeys";
+
 // ../../../packages/shared/src/admin.ts
 /** Event names of the admin panel (owned by ai-core). */
 const ADMIN = {
@@ -26403,8 +26409,8 @@ const gradeRows = (salary) => [
 		label: "ADMIN_F_BOSS"
 	}
 ];
-/** `accounts`: the account types at start, offered where an account is picked; `inventories`: the inventory adapters. */
-function coreSchema(accounts, inventories = []) {
+/** `accounts`: the account types at start, offered where an account is picked; `inventories` / `keySystems`: the adapters. */
+function coreSchema(accounts, inventories = [], keySystems = []) {
 	const accountOptions = accounts.map((value) => ({
 		value,
 		label: value
@@ -26475,6 +26481,10 @@ function coreSchema(accounts, inventories = []) {
 						type: "enum",
 						values: ["auto", ...inventories]
 					},
+					vehicleKeys: {
+						type: "enum",
+						values: ["auto", ...keySystems]
+					},
 					spawn: {
 						type: "object",
 						fields: { default: { type: "vec4" } }
@@ -26483,7 +26493,8 @@ function coreSchema(accounts, inventories = []) {
 				},
 				defaults: {
 					characterScene: DEFAULT_SCENE,
-					inventory: "auto"
+					inventory: "auto",
+					vehicleKeys: "auto"
 				}
 			},
 			jobs: {
@@ -26669,6 +26680,24 @@ function coreSchema(accounts, inventories = []) {
 								value: "auto",
 								label: "ADMIN_O_INVENTORY_AUTO"
 							}, ...inventories.map((value) => ({
+								value,
+								label: value
+							}))]
+						}]
+					},
+					{
+						icon: "key",
+						title: "ADMIN_C_VEHICLE_KEYS",
+						desc: "ADMIN_C_VEHICLE_KEYS_DESC",
+						fields: [{
+							widget: "select",
+							path: "vehicleKeys",
+							label: "ADMIN_F_VEHICLE_KEYS",
+							hint: "ADMIN_H_VEHICLE_KEYS",
+							options: [{
+								value: "auto",
+								label: "ADMIN_O_INVENTORY_AUTO"
+							}, ...keySystems.map((value) => ({
 								value,
 								label: value
 							}))]
@@ -27206,6 +27235,128 @@ const INVENTORIES = [
 	qbInventory
 ];
 
+// resource/server/vehicleKeys/adapters/ai-vehiclekeys.ts
+/** ai-vehiclekeys: ai-core's own key script (it also `provide`s qbx_vehiclekeys). */
+const keys = () => resourceExport("ai-vehiclekeys");
+const aiVehicleKeys = {
+	resource: "ai-vehiclekeys",
+	give: (source, t) => keys().GiveKeys(source, t.plate),
+	remove: (source, t) => keys().RemoveKeys(source, t.plate),
+	has: (source, t) => keys().HasKeys(source, t.plate)
+};
+
+// resource/server/vehicleKeys/adapters/cd_garage.ts
+/** cd_garage keys: its client event `cd_garage:AddKeys (plate)`; it has no way to take keys back (untested on ai-core). */
+const cdGarage = {
+	resource: "cd_garage",
+	give: (source, t) => emitNet("cd_garage:AddKeys", source, t.plate),
+	remove: () => void 0
+};
+
+// resource/server/vehicleKeys/adapters/client.ts
+/**
+* A key system with only a client API: the server half forwards to the player's client, where ai-core's client adapter
+* of the same resource (`resource/client/vehicleKeys/adapters/`) calls it. Needs the vehicle networked.
+*/
+const clientKeys = (resource) => ({
+	resource,
+	give: (source, t) => void (t.netId !== null && emitNet("ai-core:client:vehicleKeys", source, "give", t.netId, t.plate)),
+	remove: (source, t) => void (t.netId !== null && emitNet("ai-core:client:vehicleKeys", source, "remove", t.netId, t.plate))
+});
+
+// resource/server/vehicleKeys/adapters/MrNewbVehicleKeys.ts
+/** MrNewbVehicleKeys server exports `GiveKeysByPlate(source, plate)` / `RemoveKeysByPlate(source, plate)` (untested on ai-core). */
+const mrNewbVehicleKeys = {
+	resource: "MrNewbVehicleKeys",
+	give: (source, t) => void callExport("MrNewbVehicleKeys", "GiveKeysByPlate", source, t.plate),
+	remove: (source, t) => void callExport("MrNewbVehicleKeys", "RemoveKeysByPlate", source, t.plate)
+};
+
+// resource/server/vehicleKeys/adapters/mVehicle.ts
+/** mVehicle: `AddTemporalVehicle(source, vehicle)`; it has no way to take keys back (untested on ai-core). */
+const mVehicle = {
+	resource: "mVehicle",
+	give: (source, t) => void (t.vehicle !== null && callExport("mVehicle", "AddTemporalVehicle", source, t.vehicle)),
+	remove: () => void 0
+};
+
+// resource/server/vehicleKeys/adapters/qb-vehiclekeys.ts
+/** qb-vehiclekeys server exports `GiveKeys(source, plate)` / `RemoveKeys(source, plate)` (untested on ai-core). */
+const qbVehicleKeys = {
+	resource: "qb-vehiclekeys",
+	give: (source, t) => void callExport("qb-vehiclekeys", "GiveKeys", source, t.plate),
+	remove: (source, t) => void callExport("qb-vehiclekeys", "RemoveKeys", source, t.plate)
+};
+
+// resource/server/vehicleKeys/adapters/qbx_vehiclekeys.ts
+/** Qbox's qbx_vehiclekeys server exports take the vehicle entity (untested on ai-core). */
+const qbxVehicleKeys = {
+	resource: "qbx_vehiclekeys",
+	give: (source, t) => void (t.vehicle !== null && callExport("qbx_vehiclekeys", "GiveKeys", source, t.vehicle)),
+	remove: (source, t) => void (t.vehicle !== null && callExport("qbx_vehiclekeys", "RemoveKeys", source, t.vehicle))
+};
+
+// resource/server/vehicleKeys/adapters/Renewed-Vehiclekeys.ts
+/** Renewed-Vehiclekeys server exports `addKey(source, plate)` / `removeKey(source, plate)` (untested on ai-core). */
+const renewedVehicleKeys = {
+	resource: "Renewed-Vehiclekeys",
+	give: (source, t) => void callExport("Renewed-Vehiclekeys", "addKey", source, t.plate),
+	remove: (source, t) => void callExport("Renewed-Vehiclekeys", "removeKey", source, t.plate)
+};
+
+// resource/server/vehicleKeys/adapters/vehicles_keys.ts
+/** Jaksam's vehicles_keys: temporary keys by player id and plate (untested on ai-core). */
+const jaksamVehicleKeys = {
+	resource: "vehicles_keys",
+	give: (source, t) => void callExport("vehicles_keys", "giveVehicleKeysToPlayerId", source, t.plate, "temporary"),
+	remove: (source, t) => void callExport("vehicles_keys", "removeKeysFromPlayerId", source, t.plate)
+};
+
+// resource/server/vehicleKeys/adapters/wasabi_carlock.ts
+/** wasabi_carlock server exports `GiveKey(source, plate)` / `RemoveKey(source, plate)` (its docs; untested on ai-core). */
+const wasabiCarlock = {
+	resource: "wasabi_carlock",
+	give: (source, t) => void callExport("wasabi_carlock", "GiveKey", source, t.plate),
+	remove: (source, t) => void callExport("wasabi_carlock", "RemoveKey", source, t.plate)
+};
+
+// resource/server/vehicleKeys/registry.ts
+/** Key systems with only a client API: each has its client adapter in `resource/client/vehicleKeys/adapters/`. */
+const CLIENT_KEY_SYSTEMS = [
+	"tgiann-hotwire",
+	"qs-vehiclekeys",
+	"okokGarage",
+	"0r-vehiclekeys",
+	"LifeSaver_KeySystem",
+	"ak47_qb_vehiclekeys",
+	"ak47_vehiclekeys",
+	"brutal_keys",
+	"filo_vehiclekey",
+	"ic3d_vehiclekeys",
+	"is_vehiclekeys",
+	"mk_vehiclekeys",
+	"mm_carkeys",
+	"p_carkeys",
+	"rd_vehiclekeys"
+];
+/**
+* Every supported key system, in detection order: `auto` uses the first one running. ai-vehiclekeys comes first
+* because it `provide`s qbx_vehiclekeys (that name reads started while it runs).
+* A new key system = one adapter file and one line here (and its client adapter when it has only a client API).
+*/
+const KEY_SYSTEMS = [
+	aiVehicleKeys,
+	qbxVehicleKeys,
+	qbVehicleKeys,
+	wasabiCarlock,
+	renewedVehicleKeys,
+	mrNewbVehicleKeys,
+	jaksamVehicleKeys,
+	mVehicle,
+	cdGarage,
+	...CLIENT_KEY_SYSTEMS.map(clientKeys)
+];
+
 // resource/server/content/index.ts
 function readSettings(raw) {
 	const s = record(raw);
@@ -27245,6 +27396,7 @@ function readSettings(raw) {
 		},
 		saveIntervalMinutes: int$2(s.saveIntervalMinutes, 5, 1, 60),
 		inventory: str(s.inventory, "auto", 32),
+		vehicleKeys: str(s.vehicleKeys, "auto", 32),
 		spawn: { default: vec4(spawn.default, {
 			x: -1035.71,
 			y: -2731.87,
@@ -27305,7 +27457,7 @@ function follow(file, target, read) {
 	});
 }
 const startAccounts = Object.keys(record(new DataFile(ResourceName, "accounts", log$1).read()));
-const panel = new AdminPanel(coreSchema(startAccounts, INVENTORIES.map((adapter) => adapter.resource)));
+const panel = new AdminPanel(coreSchema(startAccounts, INVENTORIES.map((adapter) => adapter.resource), KEY_SYSTEMS.map((adapter) => adapter.resource)));
 const settings = readSettings(panel.get("settings"));
 panel.onChange("settings", (_key, value) => Object.assign(settings, readSettings(value)));
 const accountTypes = entries(panel.get("accounts"), readAccount);
@@ -28981,10 +29133,10 @@ const inventory = new InventoryLayer(INVENTORIES, {
 });
 inventory.setChoice(settings.inventory);
 panel.onChange("settings", () => inventory.setChoice(settings.inventory));
-const candidates = new Set(INVENTORIES.map((adapter) => adapter.resource));
-on("onServerResourceStart", (resource) => candidates.has(resource) && inventory.select());
+const candidates$1 = new Set(INVENTORIES.map((adapter) => adapter.resource));
+on("onServerResourceStart", (resource) => candidates$1.has(resource) && inventory.select());
 on("onResourceStop", (resource) => {
-	if (!candidates.has(resource)) return;
+	if (!candidates$1.has(resource)) return;
 	inventory.select(resource);
 	setTimeout(() => inventory.select(), 0);
 });
@@ -29064,6 +29216,77 @@ registerExport("UseItem", (source, item, data) => {
 	return typeof source === "number" && n !== null ? inventory.useItem(source, n, data) : false;
 });
 registerExport("IsUsableItem", (item) => typeof item === "string" && inventory.isUsable(item));
+
+// resource/server/vehicleKeys/index.ts
+/**
+* ai-core's vehicle key layer: every script (lib `vehicleKeys`) calls these exports and the active key system answers
+* through its adapter (`registry.ts`), picked by the panel setting `vehicleKeys` (`auto` = first running) and again
+* when a key system starts or stops.
+*/
+var VehicleKeysLayer = class {
+	current = null;
+	choice = "auto";
+	setChoice(choice) {
+		this.choice = choice;
+		this.select();
+	}
+	/** Picks the key system again; `stopping` is a resource on its way down whose state may still read started. */
+	select(stopping) {
+		const runs = (a) => a.resource !== stopping && isResourceStarted(a.resource);
+		const next = (this.choice === "auto" || !KEY_SYSTEMS.some((a) => a.resource === this.choice) ? KEY_SYSTEMS.find(runs) : KEY_SYSTEMS.find((a) => a.resource === this.choice && runs(a))) ?? null;
+		if (next === this.current) return;
+		this.current = next;
+		GlobalState.set(VEHICLE_KEYS_STATE_KEY, next?.resource ?? null, true);
+		log$1.info(next ? `vehicle keys: ${next.resource}` : "no vehicle key system runs: every player counts as holding every key");
+	}
+	run(what, fn, fallback) {
+		const adapter = this.current;
+		if (!adapter) return fallback;
+		try {
+			return fn(adapter);
+		} catch (error) {
+			log$1.error(`${adapter.resource} ${what} failed`, error);
+			return fallback;
+		}
+	}
+};
+const layer = new VehicleKeysLayer();
+layer.setChoice(settings.vehicleKeys);
+panel.onChange("settings", () => layer.setChoice(settings.vehicleKeys));
+const candidates = new Set(KEY_SYSTEMS.map((a) => a.resource));
+on("onServerResourceStart", (resource) => candidates.has(resource) && layer.select());
+on("onResourceStop", (resource) => {
+	if (!candidates.has(resource)) return;
+	layer.select(resource);
+	setTimeout(() => layer.select(), 0);
+});
+/** A vehicle given as a server entity or a plate. */
+function target(vehicle) {
+	if (typeof vehicle === "string") return vehicle.trim() ? {
+		vehicle: null,
+		netId: null,
+		plate: vehicle.trim()
+	} : null;
+	if (typeof vehicle !== "number" || !DoesEntityExist(vehicle)) return null;
+	return {
+		vehicle,
+		netId: NetworkGetNetworkIdFromEntity(vehicle),
+		plate: GetVehicleNumberPlateText(vehicle).trim()
+	};
+}
+registerExport("GiveVehicleKeys", (source, vehicle) => {
+	const t = target(vehicle);
+	if (typeof source === "number" && t) layer.run("give", (a) => a.give(source, t), void 0);
+});
+registerExport("RemoveVehicleKeys", (source, vehicle) => {
+	const t = target(vehicle);
+	if (typeof source === "number" && t) layer.run("remove", (a) => a.remove(source, t), void 0);
+});
+registerExport("HasVehicleKeys", (source, vehicle) => {
+	const t = target(vehicle);
+	if (typeof source !== "number" || !t) return false;
+	return layer.run("has", (a) => a.has ? a.has(source, t) : true, true);
+});
 
 // resource/server/devCommands.ts
 /**

@@ -21,8 +21,8 @@ const gradeRows = (salary: boolean): WidgetSpec[] => [
   { widget: "switch", path: "boss", label: "ADMIN_F_BOSS" },
 ];
 
-/** `accounts`: the account types at start, offered where an account is picked; `inventories`: the inventory adapters. */
-export function coreSchema(accounts: string[], inventories: string[] = []): PanelSchema {
+/** `accounts`: the account types at start, offered where an account is picked; `inventories` / `keySystems`: the adapters. */
+export function coreSchema(accounts: string[], inventories: string[] = [], keySystems: string[] = []): PanelSchema {
   const accountOptions = accounts.map((value) => ({ value, label: value }));
   return {
     title: "ADMIN_CORE_TITLE",
@@ -42,13 +42,14 @@ export function coreSchema(accounts: string[], inventories: string[] = []): Pane
           paycheck: { type: "object", fields: { intervalMinutes: int(0, 1440), account: { type: "text", max: 32, pattern: ID }, fromJobAccount: bool } },
           saveIntervalMinutes: int(1, 60),
           inventory: { type: "enum", values: ["auto", ...inventories] },
+          vehicleKeys: { type: "enum", values: ["auto", ...keySystems] },
           spawn: {
             type: "object",
             fields: { default: { type: "vec4" } },
           },
           characterScene: sceneSection,
         },
-        defaults: { characterScene: DEFAULT_SCENE, inventory: "auto" },
+        defaults: { characterScene: DEFAULT_SCENE, inventory: "auto", vehicleKeys: "auto" },
       },
       jobs: {
         kind: "records",
@@ -138,6 +139,20 @@ export function coreSchema(accounts: string[], inventories: string[] = []): Pane
                 label: "ADMIN_F_INVENTORY",
                 hint: "ADMIN_H_INVENTORY",
                 options: [{ value: "auto", label: "ADMIN_O_INVENTORY_AUTO" }, ...inventories.map((value) => ({ value, label: value }))],
+              },
+            ],
+          },
+          {
+            icon: "key",
+            title: "ADMIN_C_VEHICLE_KEYS",
+            desc: "ADMIN_C_VEHICLE_KEYS_DESC",
+            fields: [
+              {
+                widget: "select",
+                path: "vehicleKeys",
+                label: "ADMIN_F_VEHICLE_KEYS",
+                hint: "ADMIN_H_VEHICLE_KEYS",
+                options: [{ value: "auto", label: "ADMIN_O_INVENTORY_AUTO" }, ...keySystems.map((value) => ({ value, label: value }))],
               },
             ],
           },

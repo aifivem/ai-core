@@ -13,6 +13,7 @@ import "./persistence";
 import "./jobs/paycheck";
 import "./exports";
 import "./inventory";
+import "./vehicleKeys";
 import "./devCommands";
 
 resetDutyCounts(jobs.keys());
