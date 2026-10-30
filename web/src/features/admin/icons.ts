@@ -77,6 +77,8 @@ import {
   faGavel,
   faPersonRunning,
   faClockRotateLeft,
+  faSpinner,
+  faImage,
 } from "@fortawesome/free-solid-svg-icons";
 
 /** Icons a schema may name (Font Awesome solid, without `fa-`); add a name here when a schema uses a new one. */
@@ -92,6 +94,8 @@ const ICONS: Record<string, IconDefinition> = {
   gavel: faGavel,
   "person-running": faPersonRunning,
   "clock-rotate-left": faClockRotateLeft,
+  spinner: faSpinner,
+  image: faImage,
   "screwdriver-wrench": faScrewdriverWrench,
   lock: faLock,
   key: faKey,

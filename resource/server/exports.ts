@@ -1,5 +1,10 @@
 import { registerExport } from "@aicore-fivem/lib/server";
-import { accountTypes, gangs as gangDefs, jobs as jobDefs } from "./content";
+import {
+  accountTypes,
+  gangs as gangDefs,
+  jobs as jobDefs,
+  settings,
+} from "./content";
 import { dutyCount } from "./jobs/dutyCount";
 import { sharedAccounts } from "./money/book";
 import { transferMoney } from "./money/transfer";
@@ -131,6 +136,7 @@ registerExport("SetMeta", (src: number, key: string, value: unknown) => {
   return true;
 });
 
+registerExport("GetBranding", () => ({ ...settings.branding }));
 registerExport("GetJobDefinitions", () => Object.fromEntries(jobDefs));
 registerExport("GetGangDefinitions", () => Object.fromEntries(gangDefs));
 registerExport("GetJobDefinition", (job: unknown) =>
