@@ -88,6 +88,8 @@ interface DeleteProps {
   onClose: () => void;
   t: T;
   action: string;
+  /** What deleting leaves behind; the generic text when absent. */
+  description?: string;
   name: string;
   resource: string;
   file: string;
@@ -96,7 +98,7 @@ interface DeleteProps {
 }
 
 /** Deletes ask first and say what goes; the button repeats the action. */
-export function DeleteDialog({ open, onClose, t, action, name, resource, file, tab, recordKey }: DeleteProps) {
+export function DeleteDialog({ open, onClose, t, action, description, name, resource, file, tab, recordKey }: DeleteProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submit = async () => {
@@ -107,7 +109,7 @@ export function DeleteDialog({ open, onClose, t, action, name, resource, file, t
     else setError(t(result.error));
   };
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && onClose()} title={t("ADMIN_DELETE_TITLE", name)} description={t("ADMIN_DELETE_DESC")}>
+    <Dialog open={open} onOpenChange={(next) => !next && onClose()} title={t("ADMIN_DELETE_TITLE", name)} description={description ?? t("ADMIN_DELETE_DESC")}>
       <ErrorLine text={error} />
       <div className="flex justify-end gap-[0.8vh]">
         <Button variant="secondary" onClick={onClose}>

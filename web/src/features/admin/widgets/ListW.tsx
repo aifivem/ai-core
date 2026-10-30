@@ -4,6 +4,7 @@ import type { WidgetSpec } from "@aicore-fivem/shared";
 import { Button } from "../../../components/ui/button";
 import { useEditor } from "../context";
 import { NumberW, SwitchW, TextW, useField } from "./basic";
+import { PointW } from "./more";
 
 type Spec = Extract<WidgetSpec, { widget: "list" }>;
 
@@ -11,17 +12,25 @@ type Spec = Extract<WidgetSpec, { widget: "list" }>;
 function RowControl({ spec, path }: { spec: WidgetSpec; path: string }) {
   const { t } = useEditor();
   const control =
-    spec.widget === "text" ? <TextW spec={spec} path={path} /> : spec.widget === "number" ? <NumberW spec={spec} path={path} /> : spec.widget === "switch" ? <SwitchW spec={spec} path={path} /> : null;
+    spec.widget === "text" ? (
+      <TextW spec={spec} path={path} />
+    ) : spec.widget === "number" ? (
+      <NumberW spec={spec} path={path} />
+    ) : spec.widget === "switch" ? (
+      <SwitchW spec={spec} path={path} />
+    ) : spec.widget === "point" ? (
+      <PointW spec={spec} path={path} />
+    ) : null;
   if (!control) return null;
   return (
-    <label className={`flex flex-col gap-[0.4vh] ${spec.widget === "text" ? "min-w-0 flex-1" : "shrink-0"}`}>
+    <label className={`flex flex-col gap-[0.4vh] ${spec.widget === "text" || spec.widget === "point" ? "min-w-0 flex-1" : "shrink-0"}`}>
       <span className="text-[1.15vh] text-text-3">{t(spec.label)}</span>
-      <div className="flex h-[3.6vh] items-center">{control}</div>
+      <div className={`flex h-[3.6vh] items-center ${spec.widget === "point" ? "[&>*]:flex-1" : ""}`}>{control}</div>
     </label>
   );
 }
 
-/** Rows of the same shape (job grades): edit in place, remove one, add one at the end. */
+/** Rows of the same shape (job grades, route checkpoints): edit in place, remove one, add one at the end. */
 export function ListW({ spec }: { spec: Spec }) {
   const { t } = useEditor();
   const [value, save] = useField(spec.path);

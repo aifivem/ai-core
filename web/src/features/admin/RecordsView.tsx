@@ -108,6 +108,7 @@ export function RecordsView({ panel, tab, selected, t }: Props) {
             onClose={() => setDeleting(false)}
             t={t}
             action={t(tab.deleteLabel ?? "ADMIN_DELETE")}
+            description={tab.deleteDesc ? t(tab.deleteDesc) : undefined}
             name={labelOf(selected)}
             resource={panel.resource}
             file={tab.file}
