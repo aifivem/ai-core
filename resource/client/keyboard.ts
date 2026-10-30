@@ -40,6 +40,7 @@ class KeyboardScreen {
           hint: Locale("KEYS_HINT"),
           free: Locale("KEYS_FREE"),
           mouse: Locale("KEYS_MOUSE"),
+          search: Locale("KEYS_SEARCH"),
         },
       },
     });

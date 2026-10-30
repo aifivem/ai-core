@@ -52,7 +52,12 @@ class KeyHints {
       if (choice === "vehicle" && !inVehicle) continue;
       const key = boundKey(name);
       if (key)
-        list.push({ id: name, key, label: info.description, icon: info.icon });
+        list.push({
+          id: name,
+          key,
+          label: info.hintLabel ?? info.description,
+          icon: info.icon,
+        });
     }
     for (const [id, hint] of this.extra) {
       const key = hint.keybind ? boundKey(hint.keybind) : (hint.key ?? "");

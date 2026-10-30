@@ -1,4 +1,5 @@
 import { callExport } from "@aicore-fivem/lib/server";
+import { isRecord } from "@aicore-fivem/lib/shared";
 import type { InventoryAdapter } from "@aicore-fivem/shared";
 import {
   type ImageOf,
@@ -66,4 +67,12 @@ export const oxInventory: InventoryAdapter = {
   getItemDefinition: (name) =>
     definition(call("Items", name), name, oxImage),
   getItemDefinitions: () => definitions(call("Items"), oxImage),
+  getWeight: (source) => {
+    const inv = first(call("GetInventory", source));
+    return isRecord(inv) &&
+      typeof inv.weight === "number" &&
+      typeof inv.maxWeight === "number"
+      ? { weight: inv.weight, maxWeight: inv.maxWeight }
+      : null;
+  },
 };

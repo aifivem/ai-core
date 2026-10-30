@@ -13,7 +13,7 @@ export const KEYBOARD_MOCK: KeyboardData | undefined =
   new URLSearchParams(window.location.search).get("view") === "keys"
     ? {
         binds: [
-          bind("inventory_open", "F1", "Open the inventory", "ai-inventory"),
+          bind("inventory_open", "F2", "Open the inventory", "ai-inventory"),
           bind("inventory_hotbar", "TAB", "Quick slots bar", "ai-inventory"),
           bind("radialmenu_open", "F3", "Open the radial menu", "ai-radialmenu"),
           bind("point", "B", "Point", "ai-smallresources"),
@@ -32,6 +32,7 @@ export const KEYBOARD_MOCK: KeyboardData | undefined =
           hint: "Point at a key to see what it does",
           free: "Nothing is on this key",
           mouse: "Mouse and other buttons",
+          search: "Search by action or script",
         },
       }
     : undefined;

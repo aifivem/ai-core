@@ -157,7 +157,8 @@ export function AdminRoot() {
                 {subtitle}
               </p>
             </div>
-            <GlobalSearch />
+            {/* The dashboard has its own big search box (it also filters the script cards). */}
+            {!dashboard && <GlobalSearch />}
             <button
               type="button"
               onClick={closePanel}

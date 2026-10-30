@@ -7,13 +7,20 @@ import {
   type KeyboardBind,
 } from "../../../../resource/common/nui";
 import { VirtualList } from "../../components/VirtualList";
+import { Input } from "../../components/ui/input";
 import { KEYBOARD_MOCK } from "../../dev/keyboardMock";
 import { cn } from "../../lib/utils";
 import { keyId, ROWS, SIDE, type KeyCap } from "./layout";
 
 export interface KeyboardData {
   binds: KeyboardBind[];
-  texts: { title: string; hint: string; free: string; mouse: string };
+  texts: {
+    title: string;
+    hint: string;
+    free: string;
+    mouse: string;
+    search: string;
+  };
 }
 
 /** One key unit in vh. */
@@ -31,14 +38,13 @@ function Cap({
   cap: KeyCap;
   bound: boolean;
   active: boolean;
-  onHover: (id: string | null) => void;
+  onHover: (id: string) => void;
 }) {
   const width = `${(cap.w ?? 1) * U}vh`;
   if (!cap.id) return <span style={{ width }} className="shrink-0" />;
   return (
     <span
       onMouseEnter={() => onHover(cap.id)}
-      onMouseLeave={() => onHover(null)}
       style={{ width }}
       className={cn(
         "flex h-[4.6vh] shrink-0 items-center justify-center rounded-[0.8vh] border text-[1.3vh] font-semibold transition-colors duration-150",
@@ -76,7 +82,16 @@ function BindRow({ bind }: { bind: KeyboardBind }) {
 export function Keyboard() {
   const [data, setData] = useState<KeyboardData | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
-  useNuiEvent<KeyboardData>(NuiMessage.keyboardOpen, setData, OPTIONS);
+  const [search, setSearch] = useState("");
+  useNuiEvent<KeyboardData>(
+    NuiMessage.keyboardOpen,
+    (d) => {
+      setData(d);
+      setSearch("");
+      setHovered(null);
+    },
+    OPTIONS,
+  );
   useNuiEvent(NuiMessage.keyboardClose, () => setData(null));
 
   useEffect(() => {
@@ -87,25 +102,41 @@ export function Keyboard() {
     return () => window.removeEventListener("keyup", up);
   }, [data]);
 
+  // The search matches what a key does and the script it belongs to; matching keys stay coloured.
+  const matching = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const binds = data?.binds ?? [];
+    return q
+      ? binds.filter(
+          (b) =>
+            b.label.toLowerCase().includes(q) ||
+            b.resource.toLowerCase().includes(q) ||
+            b.name.toLowerCase().includes(q),
+        )
+      : binds;
+  }, [data, search]);
   const byKey = useMemo(() => {
     const map = new Map<string, KeyboardBind[]>();
-    for (const b of data?.binds ?? []) {
+    for (const b of matching) {
       if (b.mouse) continue;
       const id = keyId(b.key);
       map.set(id, [...(map.get(id) ?? []), b]);
     }
     return map;
-  }, [data]);
+  }, [matching]);
   const sorted = useMemo(
     () =>
-      [...(data?.binds ?? [])].sort(
+      [...matching].sort(
         (a, b) => a.key.localeCompare(b.key) || a.label.localeCompare(b.label),
       ),
-    [data],
+    [matching],
   );
 
   if (!data) return null;
-  const shown = hovered ? (byKey.get(hovered) ?? []) : sorted;
+  // The pointed key lists everything on it, also what the search hides.
+  const shown = hovered
+    ? (data.binds.filter((b) => !b.mouse && keyId(b.key) === hovered) ?? [])
+    : sorted;
   const row = (caps: KeyCap[], i: number) => (
     <div key={i} className="flex h-[4.6vh] gap-[0.5vh]">
       {caps.map((cap, j) => (
@@ -132,7 +163,22 @@ export function Keyboard() {
         </h1>
         <p className="text-[1.3vh] text-text-3">{data.texts.hint}</p>
       </header>
-      <div className="flex gap-[2vh] rounded-[1.6vh] bg-panel p-[1.6vh]">
+      <Input
+        autoFocus
+        value={search}
+        placeholder={data.texts.search}
+        aria-label={data.texts.search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          setHovered(null);
+        }}
+        className="w-[40vh]"
+      />
+      {/* The list keeps the last key while the pointer crosses the gaps; it resets when the pointer leaves the keyboard. */}
+      <div
+        onMouseLeave={() => setHovered(null)}
+        className="flex gap-[2vh] rounded-[1.6vh] bg-panel p-[1.6vh]"
+      >
         <div className="flex flex-col gap-[0.5vh]">{ROWS.map(row)}</div>
         <div className="flex flex-col gap-[0.5vh]">{SIDE.map(row)}</div>
       </div>

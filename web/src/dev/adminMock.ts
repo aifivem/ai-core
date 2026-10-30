@@ -44,7 +44,7 @@ const keybinds = {
   inventory_open: kb("ai-inventory", "Open the inventory", "TAB"),
   inventory_reload: kb("ai-inventory", "Reload the weapon", "R"),
   police_menu: kb("ai-police", "Open the police menu", "F6", "F7"),
-  radialmenu_open: kb("ai-radialmenu", "Open the radial menu", "F1"),
+  radialmenu_open: kb("ai-radialmenu", "Open the radial menu", "F3"),
   scoreboard_open: kb("ai-scoreboard", "Show the scoreboard (hold)", "HOME"),
   smallresources_belt: kb(
     "ai-smallresources",

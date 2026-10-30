@@ -1,5 +1,5 @@
 import type { MenuRequest } from "@aicore-fivem/shared";
-import type { ItemPickerData } from "../features/dialogs/ItemPicker";
+import type { ItemPickerMessage } from "../features/dialogs/ItemPicker";
 
 /** Browser preview only: `?view=menu` shows a job menu. */
 export const MENU_MOCK: MenuRequest | undefined =
@@ -27,7 +27,7 @@ export const MENU_MOCK: MenuRequest | undefined =
     : undefined;
 
 /** Browser preview only: `?view=items` shows the admin item picker. */
-export const ITEMS_MOCK: ItemPickerData | undefined =
+export const ITEMS_MOCK: ItemPickerMessage | undefined =
   new URLSearchParams(window.location.search).get("view") === "items"
     ? {
         title: "Items",
@@ -49,12 +49,18 @@ export const ITEMS_MOCK: ItemPickerData | undefined =
         ].map((name) => ({
           name,
           label: name.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()),
+          weight: name === "weapon_pistol" ? 1200 : 250,
         })),
+        room: { weight: 12_000, maxWeight: 80_000 },
         texts: {
           search: "Search items",
-          count: "Count",
           empty: "No item matches",
-          hint: "Click an item to take it",
+          hint: "Click adds 1, Ctrl + click 10, Shift + click 100",
+          list: "To take",
+          listEmpty: "Click items on the left to add them here",
+          take: "Take items",
+          weight: "Weight",
+          heavy: "That would go over the weight limit",
         },
       }
     : undefined;

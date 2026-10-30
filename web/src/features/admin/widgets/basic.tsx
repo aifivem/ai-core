@@ -258,46 +258,58 @@ export function NumberW({
   const unit = spec.unit ? (spec.unit === "$" ? "$" : t(spec.unit)) : "";
   const stepButton =
     "flex size-[3vh] shrink-0 items-center justify-center rounded-full bg-control text-[1.1vh] text-text-2 transition-[background-color,color,transform] duration-150 ease-out enabled:hover:bg-control-hover enabled:hover:text-text enabled:active:[transform:scale(0.92)] disabled:cursor-not-allowed disabled:opacity-40";
+  // Grams also read as kilograms, left of the box (80000 g = 80 kg).
+  const kilos =
+    spec.unit === "g"
+      ? `${(stored / 1000).toLocaleString("en-US", { maximumFractionDigits: 2 })} kg`
+      : null;
   return (
-    <div className="flex h-[3.6vh] w-[20vh] shrink-0 items-center gap-[0.4vh] rounded-full border border-white/8 bg-[#2222224D] p-[0.2vh] transition-[border-color] duration-150 focus-within:border-tgi-green-40">
-      <button
-        type="button"
-        className={stepButton}
-        aria-label={`${t(spec.label)} -${step}`}
-        disabled={stored <= (spec.min ?? -Infinity)}
-        onClick={() => put(stored - step)}
-      >
-        <FontAwesomeIcon icon={faMinus} />
-      </button>
-      <span className="flex min-w-0 flex-1 items-center justify-center gap-[0.4vh]">
-        {unit === "$" && (
-          <span className="text-[1.25vh] font-semibold text-text-3">$</span>
-        )}
-        <input
-          value={draft}
-          inputMode="decimal"
-          size={Math.max(2, draft.length)}
-          aria-label={t(spec.label)}
-          className="min-w-0 bg-transparent text-center text-[1.4vh] font-bold tabular-nums outline-none"
-          onChange={(event) => setDraft(event.target.value)}
-          onBlur={commit}
-          onKeyDown={keys(() => setDraft(String(stored)))}
-        />
-        {unit && unit !== "$" && (
-          <span className="truncate text-[1.25vh] font-semibold text-text-3">
-            {unit}
-          </span>
-        )}
-      </span>
-      <button
-        type="button"
-        className={stepButton}
-        aria-label={`${t(spec.label)} +${step}`}
-        disabled={stored >= (spec.max ?? Infinity)}
-        onClick={() => put(stored + step)}
-      >
-        <FontAwesomeIcon icon={faPlus} />
-      </button>
+    <div className="flex shrink-0 items-center gap-[1vh]">
+      {kilos && (
+        <span className="rounded-full bg-white/6 px-[1vh] py-[0.4vh] text-[1.2vh] font-semibold text-text-2 tabular-nums">
+          {kilos}
+        </span>
+      )}
+      <div className="flex h-[3.6vh] w-[20vh] shrink-0 items-center gap-[0.4vh] rounded-full border border-white/8 bg-[#2222224D] p-[0.2vh] transition-[border-color] duration-150 focus-within:border-tgi-green-40">
+        <button
+          type="button"
+          className={stepButton}
+          aria-label={`${t(spec.label)} -${step}`}
+          disabled={stored <= (spec.min ?? -Infinity)}
+          onClick={() => put(stored - step)}
+        >
+          <FontAwesomeIcon icon={faMinus} />
+        </button>
+        <span className="flex min-w-0 flex-1 items-center justify-center gap-[0.4vh]">
+          {unit === "$" && (
+            <span className="text-[1.25vh] font-semibold text-text-3">$</span>
+          )}
+          <input
+            value={draft}
+            inputMode="decimal"
+            size={Math.max(2, draft.length)}
+            aria-label={t(spec.label)}
+            className="min-w-0 bg-transparent text-center text-[1.4vh] font-bold tabular-nums outline-none"
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={commit}
+            onKeyDown={keys(() => setDraft(String(stored)))}
+          />
+          {unit && unit !== "$" && (
+            <span className="truncate text-[1.25vh] font-semibold text-text-3">
+              {unit}
+            </span>
+          )}
+        </span>
+        <button
+          type="button"
+          className={stepButton}
+          aria-label={`${t(spec.label)} +${step}`}
+          disabled={stored >= (spec.max ?? Infinity)}
+          onClick={() => put(stored + step)}
+        >
+          <FontAwesomeIcon icon={faPlus} />
+        </button>
+      </div>
     </div>
   );
 }

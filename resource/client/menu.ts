@@ -156,18 +156,6 @@ class Dialogs {
       );
   }
 
-  /** An item picked in the item picker (it stays open). */
-  pick(name: string, count: number): void {
-    if (this.current?.kind === "items")
-      emit(
-        MENU_EVENTS.itemPicked,
-        this.current.resource,
-        this.current.id,
-        name,
-        count,
-      );
-  }
-
   hover(item: unknown): void {
     if (this.current?.kind === "menu" && typeof item === "string")
       emit(MENU_EVENTS.menuHover, this.current.resource, this.current.id, item);

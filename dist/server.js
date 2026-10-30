@@ -15335,6 +15335,9 @@ var GlobalGroup$1 = class extends Mirror {
 };
 resourceExport(CORE.resource), resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/index.ts
+function isOnline(source) {
+	return !!GetPlayerName(String(source));
+}
 var WriteQueue = class {
 	onError;
 	tail = Promise.resolve();
@@ -16938,6 +16941,13 @@ const RESOURCE$3 = "ai-inventory", inv = () => resourceExport(RESOURCE$3), image
 	openInventory: (source, ref) => inv().OpenInventory(source, ref) === !0,
 	getItemDefinition: (name) => definition(inv().Items(name), name, imageOf),
 	getItemDefinitions: () => definitions(inv().Items(), imageOf),
+	getWeight: (source) => {
+		let w = inv().GetWeight(source);
+		return isRecord(w) && typeof w.weight == "number" && typeof w.maxWeight == "number" ? {
+			weight: w.weight,
+			maxWeight: w.maxWeight
+		} : null;
+	},
 	registerUsableItem: (name, handler) => inv().RegisterUsableItem(name, handler)
 };
 on("ai-inventory:usedItem", (source, name, _slot, _metadata, status) => {
@@ -16956,7 +16966,14 @@ const oxImage = (name, image) => `nui://ox_inventory/web/images/${image || `${na
 	registerStash: (stash) => void call$3("RegisterStash", stash.name, stash.label, stash.slots, stash.maxWeight, void 0, stash.jobs.length ? Object.fromEntries(stash.jobs.map((job) => [job, 0])) : void 0),
 	openInventory: (source, ref) => first(call$3("forceOpenInventory", source, typeof ref == "number" ? "player" : "stash", ref)) != null,
 	getItemDefinition: (name) => definition(call$3("Items", name), name, oxImage),
-	getItemDefinitions: () => definitions(call$3("Items"), oxImage)
+	getItemDefinitions: () => definitions(call$3("Items"), oxImage),
+	getWeight: (source) => {
+		let inv = first(call$3("GetInventory", source));
+		return isRecord(inv) && typeof inv.weight == "number" && typeof inv.maxWeight == "number" ? {
+			weight: inv.weight,
+			maxWeight: inv.maxWeight
+		} : null;
+	}
 }, RESOURCE$1 = "qb-inventory", call$2 = (name, ...args) => callExport(RESOURCE$1, name, ...args);
 function itemsOf$1(ref) {
 	if (typeof ref == "string") {
@@ -17851,16 +17868,24 @@ registerExport("RegisterAdminPanel", (resource) => {
 		windowMs: 1e4
 	},
 	args: ([resource, patch]) => typeof resource == "string" ? [resource, patch] : null
-}, (source, resource, patch) => adminHost.apply(source, resource, patch)), onClientEvent(ADMIN.closeEvent, (source) => adminHost.close(source)), on("playerDropped", () => adminHost.close(Number(globalThis.source))), on("onResourceStop", (resource) => adminHost.unregister(resource)), onClientCallback("ai-core:admin:items", () => Object.entries(inventory.call("GetItemDefinitions", (a) => a.getItemDefinitions(), {})).map(([name, d]) => ({
-	name,
-	label: d.label || name,
-	image: d.image
-})).sort((a, b) => a.label.localeCompare(b.label)), {
+}, (source, resource, patch) => adminHost.apply(source, resource, patch)), onClientEvent(ADMIN.closeEvent, (source) => adminHost.close(source)), on("playerDropped", () => adminHost.close(Number(globalThis.source))), on("onResourceStop", (resource) => adminHost.unregister(resource)), onClientCallback("ai-core:admin:items", {
 	guards: [isAdmin()],
 	rate: {
 		count: 2,
 		windowMs: 2e3
-	}
+	},
+	args: ([target]) => [typeof target == "number" && Number.isInteger(target) ? target : null]
+}, (source, target) => {
+	let who = target !== null && isOnline(target) ? target : source;
+	return {
+		items: Object.entries(inventory.call("GetItemDefinitions", (a) => a.getItemDefinitions(), {})).map(([name, d]) => ({
+			name,
+			label: d.label || name,
+			image: d.image,
+			weight: d.weight
+		})).sort((a, b) => a.label.localeCompare(b.label)),
+		room: inventory.call("GetWeight", (a) => a.getWeight?.(who) ?? null, null)
+	};
 }), mysql.setPoolSize(GetConvarInt("ai_core_pool_size", 10));
 const databaseReady = createDatabaseTables(ResourceName, "sql/main.sql").catch((error) => {
 	throw log$3.error("database setup failed", error), error;

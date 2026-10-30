@@ -39,6 +39,14 @@ export const aiInventory: InventoryAdapter = {
   openInventory: (source, ref) => inv().OpenInventory(source, ref) === true,
   getItemDefinition: (name) => definition(inv().Items(name), name, imageOf),
   getItemDefinitions: () => definitions(inv().Items(), imageOf),
+  getWeight: (source) => {
+    const w: unknown = inv().GetWeight(source);
+    return isRecord(w) &&
+      typeof w.weight === "number" &&
+      typeof w.maxWeight === "number"
+      ? { weight: w.weight, maxWeight: w.maxWeight }
+      : null;
+  },
   registerUsableItem: (name, handler) =>
     inv().RegisterUsableItem(name, handler),
 };

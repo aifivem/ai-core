@@ -72,8 +72,6 @@ export const NuiCallback = {
   dialogToggle: "dialogToggle",
   /** () -> true, the keys screen closed. */
   keyboardClose: "keyboardClose",
-  /** ({ name, count }) -> true, an item picked in the item picker (it stays open). */
-  dialogPickItem: "dialogPickItem",
   /** ({ openPanel: boolean }) -> true, the welcome card closed (an admin may open the panel from it). */
   setupWelcomeClose: "setupWelcomeClose",
 } as const;
