@@ -1,25 +1,36 @@
-import { CORE, PED_DEATH_STATE_KEY, PED_EVENTS_MIN_BUILD } from "@aicore-fivem/shared";
-import { log } from "../log";
-import { players } from "./registry";
+import {
+  CORE,
+  PED_DEATH_STATE_KEY,
+  PED_EVENTS_MIN_BUILD,
+} from "@aicore-fivem/shared"
+import { log } from "../log"
+import { players } from "./registry"
 
 /** The FXServer build number from the `version` convar ("FXServer-master SERVER v1.0.0.38039 win32"). */
-const build = Number(/v1\.0\.0\.(\d+)/.exec(GetConvar("version", ""))?.[1] ?? 0);
-const supported = build >= PED_EVENTS_MIN_BUILD;
+const build = Number(/v1\.0\.0\.(\d+)/.exec(GetConvar("version", ""))?.[1] ?? 0)
+const supported = build >= PED_EVENTS_MIN_BUILD
 
 /** The player whose ped this is: a player always owns its own ped, so the owner is checked instead of scanning 10k players. */
 function sourceOfPed(ped: number): number | null {
-  if (ped === 0 || !DoesEntityExist(ped)) return null;
-  const owner = NetworkGetEntityOwner(ped);
-  return owner > 0 && players.get(owner) !== undefined && GetPlayerPed(String(owner)) === ped ? owner : null;
+  if (ped === 0 || !DoesEntityExist(ped)) return null
+  const owner = NetworkGetEntityOwner(ped)
+  return owner > 0 &&
+    players.get(owner) !== undefined &&
+    GetPlayerPed(String(owner)) === ped
+    ? owner
+    : null
 }
 
 // FXServer reports ped deaths from the synced health itself: no client needs to watch its own health. Older builds
 // leave the key false and death resources keep their client check.
-GlobalState.set(PED_DEATH_STATE_KEY, supported, true);
+GlobalState.set(PED_DEATH_STATE_KEY, supported, true)
 if (supported) {
   on("onPedDeath", (ped: number, attacker: number, weaponHash: number) => {
-    const source = sourceOfPed(ped);
-    if (source === null) return;
-    emit(CORE.playerDiedEvent, source, sourceOfPed(attacker), weaponHash);
-  });
-} else log.info(`FXServer ${build} has no onPedDeath (${PED_EVENTS_MIN_BUILD}+): death resources watch health on the client`);
+    const source = sourceOfPed(ped)
+    if (source === null) return
+    emit(CORE.playerDiedEvent, source, sourceOfPed(attacker), weaponHash)
+  })
+} else
+  log.info(
+    `FXServer ${build} has no onPedDeath (${PED_EVENTS_MIN_BUILD}+): death resources watch health on the client`
+  )

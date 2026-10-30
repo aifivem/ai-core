@@ -1,12 +1,12 @@
-import { useState } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCircleExclamation } from "@fortawesome/free-solid-svg-icons";
-import { Button } from "../../components/ui/button";
-import { Dialog } from "../../components/ui/dialog";
-import { Input } from "../../components/ui/input";
-import { createRecord, deleteRecord } from "./actions";
+import { useState } from "react"
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
+import { faCircleExclamation } from "@fortawesome/free-solid-svg-icons"
+import { Button } from "../../components/ui/button"
+import { Dialog } from "../../components/ui/dialog"
+import { Input } from "../../components/ui/input"
+import { createRecord, deleteRecord } from "./actions"
 
-type T = (key: string, ...args: Array<string | number>) => string;
+type T = (key: string, ...args: Array<string | number>) => string
 
 /** "Police Department" -> "police_department": the key a new record gets from its name. */
 const keyFrom = (name: string): string =>
@@ -16,59 +16,99 @@ const keyFrom = (name: string): string =>
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "")
-    .slice(0, 32);
+    .slice(0, 32)
 
 function ErrorLine({ text }: { text: string | null }) {
-  if (!text) return null;
+  if (!text) return null
   return (
-    <p role="alert" className="flex items-center gap-[0.6vh] rounded-[0.6vh] bg-danger-bg px-[1vh] py-[0.7vh] text-[1.3vh] leading-[1.4] text-danger">
+    <p
+      role="alert"
+      className="flex items-center gap-[0.6vh] rounded-[0.6vh] bg-danger-bg px-[1vh] py-[0.7vh] text-[1.3vh] leading-[1.4] text-danger"
+    >
       <FontAwesomeIcon icon={faCircleExclamation} aria-hidden />
       {text}
     </p>
-  );
+  )
 }
 
 interface CreateProps {
-  open: boolean;
-  onClose: () => void;
-  t: T;
-  title: string;
-  resource: string;
-  file: string;
-  tab: string;
+  open: boolean
+  onClose: () => void
+  t: T
+  title: string
+  resource: string
+  file: string
+  tab: string
 }
 
 /** A new record: the name players see, and the key it is saved under (made from the name, editable). */
-export function CreateDialog({ open, onClose, t, title, resource, file, tab }: CreateProps) {
-  const [name, setName] = useState("");
-  const [key, setKey] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const finalKey = key ?? keyFrom(name);
+export function CreateDialog({
+  open,
+  onClose,
+  t,
+  title,
+  resource,
+  file,
+  tab,
+}: CreateProps) {
+  const [name, setName] = useState("")
+  const [key, setKey] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const finalKey = key ?? keyFrom(name)
   const reset = () => {
-    setName("");
-    setKey(null);
-    setError(null);
-    onClose();
-  };
+    setName("")
+    setKey(null)
+    setError(null)
+    onClose()
+  }
   const submit = async () => {
-    if (!name.trim() || finalKey.length < 2) return setError(t("ADMIN_ERR_NAME"));
-    setBusy(true);
-    const result = await createRecord(resource, file, tab, finalKey, name.trim());
-    setBusy(false);
-    if (result.ok) reset();
-    else setError(t(result.error));
-  };
+    if (!name.trim() || finalKey.length < 2)
+      return setError(t("ADMIN_ERR_NAME"))
+    setBusy(true)
+    const result = await createRecord(
+      resource,
+      file,
+      tab,
+      finalKey,
+      name.trim()
+    )
+    setBusy(false)
+    if (result.ok) reset()
+    else setError(t(result.error))
+  }
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && reset()} title={title} description={t("ADMIN_CREATE_DESC")}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => !next && reset()}
+      title={title}
+      description={t("ADMIN_CREATE_DESC")}
+    >
       <label className="flex flex-col gap-[0.6vh]">
-        <span className="px-[0.4vh] text-[1.2vh] font-semibold text-text-3 uppercase">{t("ADMIN_F_NAME")}</span>
-        <Input autoFocus value={name} placeholder={t("ADMIN_PH_NAME")} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void submit()} />
+        <span className="px-[0.4vh] text-[1.2vh] font-semibold text-text-3 uppercase">
+          {t("ADMIN_F_NAME")}
+        </span>
+        <Input
+          autoFocus
+          value={name}
+          placeholder={t("ADMIN_PH_NAME")}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && void submit()}
+        />
       </label>
       <label className="flex flex-col gap-[0.6vh]">
-        <span className="px-[0.4vh] text-[1.2vh] font-semibold text-text-3 uppercase">{t("ADMIN_F_KEY")}</span>
-        <Input className="font-mono" value={finalKey} placeholder={t("ADMIN_PH_KEY")} onChange={(e) => setKey(e.target.value.toLowerCase())} />
-        <span className="px-[0.4vh] text-[1.25vh] leading-[1.4] text-text-3">{t("ADMIN_H_KEY")}</span>
+        <span className="px-[0.4vh] text-[1.2vh] font-semibold text-text-3 uppercase">
+          {t("ADMIN_F_KEY")}
+        </span>
+        <Input
+          className="font-mono"
+          value={finalKey}
+          placeholder={t("ADMIN_PH_KEY")}
+          onChange={(e) => setKey(e.target.value.toLowerCase())}
+        />
+        <span className="px-[0.4vh] text-[1.25vh] leading-[1.4] text-text-3">
+          {t("ADMIN_H_KEY")}
+        </span>
       </label>
       <ErrorLine text={error} />
       <div className="flex justify-end gap-[0.8vh] pt-[0.4vh]">
@@ -80,36 +120,52 @@ export function CreateDialog({ open, onClose, t, title, resource, file, tab }: C
         </Button>
       </div>
     </Dialog>
-  );
+  )
 }
 
 interface DeleteProps {
-  open: boolean;
-  onClose: () => void;
-  t: T;
-  action: string;
+  open: boolean
+  onClose: () => void
+  t: T
+  action: string
   /** What deleting leaves behind; the generic text when absent. */
-  description?: string;
-  name: string;
-  resource: string;
-  file: string;
-  tab: string;
-  recordKey: string;
+  description?: string
+  name: string
+  resource: string
+  file: string
+  tab: string
+  recordKey: string
 }
 
 /** Deletes ask first and say what goes; the button repeats the action. */
-export function DeleteDialog({ open, onClose, t, action, description, name, resource, file, tab, recordKey }: DeleteProps) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function DeleteDialog({
+  open,
+  onClose,
+  t,
+  action,
+  description,
+  name,
+  resource,
+  file,
+  tab,
+  recordKey,
+}: DeleteProps) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const submit = async () => {
-    setBusy(true);
-    const result = await deleteRecord(resource, file, tab, recordKey);
-    setBusy(false);
-    if (result.ok) onClose();
-    else setError(t(result.error));
-  };
+    setBusy(true)
+    const result = await deleteRecord(resource, file, tab, recordKey)
+    setBusy(false)
+    if (result.ok) onClose()
+    else setError(t(result.error))
+  }
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && onClose()} title={t("ADMIN_DELETE_TITLE", name)} description={description ?? t("ADMIN_DELETE_DESC")}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => !next && onClose()}
+      title={t("ADMIN_DELETE_TITLE", name)}
+      description={description ?? t("ADMIN_DELETE_DESC")}
+    >
       <ErrorLine text={error} />
       <div className="flex justify-end gap-[0.8vh]">
         <Button variant="secondary" onClick={onClose}>
@@ -120,5 +176,5 @@ export function DeleteDialog({ open, onClose, t, action, description, name, reso
         </Button>
       </div>
     </Dialog>
-  );
+  )
 }

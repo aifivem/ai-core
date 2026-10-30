@@ -1,24 +1,31 @@
-import { Select as SelectPrimitive } from "radix-ui";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faChevronDown } from "@fortawesome/free-solid-svg-icons";
-import { cn } from "../../lib/utils";
+import { Select as SelectPrimitive } from "radix-ui"
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
+import { faCheck, faChevronDown } from "@fortawesome/free-solid-svg-icons"
+import { cn } from "../../lib/utils"
 
 interface Option {
-  value: string;
-  label: string;
+  value: string
+  label: string
 }
 
 interface SelectProps {
-  value: string | undefined;
-  options: Option[];
-  onChange: (value: string) => void;
-  placeholder?: string;
-  className?: string;
-  "aria-label"?: string;
+  value: string | undefined
+  options: Option[]
+  onChange: (value: string) => void
+  placeholder?: string
+  className?: string
+  "aria-label"?: string
 }
 
 /** Radix select in TGIANN: pill trigger, floating `#161616` list, the picked row in green text. */
-export function Select({ value, options, onChange, placeholder, className, ...props }: SelectProps) {
+export function Select({
+  value,
+  options,
+  onChange,
+  placeholder,
+  className,
+  ...props
+}: SelectProps) {
   return (
     <SelectPrimitive.Root value={value} onValueChange={onChange}>
       <SelectPrimitive.Trigger
@@ -26,12 +33,15 @@ export function Select({ value, options, onChange, placeholder, className, ...pr
         aria-label={props["aria-label"]}
         className={cn(
           "flex h-[3.6vh] w-full items-center justify-between gap-[0.8vh] rounded-full border border-white/8 bg-[#2222224D] px-[1.4vh] text-[1.35vh] text-text transition-[border-color] duration-150 hover:border-white/14 data-[placeholder]:text-text-4 data-[state=open]:border-tgi-green-40",
-          className,
+          className
         )}
       >
         <SelectPrimitive.Value placeholder={placeholder} />
         <SelectPrimitive.Icon>
-          <FontAwesomeIcon icon={faChevronDown} className="text-[1.1vh] text-text-3" />
+          <FontAwesomeIcon
+            icon={faChevronDown}
+            className="text-[1.1vh] text-text-3"
+          />
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
@@ -46,12 +56,14 @@ export function Select({ value, options, onChange, placeholder, className, ...pr
                 <SelectPrimitive.Item
                   key={option.value}
                   value={option.value}
-                  className="relative flex h-[3.2vh] cursor-pointer select-none items-center rounded-[0.6vh] pl-[3vh] pr-[1vh] text-[1.3vh] text-text-2 outline-none data-[highlighted]:bg-white/6 data-[highlighted]:text-text data-[state=checked]:text-tgi-green"
+                  className="relative flex h-[3.2vh] cursor-pointer items-center rounded-[0.6vh] pr-[1vh] pl-[3vh] text-[1.3vh] text-text-2 outline-none select-none data-[highlighted]:bg-white/6 data-[highlighted]:text-text data-[state=checked]:text-tgi-green"
                 >
                   <SelectPrimitive.ItemIndicator className="absolute left-[1vh]">
                     <FontAwesomeIcon icon={faCheck} className="text-[1.1vh]" />
                   </SelectPrimitive.ItemIndicator>
-                  <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
+                  <SelectPrimitive.ItemText>
+                    {option.label}
+                  </SelectPrimitive.ItemText>
                 </SelectPrimitive.Item>
               ))}
             </SelectPrimitive.Group>
@@ -59,5 +71,5 @@ export function Select({ value, options, onChange, placeholder, className, ...pr
         </SelectPrimitive.Content>
       </SelectPrimitive.Portal>
     </SelectPrimitive.Root>
-  );
+  )
 }

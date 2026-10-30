@@ -1,54 +1,59 @@
-import { isRecord } from "@aicore-fivem/lib/shared";
-import type { CharacterInfo, CreateCharacterInput, Sex } from "@aicore-fivem/shared";
-import { mysql } from "@aicore-fivem/mysql";
+import { isRecord } from "@aicore-fivem/lib/shared"
+import type {
+  CharacterInfo,
+  CreateCharacterInput,
+  Sex,
+} from "@aicore-fivem/shared"
+import { mysql } from "@aicore-fivem/mysql"
 
 /** SQL of characters. Every function takes the account (user id) so one account never touches another's rows. */
 
 export interface CharacterRow extends CharacterInfo {
-  userId: number;
-  position: { x: number; y: number; z: number; heading: number } | null;
-  metadata: Record<string, unknown>;
-  lastPlayed: number | null;
+  userId: number
+  position: { x: number; y: number; z: number; heading: number } | null
+  metadata: Record<string, unknown>
+  lastPlayed: number | null
 }
 
 interface RawRow {
-  id: number;
-  user_id: number;
-  citizenid: string;
-  slot: number;
-  firstname: string;
-  lastname: string;
-  birthdate: number | string;
-  sex: string;
-  pos_x: number | null;
-  pos_y: number | null;
-  pos_z: number | null;
-  pos_h: number | null;
-  metadata: string;
-  last_played: number | null;
+  id: number
+  user_id: number
+  citizenid: string
+  slot: number
+  firstname: string
+  lastname: string
+  birthdate: number | string
+  sex: string
+  pos_x: number | null
+  pos_y: number | null
+  pos_z: number | null
+  pos_h: number | null
+  metadata: string
+  last_played: number | null
 }
 
 const COLUMNS =
-  "id, user_id, citizenid, slot, firstname, lastname, birthdate, sex, pos_x, pos_y, pos_z, pos_h, metadata, last_played";
+  "id, user_id, citizenid, slot, firstname, lastname, birthdate, sex, pos_x, pos_y, pos_z, pos_h, metadata, last_played"
 
 /** The engine returns DATE as epoch ms (server local time, as oxmysql does); the screen shows YYYY-MM-DD. */
 function toDate(value: number | string): string {
-  if (typeof value === "string") return value.slice(0, 10);
-  const date = new Date(value);
-  const pad = (n: number): string => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  if (typeof value === "string") return value.slice(0, 10)
+  const date = new Date(value)
+  const pad = (n: number): string => String(n).padStart(2, "0")
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
 function toRow(raw: RawRow): CharacterRow {
-  let metadata: Record<string, unknown> = {};
+  let metadata: Record<string, unknown> = {}
   try {
-    const parsed: unknown = JSON.parse(raw.metadata);
-    if (isRecord(parsed)) metadata = parsed;
+    const parsed: unknown = JSON.parse(raw.metadata)
+    if (isRecord(parsed)) metadata = parsed
   } catch {
     // A broken bag starts empty; the next save writes a valid one.
   }
-  const sex: Sex = raw.sex === "female" ? "female" : "male";
-  const hasPosition = raw.pos_x !== null && raw.pos_y !== null && raw.pos_z !== null;
+  const sex: Sex = raw.sex === "female" ? "female" : "male"
+  const hasPosition =
+    raw.pos_x !== null && raw.pos_y !== null && raw.pos_z !== null
   return {
     id: raw.id,
     userId: raw.user_id,
@@ -58,64 +63,97 @@ function toRow(raw: RawRow): CharacterRow {
     lastname: raw.lastname,
     birthdate: toDate(raw.birthdate),
     sex,
-    position: hasPosition ? { x: raw.pos_x ?? 0, y: raw.pos_y ?? 0, z: raw.pos_z ?? 0, heading: raw.pos_h ?? 0 } : null,
+    position: hasPosition
+      ? {
+          x: raw.pos_x ?? 0,
+          y: raw.pos_y ?? 0,
+          z: raw.pos_z ?? 0,
+          heading: raw.pos_h ?? 0,
+        }
+      : null,
     metadata,
     lastPlayed: raw.last_played,
-  };
+  }
 }
 
 export async function listCharacters(userId: number): Promise<CharacterRow[]> {
   const rows = await mysql.query<RawRow[]>(
     `SELECT ${COLUMNS} FROM ai_core_characters WHERE user_id = ? AND deleted_at IS NULL ORDER BY slot`,
-    [userId],
-  );
-  return (rows ?? []).map(toRow);
+    [userId]
+  )
+  return (rows ?? []).map(toRow)
 }
 
-export async function getCharacter(userId: number, charId: number): Promise<CharacterRow | null> {
+export async function getCharacter(
+  userId: number,
+  charId: number
+): Promise<CharacterRow | null> {
   const row = await mysql.single<RawRow>(
     `SELECT ${COLUMNS} FROM ai_core_characters WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-    [charId, userId],
-  );
-  return row ? toRow(row) : null;
+    [charId, userId]
+  )
+  return row ? toRow(row) : null
 }
 
 /**
  * Inserts a character; its citizen id is its row id ("1", "2", ...: ids count up one by one, owner decision). The row
  * goes in with a unique placeholder (the column is NOT NULL UNIQUE) and takes its id right after.
  */
-export async function insertCharacter(userId: number, input: CreateCharacterInput): Promise<number> {
-  const placeholder = `~${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`.slice(0, 16);
+export async function insertCharacter(
+  userId: number,
+  input: CreateCharacterInput
+): Promise<number> {
+  const placeholder =
+    `~${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`.slice(
+      0,
+      16
+    )
   const id = await mysql.insert(
     "INSERT INTO ai_core_characters (user_id, citizenid, slot, firstname, lastname, birthdate, sex) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    [userId, placeholder, input.slot, input.firstname, input.lastname, input.birthdate, input.sex],
-  );
-  if (!id) throw new Error("could not create the character");
-  const changed = await mysql.update("UPDATE ai_core_characters SET citizenid = ? WHERE id = ?", [String(id), id]).catch(() => 0);
+    [
+      userId,
+      placeholder,
+      input.slot,
+      input.firstname,
+      input.lastname,
+      input.birthdate,
+      input.sex,
+    ]
+  )
+  if (!id) throw new Error("could not create the character")
+  const changed = await mysql
+    .update("UPDATE ai_core_characters SET citizenid = ? WHERE id = ?", [
+      String(id),
+      id,
+    ])
+    .catch(() => 0)
   if (!changed) {
-    await mysql.update("DELETE FROM ai_core_characters WHERE id = ?", [id]);
-    throw new Error(`citizen id ${id} is already taken`);
+    await mysql.update("DELETE FROM ai_core_characters WHERE id = ?", [id])
+    throw new Error(`citizen id ${id} is already taken`)
   }
-  return id;
+  return id
 }
 
 /** Soft delete: the row stays for logs and is never loaded again. */
-export async function deleteCharacter(userId: number, charId: number): Promise<boolean> {
+export async function deleteCharacter(
+  userId: number,
+  charId: number
+): Promise<boolean> {
   const changed = await mysql.update(
     "UPDATE ai_core_characters SET deleted_at = NOW() WHERE id = ? AND user_id = ? AND deleted_at IS NULL",
-    [charId, userId],
-  );
-  return (changed ?? 0) > 0;
+    [charId, userId]
+  )
+  return (changed ?? 0) > 0
 }
 
 export interface CharacterSave {
-  id: number;
-  position: { x: number; y: number; z: number; heading: number };
-  metadata: Record<string, unknown>;
+  id: number
+  position: { x: number; y: number; z: number; heading: number }
+  metadata: Record<string, unknown>
 }
 
 /** Rows per save statement. */
-const SAVE_CHUNK = 500;
+const SAVE_CHUNK = 500
 
 /**
  * Writes position and metadata of several characters: one `UPDATE ... JOIN` per 500 characters (the periodic flush of
@@ -123,14 +161,25 @@ const SAVE_CHUNK = 500;
  */
 export async function saveCharacters(saves: CharacterSave[]): Promise<void> {
   for (let i = 0; i < saves.length; i += SAVE_CHUNK) {
-    const part = saves.slice(i, i + SAVE_CHUNK);
+    const part = saves.slice(i, i + SAVE_CHUNK)
     const rows = part
-      .map((_, n) => (n === 0 ? "SELECT ? AS id, ? AS x, ? AS y, ? AS z, ? AS h, ? AS m" : "SELECT ?, ?, ?, ?, ?, ?"))
-      .join(" UNION ALL ");
+      .map((_, n) =>
+        n === 0
+          ? "SELECT ? AS id, ? AS x, ? AS y, ? AS z, ? AS h, ? AS m"
+          : "SELECT ?, ?, ?, ?, ?, ?"
+      )
+      .join(" UNION ALL ")
     await mysql.query(
       `UPDATE ai_core_characters c JOIN (${rows}) v ON c.id = v.id
        SET c.pos_x = v.x, c.pos_y = v.y, c.pos_z = v.z, c.pos_h = v.h, c.metadata = v.m, c.last_played = NOW()`,
-      part.flatMap((s) => [s.id, s.position.x, s.position.y, s.position.z, s.position.heading, JSON.stringify(s.metadata)]),
-    );
+      part.flatMap((s) => [
+        s.id,
+        s.position.x,
+        s.position.y,
+        s.position.z,
+        s.position.heading,
+        JSON.stringify(s.metadata),
+      ])
+    )
   }
 }

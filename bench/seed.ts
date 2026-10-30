@@ -1,20 +1,25 @@
 // `bun bench/seed.ts` in ai-core: (re)creates the `ai_core_stress` database with ai-core's tables and fills it like a
 // server that has seen 1,000,000 players: 1M users, 1.5M characters, 6M money accounts, 1.5M job rows, 5M ledger
 // rows. Uses MariaDB's sequence engine (`seq_1_to_N`), so it needs MariaDB 10.0+.
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 // mysql2 comes with the DB engine package (not an ai-core dependency of its own).
-import { createConnection } from "../../../../packages/mysql/node_modules/mysql2/promise";
-import { connection, fmt, STRESS_DB, time } from "./stubs";
+import { createConnection } from "../../../../packages/mysql/node_modules/mysql2/promise"
+import { connection, fmt, STRESS_DB, time } from "./stubs"
 
-const USERS = 1_000_000;
-const CHARACTERS = 1_500_000; // users 1..500k have two characters
-const LEDGER = 5_000_000;
-const JOBS = ["unemployed", "police", "ambulance", "mechanic", "taxi"];
+const USERS = 1_000_000
+const CHARACTERS = 1_500_000 // users 1..500k have two characters
+const LEDGER = 5_000_000
+const JOBS = ["unemployed", "police", "ambulance", "mechanic", "taxi"]
 
-const db = await createConnection({ uri: connection("mysql"), multipleStatements: true });
-await db.query(`DROP DATABASE IF EXISTS ${STRESS_DB}; CREATE DATABASE ${STRESS_DB} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; USE ${STRESS_DB}`);
-await db.query(readFileSync(join(import.meta.dir, "../sql/main.sql"), "utf8"));
+const db = await createConnection({
+  uri: connection("mysql"),
+  multipleStatements: true,
+})
+await db.query(
+  `DROP DATABASE IF EXISTS ${STRESS_DB}; CREATE DATABASE ${STRESS_DB} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; USE ${STRESS_DB}`
+)
+await db.query(readFileSync(join(import.meta.dir, "../sql/main.sql"), "utf8"))
 
 const steps: [string, string][] = [
   [
@@ -47,16 +52,18 @@ const steps: [string, string][] = [
      SELECT 1 + (seq * 7919) % ${CHARACTERS * 4}, 100, 5000, 'PAYCHECK', 'police', NOW() - INTERVAL (seq % 525600) MINUTE
      FROM seq_1_to_${LEDGER}`,
   ],
-];
+]
 
 for (const [name, sql] of steps) {
-  const [, ms] = await time(() => db.query(sql));
-  console.log(`${name.padEnd(10)} ${fmt(ms)}`);
+  const [, ms] = await time(() => db.query(sql))
+  console.log(`${name.padEnd(10)} ${fmt(ms)}`)
 }
-await db.query("ANALYZE TABLE ai_core_users, ai_core_characters, ai_core_accounts, ai_core_character_jobs, ai_core_transactions");
+await db.query(
+  "ANALYZE TABLE ai_core_users, ai_core_characters, ai_core_accounts, ai_core_character_jobs, ai_core_transactions"
+)
 const [sizes] = await db.query(
   `SELECT table_name AS t, table_rows AS r, ROUND((data_length + index_length) / 1048576) AS mb FROM information_schema.tables WHERE table_schema = ?`,
-  [STRESS_DB],
-);
-console.table(sizes);
-await db.end();
+  [STRESS_DB]
+)
+console.table(sizes)
+await db.end()

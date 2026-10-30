@@ -1,11 +1,23 @@
-import type { ReactNode } from "react";
-import { Popover as PopoverPrimitive } from "radix-ui";
+import type { ReactNode } from "react"
+import { Popover as PopoverPrimitive } from "radix-ui"
 
 /**
  * TGIANN floating surface (`#161616`, ring) anchored to a control. Focus stays in the anchor (typing filters a list),
  * Escape closes the popover first and is marked handled so the panel stays open.
  */
-export function Popover({ open, onOpenChange, anchor, children, width }: { open: boolean; onOpenChange: (open: boolean) => void; anchor: ReactNode; children: ReactNode; width?: string }) {
+export function Popover({
+  open,
+  onOpenChange,
+  anchor,
+  children,
+  width,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  anchor: ReactNode
+  children: ReactNode
+  width?: string
+}) {
   return (
     <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <PopoverPrimitive.Anchor asChild>{anchor}</PopoverPrimitive.Anchor>
@@ -23,5 +35,5 @@ export function Popover({ open, onOpenChange, anchor, children, width }: { open:
         </PopoverPrimitive.Content>
       </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>
-  );
+  )
 }

@@ -1,93 +1,108 @@
-import { registerExport } from "@aicore-fivem/lib/server";
-import { createLogger } from "@aicore-fivem/lib/shared";
-import { Locale } from "common";
-import { settings } from "../content";
-import { identify } from "../player/users";
-import { conflicts } from "./conflicts";
+import { registerExport } from "@aicore-fivem/lib/server"
+import { createLogger } from "@aicore-fivem/lib/shared"
+import { Locale } from "common"
+import { settings } from "../content"
+import { identify } from "../player/users"
+import { conflicts } from "./conflicts"
 
-const log = createLogger("ai-core");
+const log = createLogger("ai-core")
 
 /** The part of FXServer's deferrals object used here (not in the @citizenfx/server typings). */
 interface Deferrals {
-  defer(): void;
-  update(message: string): void;
-  done(failureReason?: string): void;
+  defer(): void
+  update(message: string): void
+  done(failureReason?: string): void
 }
 
 /** A check a connecting player must pass: a refusal text, or null / undefined to let the player through. */
-type Check = (source: number, identifiers: Record<string, string>) => string | null | undefined;
+type Check = (
+  source: number,
+  identifiers: Record<string, string>
+) => string | null | undefined
 
 /**
  * The connecting stage: every player passes ai-core's checks (a FiveM account, no conflicting scripts running) and
  * the checks other resources add (`AddConnectionCheck`: whitelists, bans), in the order they were added.
  */
 class ConnectionGate {
-  private readonly checks = new Map<string, { resource: string; run: Check }>();
+  private readonly checks = new Map<string, { resource: string; run: Check }>()
 
   add(id: string, resource: string, run: Check): void {
-    this.checks.set(id, { resource, run });
+    this.checks.set(id, { resource, run })
   }
 
   dropResource(resource: string): void {
-    for (const [id, check] of this.checks) if (check.resource === resource) this.checks.delete(id);
+    for (const [id, check] of this.checks)
+      if (check.resource === resource) this.checks.delete(id)
   }
 
   /** The first refusal, or null. */
   run(source: number): string | null {
-    const identifiers: Record<string, string> = {};
+    const identifiers: Record<string, string> = {}
     for (const id of getPlayerIdentifiers(String(source))) {
-      const at = id.indexOf(":");
-      if (at > 0) identifiers[id.slice(0, at)] = id.slice(at + 1);
+      const at = id.indexOf(":")
+      if (at > 0) identifiers[id.slice(0, at)] = id.slice(at + 1)
     }
     for (const [id, check] of this.checks) {
       try {
-        const reason = check.run(source, identifiers);
-        if (typeof reason === "string" && reason) return reason;
+        const reason = check.run(source, identifiers)
+        if (typeof reason === "string" && reason) return reason
       } catch (error) {
-        log.error(`connection check ${id} (${check.resource}) failed`, error);
+        log.error(`connection check ${id} (${check.resource}) failed`, error)
       }
     }
-    return null;
+    return null
   }
 }
 
-const gate = new ConnectionGate();
-gate.add("ai-core:fivem", "ai-core", (source) => (identify(source) ? null : Locale("CONNECT_NO_FIVEM")));
+const gate = new ConnectionGate()
+gate.add("ai-core:fivem", "ai-core", (source) =>
+  identify(source) ? null : Locale("CONNECT_NO_FIVEM")
+)
 gate.add("ai-core:conflicts", "ai-core", () => {
-  if (!settings.refuseOnConflict) return null;
-  const blocking = conflicts.blocking();
-  return blocking.length > 0 ? Locale("CONNECT_CONFLICT", blocking.map((c) => c.remove).join(", ")) : null;
-});
+  if (!settings.refuseOnConflict) return null
+  const blocking = conflicts.blocking()
+  return blocking.length > 0
+    ? Locale("CONNECT_CONFLICT", blocking.map((c) => c.remove).join(", "))
+    : null
+})
 
-on("playerConnecting", (_name: string, _kick: (reason: string) => void, deferrals: Deferrals) => {
-  const source = Number(globalThis.source);
-  deferrals.defer();
-  // Deferrals need a tick between defer() and done(); setImmediate runs on the main thread natives need.
-  setImmediate(() => {
-    const reason = gate.run(source);
-    if (reason) deferrals.done(reason);
-    else deferrals.done();
-  });
-});
+on(
+  "playerConnecting",
+  (_name: string, _kick: (reason: string) => void, deferrals: Deferrals) => {
+    const source = Number(globalThis.source)
+    deferrals.defer()
+    // Deferrals need a tick between defer() and done(); setImmediate runs on the main thread natives need.
+    setImmediate(() => {
+      const reason = gate.run(source)
+      if (reason) deferrals.done(reason)
+      else deferrals.done()
+    })
+  }
+)
 
 // Conflicts: once every resource of the boot has started, then again whenever a resource starts or stops.
-conflicts.schedule(5000);
-on("onServerResourceStart", () => conflicts.schedule(1000));
+conflicts.schedule(5000)
+on("onServerResourceStart", () => conflicts.schedule(1000))
 on("onResourceStop", (resource: string) => {
-  gate.dropResource(resource);
-  conflicts.dropFrom(resource);
-  conflicts.schedule(1000);
-});
+  gate.dropResource(resource)
+  conflicts.dropFrom(resource)
+  conflicts.schedule(1000)
+})
 
 registerExport("AddConnectionCheck", (id: unknown, check: unknown) => {
   // A function from another resource arrives as a callable reference.
-  if (typeof id === "string" && id && typeof check === "function") gate.add(id, GetInvokingResource() ?? "?", check as Check);
-});
+  if (typeof id === "string" && id && typeof check === "function")
+    gate.add(id, GetInvokingResource() ?? "?", check as Check)
+})
 // RegisterReplacement(remove, keep?): `keep` defaults to the calling resource.
 registerExport("RegisterReplacement", (remove: unknown, keep?: unknown) => {
-  const names = (Array.isArray(remove) ? remove : [remove]).filter((n): n is string => typeof n === "string" && n !== "");
-  const caller = GetInvokingResource();
-  const owner = typeof keep === "string" && keep ? keep : caller;
-  if (owner && names.length > 0) conflicts.declare(owner, names, caller ?? owner);
-});
-registerExport("GetConflicts", () => conflicts.list().map((c) => ({ ...c })));
+  const names = (Array.isArray(remove) ? remove : [remove]).filter(
+    (n): n is string => typeof n === "string" && n !== ""
+  )
+  const caller = GetInvokingResource()
+  const owner = typeof keep === "string" && keep ? keep : caller
+  if (owner && names.length > 0)
+    conflicts.declare(owner, names, caller ?? owner)
+})
+registerExport("GetConflicts", () => conflicts.list().map((c) => ({ ...c })))

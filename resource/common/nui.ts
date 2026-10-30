@@ -25,7 +25,7 @@ export const NuiMessage = {
   /** data: InputRequest */
   inputOpen: "inputOpen",
   dialogClose: "dialogClose",
-} as const;
+} as const
 
 /** NUI -> client callbacks (fetch `https://ai-core/<name>`), each answers `{ ok, error? }` or data. */
 export const NuiCallback = {
@@ -57,4 +57,4 @@ export const NuiCallback = {
   dialogAnswer: "dialogAnswer",
   /** ({ id }) -> true, the pointer or focus moved onto a menu item. */
   dialogHover: "dialogHover",
-} as const;
+} as const

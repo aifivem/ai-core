@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "lint": "oxlint --ignore-pattern \"dist/**\" --ignore-pattern \"web/postcss-*.js\"",
-    "format": "oxfmt",
+    "format": "prettier --write .",
     "dev": "bun tsdown -- --watch",
     "webdev": "bun --cwd web vite",
     "build": "bun run --cwd web build && aicore-db-types && bun tsdown -- && aicore-client-errors dist/client.js",
@@ -32,7 +32,8 @@
     "@types/bun": "latest",
     "@types/node": "^22",
     "fast-glob": "^3.3.3",
-    "oxfmt": "^0.51.0",
+    "prettier": "^3.9.10",
+    "prettier-plugin-tailwindcss": "^0.8.1",
     "oxlint": "^1.66.0",
     "tsdown": "^0.22.0",
     "typescript": "^6.0.3"

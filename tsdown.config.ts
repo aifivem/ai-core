@@ -1,11 +1,11 @@
-import { existsSync } from "node:fs";
-import { defineConfig, type UserConfig } from "tsdown";
-import postBuild from "./scripts/postBuild.ts";
+import { existsSync } from "node:fs"
+import { defineConfig, type UserConfig } from "tsdown"
+import postBuild from "./scripts/postBuild.ts"
 
 const config: Record<string, UserConfig> = {
   resource: {
     outExtensions() {
-      return { js: ".js" };
+      return { js: ".js" }
     },
     minify: false,
     outputOptions: {
@@ -40,13 +40,17 @@ const config: Record<string, UserConfig> = {
         // prints a permission warning for the lookup. The call sits in a try/catch, so it is replaced by a throw.
         name: "aicore-no-cardinal",
         transform(code: string, id: string) {
-          if (!id.replaceAll("\\", "/").endsWith("mysql2/lib/helpers.js")) return null;
-          return code.replace(/require\(`cardinal\$\{REQUIRE_TERMINATOR\}`\)/, '(() => { throw new Error("cardinal disabled"); })()');
+          if (!id.replaceAll("\\", "/").endsWith("mysql2/lib/helpers.js"))
+            return null
+          return code.replace(
+            /require\(`cardinal\$\{REQUIRE_TERMINATOR\}`\)/,
+            '(() => { throw new Error("cardinal disabled"); })()'
+          )
         },
       },
     ],
   },
-};
+}
 
 function createConfig(name: string): UserConfig {
   return {
@@ -57,12 +61,17 @@ function createConfig(name: string): UserConfig {
     tsconfig: `./resource/${name}/tsconfig.json`,
     ...config.resource,
     ...config[name],
-    outputOptions: { ...config.resource?.outputOptions, ...config[name]?.outputOptions },
+    outputOptions: {
+      ...config.resource?.outputOptions,
+      ...config[name]?.outputOptions,
+    },
     onSuccess: postBuild,
-  };
+  }
 }
 
 // A server-only resource has no resource/client/index.ts and builds no client bundle.
-const sides = existsSync("./resource/client/index.ts") ? ["client", "server"] : ["server"];
+const sides = existsSync("./resource/client/index.ts")
+  ? ["client", "server"]
+  : ["server"]
 
-export default defineConfig(sides.map(createConfig));
+export default defineConfig(sides.map(createConfig))
