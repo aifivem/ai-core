@@ -3,11 +3,23 @@ import { CORE } from "@aicore-fivem/shared";
 
 /**
  * Pausing the weather and time sync (interiors, scenes, cut scenes) for whatever weather script runs: every reason is
- * counted and the sync resumes when the last one ends or its resource stops. The pause events of the common scripts
- * are all sent (qb-weathersync / ai-weathersync / Renewed, cd_easytime, vSync).
+ * counted and the sync resumes when the last one ends or its resource stops. Scripts that send the common pause events
+ * themselves (qb-weathersync, cd_easytime, vSync) count as reasons too, so one script's resume never ends another's
+ * pause. The state goes out as ai-core's own event and as those scripts' events for third-party weather scripts.
  */
 class WorldSync {
   private readonly reasons = new Set<string>();
+  /** True while this layer sends the third-party events, so its own sends are not counted as reasons. */
+  private sending = false;
+
+  get paused(): boolean {
+    return this.reasons.size > 0;
+  }
+
+  /** A third-party pause event another script sent. */
+  external(event: string, paused: boolean): void {
+    if (!this.sending) this.set(`external:${event}`, paused);
+  }
 
   set(reason: string, paused: boolean): void {
     const before = this.reasons.size > 0;
@@ -25,13 +37,19 @@ class WorldSync {
   }
 
   private announce(paused: boolean): void {
-    emit(
-      paused
-        ? "qb-weathersync:client:DisableSync"
-        : "qb-weathersync:client:EnableSync",
-    );
-    emit("cd_easytime:PauseSync", paused);
-    emit("vSync:toggle", !paused);
+    emit(CORE.clientWorldSyncEvent, paused);
+    this.sending = true;
+    try {
+      emit(
+        paused
+          ? "qb-weathersync:client:DisableSync"
+          : "qb-weathersync:client:EnableSync",
+      );
+      emit("cd_easytime:PauseSync", paused);
+      emit("vSync:toggle", !paused);
+    } finally {
+      this.sending = false;
+    }
   }
 }
 
@@ -48,4 +66,13 @@ registerExport(
   (reason: unknown) =>
     typeof reason === "string" && sync.set(`${owner()}:${reason}`, false),
 );
+registerExport("IsWorldSyncPaused", () => sync.paused);
 on("onClientResourceStop", (resource: string) => sync.drop(resource));
+on("qb-weathersync:client:DisableSync", () => sync.external("qb", true));
+on("qb-weathersync:client:EnableSync", () => sync.external("qb", false));
+on("cd_easytime:PauseSync", (paused: unknown) =>
+  sync.external("cd_easytime", paused === true),
+);
+on("vSync:toggle", (running: unknown) =>
+  sync.external("vSync", running === false),
+);
