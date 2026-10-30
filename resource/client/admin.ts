@@ -6,8 +6,9 @@ import {
   onServerEvent,
   player,
   triggerServerCallback,
+  vehicleLabel,
 } from "@aicore-fivem/lib/client";
-import { isRecord, record } from "@aicore-fivem/lib/shared";
+import { isRecord, record, round as roundTo } from "@aicore-fivem/lib/shared";
 import { ADMIN } from "@aicore-fivem/shared";
 import { Locale } from "common";
 import { NuiCallback, NuiMessage } from "common/nui";
@@ -23,18 +24,16 @@ function vehicleModels(): Array<{ value: string; label: string }> {
     .filter((n): n is string => typeof n === "string")
     .map((n) => {
       const value = n.toLowerCase();
-      const label = GetLabelText(
-        GetDisplayNameFromVehicleModel(GetHashKey(value)),
-      );
+      const label = vehicleLabel(value);
       return {
         value,
-        label: label && label !== "NULL" ? `${label} (${value})` : value,
+        label: label.toLowerCase() !== value ? `${label} (${value})` : value,
       };
     });
 }
 
 type NuiReply = (value: unknown) => void;
-const round = (value: number): number => Math.round(value * 100) / 100;
+const round = (value: number): number => roundTo(value, 2);
 
 /** The admin panel on this client: opens it for admins (F10, or /aiadmin on the server), relays edits and the server's deltas. */
 class AdminPanelClient {

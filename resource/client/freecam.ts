@@ -1,4 +1,10 @@
-import { cache, raycast, TickLoop } from "@aicore-fivem/lib/client";
+import {
+  cache,
+  locationName,
+  raycast,
+  TickLoop,
+} from "@aicore-fivem/lib/client";
+import { round as roundTo } from "@aicore-fivem/lib/shared";
 
 /** A picked place: the floor (or the ped's root height above it) and a heading. */
 export interface PickedPoint {
@@ -26,7 +32,7 @@ const C = {
   cancel: 194,
 } as const;
 const RANGE = 150;
-const round = (n: number) => Math.round(n * 100) / 100;
+const round = (n: number) => roundTo(n, 2);
 
 /** Unit direction of a camera rotation (degrees, rotation order 2). */
 function direction(pitch: number, yaw: number): [number, number, number] {
@@ -237,11 +243,7 @@ export function pickEntity(): Promise<PickedEntity | null> {
 
 /** Street and zone names at a place, for name suggestions ("Alta St", "Pillbox Hill", "Alta St, Pillbox Hill"). */
 export function placeNames(x: number, y: number, z: number): string[] {
-  const [streetHash = 0, crossingHash = 0] = GetStreetNameAtCoord(x, y, z);
-  const street = streetHash ? GetStreetNameFromHashKey(streetHash) : "";
-  const crossing = crossingHash ? GetStreetNameFromHashKey(crossingHash) : "";
-  const zoneLabel = GetLabelText(GetNameOfZone(x, y, z));
-  const zone = zoneLabel && zoneLabel !== "NULL" ? zoneLabel : "";
+  const { street, crossing, zone } = locationName({ x, y, z });
   const names = [
     street,
     zone,
