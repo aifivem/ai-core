@@ -37,7 +37,10 @@ export function LookupBox({
   onPick,
   empty,
   anchor,
+  onEnterText,
 }: {
+  /** Enter with nothing listed: take the typed text as it is (addon model names). */
+  onEnterText?: (text: string) => void;
   source: LookupSource;
   query: string;
   onQuery: (query: string) => void;
@@ -69,7 +72,10 @@ export function LookupBox({
       setActive((i) => Math.max(0, i - 1));
     } else if (event.key === "Enter") {
       event.preventDefault();
-      pick(options[active]);
+      if (options.length === 0 && onEnterText && query.trim()) {
+        onEnterText(query.trim());
+        setOpen(false);
+      } else pick(options[active]);
     } else if (event.key === "Escape" && open) {
       event.preventDefault();
       event.stopPropagation();

@@ -49,6 +49,8 @@ export const NuiCallback = {
   adminTeleport: "adminTeleport",
   /** (data: { root: boolean }) -> point | null: picks a place with the free camera (the panel hides meanwhile). */
   adminPickPoint: "adminPickPoint",
+  /** () -> { model, x, y, z } | null: a world object picked with the free camera. */
+  adminPickEntity: "adminPickEntity",
   /** (data: { x, y, z } | null) -> string[]: street and zone names at the place (or at the admin) for name suggestions. */
   adminPlaceNames: "adminPlaceNames",
   /** (data: { command }) -> true: closes ai-core's panel and runs another script's panel command. */

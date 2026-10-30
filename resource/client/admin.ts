@@ -4,13 +4,26 @@ import {
   onServerEvent,
   triggerServerCallback,
 } from "@aicore-fivem/lib/client";
-import { isRecord } from "@aicore-fivem/lib/shared";
+import { isRecord, record } from "@aicore-fivem/lib/shared";
 import { ADMIN } from "@aicore-fivem/shared";
 import { Locale } from "common";
 import { NuiCallback, NuiMessage } from "common/nui";
-import { pickPoint, placeNames } from "./freecam";
+import { pickEntity, pickPoint, placeNames } from "./freecam";
 import { keybinds } from "./keybinds";
 import { isLoaded } from "./playerState";
+
+/** Every vehicle model this game has (addons included), for the panel's model pickers. */
+function vehicleModels(): Array<{ value: string; label: string }> {
+  const names: unknown = GetAllVehicleModels();
+  if (!Array.isArray(names)) return [];
+  return names
+    .filter((n): n is string => typeof n === "string")
+    .map((n) => {
+      const value = n.toLowerCase();
+      const label = GetLabelText(GetDisplayNameFromVehicleModel(GetHashKey(value)));
+      return { value, label: label && label !== "NULL" ? `${label} (${value})` : value };
+    });
+}
 
 type NuiReply = (value: unknown) => void;
 const round = (value: number): number => Math.round(value * 100) / 100;
@@ -34,7 +47,7 @@ class AdminPanelClient {
     SetNuiFocus(true, true);
     SendNUIMessage({
       action: NuiMessage.adminOpen,
-      data: { ...answer, texts: loadLocaleTexts() },
+      data: { ...answer, lookups: { ...record(answer.lookups), vehicle: vehicleModels() }, texts: loadLocaleTexts() },
     });
   }
 
@@ -131,6 +144,15 @@ RegisterNuiCallback(
     });
   },
 );
+
+RegisterNuiCallback(NuiCallback.adminPickEntity, (_data: unknown, cb: NuiReply) => {
+  if (!panel.isOpen) return cb(null);
+  SetNuiFocus(false, false);
+  void pickEntity().then((entity) => {
+    if (panel.isOpen) SetNuiFocus(true, true);
+    cb(entity);
+  });
+});
 
 RegisterNuiCallback(
   NuiCallback.adminPlaceNames,

@@ -17,10 +17,14 @@ import { RecordsView } from "./RecordsView";
 import { Sidebar } from "./Sidebar";
 import { TableView } from "./TableView";
 
+import peds from "./peds.json";
+
 // One options object: a new one per render would re-subscribe (and re-fire the browser mock) on every render.
 const OPEN_OPTIONS = { mockData: mockAdminOpen(), mockDelay: 300 };
 
-const NO_LOOKUPS: Lookups = { item: [], job: [], gang: [], account: [], resource: [] };
+/** GTA's ped models (no native lists them): a static list shipped with the panel. */
+const PED_OPTIONS = peds.map((value) => ({ value, label: value }));
+const NO_LOOKUPS: Lookups = { item: [], job: [], gang: [], account: [], resource: [], player: [], vehicle: [], ped: [] };
 
 function onOpen(value: unknown): void {
   if (typeof value !== "object" || value === null) return;
@@ -39,8 +43,8 @@ function onOpen(value: unknown): void {
       ? (texts as Record<string, string>)
       : {},
     typeof lookups === "object" && lookups !== null
-      ? { ...NO_LOOKUPS, ...(lookups as Partial<Lookups>) }
-      : NO_LOOKUPS,
+      ? { ...NO_LOOKUPS, ...(lookups as Partial<Lookups>), ped: PED_OPTIONS }
+      : { ...NO_LOOKUPS, ped: PED_OPTIONS },
     Array.isArray(external) ? (external as ExternalPanel[]) : [],
     Array.isArray(updates) ? (updates as UpdateInfo[]) : [],
   );

@@ -5,6 +5,7 @@ import { BlipW } from "./widgets/BlipW";
 import { InfoW } from "./widgets/InfoW";
 import { ListW } from "./widgets/ListW";
 import { PointW, TagsW } from "./widgets/more";
+import { ColorW, EntityW, ModelW } from "./widgets/pickers";
 
 /** One schema field: its shell (label, hint, save state) around the widget it names. */
 export function Field({ spec }: { spec: WidgetSpec }) {
@@ -35,6 +36,12 @@ export function Field({ spec }: { spec: WidgetSpec }) {
       return shell(<ListW spec={spec} />);
     case "blip":
       return shell(<BlipW spec={spec} path={spec.path} />);
+    case "model":
+      return shell(<ModelW spec={spec} path={spec.path} />);
+    case "color":
+      return shell(<ColorW spec={spec} path={spec.path} />, true);
+    case "entity":
+      return shell(<EntityW spec={spec} path={spec.path} />);
     case "info":
       return shell(<InfoW spec={spec} path={spec.path} />, true);
     default: {

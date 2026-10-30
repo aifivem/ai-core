@@ -6,11 +6,21 @@ import type {
   LookupOption,
 } from "@aicore-fivem/shared";
 import { coreSchema } from "../../../resource/server/admin/schema";
-import accounts from "../../../data/accounts.json";
-import gangs from "../../../data/gangs.json";
-import jobs from "../../../data/jobs.json";
-import settings from "../../../data/settings.json";
+import accountsFile from "../../../data/accounts.json";
+import gangsFile from "../../../data/gangs.json";
+import jobsFile from "../../../data/jobs.json";
+import settingsFile from "../../../data/settings.json";
 import en from "../../../locales/en.json";
+
+/** The data files as the panel gets them: without their editor-only `$schema` key. */
+function data<T extends { $schema?: string }>(file: T): Omit<T, "$schema"> {
+  const { $schema: _schema, ...rest } = file;
+  return rest;
+}
+const accounts = data(accountsFile);
+const gangs = data(gangsFile);
+const jobs = data(jobsFile);
+const settings = data(settingsFile);
 
 /**
  * Browser preview only: `?view=admin#/admin/ai-core/<tab>?key=<record>` opens the panel with ai-core's real schema and
@@ -173,6 +183,9 @@ export function mockAdminOpen():
       gang: options(gangs),
       account: options(accounts),
       resource: ["ai-core", "ai-rental", "ai-fuel", "ai-target"].map((value) => ({ value, label: value })),
+      player: [{ value: "AB123456", label: "John Doe (1)" }],
+      vehicle: ["adder", "sultan", "police", "taxi"].map((value) => ({ value, label: value })),
+      ped: [],
     },
     updates: [
       { resource: "ai-rental", current: "0.1.0", latest: "0.2.0", url: "https://github.com/TGIANN/ai-rental/releases/tag/v0.2.0" },

@@ -169,6 +169,15 @@ export async function createRecord(
   return result;
 }
 
+/** Whole records from a pasted JSON (all or none: one refusal names what is wrong). */
+export function importRecords(
+  resource: string,
+  file: string,
+  records: Record<string, Record<string, unknown>>,
+): Promise<AdminResult> {
+  return send(resource, { file, action: "import", records });
+}
+
 export async function deleteRecord(
   resource: string,
   file: string,
@@ -222,6 +231,21 @@ export async function pickPoint(root: boolean): Promise<Point | null> {
     typeof p.z === "number" &&
     typeof p.heading === "number"
     ? { x: p.x, y: p.y, z: p.z, heading: p.heading }
+    : null;
+}
+
+/** A world object picked with the free camera: its model name and position (null: cancelled). */
+export async function pickEntity(): Promise<{ model: string; x: number; y: number; z: number } | null> {
+  store.dispatch(picking(true));
+  const answer = await fetchNui<unknown>(NuiCallback.adminPickEntity, null, {
+    mockData: { model: "v_ilev_ph_door01", x: 434.75, y: -980.62, z: 30.84 },
+    mockDelay: 800,
+  }).catch(() => null);
+  store.dispatch(picking(false));
+  if (typeof answer !== "object" || answer === null) return null;
+  const e = answer as Record<string, unknown>;
+  return typeof e.model === "string" && typeof e.x === "number" && typeof e.y === "number" && typeof e.z === "number"
+    ? { model: e.model, x: e.x, y: e.y, z: e.z }
     : null;
 }
 

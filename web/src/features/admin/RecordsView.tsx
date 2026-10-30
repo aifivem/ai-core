@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faChevronRight,
+  faFileImport,
   faLock,
   faMagnifyingGlass,
   faPlus,
@@ -9,6 +10,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import type { AdminPanelSnapshot, TabSpec } from "@aicore-fivem/shared";
 import { Button } from "../../components/ui/button";
+import { Tooltip } from "../../components/ui/tooltip";
 import { VirtualList } from "../../components/VirtualList";
 import { cn } from "../../lib/utils";
 import { goTo } from "./actions";
@@ -16,6 +18,7 @@ import { Editor } from "./Editor";
 import { iconOf } from "./icons";
 import { getAt } from "./path";
 import { CreateDialog, DeleteDialog } from "./RecordDialogs";
+import { ExportButton, ImportDialog } from "./RecordTransfer";
 
 type T = (key: string, ...args: Array<string | number>) => string;
 
@@ -33,6 +36,7 @@ export function RecordsView({ panel, tab, selected, t }: Props) {
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [importing, setImporting] = useState(false);
   const labelOf = (key: string): string => {
     const label = spec?.labelPath
       ? getAt(records[key], spec.labelPath)
@@ -71,6 +75,21 @@ export function RecordsView({ panel, tab, selected, t }: Props) {
               aria-hidden
             />
           </label>
+          <ExportButton
+            records={records as Record<string, Record<string, unknown>>}
+            t={t}
+          />
+          {tab.createLabel && (
+            <Tooltip content={t("ADMIN_IMPORT")}>
+              <Button
+                variant="icon"
+                aria-label={t("ADMIN_IMPORT")}
+                onClick={() => setImporting(true)}
+              >
+                <FontAwesomeIcon icon={faFileImport} aria-hidden />
+              </Button>
+            </Tooltip>
+          )}
           {tab.createLabel && (
             <Button variant="primary" onClick={() => setCreating(true)}>
               <FontAwesomeIcon
@@ -200,6 +219,14 @@ export function RecordsView({ panel, tab, selected, t }: Props) {
           />
         </div>
       )}
+      <ImportDialog
+        open={importing}
+        onClose={() => setImporting(false)}
+        t={t}
+        resource={panel.resource}
+        file={tab.file}
+        existing={records as Record<string, Record<string, unknown>>}
+      />
       <CreateDialog
         open={creating}
         onClose={() => setCreating(false)}
