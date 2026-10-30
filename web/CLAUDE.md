@@ -11,6 +11,9 @@ Two screens in one page: the character screen (`src/features/characters`, its ow
 
 ## Admin panel
 
+- Routes: `/admin` dashboard (`Dashboard.tsx`), `/admin/$resource/$tab` a script's tab, `/admin/external/$id` another script's page in an iframe. Lookup lists, other panels and the free camera state (`picking`: the panel hides behind a key help bar) live in the admin slice.
+- Lookup fields: `widgets/lookup.tsx` (`LookupBox` on the Radix popover, arrows / Enter / Escape, 40 shown); `TextW` and `TagsW` switch to it when the spec has `lookup`; a stored value the game does not know shows a red "Not found" chip. Name suggestions (`suggest`) and the free camera point pick ask ai-core's client (`adminPlaceNames`, `adminPickPoint`).
+- Blip widget: `widgets/BlipW.tsx` with `blips.json` (FiveM blip reference: sprite names, pictures at docs-backend.fivem.net, colours).
 - Schema driven: `Field.tsx` only dispatches, each widget is in `widgets/`; a new widget = a new case there plus the spec in `@aicore-fivem/shared` `admin.ts`.
 - A records tab with `table` renders `TableView` (read-only, search over every column, `VirtualList` rows, header and rows share `scrollbar-gutter: stable` so columns line up); `info` and table cells share `showValue` (`values` / `empty` labels).
 - Every navigation and NUI call goes through `features/admin/actions.ts`; components never call the router or fetchNui.

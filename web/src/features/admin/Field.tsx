@@ -1,6 +1,7 @@
 import type { WidgetSpec } from "@aicore-fivem/shared";
 import { FieldShell } from "./FieldShell";
 import { NumberW, SelectW, SwitchW, TextW } from "./widgets/basic";
+import { BlipW } from "./widgets/BlipW";
 import { InfoW } from "./widgets/InfoW";
 import { ListW } from "./widgets/ListW";
 import { PointW, TagsW } from "./widgets/more";
@@ -27,6 +28,8 @@ export function Field({ spec }: { spec: WidgetSpec }) {
       return shell(<PointW spec={spec} path={spec.path} />);
     case "list":
       return shell(<ListW spec={spec} />);
+    case "blip":
+      return shell(<BlipW spec={spec} path={spec.path} />);
     case "info":
       return shell(<InfoW spec={spec} path={spec.path} />, true);
     default: {

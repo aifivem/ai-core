@@ -119,8 +119,8 @@ export function Dashboard() {
           autoFocus
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder={t("ADMIN_SEARCH")}
-          aria-label={t("ADMIN_SEARCH")}
+          placeholder={t("ADMIN_SEARCH_ALL")}
+          aria-label={t("ADMIN_SEARCH_ALL")}
           className="h-full min-w-0 flex-1 bg-transparent text-[1.5vh] outline-none placeholder:text-text-4"
         />
       </label>
