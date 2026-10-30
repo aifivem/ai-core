@@ -172,7 +172,12 @@ export function mockAdminOpen():
       job: options(jobs),
       gang: options(gangs),
       account: options(accounts),
+      resource: ["ai-core", "ai-rental", "ai-fuel", "ai-target"].map((value) => ({ value, label: value })),
     },
+    updates: [
+      { resource: "ai-rental", current: "0.1.0", latest: "0.2.0", url: "https://github.com/TGIANN/ai-rental/releases/tag/v0.2.0" },
+      { resource: "ai-fuel", current: "0.1.0", latest: "0.1.3", url: "https://github.com/TGIANN/ai-fuel/releases/tag/v0.1.3" },
+    ],
     external: [
       {
         id: "panel:craft",

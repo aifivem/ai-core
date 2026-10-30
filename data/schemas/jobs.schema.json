@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ai-core/data/jobs.json",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "This file's JSON Schema (for editors)."
+    }
+  },
+  "patternProperties": {
+    "^[a-z0-9_]{2,32}$": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "description": "Name",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 48
+        },
+        "type": {
+          "description": "Job type: Groups jobs for other scripts, e.g. leo for every police job, ems for medics.",
+          "type": "string",
+          "maxLength": 32,
+          "pattern": "^[a-z0-9_]{2,32}$"
+        },
+        "defaultDuty": {
+          "description": "On duty when hired: Players start this job on duty instead of off duty.",
+          "type": "boolean"
+        },
+        "grades": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 30,
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "description": "Name",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 48
+              },
+              "salary": {
+                "description": "Salary",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000000
+              },
+              "boss": {
+                "description": "Boss",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "label",
+              "salary"
+            ]
+          }
+        }
+      },
+      "required": [
+        "label",
+        "type",
+        "defaultDuty",
+        "grades"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

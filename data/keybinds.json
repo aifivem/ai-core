@@ -1,4 +1,5 @@
 {
+  "$schema": "./schemas/keybinds.schema.json",
   "aicore_admin": {
     "resource": "ai-core",
     "description": "Open the admin panel",

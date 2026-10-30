@@ -4,6 +4,7 @@ import type {
   AdminPanelSnapshot,
   ExternalPanel,
   Lookups,
+  UpdateInfo,
 } from "@aicore-fivem/shared";
 
 /** A field's save state, shown next to its label. */
@@ -23,11 +24,13 @@ export interface AdminState {
   lookups: Lookups;
   /** Other scripts' own panels on the dashboard. */
   external: ExternalPanel[];
+  /** Scripts with a newer GitHub release (as of the panel's opening). */
+  updates: UpdateInfo[];
   /** A point is being picked with the free camera: the panel hides. */
   picking: boolean;
 }
 
-const NO_LOOKUPS: Lookups = { item: [], job: [], gang: [], account: [] };
+const NO_LOOKUPS: Lookups = { item: [], job: [], gang: [], account: [], resource: [] };
 const initialState: AdminState = {
   open: false,
   panels: [],
@@ -35,6 +38,7 @@ const initialState: AdminState = {
   fields: {},
   lookups: NO_LOOKUPS,
   external: [],
+  updates: [],
   picking: false,
 };
 
@@ -65,6 +69,7 @@ const admin = createSlice({
         texts: Record<string, string>;
         lookups: Lookups;
         external: ExternalPanel[];
+        updates: UpdateInfo[];
       }>,
     ) {
       state.open = true;
@@ -72,6 +77,7 @@ const admin = createSlice({
       state.texts = action.payload.texts;
       state.lookups = action.payload.lookups;
       state.external = action.payload.external;
+      state.updates = action.payload.updates;
       state.fields = {};
       state.picking = false;
     },

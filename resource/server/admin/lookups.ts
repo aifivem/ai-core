@@ -3,7 +3,7 @@ import type { LookupOption, Lookups, LookupSource } from "@aicore-fivem/shared";
 import { accountTypes, gangs, jobs } from "../content";
 import { inventory } from "../inventory";
 
-const SOURCES: readonly LookupSource[] = ["item", "job", "gang", "account"];
+const SOURCES: readonly LookupSource[] = ["item", "job", "gang", "account", "resource"];
 
 const sorted = (options: LookupOption[]): LookupOption[] =>
   options.sort((a, b) => a.label.localeCompare(b.label));
@@ -31,6 +31,14 @@ export function lookupOptions(source: LookupSource): LookupOption[] {
       return sorted(
         [...accountTypes].map(([value, d]) => ({ value, label: d.label })),
       );
+    case "resource": {
+      const out: LookupOption[] = [];
+      for (let i = 0; i < GetNumResources(); i++) {
+        const name = GetResourceByFindIndex(i);
+        if (name && GetResourceState(name) === "started") out.push({ value: name, label: name });
+      }
+      return sorted(out);
+    }
     default: {
       const _exhaustive: never = source;
       return _exhaustive;
@@ -45,6 +53,7 @@ export function allLookups(): Lookups {
     job: lookupOptions("job"),
     gang: lookupOptions("gang"),
     account: lookupOptions("account"),
+    resource: lookupOptions("resource"),
   };
 }
 

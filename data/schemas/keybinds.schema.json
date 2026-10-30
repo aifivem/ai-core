@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ai-core/data/keybinds.json",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "This file's JSON Schema (for editors)."
+    }
+  },
+  "patternProperties": {
+    "^[a-z0-9_]{2,32}$": {
+      "type": "object",
+      "properties": {
+        "resource": {
+          "description": "Script",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "description": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 120
+        },
+        "defaultKey": {
+          "description": "Script's default key",
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 32
+        },
+        "mapper": {
+          "description": "Device",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "key": {
+          "description": "Default key: Empty uses the script's key. A new key reaches every player (also those who had changed the old one) the next time the script starts or they reconnect; players can still rebind it in GTA Settings > Key Bindings > FiveM.",
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 32,
+          "pattern": "^[A-Za-z0-9_]*$"
+        }
+      },
+      "required": [
+        "resource",
+        "description",
+        "defaultKey",
+        "mapper",
+        "key"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

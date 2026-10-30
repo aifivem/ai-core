@@ -1,10 +1,39 @@
 {
+  "$schema": "./schemas/gangs.schema.json",
   "ballas": {
     "label": "Ballas",
-    "grades": [{ "label": "Recruit" }, { "label": "Enforcer" }, { "label": "Shot Caller" }, { "label": "Boss", "boss": true }]
+    "grades": [
+      {
+        "label": "Recruit"
+      },
+      {
+        "label": "Enforcer"
+      },
+      {
+        "label": "Shot Caller"
+      },
+      {
+        "label": "Boss",
+        "boss": true
+      }
+    ]
   },
   "vagos": {
     "label": "Vagos",
-    "grades": [{ "label": "Recruit" }, { "label": "Enforcer" }, { "label": "Shot Caller" }, { "label": "Boss", "boss": true }]
+    "grades": [
+      {
+        "label": "Recruit"
+      },
+      {
+        "label": "Enforcer"
+      },
+      {
+        "label": "Shot Caller"
+      },
+      {
+        "label": "Boss",
+        "boss": true
+      }
+    ]
   }
 }

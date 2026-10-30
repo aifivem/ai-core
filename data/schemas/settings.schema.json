@@ -1,0 +1,451 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ai-core/data/settings.json",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "This file's JSON Schema (for editors)."
+    },
+    "branding": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "subtitle": {
+          "description": "Subtitle",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "tagline": {
+          "description": "Tagline",
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 48
+        },
+        "taglineSub": {
+          "description": "Second tagline line",
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 64
+        },
+        "background": {
+          "description": "Background: Shown behind the character screen only when its scene cannot be loaded.",
+          "enum": [
+            "skyline",
+            "wet-drive"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "subtitle",
+        "tagline",
+        "taglineSub",
+        "background"
+      ]
+    },
+    "characters": {
+      "type": "object",
+      "properties": {
+        "slots": {
+          "description": "Character slots: Slots on the character screen for every account.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "canDelete": {
+          "description": "Players can delete characters: Off hides the delete button on the character screen.",
+          "type": "boolean"
+        },
+        "minAge": {
+          "description": "Minimum age",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99
+        }
+      },
+      "required": [
+        "slots",
+        "canDelete",
+        "minAge"
+      ]
+    },
+    "jobs": {
+      "type": "object",
+      "properties": {
+        "multiJob": {
+          "description": "Several jobs per character: Off: a new job replaces the old one.",
+          "type": "boolean"
+        },
+        "maxJobs": {
+          "description": "Most jobs per character",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "unemployed": {
+          "type": "string",
+          "maxLength": 32,
+          "pattern": "^[a-z0-9_]{2,32}$"
+        },
+        "restoreDuty": {
+          "description": "Keep duty after rejoining: Off: every player starts off duty.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "multiJob",
+        "maxJobs",
+        "unemployed",
+        "restoreDuty"
+      ]
+    },
+    "gangs": {
+      "type": "object",
+      "properties": {
+        "multiGang": {
+          "description": "Several gangs per character",
+          "type": "boolean"
+        },
+        "maxGangs": {
+          "description": "Most gangs per character",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        }
+      },
+      "required": [
+        "multiGang",
+        "maxGangs"
+      ]
+    },
+    "paycheck": {
+      "type": "object",
+      "properties": {
+        "intervalMinutes": {
+          "description": "Pay every: 0 turns salaries off.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1440
+        },
+        "account": {
+          "description": "Paid into",
+          "type": "string",
+          "maxLength": 32,
+          "pattern": "^[a-z0-9_]{2,32}$"
+        },
+        "fromJobAccount": {
+          "description": "Pay from the job's own money: Off: the server pays. On: the job account pays, and nobody is paid when it is empty.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "intervalMinutes",
+        "account",
+        "fromJobAccount"
+      ]
+    },
+    "saveIntervalMinutes": {
+      "description": "Save every",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 60
+    },
+    "inventory": {
+      "description": "Inventory script: Automatic uses the first one that runs. A picked inventory that is not started leaves every item action failing until it starts.",
+      "enum": [
+        "auto",
+        "ai-inventory",
+        "tgiann-inventory",
+        "ox_inventory",
+        "qb-inventory"
+      ]
+    },
+    "vehicleKeys": {
+      "description": "Key script: Automatic uses the first one that runs. While no key script runs, every player counts as holding every key.",
+      "enum": [
+        "auto",
+        "ai-vehiclekeys",
+        "tgiann-hotwire",
+        "qbx_vehiclekeys",
+        "qb-vehiclekeys",
+        "wasabi_carlock",
+        "Renewed-Vehiclekeys",
+        "MrNewbVehicleKeys",
+        "vehicles_keys",
+        "mVehicle",
+        "cd_garage",
+        "qs-vehiclekeys",
+        "okokGarage",
+        "0r-vehiclekeys",
+        "LifeSaver_KeySystem",
+        "ak47_qb_vehiclekeys",
+        "ak47_vehiclekeys",
+        "brutal_keys",
+        "filo_vehiclekey",
+        "ic3d_vehiclekeys",
+        "is_vehiclekeys",
+        "mk_vehiclekeys",
+        "mm_carkeys",
+        "p_carkeys",
+        "rd_vehiclekeys"
+      ]
+    },
+    "interaction": {
+      "description": "Interaction style: Prompt: a box on the right and the interaction key when close. Target: players hold the target key and pick the option on the point or NPC (needs a target script such as ai-target; without one the prompt is used).",
+      "enum": [
+        "prompt",
+        "target"
+      ]
+    },
+    "refuseOnConflict": {
+      "description": "Refuse players while both run: Nobody can join while an unneeded script is started next to its replacement; the refusal and the console say which one to remove.",
+      "type": "boolean"
+    },
+    "updates": {
+      "type": "object",
+      "properties": {
+        "check": {
+          "description": "Check for updates: Asks GitHub once every 6 hours per script (and when a script starts). Off: nothing is asked.",
+          "type": "boolean"
+        },
+        "ignore": {
+          "description": "Do not check: Scripts left out of the check (your own edited copies, scripts you keep on an older version on purpose).",
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 64
+          }
+        }
+      },
+      "required": [
+        "check",
+        "ignore"
+      ]
+    },
+    "spawn": {
+      "type": "object",
+      "properties": {
+        "default": {
+          "description": "Spawn point",
+          "type": "object",
+          "required": [
+            "x",
+            "y",
+            "z",
+            "heading"
+          ],
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "z": {
+              "type": "number"
+            },
+            "heading": {
+              "type": "number"
+            }
+          }
+        }
+      },
+      "required": [
+        "default"
+      ]
+    },
+    "characterScene": {
+      "type": "object",
+      "properties": {
+        "fov": {
+          "description": "Camera zoom (field of view): Smaller is closer. 50 is a good start.",
+          "type": "integer",
+          "minimum": 20,
+          "maximum": 90
+        },
+        "time": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "description": "Own time and weather: Off shows the server's current time and weather.",
+              "type": "boolean"
+            },
+            "hour": {
+              "description": "Hour",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 23
+            },
+            "minute": {
+              "description": "Minute",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 59
+            },
+            "weather": {
+              "description": "Weather",
+              "enum": [
+                "EXTRASUNNY",
+                "CLEAR",
+                "NEUTRAL",
+                "SMOG",
+                "FOGGY",
+                "OVERCAST",
+                "CLOUDS",
+                "CLEARING",
+                "RAIN",
+                "THUNDER",
+                "SNOW",
+                "BLIZZARD",
+                "SNOWLIGHT",
+                "XMAS",
+                "HALLOWEEN"
+              ]
+            }
+          },
+          "required": [
+            "enabled",
+            "hour",
+            "minute",
+            "weather"
+          ]
+        },
+        "spots": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "properties": {
+              "ped": {
+                "description": "Character position",
+                "type": "object",
+                "required": [
+                  "x",
+                  "y",
+                  "z",
+                  "heading"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "z": {
+                    "type": "number"
+                  },
+                  "heading": {
+                    "type": "number"
+                  }
+                }
+              },
+              "anim": {
+                "description": "Animation dictionary",
+                "type": "string",
+                "minLength": 0,
+                "maxLength": 64
+              },
+              "clip": {
+                "description": "Animation clip",
+                "type": "string",
+                "minLength": 0,
+                "maxLength": 64
+              },
+              "camDistance": {
+                "description": "Distance",
+                "type": "number",
+                "minimum": 0.3,
+                "maximum": 15
+              },
+              "camHeight": {
+                "description": "Height: 0 is level with the look point, 0.5 raises the camera by half the distance, below 0 looks up.",
+                "type": "number",
+                "minimum": -2,
+                "maximum": 2
+              },
+              "camAngle": {
+                "description": "Angle: 0 is straight in front of the character, 90 its left side, -90 its right side.",
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              },
+              "targetHeight": {
+                "description": "Look point height",
+                "type": "number",
+                "minimum": -2,
+                "maximum": 3
+              },
+              "sway": {
+                "description": "Sway: How far the camera slowly swings left and right. 0 keeps it still.",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 45
+              },
+              "blur": {
+                "description": "Blur: Sharp from the near distance to the far distance from the camera, blurred outside.",
+                "type": "boolean"
+              },
+              "blurNear": {
+                "description": "Sharp from",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 50
+              },
+              "blurFar": {
+                "description": "Sharp to",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "blurStrength": {
+                "description": "Strength",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "ped",
+              "anim",
+              "clip",
+              "camDistance",
+              "camHeight",
+              "camAngle",
+              "targetHeight",
+              "sway",
+              "blur",
+              "blurNear",
+              "blurFar",
+              "blurStrength"
+            ]
+          }
+        }
+      },
+      "required": [
+        "fov",
+        "time",
+        "spots"
+      ]
+    }
+  },
+  "required": [
+    "branding",
+    "characters",
+    "jobs",
+    "gangs",
+    "paycheck",
+    "saveIntervalMinutes",
+    "spawn"
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ai-core/data/externalPanels.json",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "This file's JSON Schema (for editors)."
+    }
+  },
+  "patternProperties": {
+    "^[a-z0-9_]{2,32}$": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "description": "Name",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 48
+        },
+        "resource": {
+          "description": "Script: Resource name; the card shows only while it is started. Leave empty for a page that belongs to no script.",
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9_.-]*$"
+        },
+        "command": {
+          "description": "Open command: The command that opens the script's own panel. ai-core's panel closes and runs it for you.",
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 64,
+          "pattern": "^/?[A-Za-z0-9_:.-]*$"
+        },
+        "url": {
+          "description": "Page: An https page shown inside the panel (a script's NUI page: https://cfx-nui-<script>/...). Pages that need their own script's messages work only through the command.",
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 300,
+          "pattern": "^(https://.*)?$"
+        },
+        "icon": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 32
+        },
+        "description": {
+          "description": "Description",
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 160
+        }
+      },
+      "required": [
+        "label",
+        "resource",
+        "command",
+        "url",
+        "icon",
+        "description"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

@@ -31,21 +31,77 @@ var SourceLock = class {
 	release(source) {
 		this.hits.delete(source);
 	}
-}, DataFile = class {
+};
+// ../../../packages/lib/src/shared/read.ts
+function num$1(value, fallback, min = -Infinity, max = Infinity) {
+	return typeof value == "number" && Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
+}
+function int$2(value, fallback, min = -Infinity, max = Infinity) {
+	return Math.round(num$1(value, fallback, min, max));
+}
+function bool$1(value, fallback) {
+	return typeof value == "boolean" ? value : fallback;
+}
+function str(value, fallback, max = 64) {
+	return typeof value == "string" && value.trim() ? value.trim().slice(0, max) : fallback;
+}
+function record(value) {
+	return typeof value == "object" && value && !Array.isArray(value) ? value : {};
+}
+function vec4(value, fallback) {
+	let v = record(value);
+	return {
+		x: num$1(v.x, fallback.x),
+		y: num$1(v.y, fallback.y),
+		z: num$1(v.z, fallback.z),
+		heading: num$1(v.heading, fallback.heading)
+	};
+}
+// ../../../packages/lib/src/shared/index.ts
+function isRecord(value) {
+	return typeof value == "object" && !!value && !Array.isArray(value);
+}
+function logSafe(text, max) {
+	return text.replace(/\r?\n/g, " | ").replace(/[\u0000-\u001f\u007f]/g, "").replace(/\^\d/g, "").slice(0, max);
+}
+function formatText(template, args) {
+	return template.replace(/\{(\d+)\}/g, (match, index) => {
+		let value = args[Number(index)];
+		return value === void 0 ? match : String(value);
+	});
+}
+function createLogger(resource) {
+	let prefix = `[${resource}]`;
+	return {
+		info: (message, ...details) => console.log(`${prefix} ${message}`, ...details),
+		warn: (message, ...details) => console.warn(`${prefix} ^3${message}^7`, ...details),
+		error: (message, ...details) => console.error(`${prefix} ^1${message}^7`, ...details)
+	};
+}
+function withoutSchemaKey(value) {
+	if (!isRecord(value) || !("$schema" in value)) return value;
+	let { $schema: _schema, ...rest } = value;
+	return rest;
+}
+var DataFile = class {
 	resource;
 	name;
 	log;
 	writes = Promise.resolve();
 	pending = void 0;
 	timer = null;
+	schemaRef = null;
 	constructor(resource, name, log) {
 		this.resource = resource, this.name = name, this.log = log;
+	}
+	hasSchemaRef() {
+		return (LoadResourceFile(this.resource, this.path) ?? "").includes("\"$schema\"");
 	}
 	read() {
 		for (let path of [this.path, `${this.path}.bak`]) {
 			let raw = LoadResourceFile(this.resource, path);
 			if (raw) try {
-				return JSON.parse(raw);
+				return withoutSchemaKey(JSON.parse(raw));
 			} catch (error) {
 				this.log.error(`${this.resource}/${path} is not valid JSON${path === this.path ? ", trying the backup" : ""}`, error);
 			}
@@ -55,7 +111,10 @@ var SourceLock = class {
 	write(value) {
 		this.pending = value, this.timer ||= setTimeout(() => {
 			this.timer = null;
-			let text = `${JSON.stringify(this.pending, null, 2)}\n`;
+			let data = this.schemaRef && isRecord(this.pending) ? {
+				$schema: this.schemaRef,
+				...this.pending
+			} : this.pending, text = `${JSON.stringify(data, null, 2)}\n`;
 			this.writes = this.writes.then(() => this.flush(text)).catch((error) => this.log.error(`saving ${this.resource}/${this.path} failed`, error));
 		}, 250);
 	}
@@ -151,52 +210,6 @@ const ADMIN = {
 	worldEvent: (resource) => `${resource}:admin:world`,
 	worldChangesCallback: (resource) => `${resource}:admin:worldChanges`
 };
-// ../../../packages/lib/src/shared/read.ts
-function num$1(value, fallback, min = -Infinity, max = Infinity) {
-	return typeof value == "number" && Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
-}
-function int$2(value, fallback, min = -Infinity, max = Infinity) {
-	return Math.round(num$1(value, fallback, min, max));
-}
-function bool$1(value, fallback) {
-	return typeof value == "boolean" ? value : fallback;
-}
-function str(value, fallback, max = 64) {
-	return typeof value == "string" && value.trim() ? value.trim().slice(0, max) : fallback;
-}
-function record(value) {
-	return typeof value == "object" && value && !Array.isArray(value) ? value : {};
-}
-function vec4(value, fallback) {
-	let v = record(value);
-	return {
-		x: num$1(v.x, fallback.x),
-		y: num$1(v.y, fallback.y),
-		z: num$1(v.z, fallback.z),
-		heading: num$1(v.heading, fallback.heading)
-	};
-}
-// ../../../packages/lib/src/shared/index.ts
-function isRecord(value) {
-	return typeof value == "object" && !!value && !Array.isArray(value);
-}
-function logSafe(text, max) {
-	return text.replace(/\r?\n/g, " | ").replace(/[\u0000-\u001f\u007f]/g, "").replace(/\^\d/g, "").slice(0, max);
-}
-function formatText(template, args) {
-	return template.replace(/\{(\d+)\}/g, (match, index) => {
-		let value = args[Number(index)];
-		return value === void 0 ? match : String(value);
-	});
-}
-function createLogger(resource) {
-	let prefix = `[${resource}]`;
-	return {
-		info: (message, ...details) => console.log(`${prefix} ${message}`, ...details),
-		warn: (message, ...details) => console.warn(`${prefix} ^3${message}^7`, ...details),
-		error: (message, ...details) => console.error(`${prefix} ^1${message}^7`, ...details)
-	};
-}
 // ../../../packages/lib/src/fivem/exports.ts
 function registerExport(name, handler) {
 	globalThis.exports(name, handler);
@@ -401,6 +414,134 @@ function validate(spec, value, path) {
 		default: return spec;
 	}
 }
+// ../../../packages/lib/src/server/admin/jsonSchema.ts
+const SCHEMA_KEY = {
+	type: "string",
+	description: "This file's JSON Schema (for editors)."
+};
+function texts$1(resource) {
+	try {
+		let raw = JSON.parse(LoadResourceFile(resource, "locales/en.json") ?? "{}");
+		return isRecord(raw) ? Object.fromEntries(Object.entries(raw).filter((e) => typeof e[1] == "string")) : {};
+	} catch {
+		return {};
+	}
+}
+function collect(fields, prefix, lang, out) {
+	for (let field of fields) {
+		let path = prefix + field.path, label = lang[field.label] ?? field.label, hint = field.hint ? lang[field.hint] ?? field.hint : "";
+		out.has(path) || out.set(path, hint ? `${label}: ${hint}` : label), field.widget === "list" && collect(field.rows, `${path}[].`, lang, out);
+	}
+}
+function describe$1(schema, file, lang) {
+	let out = new Map();
+	for (let tab of schema.tabs) if (tab.file === file) for (let card of tab.cards) collect(card.fields, "", lang, out);
+	return out;
+}
+function toJson(spec, path, desc) {
+	let description = desc.get(path), base = description ? { description } : {};
+	switch (spec.type) {
+		case "text": return {
+			...base,
+			type: "string",
+			minLength: spec.min,
+			maxLength: spec.max,
+			pattern: spec.pattern
+		};
+		case "number": return {
+			...base,
+			type: spec.integer ? "integer" : "number",
+			minimum: spec.min,
+			maximum: spec.max
+		};
+		case "bool": return {
+			...base,
+			type: "boolean"
+		};
+		case "enum": return {
+			...base,
+			enum: spec.values
+		};
+		case "names": return {
+			...base,
+			type: "array",
+			maxItems: spec.max,
+			uniqueItems: !0,
+			items: {
+				type: "string",
+				maxLength: spec.itemMax,
+				pattern: spec.pattern
+			}
+		};
+		case "vec3":
+		case "vec4": {
+			let keys = spec.type === "vec3" ? [
+				"x",
+				"y",
+				"z"
+			] : [
+				"x",
+				"y",
+				"z",
+				"heading"
+			];
+			return {
+				...base,
+				type: "object",
+				required: keys,
+				properties: Object.fromEntries(keys.map((k) => [k, { type: "number" }]))
+			};
+		}
+		case "object": return {
+			...base,
+			...objectOf(spec.fields, path ? `${path}.` : "", desc)
+		};
+		case "list": return {
+			...base,
+			type: "array",
+			minItems: spec.min,
+			maxItems: spec.max,
+			items: toJson(spec.of, `${path}[]`, desc)
+		};
+		default: return spec;
+	}
+}
+function objectOf(fields, prefix, desc) {
+	return {
+		type: "object",
+		properties: Object.fromEntries(Object.entries(fields).map(([k, s]) => [k, toJson(s, prefix + k, desc)])),
+		required: Object.entries(fields).filter(([, s]) => !s.optional).map(([k]) => k)
+	};
+}
+function fileSchema(resource, schema, name, spec) {
+	let desc = describe$1(schema, name, texts$1(resource)), title = `${resource}/data/${name}.json`, body = spec.kind === "settings" ? (() => {
+		let obj = objectOf(spec.sections, "", desc), required = obj.required.filter((k) => !(k in (spec.defaults ?? {})));
+		return {
+			...obj,
+			properties: {
+				$schema: SCHEMA_KEY,
+				...obj.properties
+			},
+			required
+		};
+	})() : {
+		type: "object",
+		properties: { $schema: SCHEMA_KEY },
+		patternProperties: { [spec.keyPattern ?? "^[a-z0-9_]{2,32}$"]: objectOf(spec.sections, "", desc) },
+		additionalProperties: !1
+	};
+	return `${JSON.stringify({
+		$schema: "http://json-schema.org/draft-07/schema#",
+		title,
+		...body
+	}, null, 2)}\n`;
+}
+function writeSchema(resource, name, text, log) {
+	let path = `data/schemas/${name}.schema.json`;
+	if (LoadResourceFile(resource, path) === text) return;
+	let dir = `${GetResourcePath(resource)}/data/schemas`;
+	(0, node_fs_promises.mkdir)(dir, { recursive: !0 }).then(() => (0, node_fs_promises.writeFile)(`${dir}/${name}.schema.json`, text, "utf8")).catch((error) => log.error(`writing ${resource}/${path} failed`, error));
+}
 // ../../../packages/lib/src/server/admin/panel.ts
 const core$5 = resourceExport(CORE.resource);
 var AdminPanel = class {
@@ -496,10 +637,10 @@ var AdminPanel = class {
 			return;
 		}
 		let file = new DataFile(this.resource, name, this.log);
-		this.dataFiles.set(name, file);
+		this.dataFiles.set(name, file), file.schemaRef = `./schemas/${name}.schema.json`, writeSchema(this.resource, name, fileSchema(this.resource, this.schema, name, spec), this.log);
 		let raw = file.read(), data = isRecord(raw) ? raw : {}, filled = !1;
 		if (spec.kind === "settings") for (let [section, value] of Object.entries(spec.defaults ?? {})) section in data || (data[section] = clone(value), filled = !0);
-		this.data.set(name, data), (filled || raw === null) && file.write(data);
+		this.data.set(name, data), (filled || raw === null || !file.hasSchemaRef()) && file.write(data);
 	}
 };
 // ../../../packages/lib/src/server/notify.ts
@@ -15905,6 +16046,18 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 						values: ["prompt", "target"]
 					},
 					refuseOnConflict: { type: "bool" },
+					updates: {
+						type: "object",
+						fields: {
+							check: { type: "bool" },
+							ignore: {
+								type: "names",
+								lookup: "resource",
+								max: 64,
+								itemMax: 64
+							}
+						}
+					},
 					spawn: {
 						type: "object",
 						fields: { default: { type: "vec4" } }
@@ -15916,7 +16069,11 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 					inventory: "auto",
 					vehicleKeys: "auto",
 					interaction: "prompt",
-					refuseOnConflict: !0
+					refuseOnConflict: !0,
+					updates: {
+						check: !0,
+						ignore: []
+					}
 				}
 			},
 			jobs: {
@@ -16189,6 +16346,24 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 								value: "target",
 								label: "ADMIN_O_INTERACTION_TARGET"
 							}]
+						}]
+					},
+					{
+						icon: "cloud-arrow-down",
+						title: "ADMIN_C_UPDATES",
+						desc: "ADMIN_C_UPDATES_DESC",
+						fields: [{
+							widget: "switch",
+							path: "updates.check",
+							label: "ADMIN_F_UPDATES_CHECK",
+							hint: "ADMIN_H_UPDATES_CHECK"
+						}, {
+							widget: "tags",
+							lookup: "resource",
+							path: "updates.ignore",
+							label: "ADMIN_F_UPDATES_IGNORE",
+							hint: "ADMIN_H_UPDATES_IGNORE",
+							placeholder: "ADMIN_PH_UPDATES_IGNORE"
 						}]
 					},
 					{
@@ -16801,6 +16976,13 @@ const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetIn
 	].map(clientKeys)
 ];
 // resource/server/content/index.ts
+function readUpdates(u) {
+	let ignore = Array.isArray(u.ignore) ? u.ignore : [];
+	return {
+		check: bool$1(u.check, !0),
+		ignore: ignore.filter((r) => typeof r == "string")
+	};
+}
 function readSettings(raw) {
 	let s = record(raw), brand = record(s.branding), chars = record(s.characters), jobs = record(s.jobs), gangs = record(s.gangs), pay = record(s.paycheck), spawn = record(s.spawn);
 	return {
@@ -16836,6 +17018,7 @@ function readSettings(raw) {
 		vehicleKeys: str(s.vehicleKeys, "auto", 32),
 		interaction: s.interaction === "target" ? "target" : "prompt",
 		refuseOnConflict: bool$1(s.refuseOnConflict, !0),
+		updates: readUpdates(record(s.updates)),
 		spawn: { default: vec4(spawn.default, {
 			x: -1035.71,
 			y: -2731.87,
@@ -17308,7 +17491,8 @@ const SOURCES = [
 	"item",
 	"job",
 	"gang",
-	"account"
+	"account",
+	"resource"
 ], sorted = (options) => options.sort((a, b) => a.label.localeCompare(b.label));
 function lookupOptions(source) {
 	switch (source) {
@@ -17328,6 +17512,17 @@ function lookupOptions(source) {
 			value,
 			label: d.label
 		})));
+		case "resource": {
+			let out = [];
+			for (let i = 0; i < GetNumResources(); i++) {
+				let name = GetResourceByFindIndex(i);
+				name && GetResourceState(name) === "started" && out.push({
+					value: name,
+					label: name
+				});
+			}
+			return sorted(out);
+		}
 		default: return source;
 	}
 }
@@ -17336,10 +17531,95 @@ function allLookups() {
 		item: lookupOptions("item"),
 		job: lookupOptions("job"),
 		gang: lookupOptions("gang"),
-		account: lookupOptions("account")
+		account: lookupOptions("account"),
+		resource: lookupOptions("resource")
 	};
 }
 registerExport("GetLookupValues", (source) => SOURCES.includes(source) ? lookupOptions(source).map((o) => o.value) : []);
+// resource/server/versions.ts
+const CHECK_EVERY_MS = 216e5, GITHUB = /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/;
+function compare(a, b) {
+	let pa = a.replace(/^v/i, "").split(/[.-]/).map((n) => Number.parseInt(n, 10) || 0), pb = b.replace(/^v/i, "").split(/[.-]/).map((n) => Number.parseInt(n, 10) || 0);
+	for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+		let d = (pa[i] ?? 0) - (pb[i] ?? 0);
+		if (d) return d;
+	}
+	return 0;
+}
+const gameThread = () => new Promise((resolve) => setImmediate(resolve)), versions = new class {
+	outdated = new Map();
+	running = new Set();
+	list() {
+		return [...this.outdated.values()].filter((u) => this.wanted(u.resource));
+	}
+	wanted(resource) {
+		return settings.updates.check && !settings.updates.ignore.includes(resource);
+	}
+	checkAll() {
+		for (let i = 0; i < GetNumResources(); i++) {
+			let resource = GetResourceByFindIndex(i);
+			resource && GetResourceState(resource) === "started" && this.check(resource);
+		}
+	}
+	async check(resource) {
+		if (!this.wanted(resource) || this.running.has(resource)) return;
+		let repo = GITHUB.exec(GetResourceMetadata(resource, "repository", 0) ?? ""), current = GetResourceMetadata(resource, "version", 0);
+		if (repo && current) {
+			this.running.add(resource);
+			try {
+				let known = this.cached(resource), result = known && Date.now() - known.at < CHECK_EVERY_MS ? known : await this.ask(resource, repo[1] ?? "", repo[2] ?? "");
+				if (!result) return;
+				this.apply(resource, current, result);
+			} finally {
+				this.running.delete(resource);
+			}
+		}
+	}
+	cached(resource) {
+		try {
+			let raw = JSON.parse(GetResourceKvpString(`update:${resource}`) || "null");
+			return isRecord(raw) && typeof raw.at == "number" && typeof raw.url == "string" ? {
+				at: raw.at,
+				latest: typeof raw.latest == "string" ? raw.latest : null,
+				url: raw.url
+			} : null;
+		} catch {
+			return null;
+		}
+	}
+	async ask(resource, owner, name) {
+		let response = await fetch(`https://api.github.com/repos/${owner}/${name}/releases/latest`, { headers: {
+			Accept: "application/vnd.github+json",
+			"User-Agent": "ai-core-update-check"
+		} }).catch(() => null);
+		if (await gameThread(), !response) return null;
+		if (response.status === 404) return this.store(resource, {
+			at: Date.now(),
+			latest: null,
+			url: `https://github.com/${owner}/${name}`
+		});
+		if (!response.ok) return null;
+		let body = await response.json().catch(() => null);
+		return await gameThread(), !isRecord(body) || typeof body.tag_name != "string" ? null : this.store(resource, {
+			at: Date.now(),
+			latest: body.tag_name.replace(/^v/i, ""),
+			url: typeof body.html_url == "string" ? body.html_url : `https://github.com/${owner}/${name}/releases`
+		});
+	}
+	store(resource, result) {
+		return SetResourceKvp(`update:${resource}`, JSON.stringify(result)), result;
+	}
+	apply(resource, current, result) {
+		let before = this.outdated.get(resource);
+		!result.latest || compare(result.latest, current) <= 0 ? this.outdated.delete(resource) : (this.outdated.set(resource, {
+			resource,
+			current,
+			latest: result.latest,
+			url: result.url
+		}), before?.latest !== result.latest && log$3.warn(`${resource} ${current} is outdated: ${result.latest} is out (${result.url})`));
+	}
+}();
+setTimeout(() => versions.checkAll(), 15e3), setInterval(() => versions.checkAll(), CHECK_EVERY_MS), on("onServerResourceStart", (resource) => setTimeout(() => void versions.check(resource), 5e3)), panel.onChange("settings", () => versions.checkAll()), registerExport("GetUpdates", () => versions.list());
 // resource/server/admin/host.ts
 var AdminHost = class {
 	resources = new Set();
@@ -17360,7 +17640,8 @@ var AdminHost = class {
 		return {
 			panels,
 			lookups: allLookups(),
-			external: externalPanels.list()
+			external: externalPanels.list(),
+			updates: versions.list()
 		};
 	}
 	close(source) {

@@ -41,6 +41,8 @@ export interface Settings {
   interaction: "prompt" | "target";
   /** Refuse connecting players while an unneeded script runs next to the one that replaces it. */
   refuseOnConflict: boolean;
+  /** GitHub release check of every script with a `repository` line; `ignore` = resources never checked. */
+  updates: { check: boolean; ignore: string[] };
   spawn: { default: Vec4 };
   characterScene: CharacterScene;
 }
@@ -49,6 +51,11 @@ export type AccountType = AccountTypeDefinition;
 export type Grade = GradeDefinition;
 export type JobDef = JobDefinition;
 export type GangDef = GangDefinition;
+
+function readUpdates(u: Record<string, unknown>): Settings["updates"] {
+  const ignore = Array.isArray(u.ignore) ? u.ignore : [];
+  return { check: bool(u.check, true), ignore: ignore.filter((r): r is string => typeof r === "string") };
+}
 
 function readSettings(raw: unknown): Settings {
   const s = record(raw);
@@ -95,6 +102,7 @@ function readSettings(raw: unknown): Settings {
     vehicleKeys: str(s.vehicleKeys, "auto", 32),
     interaction: s.interaction === "target" ? "target" : "prompt",
     refuseOnConflict: bool(s.refuseOnConflict, true),
+    updates: readUpdates(record(s.updates)),
     spawn: {
       default: vec4(spawn.default, {
         x: -1035.71,

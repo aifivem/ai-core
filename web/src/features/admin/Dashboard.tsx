@@ -3,11 +3,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowUpRightFromSquare,
   faChevronRight,
+  faCloudArrowDown,
   faMagnifyingGlass,
 } from "@fortawesome/free-solid-svg-icons";
 import type {
   AdminPanelSnapshot,
   ExternalPanel,
+  UpdateInfo,
   WidgetSpec,
 } from "@aicore-fivem/shared";
 import { ScrollArea } from "../../components/ui/scroll-area";
@@ -141,6 +143,29 @@ function ScriptCard({
   );
 }
 
+/** Scripts with a newer GitHub release: what runs, what is out, where to get it. */
+function Updates({ updates, t }: { updates: UpdateInfo[]; t: (key: string, ...args: string[]) => string }) {
+  return (
+    <section className="flex flex-col gap-[1vh]">
+      <h2 className="flex items-center gap-[0.8vh] text-[1.2vh] font-semibold text-tgi-green uppercase">
+        <FontAwesomeIcon icon={faCloudArrowDown} aria-hidden />
+        {t("ADMIN_UPDATES")}
+      </h2>
+      <div className="flex flex-col gap-[0.6vh]">
+        {updates.map((u) => (
+          <div key={u.resource} className="flex h-[5vh] items-center gap-[1.2vh] rounded-[0.9vh] bg-row px-[1.4vh]">
+            <span className="font-mono text-[1.35vh] font-medium">{u.resource}</span>
+            <span className="rounded-full bg-tgi-green-15 px-[0.9vh] py-[0.3vh] text-[1.15vh] font-semibold text-tgi-green tabular-nums">
+              {t("ADMIN_UPDATE_TO", u.current, u.latest)}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-right font-mono text-[1.15vh] text-text-3 select-text">{u.url}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function ExternalCard({
   panel,
   t,
@@ -184,6 +209,7 @@ function ExternalCard({
 export function Dashboard() {
   const panels = useAppSelector((state) => state.admin.panels);
   const external = useAppSelector((state) => state.admin.external);
+  const updates = useAppSelector((state) => state.admin.updates);
   const core = useAppSelector((state) => state.admin.texts);
   const t = (key: string, ...args: string[]) =>
     (core[key] ?? key).replace(
@@ -228,6 +254,7 @@ export function Dashboard() {
       </label>
       <ScrollArea className="-mr-[1.2vh] min-h-0 flex-1 pr-[1.2vh]">
         <div className="flex flex-col gap-[2.4vh] pb-[1vh]">
+          {!q && updates.length > 0 && <Updates updates={updates} t={t} />}
           {q && hits.length > 0 && (
             <section className="flex flex-col gap-[0.6vh]">
               {hits.map((hit, i) => (

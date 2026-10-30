@@ -20,6 +20,7 @@ import { commandRegistry } from "./commands";
 import { externalPanels } from "./external";
 import { readKeybinds, reportKeybinds } from "./keybinds";
 import { allLookups } from "./lookups";
+import { versions } from "../versions";
 
 /**
  * The admin panel host: every ai-* resource with a panel registers here; ai-core checks the admin, opens the panel
@@ -47,7 +48,7 @@ class AdminHost {
       const panel = this.call(resource);
       if (panel) panels.push(panel.AdminPanelSnapshot());
     }
-    return { panels, lookups: allLookups(), external: externalPanels.list() };
+    return { panels, lookups: allLookups(), external: externalPanels.list(), updates: versions.list() };
   }
 
   close(source: number): void {

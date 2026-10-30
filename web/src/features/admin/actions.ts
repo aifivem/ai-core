@@ -1,11 +1,5 @@
 import { fetchNui } from "fivem-nui-react";
-import type {
-  AdminPanelSnapshot,
-  AdminPatch,
-  AdminResult,
-  ExternalPanel,
-  Lookups,
-} from "@aicore-fivem/shared";
+import type { AdminPanelSnapshot, AdminPatch, AdminResult, ExternalPanel, Lookups, UpdateInfo } from "@aicore-fivem/shared";
 import { NuiCallback } from "../../../../resource/common/nui";
 import { mockAdminApply } from "../../dev/adminMock";
 import { router } from "../../router";
@@ -63,8 +57,9 @@ export function openPanel(
   texts: Record<string, string>,
   lookups: Lookups,
   external: ExternalPanel[],
+  updates: UpdateInfo[],
 ): void {
-  store.dispatch(opened({ panels, texts, lookups, external }));
+  store.dispatch(opened({ panels, texts, lookups, external, updates }));
   const params: Record<string, unknown> =
     router.state.matches.at(-1)?.params ?? {};
   if (typeof params.id === "string" && external.some((e) => e.id === params.id))

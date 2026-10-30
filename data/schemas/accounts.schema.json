@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ai-core/data/accounts.json",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "This file's JSON Schema (for editors)."
+    }
+  },
+  "patternProperties": {
+    "^[a-z0-9_]{2,32}$": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "description": "Name",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 48
+        },
+        "start": {
+          "description": "Starting amount: What a new character has in this account.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000000
+        },
+        "allowNegative": {
+          "description": "Can go below zero: On: spending is allowed with an empty account (debt).",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "label",
+        "start",
+        "allowNegative"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

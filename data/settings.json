@@ -1,4 +1,5 @@
 {
+  "$schema": "./schemas/settings.schema.json",
   "branding": {
     "name": "Los Santos",
     "subtitle": "Roleplay",
@@ -144,5 +145,9 @@
   "inventory": "auto",
   "vehicleKeys": "auto",
   "refuseOnConflict": true,
-  "interaction": "prompt"
+  "interaction": "prompt",
+  "updates": {
+    "check": true,
+    "ignore": []
+  }
 }

@@ -3,6 +3,7 @@ author 'ai-core'
 version '0.1.0'
 license 'GPL-3.0-only'
 description 'ai-core framework: players, characters, money, jobs, permissions, admin panel'
+repository 'https://github.com/TGIANN/ai-core'
 fx_version 'cerulean'
 game 'gta5'
 node_version '22'
@@ -31,8 +32,8 @@ files {
 	'locales/*.json',
 	'dist/web/*.html',
 	'dist/web/backgrounds/*.jpg',
-	'dist/web/assets/*.css',
 	'dist/web/assets/*.js',
+	'dist/web/assets/*.css',
 	'dist/web/assets/*.woff',
 	'dist/web/assets/*.woff2',
 	'data/keybinds.json',

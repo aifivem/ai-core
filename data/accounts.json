@@ -1,6 +1,23 @@
 {
-  "cash": { "label": "Cash", "start": 500, "allowNegative": false },
-  "bank": { "label": "Bank", "start": 5000, "allowNegative": false },
-  "black_money": { "label": "Dirty money", "start": 0, "allowNegative": false },
-  "crypto": { "label": "Crypto", "start": 0, "allowNegative": false }
+  "$schema": "./schemas/accounts.schema.json",
+  "cash": {
+    "label": "Cash",
+    "start": 500,
+    "allowNegative": false
+  },
+  "bank": {
+    "label": "Bank",
+    "start": 5000,
+    "allowNegative": false
+  },
+  "black_money": {
+    "label": "Dirty money",
+    "start": 0,
+    "allowNegative": false
+  },
+  "crypto": {
+    "label": "Crypto",
+    "start": 0,
+    "allowNegative": false
+  }
 }

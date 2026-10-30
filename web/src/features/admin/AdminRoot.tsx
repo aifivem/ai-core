@@ -4,12 +4,7 @@ import { motion } from "motion/react";
 import { useNuiEvent } from "fivem-nui-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDoorOpen } from "@fortawesome/free-solid-svg-icons";
-import type {
-  AdminDelta,
-  AdminPanelSnapshot,
-  ExternalPanel,
-  Lookups,
-} from "@aicore-fivem/shared";
+import type { AdminDelta, AdminPanelSnapshot, ExternalPanel, Lookups, UpdateInfo } from "@aicore-fivem/shared";
 import { NuiMessage } from "../../../../resource/common/nui";
 import { mockAdminOpen } from "../../dev/adminMock";
 import { store, useAppSelector } from "../../store";
@@ -25,15 +20,16 @@ import { TableView } from "./TableView";
 // One options object: a new one per render would re-subscribe (and re-fire the browser mock) on every render.
 const OPEN_OPTIONS = { mockData: mockAdminOpen(), mockDelay: 300 };
 
-const NO_LOOKUPS: Lookups = { item: [], job: [], gang: [], account: [] };
+const NO_LOOKUPS: Lookups = { item: [], job: [], gang: [], account: [], resource: [] };
 
 function onOpen(value: unknown): void {
   if (typeof value !== "object" || value === null) return;
-  const { panels, texts, lookups, external } = value as {
+  const { panels, texts, lookups, external, updates } = value as {
     panels?: unknown;
     texts?: unknown;
     lookups?: unknown;
     external?: unknown;
+    updates?: unknown;
   };
   // ai-core builds these objects itself; only the outer shape is checked.
   if (!Array.isArray(panels)) return;
@@ -46,6 +42,7 @@ function onOpen(value: unknown): void {
       ? { ...NO_LOOKUPS, ...(lookups as Partial<Lookups>) }
       : NO_LOOKUPS,
     Array.isArray(external) ? (external as ExternalPanel[]) : [],
+    Array.isArray(updates) ? (updates as UpdateInfo[]) : [],
   );
 }
 
