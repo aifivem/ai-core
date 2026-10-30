@@ -1,12 +1,14 @@
 import { resourceExport } from "@aicore-fivem/lib/server";
 import { isRecord } from "@aicore-fivem/lib/shared";
 import { CORE, type InventoryAdapter } from "@aicore-fivem/shared";
-import { definition, definitions, stack } from "../parse";
+import { definition, definitions, stack, type ImageOf } from "../parse";
 
 /** ai-inventory, the default inventory (own exports, `@aicore-fivem/shared` `AiInventoryServerExports`). */
 
 const RESOURCE = "ai-inventory";
 const inv = () => resourceExport(RESOURCE);
+const imageOf: ImageOf = (_name, image) =>
+  image ? `nui://${RESOURCE}/dist/web/images/${image}` : undefined;
 
 export const aiInventory: InventoryAdapter = {
   resource: RESOURCE,
@@ -35,8 +37,8 @@ export const aiInventory: InventoryAdapter = {
       stash.jobs,
     ),
   openInventory: (source, ref) => inv().OpenInventory(source, ref) === true,
-  getItemDefinition: (name) => definition(inv().Items(name), name),
-  getItemDefinitions: () => definitions(inv().Items()),
+  getItemDefinition: (name) => definition(inv().Items(name), name, imageOf),
+  getItemDefinitions: () => definitions(inv().Items(), imageOf),
   registerUsableItem: (name, handler) =>
     inv().RegisterUsableItem(name, handler),
 };

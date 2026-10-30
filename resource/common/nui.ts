@@ -26,6 +26,11 @@ export const NuiMessage = {
   menuOpen: "menuOpen",
   /** data: InputRequest */
   inputOpen: "inputOpen",
+  /** data: { binds: KeyboardBind[], texts }, the keys screen opens. */
+  keyboardOpen: "keyboardOpen",
+  keyboardClose: "keyboardClose",
+  /** data: { title, items: PickerItem[] } */
+  itemsOpen: "itemsOpen",
   dialogClose: "dialogClose",
   /** data: SetupWelcome & { texts }, the setup guide is not finished: the welcome card shows. */
   setupWelcome: "setupWelcome",
@@ -63,6 +68,21 @@ export const NuiCallback = {
   dialogAnswer: "dialogAnswer",
   /** ({ id }) -> true, the pointer or focus moved onto a menu item. */
   dialogHover: "dialogHover",
+  /** ({ id, checked }) -> true, a switch row of the menu was flipped (the menu stays open). */
+  dialogToggle: "dialogToggle",
+  /** () -> true, the keys screen closed. */
+  keyboardClose: "keyboardClose",
+  /** ({ name, count }) -> true, an item picked in the item picker (it stays open). */
+  dialogPickItem: "dialogPickItem",
   /** ({ openPanel: boolean }) -> true, the welcome card closed (an admin may open the panel from it). */
   setupWelcomeClose: "setupWelcomeClose",
 } as const;
+
+/** One keybind as the keys screen lists it (the key as the player has it bound now). */
+export interface KeyboardBind {
+  name: string;
+  key: string;
+  label: string;
+  resource: string;
+  mouse: boolean;
+}

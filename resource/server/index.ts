@@ -1,4 +1,5 @@
 import "./admin/host";
+import "./admin/items";
 import { gangs, jobs, panel } from "./content";
 import { databaseReady } from "./database";
 import { resetDutyCounts } from "./jobs/dutyCount";

@@ -1,6 +1,7 @@
 import { callExport } from "@aicore-fivem/lib/server";
 import type { InventoryAdapter } from "@aicore-fivem/shared";
 import {
+  type ImageOf,
   definition,
   definitions,
   first,
@@ -9,6 +10,10 @@ import {
   rows,
   stack,
 } from "../parse";
+
+/** ox_inventory pictures: `web/images/<name>.png` unless the item names its own file. */
+const oxImage: ImageOf = (name, image) =>
+  `nui://ox_inventory/web/images/${image || `${name}.png`}`;
 
 /**
  * ox_inventory (modules/inventory/server.lua, server.lua, modules/items/server.lua of 2.48.1). `AddItem` /
@@ -58,6 +63,7 @@ export const oxInventory: InventoryAdapter = {
         ref,
       ),
     ) != null,
-  getItemDefinition: (name) => definition(call("Items", name), name),
-  getItemDefinitions: () => definitions(call("Items")),
+  getItemDefinition: (name) =>
+    definition(call("Items", name), name, oxImage),
+  getItemDefinitions: () => definitions(call("Items"), oxImage),
 };

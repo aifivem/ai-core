@@ -93,7 +93,8 @@ class KeybindDefaults {
 
 function toKeybindInfo(value: unknown): KeybindInfo | null {
   if (!isRecord(value)) return null;
-  const { resource, name, description, defaultKey, mapper, hint } = value;
+  const { resource, name, description, defaultKey, mapper, hint, icon } =
+    value;
   if (
     typeof resource !== "string" ||
     typeof name !== "string" ||
@@ -112,6 +113,7 @@ function toKeybindInfo(value: unknown): KeybindInfo | null {
       hint === "foot" || hint === "vehicle" || hint === "always"
         ? hint
         : undefined,
+    icon: typeof icon === "string" ? icon.slice(0, 32) : undefined,
   };
 }
 

@@ -18,16 +18,44 @@ const answer = (value: unknown) =>
   void fetchNui(NuiCallback.dialogAnswer, { value }, { mockData: true });
 const hover = (id: string) =>
   void fetchNui(NuiCallback.dialogHover, { id }, { mockData: true });
+const toggle = (id: string, checked: boolean) =>
+  void fetchNui(NuiCallback.dialogToggle, { id, checked }, { mockData: true });
 const MENU_OPTIONS = { mockData: MENU_MOCK, mockDelay: 200 };
 /** Holding Escape this long closes the whole menu flow. */
 const HOLD_MS = 600;
 
-/** A resource's menu (tgiann-core menu): title pill and a list on the right; hover fills a row green; click picks, Escape closes (answers null). */
+/** On / off pill of a switch row. */
+function SwitchPill({ on }: { on: boolean }) {
+  return (
+    <span
+      className={`relative ml-auto h-[2vh] w-[3.6vh] shrink-0 rounded-full transition-colors duration-150 ${on ? "bg-tgi-green group-enabled:group-focus:bg-black/25" : "bg-white/15 group-enabled:group-focus:bg-black/15"}`}
+    >
+      <span
+        className="absolute top-[0.25vh] left-[0.25vh] size-[1.5vh] rounded-full bg-white transition-transform duration-150"
+        style={{ transform: on ? "translateX(1.6vh)" : "translateX(0)" }}
+      />
+    </span>
+  );
+}
+
+/**
+ * A resource's menu (tgiann-core menu): title pill and a list on the right; the row under the pointer or keyboard
+ * focus fills green (one highlight: the pointer moves the focus); click picks, a switch row flips in place, Escape
+ * closes (answers null).
+ */
 function MenuPanel({ menu, holding }: { menu: MenuRequest; holding: boolean }) {
-  // The first item takes the focus, so arrows and Enter work at once.
+  const [checks, setChecks] = useState<Record<string, boolean>>({});
+  // The first item takes the focus, so arrows and Enter work at once; switch rows start from the request.
   useEffect(() => {
+    setChecks(
+      Object.fromEntries(
+        menu.items.flatMap((i) =>
+          i.checked === undefined ? [] : [[i.id, i.checked]],
+        ),
+      ),
+    );
     document
-      .querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')
+      .querySelector<HTMLButtonElement>('[role^="menuitem"]:not(:disabled)')
       ?.focus();
   }, [menu]);
   return (
@@ -63,32 +91,39 @@ function MenuPanel({ menu, holding }: { menu: MenuRequest; holding: boolean }) {
       <div className="flex max-h-[60vh] flex-col gap-[0.4vh] overflow-y-auto rounded-[1.4vh] bg-panel p-[0.6vh]">
         {menu.items.map((item) => {
           const icon = item.icon ? iconOf(item.icon) : null;
+          const checked = checks[item.id];
           return (
             <button
               key={item.id}
               type="button"
-              role="menuitem"
+              role={checked === undefined ? "menuitem" : "menuitemcheckbox"}
+              aria-checked={checked}
               disabled={item.disabled}
-              onClick={() => answer(item.id)}
-              onMouseEnter={() => hover(item.id)}
+              onClick={() => {
+                if (checked === undefined) return answer(item.id);
+                setChecks((c) => ({ ...c, [item.id]: !checked }));
+                toggle(item.id, !checked);
+              }}
+              onMouseEnter={(e) => e.currentTarget.focus()}
               onFocus={() => hover(item.id)}
-              className="group flex min-h-[5vh] items-center gap-[1.2vh] rounded-[0.9vh] px-[0.8vh] py-[0.7vh] text-left transition-colors duration-150 enabled:hover:bg-tgi-green enabled:focus-visible:bg-tgi-green disabled:cursor-not-allowed disabled:opacity-40"
+              className="group flex min-h-[5vh] items-center gap-[1.2vh] rounded-[0.9vh] px-[0.8vh] py-[0.7vh] text-left transition-colors duration-150 outline-none enabled:focus:bg-tgi-green disabled:cursor-not-allowed disabled:opacity-40"
             >
               {icon && (
-                <span className="flex size-[3.4vh] shrink-0 items-center justify-center rounded-full bg-tgi-green-10 text-[1.4vh] text-tgi-green transition-colors duration-150 group-enabled:group-hover:bg-black/10 group-enabled:group-hover:text-tgi-green-text group-enabled:group-focus-visible:bg-black/10 group-enabled:group-focus-visible:text-tgi-green-text">
+                <span className="flex size-[3.4vh] shrink-0 items-center justify-center rounded-full bg-tgi-green-10 text-[1.4vh] text-tgi-green transition-colors duration-150 group-enabled:group-focus:bg-black/10 group-enabled:group-focus:text-tgi-green-text">
                   <FontAwesomeIcon icon={icon} />
                 </span>
               )}
               <span className="flex min-w-0 flex-col gap-[0.2vh]">
-                <span className="truncate text-[1.45vh] font-semibold uppercase transition-colors duration-150 group-enabled:group-hover:text-tgi-green-text group-enabled:group-focus-visible:text-tgi-green-text">
+                <span className="truncate text-[1.45vh] font-semibold uppercase transition-colors duration-150 group-enabled:group-focus:text-tgi-green-text">
                   {item.label}
                 </span>
                 {item.description && (
-                  <span className="truncate text-[1.25vh] text-text-3 transition-colors duration-150 group-enabled:group-hover:text-tgi-green-text group-enabled:group-focus-visible:text-tgi-green-text">
+                  <span className="truncate text-[1.25vh] text-text-3 transition-colors duration-150 group-enabled:group-focus:text-tgi-green-text">
                     {item.description}
                   </span>
                 )}
               </span>
+              {checked !== undefined && <SwitchPill on={checked} />}
             </button>
           );
         })}
@@ -195,14 +230,16 @@ export function Dialogs() {
 
   useEffect(() => {
     if (!menu) return;
-    // Escape: a tap goes back in a sub menu (closes a top menu), holding it closes the whole flow.
+    // Escape: a tap goes back in a sub menu (closes a top menu), holding it closes the whole flow. Both answer when the
+    // key comes up: closing while it is still down hands the release to the game, which opens the pause menu.
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let held = false;
     const down = (e: KeyboardEvent) => {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
         const items = [
           ...document.querySelectorAll<HTMLButtonElement>(
-            '[role="menuitem"]:not(:disabled)',
+            '[role^="menuitem"]:not(:disabled)',
           ),
         ];
         const at = items.indexOf(document.activeElement as HTMLButtonElement);
@@ -213,20 +250,20 @@ export function Dialogs() {
         items[at === -1 ? 0 : next]?.focus();
         return;
       }
-      if (e.key !== "Escape" || e.repeat || timer) return;
+      if (e.key !== "Escape" || e.repeat || timer || held) return;
       setHolding(true);
       timer = setTimeout(() => {
         timer = null;
-        setHolding(false);
-        answer(null);
+        held = true;
       }, HOLD_MS);
     };
     const up = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || !timer) return;
-      clearTimeout(timer);
+      if (e.key !== "Escape" || (!timer && !held)) return;
+      if (timer) clearTimeout(timer);
       timer = null;
       setHolding(false);
-      answer(menu.back ? MENU_BACK : null);
+      answer(held || !menu.back ? null : MENU_BACK);
+      held = false;
     };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);

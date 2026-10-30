@@ -57,9 +57,17 @@ export function stack(
   };
 }
 
+/** Turns an item's picture field (a file name, or nothing) into a url the NUI can load. */
+export type ImageOf = (name: string, image: string) => string | undefined;
+
 /** An item definition in ox, QB or tgiann shape. */
-export function definition(raw: unknown, name: string): ItemDefinition | null {
+export function definition(
+  raw: unknown,
+  name: string,
+  imageOf?: ImageOf,
+): ItemDefinition | null {
   if (!isRecord(raw)) return null;
+  const image = typeof raw.image === "string" ? raw.image : "";
   return {
     name: text(raw.name, name),
     label: label(raw.label, name),
@@ -67,15 +75,21 @@ export function definition(raw: unknown, name: string): ItemDefinition | null {
     unique: raw.unique === true || raw.stack === false,
     close: (raw.close ?? raw.shouldClose) !== false,
     description: label(raw.description, ""),
+    image: /^(https?|nui):\/\//.test(image)
+      ? image
+      : imageOf?.(text(raw.name, name), image),
   };
 }
 
 /** Every definition of an item list keyed by name. */
-export function definitions(raw: unknown): Record<string, ItemDefinition> {
+export function definitions(
+  raw: unknown,
+  imageOf?: ImageOf,
+): Record<string, ItemDefinition> {
   const out: Record<string, ItemDefinition> = {};
   if (!isRecord(raw)) return out;
   for (const [name, value] of Object.entries(raw)) {
-    const def = definition(value, name);
+    const def = definition(value, name, imageOf);
     if (def) out[name] = def;
   }
   return out;

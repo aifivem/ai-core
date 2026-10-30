@@ -10,7 +10,7 @@ import { keybinds } from "./keybinds";
 const WHEN = new Set(["foot", "vehicle", "always", "never"]);
 
 /** The key a player has bound to a keybind's mapping now (they may have changed it in GTA's settings). */
-function boundKey(name: string): string {
+export function boundKey(name: string): string {
   const key = keybinds.keyOf(name);
   if (key === null) return "";
   const command = key ? `+${name}_${key}` : `+${name}`;
@@ -51,11 +51,12 @@ class KeyHints {
       if (choice === "foot" && inVehicle) continue;
       if (choice === "vehicle" && !inVehicle) continue;
       const key = boundKey(name);
-      if (key) list.push({ id: name, key, label: info.description });
+      if (key)
+        list.push({ id: name, key, label: info.description, icon: info.icon });
     }
     for (const [id, hint] of this.extra) {
       const key = hint.keybind ? boundKey(hint.keybind) : (hint.key ?? "");
-      if (key) list.push({ id, key, label: hint.label });
+      if (key) list.push({ id, key, label: hint.label, icon: hint.icon });
     }
     const text = JSON.stringify(list);
     if (text === this.last) return;
@@ -86,6 +87,7 @@ const toRequest = (v: unknown): KeyHintRequest | null =>
         label: v.label.slice(0, 60),
         keybind: typeof v.keybind === "string" ? v.keybind : undefined,
         key: typeof v.key === "string" ? v.key.slice(0, 16) : undefined,
+        icon: typeof v.icon === "string" ? v.icon.slice(0, 32) : undefined,
       }
     : null;
 

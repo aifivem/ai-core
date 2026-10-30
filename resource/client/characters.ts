@@ -156,9 +156,9 @@ onServerEvent(
   { args: ([raw]) => toSpawn(raw) },
   async (spawn) => {
     try {
-      // The screen fades out with the game (CSS opacity, 800 ms), then closes on black.
+      // The screen is gone (CSS opacity, 200 ms) well before the game is black, then closes.
       SendNUIMessage({ action: NuiMessage.leaveCharacters });
-      DoScreenFadeOut(800);
+      DoScreenFadeOut(500);
       await waitFor(() => IsScreenFadedOut() || undefined, 2000).catch(
         () => undefined,
       );

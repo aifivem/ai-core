@@ -63,7 +63,7 @@ class HudVisibility {
   }
 }
 
-const visibility = new HudVisibility();
+export const visibility = new HudVisibility();
 const owner = () => GetInvokingResource() || CORE.resource;
 registerExport(
   "HideHud",

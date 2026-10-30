@@ -1,4 +1,4 @@
-import { registerExport } from "@aicore-fivem/lib/client";
+import { registerExport, TickLoop } from "@aicore-fivem/lib/client";
 import { logSafe } from "@aicore-fivem/lib/shared";
 import {
   MENU_EVENTS,
@@ -28,6 +28,8 @@ function toMenu(v: unknown): MenuRequest | null {
                 ? logSafe(i.description, 160)
                 : undefined,
             disabled: i.disabled === true,
+            checked:
+              typeof i.checked === "boolean" ? i.checked : undefined,
           },
         ]
       : [],
@@ -79,29 +81,47 @@ function toInput(v: unknown): InputRequest | null {
 }
 
 /**
+ * Escape closes the dialogs: the game must not open the pause menu with the same key press once the focus is gone.
+ */
+class PauseGuard {
+  private until = 0;
+  private readonly frame = new TickLoop(() => {
+    if (GetGameTimer() > this.until) return this.frame.set(false);
+    DisableControlAction(0, 199, true);
+    DisableControlAction(0, 200, true);
+  });
+
+  set(on: boolean): void {
+    if (on) this.until = GetGameTimer() + 500;
+    this.frame.set(on);
+  }
+}
+
+export const pauseGuard = new PauseGuard();
+
+/**
  * The menu and input dialog every resource opens through lib `menu` / `input`: one at a time; opening a new one answers
  * the previous request with null. The answer goes back to the asking resource as a local event.
  */
+type DialogKind = "menu" | "input" | "items";
+const OPEN_MESSAGE: Record<DialogKind, string> = {
+  menu: NuiMessage.menuOpen,
+  input: NuiMessage.inputOpen,
+  items: NuiMessage.itemsOpen,
+};
+
 class Dialogs {
   private current: {
-    kind: "menu" | "input";
+    kind: DialogKind;
     resource: string;
     id: number;
   } | null = null;
 
-  open(
-    kind: "menu" | "input",
-    resource: string,
-    id: number,
-    data: MenuRequest | InputRequest,
-  ): void {
+  open(kind: DialogKind, resource: string, id: number, data: unknown): void {
     this.answer(null);
     this.current = { kind, resource, id };
     SetNuiFocus(true, true);
-    SendNUIMessage({
-      action: kind === "menu" ? NuiMessage.menuOpen : NuiMessage.inputOpen,
-      data,
-    });
+    SendNUIMessage({ action: OPEN_MESSAGE[kind], data });
   }
 
   answer(value: unknown): void {
@@ -109,15 +129,43 @@ class Dialogs {
     if (!current) return;
     this.current = null;
     SetNuiFocus(false, false);
+    pauseGuard.set(true);
     SendNUIMessage({ action: NuiMessage.dialogClose });
     emit(
-      current.kind === "menu"
-        ? MENU_EVENTS.menuResult
-        : MENU_EVENTS.inputResult,
+      current.kind === "input"
+        ? MENU_EVENTS.inputResult
+        : MENU_EVENTS.menuResult,
       current.resource,
       current.id,
       value,
     );
+  }
+
+  toggle(item: unknown, checked: unknown): void {
+    if (
+      this.current?.kind === "menu" &&
+      typeof item === "string" &&
+      typeof checked === "boolean"
+    )
+      emit(
+        MENU_EVENTS.menuToggle,
+        this.current.resource,
+        this.current.id,
+        item,
+        checked,
+      );
+  }
+
+  /** An item picked in the item picker (it stays open). */
+  pick(name: string, count: number): void {
+    if (this.current?.kind === "items")
+      emit(
+        MENU_EVENTS.itemPicked,
+        this.current.resource,
+        this.current.id,
+        name,
+        count,
+      );
   }
 
   hover(item: unknown): void {
@@ -131,7 +179,7 @@ class Dialogs {
   }
 }
 
-const dialogs = new Dialogs();
+export const dialogs = new Dialogs();
 
 registerExport("OpenMenu", (id: unknown, request: unknown) => {
   const menu = toMenu(request);
@@ -155,6 +203,13 @@ RegisterNuiCallback(
   NuiCallback.dialogHover,
   (data: unknown, cb: (r: unknown) => void) => {
     dialogs.hover(isObj(data) ? data.id : null);
+    cb(true);
+  },
+);
+RegisterNuiCallback(
+  NuiCallback.dialogToggle,
+  (data: unknown, cb: (r: unknown) => void) => {
+    if (isObj(data)) dialogs.toggle(data.id, data.checked);
     cb(true);
   },
 );

@@ -8,6 +8,8 @@ import "./cacheWatch";
 import "./prompts";
 import "./notify";
 import "./menu";
+import "./itemPicker";
+import "./keyboard";
 import "./inventory";
 import "./vehicleKeys";
 import "./vehicles";

@@ -78,7 +78,7 @@ export function CharacterScreen() {
   return (
     <div
       className={cn(
-        "absolute inset-0 animate-fade transition-opacity duration-[800ms] ease-out",
+        "absolute inset-0 animate-fade transition-opacity duration-200 ease-out",
         !scene && "bg-page",
         leaving && "pointer-events-none opacity-0",
       )}

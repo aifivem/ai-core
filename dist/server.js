@@ -16899,27 +16899,30 @@ function stack(row, labelOf) {
 		metadata: metadata(row.metadata ?? row.info)
 	} : null;
 }
-function definition(raw, name) {
-	return isRecord(raw) ? {
+function definition(raw, name, imageOf) {
+	if (!isRecord(raw)) return null;
+	let image = typeof raw.image == "string" ? raw.image : "";
+	return {
 		name: text$5(raw.name, name),
 		label: label(raw.label, name),
 		weight: number(raw.weight),
 		unique: raw.unique === !0 || raw.stack === !1,
 		close: (raw.close ?? raw.shouldClose) !== !1,
-		description: label(raw.description, "")
-	} : null;
+		description: label(raw.description, ""),
+		image: /^(https?|nui):\/\//.test(image) ? image : imageOf?.(text$5(raw.name, name), image)
+	};
 }
-function definitions(raw) {
+function definitions(raw, imageOf) {
 	let out = {};
 	if (!isRecord(raw)) return out;
 	for (let [name, value] of Object.entries(raw)) {
-		let def = definition(value, name);
+		let def = definition(value, name, imageOf);
 		def && (out[name] = def);
 	}
 	return out;
 }
 // resource/server/inventory/adapters/ai-inventory.ts
-const RESOURCE$3 = "ai-inventory", inv = () => resourceExport(RESOURCE$3), aiInventory = {
+const RESOURCE$3 = "ai-inventory", inv = () => resourceExport(RESOURCE$3), imageOf = (_name, image) => image ? `nui://${RESOURCE$3}/dist/web/images/${image}` : void 0, aiInventory = {
 	resource: RESOURCE$3,
 	version: "0.1.0",
 	addItem: (ref, item, count, metadata, slot) => inv().AddItem(ref, item, count, metadata, slot) === !0,
@@ -16933,15 +16936,15 @@ const RESOURCE$3 = "ai-inventory", inv = () => resourceExport(RESOURCE$3), aiInv
 	clearInventory: (ref) => inv().ClearInventory(ref),
 	registerStash: (stash) => inv().RegisterStash(stash.name, stash.label, stash.slots, stash.maxWeight, stash.jobs),
 	openInventory: (source, ref) => inv().OpenInventory(source, ref) === !0,
-	getItemDefinition: (name) => definition(inv().Items(name), name),
-	getItemDefinitions: () => definitions(inv().Items()),
+	getItemDefinition: (name) => definition(inv().Items(name), name, imageOf),
+	getItemDefinitions: () => definitions(inv().Items(), imageOf),
 	registerUsableItem: (name, handler) => inv().RegisterUsableItem(name, handler)
 };
 on("ai-inventory:usedItem", (source, name, _slot, _metadata, status) => {
 	emit(CORE.itemUsedEvent, source, name, isRecord(status) ? status : null);
 });
 // resource/server/inventory/adapters/ox_inventory.ts
-const RESOURCE$2 = "ox_inventory", call$3 = (name, ...args) => callExport(RESOURCE$2, name, ...args), oxInventory = {
+const oxImage = (name, image) => `nui://ox_inventory/web/images/${image || `${name}.png`}`, RESOURCE$2 = "ox_inventory", call$3 = (name, ...args) => callExport(RESOURCE$2, name, ...args), oxInventory = {
 	resource: RESOURCE$2,
 	version: "2.48.1",
 	addItem: (ref, item, count, metadata, slot) => isTrue(call$3("AddItem", ref, item, count, metadata, slot)),
@@ -16952,8 +16955,8 @@ const RESOURCE$2 = "ox_inventory", call$3 = (name, ...args) => callExport(RESOUR
 	clearInventory: (ref) => void call$3("ClearInventory", ref),
 	registerStash: (stash) => void call$3("RegisterStash", stash.name, stash.label, stash.slots, stash.maxWeight, void 0, stash.jobs.length ? Object.fromEntries(stash.jobs.map((job) => [job, 0])) : void 0),
 	openInventory: (source, ref) => first(call$3("forceOpenInventory", source, typeof ref == "number" ? "player" : "stash", ref)) != null,
-	getItemDefinition: (name) => definition(call$3("Items", name), name),
-	getItemDefinitions: () => definitions(call$3("Items"))
+	getItemDefinition: (name) => definition(call$3("Items", name), name, oxImage),
+	getItemDefinitions: () => definitions(call$3("Items"), oxImage)
 }, RESOURCE$1 = "qb-inventory", call$2 = (name, ...args) => callExport(RESOURCE$1, name, ...args);
 function itemsOf$1(ref) {
 	if (typeof ref == "string") {
@@ -17848,7 +17851,17 @@ registerExport("RegisterAdminPanel", (resource) => {
 		windowMs: 1e4
 	},
 	args: ([resource, patch]) => typeof resource == "string" ? [resource, patch] : null
-}, (source, resource, patch) => adminHost.apply(source, resource, patch)), onClientEvent(ADMIN.closeEvent, (source) => adminHost.close(source)), on("playerDropped", () => adminHost.close(Number(globalThis.source))), on("onResourceStop", (resource) => adminHost.unregister(resource)), mysql.setPoolSize(GetConvarInt("ai_core_pool_size", 10));
+}, (source, resource, patch) => adminHost.apply(source, resource, patch)), onClientEvent(ADMIN.closeEvent, (source) => adminHost.close(source)), on("playerDropped", () => adminHost.close(Number(globalThis.source))), on("onResourceStop", (resource) => adminHost.unregister(resource)), onClientCallback("ai-core:admin:items", () => Object.entries(inventory.call("GetItemDefinitions", (a) => a.getItemDefinitions(), {})).map(([name, d]) => ({
+	name,
+	label: d.label || name,
+	image: d.image
+})).sort((a, b) => a.label.localeCompare(b.label)), {
+	guards: [isAdmin()],
+	rate: {
+		count: 2,
+		windowMs: 2e3
+	}
+}), mysql.setPoolSize(GetConvarInt("ai_core_pool_size", 10));
 const databaseReady = createDatabaseTables(ResourceName, "sql/main.sql").catch((error) => {
 	throw log$3.error("database setup failed", error), error;
 }), counts = new Map(), published = new GlobalGroup("ai:duty:", stateNumber);
