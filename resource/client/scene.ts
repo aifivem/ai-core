@@ -11,6 +11,7 @@ import type {
   Sex,
 } from "@aicore-fivem/shared";
 import { SceneCamera } from "./sceneCamera";
+import { worldSync } from "./world";
 
 const log = createLogger("ai-core");
 const MODELS: Record<Sex, string> = {
@@ -18,8 +19,6 @@ const MODELS: Record<Sex, string> = {
   female: "mp_f_freemode_01",
 };
 /** The weather sync pause contract (qb-weathersync's client events, answered by ai-weathersync). */
-const SYNC_OFF = "qb-weathersync:client:DisableSync";
-const SYNC_ON = "qb-weathersync:client:EnableSync";
 
 /** Swaps the player's model (freemode by sex) and resets its clothing to the defaults. */
 export async function setPlayerModel(model: string): Promise<void> {
@@ -232,7 +231,7 @@ export class SelectScene {
 
   private forceTime(time: CharacterScene["time"]): void {
     if (!time.enabled) return;
-    emit(SYNC_OFF);
+    worldSync.set("ai-core:scene", true);
     NetworkOverrideClockTime(time.hour, time.minute, 0);
     SetOverrideWeather(time.weather);
     this.timeForced = true;
@@ -243,6 +242,6 @@ export class SelectScene {
     this.timeForced = false;
     ClearOverrideWeather();
     NetworkClearClockTimeOverride();
-    emit(SYNC_ON);
+    worldSync.set("ai-core:scene", false);
   }
 }

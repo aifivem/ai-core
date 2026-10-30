@@ -18,6 +18,7 @@ import "./vehicleKeys";
 import "./interaction";
 import "./scopes";
 import "./versions";
+import "./world";
 import "./devCommands";
 
 resetDutyCounts(jobs.keys());

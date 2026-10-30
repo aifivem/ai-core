@@ -344,7 +344,7 @@ function toPatch(value) {
 		default: return null;
 	}
 }
-const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$6 = resourceExport(CORE.resource), ERR = {
+const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$7 = resourceExport(CORE.resource), ERR = {
 	type: "ADMIN_ERR_TYPE",
 	range: "ADMIN_ERR_RANGE",
 	length: "ADMIN_ERR_LENGTH",
@@ -358,7 +358,7 @@ const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(va
 		if (cached && Date.now() - cached.at < 2e3) return cached.values.size > 0 ? cached.values : null;
 		let list = [];
 		try {
-			list = core$6.GetLookupValues(source);
+			list = core$7.GetLookupValues(source);
 		} catch {}
 		let values = new Set(Array.isArray(list) ? list.filter((v) => typeof v == "string") : []);
 		return this.lists.set(source, {
@@ -560,7 +560,7 @@ function writeSchema(resource, name, text, log) {
 	(0, node_fs_promises.mkdir)(dir, { recursive: !0 }).then(() => (0, node_fs_promises.writeFile)(`${dir}/${name}.schema.json`, text, "utf8")).catch((error) => log.error(`writing ${resource}/${path} failed`, error));
 }
 // ../../../packages/lib/src/server/admin/panel.ts
-const core$5 = resourceExport(CORE.resource), DEFAULT_KEY = "^[a-z0-9_]{2,32}$";
+const core$6 = resourceExport(CORE.resource), DEFAULT_KEY = "^[a-z0-9_]{2,32}$";
 function imported(spec, value) {
 	let base = clone(spec.newRecord ?? {}), out = {};
 	for (let name of Object.keys(spec.sections)) {
@@ -581,7 +581,7 @@ var AdminPanel = class {
 	constructor(schema) {
 		this.schema = schema;
 		for (let [name, spec] of Object.entries(schema.files)) this.load(name, spec);
-		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges)), setImmediate(() => core$5.RegisterAdminPanel(this.resource));
+		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges)), setImmediate(() => core$6.RegisterAdminPanel(this.resource));
 	}
 	get(file) {
 		return this.data.get(file) ?? {};
@@ -667,7 +667,7 @@ var AdminPanel = class {
 		let spec = this.schema.files[file], data = this.get(file), value = key === void 0 ? data : data[key] ?? null;
 		this.dataFiles.get(file)?.write(data);
 		for (let handler of this.handlers.get(file) ?? []) handler(key, value);
-		if (core$5.AdminPanelChanged({
+		if (core$6.AdminPanelChanged({
 			resource: this.resource,
 			file,
 			key,
@@ -699,7 +699,7 @@ function notify(source, text, kind = "info", duration) {
 }
 resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/online.ts
-const core$3 = resourceExport(CORE.resource);
+const core$4 = resourceExport(CORE.resource);
 var OnlinePlayers = class {
 	players = new Map();
 	onDuty = new Map();
@@ -708,7 +708,7 @@ var OnlinePlayers = class {
 		if (this.started) return;
 		this.started = !0;
 		let load = (source, character) => {
-			this.put(source, character, (core$3.GetJobs(source) ?? []).map((m) => m.job), (core$3.GetGangs(source) ?? []).map((m) => m.gang)), this.setDuty(source, core$3.GetDutyJob(source));
+			this.put(source, character, (core$4.GetJobs(source) ?? []).map((m) => m.job), (core$4.GetGangs(source) ?? []).map((m) => m.gang)), this.setDuty(source, core$4.GetDutyJob(source));
 		};
 		on(CORE.playerLoadedEvent, load), on(CORE.playerUnloadedEvent, (source) => this.drop(source)), on(CORE.jobsChangedEvent, (source, jobs) => {
 			let player = this.players.get(source);
@@ -717,8 +717,8 @@ var OnlinePlayers = class {
 			let player = this.players.get(source);
 			player && (player.gangs = gangs.map((m) => m.gang));
 		}), on(CORE.dutyChangedEvent, (source, job) => this.setDuty(source, job));
-		for (let source of core$3.GetLoadedSources()) {
-			let character = core$3.GetCharacter(source);
+		for (let source of core$4.GetLoadedSources()) {
+			let character = core$4.GetCharacter(source);
 			character && load(source, character);
 		}
 	}
@@ -15325,7 +15325,10 @@ var GlobalGroup$1 = class extends Mirror {
 	set(id, value) {
 		GlobalState.set(this.prefix + id, value ?? null, !0), this.put(id, value);
 	}
-}, WriteQueue = class {
+};
+resourceExport(CORE.resource);
+// ../../../packages/lib/src/server/index.ts
+var WriteQueue = class {
 	onError;
 	tail = Promise.resolve();
 	constructor(onError) {
@@ -16864,23 +16867,23 @@ on("ai-inventory:usedItem", (source, name, _slot, _metadata, status) => {
 	emit(CORE.itemUsedEvent, source, name, isRecord(status) ? status : null);
 });
 // resource/server/inventory/adapters/ox_inventory.ts
-const RESOURCE$2 = "ox_inventory", call$2 = (name, ...args) => callExport(RESOURCE$2, name, ...args), oxInventory = {
+const RESOURCE$2 = "ox_inventory", call$3 = (name, ...args) => callExport(RESOURCE$2, name, ...args), oxInventory = {
 	resource: RESOURCE$2,
 	version: "2.48.1",
-	addItem: (ref, item, count, metadata, slot) => isTrue(call$2("AddItem", ref, item, count, metadata, slot)),
-	removeItem: (ref, item, count, metadata, slot) => isTrue(call$2("RemoveItem", ref, item, count, metadata, slot)),
-	getItemCount: (ref, item, metadata) => number(call$2("GetItemCount", ref, item, metadata)),
-	canCarryItem: (ref, item, count, metadata) => isTrue(call$2("CanCarryItem", ref, item, count, metadata)),
-	getItems: (ref) => rows(call$2("GetInventoryItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []),
-	clearInventory: (ref) => void call$2("ClearInventory", ref),
-	registerStash: (stash) => void call$2("RegisterStash", stash.name, stash.label, stash.slots, stash.maxWeight, void 0, stash.jobs.length ? Object.fromEntries(stash.jobs.map((job) => [job, 0])) : void 0),
-	openInventory: (source, ref) => first(call$2("forceOpenInventory", source, typeof ref == "number" ? "player" : "stash", ref)) != null,
-	getItemDefinition: (name) => definition(call$2("Items", name), name),
-	getItemDefinitions: () => definitions(call$2("Items"))
-}, RESOURCE$1 = "qb-inventory", call$1 = (name, ...args) => callExport(RESOURCE$1, name, ...args);
+	addItem: (ref, item, count, metadata, slot) => isTrue(call$3("AddItem", ref, item, count, metadata, slot)),
+	removeItem: (ref, item, count, metadata, slot) => isTrue(call$3("RemoveItem", ref, item, count, metadata, slot)),
+	getItemCount: (ref, item, metadata) => number(call$3("GetItemCount", ref, item, metadata)),
+	canCarryItem: (ref, item, count, metadata) => isTrue(call$3("CanCarryItem", ref, item, count, metadata)),
+	getItems: (ref) => rows(call$3("GetInventoryItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []),
+	clearInventory: (ref) => void call$3("ClearInventory", ref),
+	registerStash: (stash) => void call$3("RegisterStash", stash.name, stash.label, stash.slots, stash.maxWeight, void 0, stash.jobs.length ? Object.fromEntries(stash.jobs.map((job) => [job, 0])) : void 0),
+	openInventory: (source, ref) => first(call$3("forceOpenInventory", source, typeof ref == "number" ? "player" : "stash", ref)) != null,
+	getItemDefinition: (name) => definition(call$3("Items", name), name),
+	getItemDefinitions: () => definitions(call$3("Items"))
+}, RESOURCE$1 = "qb-inventory", call$2 = (name, ...args) => callExport(RESOURCE$1, name, ...args);
 function itemsOf$1(ref) {
 	if (typeof ref == "string") {
-		let inventory = call$1("GetInventory", ref);
+		let inventory = call$2("GetInventory", ref);
 		return isRecord(inventory) ? inventory.items : void 0;
 	}
 	let player = callExport("qb-core", "GetPlayer", ref);
@@ -16889,37 +16892,37 @@ function itemsOf$1(ref) {
 const stacksOf = (ref) => rows(itemsOf$1(ref)).flatMap((row) => stack(row, (name) => name) ?? []), qbInventory = {
 	resource: RESOURCE$1,
 	version: "2.2.3",
-	addItem: (ref, item, count, metadata, slot) => isTrue(call$1("AddItem", ref, item, count, slot, metadata)),
-	removeItem: (ref, item, count, _metadata, slot) => isTrue(call$1("RemoveItem", ref, item, count, slot)),
-	getItemCount: (ref, item) => typeof ref == "number" ? number(call$1("GetItemCount", ref, item)) : stacksOf(ref).reduce((sum, s) => s.name === item ? sum + s.count : sum, 0),
-	canCarryItem: (ref, item, count) => isTrue(call$1("CanAddItem", ref, item, count)),
+	addItem: (ref, item, count, metadata, slot) => isTrue(call$2("AddItem", ref, item, count, slot, metadata)),
+	removeItem: (ref, item, count, _metadata, slot) => isTrue(call$2("RemoveItem", ref, item, count, slot)),
+	getItemCount: (ref, item) => typeof ref == "number" ? number(call$2("GetItemCount", ref, item)) : stacksOf(ref).reduce((sum, s) => s.name === item ? sum + s.count : sum, 0),
+	canCarryItem: (ref, item, count) => isTrue(call$2("CanAddItem", ref, item, count)),
 	getItems: stacksOf,
-	clearInventory: (ref) => void call$1(typeof ref == "number" ? "ClearInventory" : "ClearStash", ref),
-	registerStash: (stash) => void call$1("CreateInventory", stash.name, {
+	clearInventory: (ref) => void call$2(typeof ref == "number" ? "ClearInventory" : "ClearStash", ref),
+	registerStash: (stash) => void call$2("CreateInventory", stash.name, {
 		label: stash.label,
 		maxweight: stash.maxWeight,
 		slots: stash.slots
 	}),
-	openInventory: (source, ref) => (call$1(typeof ref == "number" ? "OpenInventoryById" : "OpenInventory", source, ref), !0),
+	openInventory: (source, ref) => (call$2(typeof ref == "number" ? "OpenInventoryById" : "OpenInventory", source, ref), !0),
 	getItemDefinition: () => null,
 	getItemDefinitions: () => ({})
-}, RESOURCE = "tgiann-inventory", call = (name, ...args) => callExport(RESOURCE, name, ...args);
+}, RESOURCE = "tgiann-inventory", call$1 = (name, ...args) => callExport(RESOURCE, name, ...args);
 function item(name) {
 	try {
-		return call("Items", name);
+		return call$1("Items", name);
 	} catch {
 		return null;
 	}
 }
-const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetInventoryItems", ref), INVENTORIES = [
+const itemsOf = (ref) => call$1(typeof ref == "number" ? "GetPlayerItems" : "GetInventoryItems", ref), INVENTORIES = [
 	aiInventory,
 	{
 		resource: RESOURCE,
 		version: "2.4.1",
-		addItem: (ref, name, count, metadata, slot) => isTrue(call("AddItem", ref, name, count, slot, metadata)),
-		removeItem: (ref, name, count, metadata, slot) => isTrue(call("RemoveItem", ref, name, count, slot, metadata)),
-		getItemCount: (ref, name, metadata) => number(call("GetItemCount", ref, name, metadata)),
-		canCarryItem: (ref, name, count) => isTrue(call("CanCarryItem", ref, name, count)),
+		addItem: (ref, name, count, metadata, slot) => isTrue(call$1("AddItem", ref, name, count, slot, metadata)),
+		removeItem: (ref, name, count, metadata, slot) => isTrue(call$1("RemoveItem", ref, name, count, slot, metadata)),
+		getItemCount: (ref, name, metadata) => number(call$1("GetItemCount", ref, name, metadata)),
+		canCarryItem: (ref, name, count) => isTrue(call$1("CanCarryItem", ref, name, count)),
 		getItems: (ref) => {
 			let labels = new Map(), labelOf = (name) => {
 				let text = labels.get(name);
@@ -16927,11 +16930,11 @@ const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetIn
 			};
 			return rows(itemsOf(ref)).flatMap((row) => stack(row, labelOf) ?? []);
 		},
-		clearInventory: (ref) => void call("ClearInventory", ref),
-		registerStash: (stash) => void call("RegisterStash", stash.name, stash.label, stash.slots, stash.maxWeight, void 0, stash.jobs.length ? stash.jobs : void 0),
-		openInventory: (source, ref) => (typeof ref == "number" ? call("ForceOpenInventoryById", source, ref) : call("ForceOpenInventory", source, "stash", ref), !0),
+		clearInventory: (ref) => void call$1("ClearInventory", ref),
+		registerStash: (stash) => void call$1("RegisterStash", stash.name, stash.label, stash.slots, stash.maxWeight, void 0, stash.jobs.length ? stash.jobs : void 0),
+		openInventory: (source, ref) => (typeof ref == "number" ? call$1("ForceOpenInventoryById", source, ref) : call$1("ForceOpenInventory", source, "stash", ref), !0),
 		getItemDefinition: (name) => definition(item(name), name),
-		getItemDefinitions: () => definitions(call("Items"))
+		getItemDefinitions: () => definitions(call$1("Items"))
 	},
 	oxInventory,
 	qbInventory
@@ -18923,6 +18926,25 @@ var Scopes = class {
 };
 const EMPTY = new Set(), scopes = new Scopes();
 scopes.start(), registerExport("GetPlayersInScope", (source) => typeof source == "number" ? [...scopes.of(source)] : []);
+// resource/server/world.ts
+const SYSTEM = "qb-weathersync";
+function call(name, ...args) {
+	if (isResourceStarted(SYSTEM)) try {
+		return callExport(SYSTEM, name, ...args);
+	} catch {
+		return;
+	}
+}
+registerExport("GetWeather", () => {
+	let w = call("getWeatherState");
+	return typeof w == "string" ? w : null;
+}), registerExport("SetWeather", (type) => typeof type == "string" && call("setWeather", type.toUpperCase()) !== !1 && isResourceStarted(SYSTEM)), registerExport("GetTime", () => {
+	let t = call("getTime");
+	return isRecord(t) && typeof t.hour == "number" ? {
+		hour: t.hour,
+		minute: typeof t.minute == "number" ? t.minute : 0
+	} : null;
+}), registerExport("SetTime", (hour, minute) => typeof hour == "number" && call("setTime", Math.floor(hour) % 24, typeof minute == "number" ? Math.floor(minute) % 60 : 0) !== !1 && isResourceStarted(SYSTEM)), registerExport("SetBlackout", (on) => call("setBlackout", on === !0) !== !1 && isResourceStarted(SYSTEM)), registerExport("FreezeTime", (on) => call("setTimeFreeze", on === !0) !== !1 && isResourceStarted(SYSTEM));
 // resource/server/devCommands.ts
 const log = createLogger("ai-core:dev");
 function reply(source, text) {

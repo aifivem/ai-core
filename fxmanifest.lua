@@ -31,11 +31,11 @@ dependencies {
 files {
 	'locales/*.json',
 	'dist/web/*.html',
-	'dist/web/backgrounds/*.jpg',
-	'dist/web/assets/*.js',
 	'dist/web/assets/*.css',
+	'dist/web/assets/*.js',
 	'dist/web/assets/*.woff',
 	'dist/web/assets/*.woff2',
+	'dist/web/backgrounds/*.jpg',
 	'data/keybinds.json',
 	'modules/playerdata.lua',
 	'shared/locale.lua',
