@@ -296,41 +296,77 @@ AddEventHandler('playerDropped', function()
     rates[source] = nil
 end)
 
---- ai-inventory through its own exports (the bridge forwards item calls there).
+--- ai-core's inventory layer (JS side, `resource/server/inventory`): the active inventory answers every item call,
+--- false / 0 / empty while none runs.
 Bridge.inventory = function()
-    if GetResourceState('ai-inventory') ~= 'started' then return nil end
-    return exports['ai-inventory']
+    return core
 end
 
---- An item definition from ai-inventory in the QB item shape, cached per name.
+--- An item definition from the active inventory in the QB item shape, cached per name.
 ---@type table<string, table|false>
 local itemCache = {}
+
+---@class AiItemDefinition
+---@field name string
+---@field label string
+---@field weight number
+---@field unique boolean
+---@field close boolean
+---@field description string
+
+---@param name string
+---@param definition AiItemDefinition
+---@return table
+local function qbItem(name, definition)
+    return {
+        name = name,
+        label = definition.label,
+        weight = definition.weight,
+        type = 'item',
+        image = ('%s.png'):format(name),
+        unique = definition.unique,
+        useable = true,
+        shouldClose = definition.close,
+        description = definition.description,
+    }
+end
 
 ---@param name string
 ---@return table|nil
 function Bridge.itemDefinition(name)
     local cached = itemCache[name]
     if cached ~= nil then return cached or nil end
-    local definition = GetResourceState('ai-inventory') == 'started' and exports.ox_inventory:Items(name) or nil
-    if definition then
-        cached = {
-            name = name,
-            label = definition.label or name,
-            weight = definition.weight or 0,
-            type = 'item',
-            image = ('%s.png'):format(name),
-            unique = definition.stack == false,
-            useable = true,
-            shouldClose = definition.close ~= false,
-            description = definition.description or '',
-        }
-    end
-    itemCache[name] = cached or false
-    return cached
+    local definition = core:GetItemDefinition(name)
+    cached = definition and qbItem(name, definition) or false
+    itemCache[name] = cached
+    return cached or nil
 end
 
-AddEventHandler('onResourceStart', function(resource)
-    if resource == 'ai-inventory' then itemCache = {} end
+--- Every item definition of the active inventory in the QB item shape (one export call; fills the cache).
+---@return table<string, table>
+function Bridge.itemDefinitions()
+    local out = {}
+    for name, definition in pairs(core:GetItemDefinitions() or {}) do
+        out[name] = qbItem(name, definition)
+        itemCache[name] = out[name]
+    end
+    return out
+end
+
+AddEventHandler('ai-core:inventoryChanged', function()
+    itemCache = {}
 end)
+
+--- Runs the handler registered for an item (ESX `UseItem`, QB / Qbox `CanUseItem`); `...` may hold the item table.
+---@param source integer
+---@param name string
+---@return any
+function Bridge.useItem(source, name, ...)
+    for i = 1, select('#', ...) do
+        local value = select(i, ...)
+        if type(value) == 'table' then return core:UseItem(source, name, value) end
+    end
+    return core:UseItem(source, name)
+end
 
 Bridge.core = core

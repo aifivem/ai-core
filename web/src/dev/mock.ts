@@ -12,7 +12,26 @@ export const MOCK_SCREEN: CharacterScreen = {
   },
   slots: 4,
   canDelete: true,
-  scene: { ped: { x: 0, y: 0, z: 0, heading: 0 }, camera: { x: 0, y: 0, z: 0, heading: 0 }, fov: 40 },
+  scene: {
+    fov: 50,
+    time: { enabled: false, hour: 12, minute: 0, weather: "EXTRASUNNY" },
+    spots: [
+      {
+        ped: { x: 0, y: 0, z: 0, heading: 0 },
+        anim: "",
+        clip: "",
+        camDistance: 1.5,
+        camHeight: 0,
+        camAngle: 0,
+        targetHeight: 0.4,
+        sway: 0,
+        blur: false,
+        blurNear: 0,
+        blurFar: 2,
+        blurStrength: 100,
+      },
+    ],
+  },
   characters: [
     {
       id: 1,
@@ -62,7 +81,8 @@ export const MOCK_SCREEN: CharacterScreen = {
 export async function mockFetch(name: string, data?: unknown): Promise<unknown> {
   await new Promise((resolve) => setTimeout(resolve, 300));
   // Views of the in-game UIs (admin, prompts, menu, notifications) preview without the character screen.
-  if (name === "ready") return ["admin", "prompt", "menu", "notify"].includes(new URLSearchParams(window.location.search).get("view") ?? "") ? null : { screen: MOCK_SCREEN, texts: en };
+  const params = new URLSearchParams(window.location.search);
+  if (name === "ready") return ["admin", "prompt", "menu", "notify"].includes(params.get("view") ?? "") ? null : { screen: MOCK_SCREEN, texts: en, scene: params.has("scene") };
   if (name === "remove") return { ok: true, screen: { ...MOCK_SCREEN, characters: [] } };
   if (name === "create" && typeof data === "object" && data !== null && (data as { firstname?: string }).firstname === "Taken") {
     return { ok: false, error: "CHAR_ERR_SLOT_TAKEN" };

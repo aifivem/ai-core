@@ -239,6 +239,14 @@ function QBCore.Functions.CreateUseableItem(name, cb)
     if inv then inv:RegisterUsableItem(name, function(source, item) cb(source, { name = item.name, amount = item.count, info = item.metadata, slot = item.slot }) end) end
 end
 
+--- What the inventory (qb-inventory, tgiann-inventory) calls when a player uses an item: QB's `{ func }` entry or nil.
+---@param name string
+---@return { func: fun(source: integer, item?: table): any, resource: string }|nil
+function QBCore.Functions.CanUseItem(name)
+    if not core:IsUsableItem(name) then return nil end
+    return { func = function(source, item) return Bridge.useItem(source, name, item) end, resource = 'ai-core' }
+end
+
 ---@param source integer
 ---@param items string|string[]
 ---@param amount? integer
@@ -274,20 +282,12 @@ RegisterNetEvent('QBCore:Server:TriggerCallback', function(name, ...)
     end, ...)
 end)
 
---- Every item definition of ai-inventory in QB's item shape.
-local function sharedItems()
-    local out = {}
-    if GetResourceState('ai-inventory') ~= 'started' then return out end
-    for name in pairs(exports.ox_inventory:Items() or {}) do out[name] = Bridge.itemDefinition(name) end
-    return out
-end
-
 --- The core object another resource gets is a copy: its Shared tables are filled at that moment.
 ---@return QBCoreServer
 local function coreObject()
     QBCore.Shared.Jobs = sharedJobs()
     QBCore.Shared.Gangs = sharedGangs()
-    QBCore.Shared.Items = sharedItems()
+    QBCore.Shared.Items = Bridge.itemDefinitions()
     return QBCore
 end
 

@@ -1,11 +1,13 @@
 import { onServerEvent } from "@aicore-fivem/lib/client";
 import { createLogger, waitFor } from "@aicore-fivem/lib/shared";
 import { CORE } from "@aicore-fivem/shared";
+import "./keybinds";
 import "./admin";
 import "./cacheWatch";
 import "./prompts";
 import "./notify";
 import "./menu";
+import "./inventory";
 import { openCharacters } from "./characters";
 import { announceUnloaded } from "./playerState";
 

@@ -13,13 +13,46 @@ import en from "../../../locales/en.json";
 const params = new URLSearchParams(window.location.search);
 export const adminPreview = params.get("view") === "admin";
 
+// Keybinds and commands come from the running scripts in game; the preview shows a typical set.
+const kb = (resource: string, description: string, defaultKey: string, key = "", mapper = "keyboard") => ({ resource, description, defaultKey, mapper, key });
+const keybinds = {
+  aicore_admin: kb("ai-core", "Open the admin panel", "F10"),
+  aicore_interact: kb("ai-core", "Interact with the prompt on screen", "E"),
+  chat_open: kb("ai-chat", "Open the chat", "T"),
+  inventory_open: kb("ai-inventory", "Open the inventory", "TAB"),
+  inventory_reload: kb("ai-inventory", "Reload the weapon", "R"),
+  police_menu: kb("ai-police", "Open the police menu", "F6", "F7"),
+  radialmenu_open: kb("ai-radialmenu", "Open the radial menu", "F1"),
+  scoreboard_open: kb("ai-scoreboard", "Show the scoreboard (hold)", "HOME"),
+  smallresources_belt: kb("ai-smallresources", "Fasten or open the seatbelt", "B"),
+  smallresources_crouch: kb("ai-smallresources", "Crouch", "X", "LCONTROL"),
+  vehiclekeys_lock: kb("ai-vehiclekeys", "Lock or unlock the vehicle", "L"),
+};
+const cmd = (name: string, resource: string, help: string, usage: string, access: string, kind: "lib" | "plain", aliases = "") => [name, { name, aliases, resource, help, usage, access, kind }] as const;
+const commands = Object.fromEntries([
+  cmd("aiadmin", "ai-core", "Open the admin panel", "/aiadmin", "ai.admin", "lib"),
+  cmd("aicore_db", "ai-core", "Database statistics of every resource in the server console", "/aicore_db [slow]", "ai.admin", "lib"),
+  cmd("aicore_duty", "ai-core", "Go on duty in a job (off = off duty)", "/aicore_duty <job> [id]", "ai.admin", "lib"),
+  cmd("aicore_gang", "ai-core", "Give a gang at a grade", "/aicore_gang <gang> <grade> [id]", "ai.admin", "lib"),
+  cmd("aicore_job", "ai-core", "Give a job at a grade", "/aicore_job <job> <grade> [id]", "ai.admin", "lib"),
+  cmd("aicore_money", "ai-core", "Add to an account (a negative amount takes)", "/aicore_money <account> <amount> [id]", "ai.admin", "lib"),
+  cmd("aicore_switch", "ai-core", "Back to the character screen", "/aicore_switch [id]", "ai.admin", "lib"),
+  cmd("tp", "ai-admin", "Teleport to a player", "/tp <id>", "group.admin", "lib", "goto"),
+  cmd("noclip", "ai-admin", "Fly through the world", "/noclip", "ai.admin", "lib"),
+  cmd("me", "ai-chat", "Describe what your character does", "/me <text>", "", "lib"),
+  cmd("e", "dpemotes", "", "/e", "?", "plain"),
+  cmd("emotemenu", "dpemotes", "", "/emotemenu", "?", "plain"),
+  cmd("txadmin", "monitor", "", "/txadmin", "?", "plain"),
+  cmd("tx", "monitor", "", "/tx", "?", "plain"),
+]);
+
 export function mockAdminOpen(): { panels: AdminPanelSnapshot[]; texts: Record<string, string> } | undefined {
   if (!adminPreview) return undefined;
   const panel: AdminPanelSnapshot = {
     resource: "ai-core",
     schema: coreSchema(Object.keys(accounts)),
     texts: en,
-    data: { settings, jobs, gangs, accounts },
+    data: { settings, jobs, gangs, accounts, keybinds, commands },
   };
   return { panels: [panel], texts: en };
 }

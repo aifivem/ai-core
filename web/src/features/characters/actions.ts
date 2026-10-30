@@ -22,8 +22,10 @@ async function run(call: () => Promise<unknown>): Promise<ReturnType<typeof toRe
   return result;
 }
 
+/** Picks a card; the client moves the scene camera to that character. */
 export function selectCard(characterId: number): void {
   update({ selected: characterId, view: { kind: "list" }, error: null });
+  void fetchNui(NuiCallback.focus, characterId).catch(() => undefined);
 }
 
 export function play(characterId: number): Promise<unknown> {

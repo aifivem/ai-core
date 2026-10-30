@@ -11,6 +11,7 @@ import "./player/session";
 import "./persistence";
 import "./jobs/paycheck";
 import "./exports";
+import "./inventory";
 import "./devCommands";
 
 resetDutyCounts(jobs.keys());

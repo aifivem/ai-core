@@ -52,6 +52,8 @@ import {
   faWallet,
   faWarehouse,
   faBuildingColumns,
+  faKeyboard,
+  faTerminal,
 } from "@fortawesome/free-solid-svg-icons";
 
 /** Icons a schema may name (Font Awesome solid, without `fa-`); add a name here when a schema uses a new one. */
@@ -108,6 +110,8 @@ const ICONS: Record<string, IconDefinition> = {
   gauge: faGauge,
   "spray-can": faSprayCan,
   "circle-dot": faCircleDot,
+  keyboard: faKeyboard,
+  terminal: faTerminal,
 };
 
 export const iconOf = (name: string): IconDefinition => ICONS[name] ?? faCircleDot;

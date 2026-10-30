@@ -80,27 +80,23 @@ export async function getCharacter(userId: number, charId: number): Promise<Char
   return row ? toRow(row) : null;
 }
 
-const CITIZENID_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-function newCitizenId(): string {
-  let id = "";
-  for (let i = 0; i < 8; i++) id += CITIZENID_CHARS[Math.floor(Math.random() * CITIZENID_CHARS.length)];
-  return id;
-}
-
-/** Inserts a character with a unique 8-character citizen id (retried on the rare collision). */
+/**
+ * Inserts a character; its citizen id is its row id ("1", "2", ...: ids count up one by one, owner decision). The row
+ * goes in with a unique placeholder (the column is NOT NULL UNIQUE) and takes its id right after.
+ */
 export async function insertCharacter(userId: number, input: CreateCharacterInput): Promise<number> {
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const citizenid = newCitizenId();
-    const taken = await mysql.scalar<number>("SELECT 1 FROM ai_core_characters WHERE citizenid = ?", [citizenid]);
-    if (taken) continue;
-    const id = await mysql.insert(
-      "INSERT INTO ai_core_characters (user_id, citizenid, slot, firstname, lastname, birthdate, sex) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [userId, citizenid, input.slot, input.firstname, input.lastname, input.birthdate, input.sex],
-    );
-    if (id) return id;
+  const placeholder = `~${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`.slice(0, 16);
+  const id = await mysql.insert(
+    "INSERT INTO ai_core_characters (user_id, citizenid, slot, firstname, lastname, birthdate, sex) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    [userId, placeholder, input.slot, input.firstname, input.lastname, input.birthdate, input.sex],
+  );
+  if (!id) throw new Error("could not create the character");
+  const changed = await mysql.update("UPDATE ai_core_characters SET citizenid = ? WHERE id = ?", [String(id), id]).catch(() => 0);
+  if (!changed) {
+    await mysql.update("DELETE FROM ai_core_characters WHERE id = ?", [id]);
+    throw new Error(`citizen id ${id} is already taken`);
   }
-  throw new Error("could not create a unique citizen id");
+  return id;
 }
 
 /** Soft delete: the row stays for logs and is never loaded again. */

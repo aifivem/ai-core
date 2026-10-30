@@ -32,22 +32,113 @@
       "x": -1035.71,
       "y": -2731.87,
       "z": 13.76,
-      "heading": 330.0
-    },
-    "select": {
-      "ped": {
-        "x": -813.97,
-        "y": 176.22,
-        "z": 76.74,
-        "heading": -7.5
-      },
-      "camera": {
-        "x": -814.02,
-        "y": 179.56,
-        "z": 77.4,
-        "heading": 198.5
-      },
-      "fov": 40
+      "heading": 330
     }
+  },
+  "characterScene": {
+    "fov": 50,
+    "time": {
+      "enabled": true,
+      "hour": 20,
+      "minute": 56,
+      "weather": "EXTRASUNNY"
+    },
+    "spots": [
+      {
+        "ped": {
+          "x": -281.1319,
+          "y": 727.0618,
+          "z": 207.8448,
+          "heading": -20.9096
+        },
+        "anim": "timetable@mime@01_gc",
+        "clip": "idle_a",
+        "camDistance": 1.15,
+        "camHeight": -0.05,
+        "camAngle": 0,
+        "targetHeight": 0.4,
+        "sway": 17,
+        "blur": false,
+        "blurNear": 0,
+        "blurFar": 2,
+        "blurStrength": 100
+      },
+      {
+        "ped": {
+          "x": -281.9063,
+          "y": 727.9929,
+          "z": 207.9987,
+          "heading": -45.4143
+        },
+        "anim": "amb@world_human_leaning@male@wall@back@foot_up@idle_a",
+        "clip": "idle_a",
+        "camDistance": 1.15,
+        "camHeight": 0.2,
+        "camAngle": -46,
+        "targetHeight": 0.4,
+        "sway": 20,
+        "blur": false,
+        "blurNear": 0,
+        "blurFar": 2,
+        "blurStrength": 100
+      },
+      {
+        "ped": {
+          "x": -282.8329,
+          "y": 729.1763,
+          "z": 208.039,
+          "heading": -63.5697
+        },
+        "anim": "anim@scripted@freemode_npc@fix_agy_ig4_lamar@",
+        "clip": "lean_wall_idle_03_lamar",
+        "camDistance": 1,
+        "camHeight": 0.2,
+        "camAngle": 22,
+        "targetHeight": 0.4,
+        "sway": 18,
+        "blur": false,
+        "blurNear": 0,
+        "blurFar": 2,
+        "blurStrength": 100
+      },
+      {
+        "ped": {
+          "x": -283.7728,
+          "y": 730.2242,
+          "z": 208.09,
+          "heading": -64.6121
+        },
+        "anim": "amb@world_human_leaning@male@wall@back@hands_together@idle_b",
+        "clip": "idle_e",
+        "camDistance": 1.7,
+        "camHeight": -0.1,
+        "camAngle": 22,
+        "targetHeight": 0.25,
+        "sway": 16,
+        "blur": false,
+        "blurNear": 0,
+        "blurFar": 2,
+        "blurStrength": 100
+      },
+      {
+        "ped": {
+          "x": -284.6422,
+          "y": 731.1928,
+          "z": 208.1435,
+          "heading": -29.6066
+        },
+        "anim": "misscarstealfinale",
+        "clip": "packer_idle_1_trevor",
+        "camDistance": 1.75,
+        "camHeight": 0.25,
+        "camAngle": 10,
+        "targetHeight": 0.35,
+        "sway": 19,
+        "blur": false,
+        "blurNear": 0,
+        "blurFar": 2,
+        "blurStrength": 100
+      }
+    ]
   }
 }

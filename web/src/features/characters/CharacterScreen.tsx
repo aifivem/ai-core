@@ -4,6 +4,7 @@ import { faCity, faPlay, faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import type { Branding } from "@aicore-fivem/shared";
 import { PillBar, PillButton, ScreenHeader, Vignette, columnDelay, screenEnter } from "../../components/Screen";
 import { useLang } from "../../lib/lang";
+import { cn } from "../../lib/utils";
 import { play, selectCard } from "./actions";
 import { CharacterCard, CreateCard } from "./CharacterCard";
 import { CharacterDetails } from "./CharacterDetails";
@@ -46,7 +47,7 @@ function ErrorLine({ text }: { text: string }) {
 /** Character select (docs/design.md, tgiann-multichar): title and details left, slot row bottom centre, actions bottom right. */
 export function CharacterScreen() {
   const t = useLang();
-  const { open, screen, selected, view, busy, error, portraits } = useScreen();
+  const { open, screen, selected, view, busy, error, portraits, scene } = useScreen();
   if (!open || !screen) return null;
 
   const slots = Array.from({ length: screen.slots }, (_, i) => i + 1);
@@ -54,10 +55,10 @@ export function CharacterScreen() {
   const deleting = view.kind === "delete" ? screen.characters.find((c) => c.id === view.characterId) : undefined;
 
   return (
-    <div className="absolute inset-0 animate-fade bg-page">
-      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(./backgrounds/${screen.branding.background}.jpg)` }} />
-      <Vignette />
-      <Vignette variant="left" />
+    <div className={cn("absolute inset-0 animate-fade", !scene && "bg-page")}>
+      {!scene && <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(./backgrounds/${screen.branding.background}.jpg)` }} />}
+      <Vignette variant={scene ? "sceneRadial" : "radial"} />
+      <Vignette variant={scene ? "sceneLeft" : "left"} />
 
       {view.kind === "create" ? (
         <CreateDialog slot={view.slot} />

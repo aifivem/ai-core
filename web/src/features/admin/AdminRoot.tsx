@@ -14,6 +14,7 @@ import { Editor } from "./Editor";
 import { usePanelLang } from "./lang";
 import { RecordsView } from "./RecordsView";
 import { Sidebar } from "./Sidebar";
+import { TableView } from "./TableView";
 
 // One options object: a new one per render would re-subscribe (and re-fire the browser mock) on every render.
 const OPEN_OPTIONS = { mockData: mockAdminOpen(), mockDelay: 300 };
@@ -77,7 +78,8 @@ export function AdminRoot() {
             {panel && tab && kind === "settings" && (
               <Editor key={`${panel.resource}/${tab.id}`} tab={tab} ctx={{ resource: panel.resource, file: tab.file, key: undefined, record: panel.data[tab.file] ?? {}, t }} />
             )}
-            {panel && tab && kind === "records" && <RecordsView key={`${panel.resource}/${tab.id}`} panel={panel} tab={tab} selected={key} t={t} />}
+            {panel && tab && kind === "records" && tab.table && <TableView key={`${panel.resource}/${tab.id}`} panel={panel} file={tab.file} table={tab.table} t={t} />}
+            {panel && tab && kind === "records" && !tab.table && <RecordsView key={`${panel.resource}/${tab.id}`} panel={panel} tab={tab} selected={key} t={t} />}
           </div>
         </main>
       </motion.div>

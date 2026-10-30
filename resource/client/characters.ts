@@ -2,6 +2,7 @@ import { createLogger, isRecord, waitFor } from "@aicore-fivem/lib/shared";
 import { loadLocaleTexts, onServerEvent, triggerServerCallback } from "@aicore-fivem/lib/client";
 import { CORE, type CharacterActionResult, type CharacterScreen, type SpawnPoint } from "@aicore-fivem/shared";
 import { NuiCallback, NuiMessage } from "common/nui";
+import { ResourceName } from "common";
 import { SelectScene, setPlayerModel, waitForGround } from "./scene";
 import { announceLoaded } from "./playerState";
 
@@ -12,6 +13,8 @@ const BUSY: CharacterActionResult = { ok: false, error: "CHAR_ERR_BUSY" };
 let screen: CharacterScreen | null = null;
 /** Portraits an appearance resource made for the cards, by character id; kept until a character spawns. */
 let portraits: Record<number, string> = {};
+/** Whether the in-world scene stands behind the screen (false: the NUI shows its background picture). */
+let sceneLive = false;
 
 /** Answers of the server are unknown: this is the only shape the screen accepts. */
 function toResult(value: unknown): CharacterActionResult {
@@ -23,17 +26,26 @@ function toResult(value: unknown): CharacterActionResult {
 async function loadScreen(): Promise<CharacterScreen | null> {
   const answer = await triggerServerCallback(CORE.charactersCallback).catch(() => null);
   // ai-core builds this object itself; the NUI only renders it.
-  screen = isRecord(answer) && Array.isArray(answer.characters) && isRecord(answer.scene) ? (answer as unknown as CharacterScreen) : null;
+  screen = isRecord(answer) && Array.isArray(answer.characters) && isRecord(answer.scene) && Array.isArray(answer.scene.spots) ? (answer as unknown as CharacterScreen) : null;
   return screen;
 }
 
-/** Puts the player on the character screen: scene, camera, NUI with focus. */
+const openPayload = (data: CharacterScreen) => ({ screen: data, texts: loadLocaleTexts(), portraits, scene: sceneLive });
+
+/** Puts the player on the character screen: scene with the characters, camera, NUI with focus. */
 export async function openCharacters(): Promise<void> {
   const data = await loadScreen();
   if (!data) return;
-  await scene.enter(data.scene.ped, data.scene.camera, data.scene.fov);
+  sceneLive = await scene.enter(data.scene, data.characters).then(
+    () => true,
+    (error: unknown) => {
+      log.error("building the character scene failed", error);
+      scene.leave();
+      return false;
+    },
+  );
   SetNuiFocus(true, true);
-  SendNUIMessage({ action: NuiMessage.openCharacters, data: { screen: data, texts: loadLocaleTexts(), portraits } });
+  SendNUIMessage({ action: NuiMessage.openCharacters, data: openPayload(data) });
 }
 
 function closeCharacters(): void {
@@ -43,7 +55,20 @@ function closeCharacters(): void {
 
 type NuiReply = (value: unknown) => void;
 
-RegisterNuiCallback(NuiCallback.ready, (_data: unknown, cb: NuiReply) => cb(screen ? { screen, texts: loadLocaleTexts(), portraits } : null));
+RegisterNuiCallback(NuiCallback.ready, (_data: unknown, cb: NuiReply) => cb(screen ? openPayload(screen) : null));
+
+RegisterNuiCallback(NuiCallback.focus, (id: unknown, cb: NuiReply) => {
+  if (typeof id === "number") scene.focus(id);
+  cb(true);
+});
+
+on(CORE.clientCharacterLookEvent, (id: unknown) => {
+  if (typeof id === "number") scene.dress(id);
+});
+
+on("onResourceStop", (resource: string) => {
+  if (resource === ResourceName) scene.leave();
+});
 
 on(CORE.clientCharacterPortraitEvent, (id: unknown, url: unknown) => {
   if (typeof id !== "number" || typeof url !== "string" || !url.startsWith("https://nui-img/")) return;
@@ -66,7 +91,10 @@ RegisterNuiCallback(NuiCallback.remove, (data: unknown, cb: NuiReply) => {
   triggerServerCallback(CORE.deleteCharacterCallback, [data]).then(
     async (answer) => {
       const result = toResult(answer);
-      cb(result.ok ? { ok: true, screen: await loadScreen() } : result);
+      if (!result.ok) return cb(result);
+      const next = await loadScreen();
+      if (next) await scene.setCharacters(next.characters);
+      cb({ ok: true, screen: next });
     },
     () => cb(BUSY),
   );

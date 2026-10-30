@@ -1,9 +1,11 @@
 import { AdminPanel, DataFile } from "@aicore-fivem/lib/server";
-import type { AccountTypeDefinition, Branding, GangDefinition, GradeDefinition, JobDefinition } from "@aicore-fivem/shared";
+import type { AccountTypeDefinition, Branding, CharacterScene, GangDefinition, GradeDefinition, JobDefinition } from "@aicore-fivem/shared";
 import { ResourceName } from "common";
 import { coreSchema } from "../admin/schema";
+import { INVENTORIES } from "../inventory/registry";
 import { log } from "../log";
-import { bool, ID_PATTERN, int, num, record, str, vec4, type Vec4 } from "./parse";
+import { bool, ID_PATTERN, int, record, str, vec4, type Vec4 } from "./parse";
+import { readScene } from "./scene";
 
 /** Panel content of ai-core (`data/*.json`), kept by the admin panel store and updated live on every panel edit. */
 
@@ -14,7 +16,10 @@ export interface Settings {
   gangs: { multiGang: boolean; maxGangs: number };
   paycheck: { intervalMinutes: number; account: string; fromJobAccount: boolean };
   saveIntervalMinutes: number;
-  spawn: { default: Vec4; select: { ped: Vec4; camera: Vec4; fov: number } };
+  /** `auto` or the resource name of the inventory ai-core's inventory layer uses. */
+  inventory: string;
+  spawn: { default: Vec4 };
+  characterScene: CharacterScene;
 }
 
 export type AccountType = AccountTypeDefinition;
@@ -30,7 +35,6 @@ function readSettings(raw: unknown): Settings {
   const gangs = record(s.gangs);
   const pay = record(s.paycheck);
   const spawn = record(s.spawn);
-  const select = record(spawn.select);
   return {
     branding: {
       name: str(brand.name, "Los Santos", 32),
@@ -53,14 +57,11 @@ function readSettings(raw: unknown): Settings {
       fromJobAccount: bool(pay.fromJobAccount, false),
     },
     saveIntervalMinutes: int(s.saveIntervalMinutes, 5, 1, 60),
+    inventory: str(s.inventory, "auto", 32),
     spawn: {
       default: vec4(spawn.default, { x: -1035.71, y: -2731.87, z: 13.76, heading: 330 }),
-      select: {
-        ped: vec4(select.ped, { x: -813.97, y: 176.22, z: 76.74, heading: -7.5 }),
-        camera: vec4(select.camera, { x: -814.02, y: 179.56, z: 77.4, heading: 198.5 }),
-        fov: num(select.fov, 40, 10, 120),
-      },
     },
+    characterScene: readScene(s.characterScene),
   };
 }
 
@@ -113,7 +114,7 @@ function follow<T>(file: string, target: Map<string, T>, read: (value: Record<st
 // The pay account select lists the account types that exist at start.
 const startAccounts = Object.keys(record(new DataFile(ResourceName, "accounts", log).read()));
 
-export const panel = new AdminPanel(coreSchema(startAccounts));
+export const panel = new AdminPanel(coreSchema(startAccounts, INVENTORIES.map((adapter) => adapter.resource)));
 
 export const settings: Settings = readSettings(panel.get("settings"));
 panel.onChange("settings", (_key, value) => Object.assign(settings, readSettings(value)));

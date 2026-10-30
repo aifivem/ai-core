@@ -34,6 +34,11 @@ provide('GetJob', function(name) return BridgeQB.sharedJobs()[name] end)
 provide('GetGang', function(name) return BridgeQB.sharedGangs()[name] end)
 provide('Notify', function(source, text, kind, duration) Bridge.notify(source, text, kind, duration) end)
 provide('CreateUseableItem', function(name, cb) QBCore.Functions.CreateUseableItem(name, cb) end)
+--- Qbox answers the callback itself (ox_inventory calls it with `(source, item)`).
+provide('CanUseItem', function(name)
+    if not core:IsUsableItem(name) then return nil end
+    return function(source, item) return Bridge.useItem(source, name, item) end
+end)
 
 ---@param identifier integer|string
 ---@param job string

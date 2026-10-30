@@ -138,10 +138,16 @@ const CORE = {
 	activeGangChangedEvent: "ai-core:activeGangChanged",
 	/** (src, charIds: number[]) each time a player's character screen loads; an appearance resource answers with portraits. */
 	characterScreenEvent: "ai-core:characterScreen",
+	/** (resource: string | null) the inventory behind ai-core's inventory layer changed (the bridge drops its item cache). */
+	inventoryChangedEvent: "ai-core:inventoryChanged",
+	/** (src, name: string, status: Record<string, number> | null) a player used an item; status = the needs it gives, from inventories that define them. */
+	itemUsedEvent: "ai-core:itemUsed",
 	clientPlayerLoadedEvent: "ai-core:client:playerLoaded",
 	clientPlayerUnloadedEvent: "ai-core:client:playerUnloaded",
 	/** (charId: number, url: string) a portrait image of a character on the character screen (e.g. `https://nui-img/<txd>/<txd>`). */
 	clientCharacterPortraitEvent: "ai-core:client:characterPortrait",
+	/** (charId: number) ai-appearance holds this character's look: ai-core dresses its scene ped with `ApplyCharacterAppearance`. */
+	clientCharacterLookEvent: "ai-core:client:characterLook",
 	/** (resource: string, id: string) the interaction key was pressed while that resource's prompt was on top. */
 	clientPromptPressedEvent: "ai-core:client:promptPressed",
 	/** (key: keyof PlayerCache, value) a cached value of the local player changed (one watcher in ai-core for every resource). */
@@ -159,15 +165,17 @@ const CORE = {
 };
 /** GlobalState key holding how many players are on duty in a job (counts only, never member lists). */
 const dutyCountKey = (job) => `ai:duty:${job}`;
+/** GlobalState key holding the resource name of the active inventory (null while none runs). */
+const INVENTORY_STATE_KEY = "ai:inventory";
 
 // ../../../packages/shared/src/validation.ts
-const NAME = /^[A-Za-zÀ-ɏ][A-Za-zÀ-ɏ' -]{1,19}$/;
+const NAME$1 = /^[A-Za-zÀ-ɏ][A-Za-zÀ-ɏ' -]{1,19}$/;
 const DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 /** A first or last name: 2-20 letters (Latin, accents), spaces, apostrophes, dashes; trimmed. Null when invalid. */
 function toName(value) {
 	if (typeof value !== "string") return null;
 	const name = value.trim().replace(/\s+/g, " ");
-	return NAME.test(name) ? name : null;
+	return NAME$1.test(name) ? name : null;
 }
 /** A birth date `YYYY-MM-DD` for an age between `minAge` and 100. Null when invalid. */
 function toBirthdate(value, minAge = 18, now = /* @__PURE__ */ new Date()) {
@@ -215,9 +223,12 @@ function toCreateCharacter(value) {
 const ADMIN = {
 	/** ACE every panel action checks: `add_ace group.admin ai.admin allow`. */
 	ace: "ai.admin",
+	/** Callback: (keybinds: KeybindInfo[] the admin's client knows) -> AdminPanelSnapshot[]. */
 	openCallback: "ai-core:admin:open",
 	applyCallback: "ai-core:admin:apply",
 	closeEvent: "ai-core:admin:close",
+	/** Server -> client: () open the panel (the `aiadmin` command, checked on the server). */
+	showEvent: "ai-core:admin:show",
 	/** Server -> admins with the panel open: (delta: AdminDelta). */
 	deltaEvent: "ai-core:admin:delta",
 	/** Server -> client of a world (`sync: "all"`) file: (file, key | null, value). Prefixed with the resource name. */
@@ -229,12 +240,12 @@ const ADMIN = {
 // ../../../packages/lib/src/shared/read.ts
 /** Small readers for panel content (`data/*.json`): every one returns the fallback when the value is missing or wrong. */
 /** A finite number clamped to `[min, max]`, else the fallback. */
-function num(value, fallback, min = -Infinity, max = Infinity) {
+function num$1(value, fallback, min = -Infinity, max = Infinity) {
 	return typeof value === "number" && Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
 }
 /** `num` rounded to an integer. */
-function int$1(value, fallback, min = -Infinity, max = Infinity) {
-	return Math.round(num(value, fallback, min, max));
+function int$2(value, fallback, min = -Infinity, max = Infinity) {
+	return Math.round(num$1(value, fallback, min, max));
 }
 /** A boolean, else the fallback. */
 function bool$1(value, fallback) {
@@ -252,10 +263,10 @@ function record(value) {
 function vec4(value, fallback) {
 	const v = record(value);
 	return {
-		x: num(v.x, fallback.x),
-		y: num(v.y, fallback.y),
-		z: num(v.z, fallback.z),
-		heading: num(v.heading, fallback.heading)
+		x: num$1(v.x, fallback.x),
+		y: num$1(v.y, fallback.y),
+		z: num$1(v.z, fallback.z),
+		heading: num$1(v.heading, fallback.heading)
 	};
 }
 
@@ -291,6 +302,20 @@ function registerExport(name, handler) {
 /** Typed access to another resource's exports (types come from CitizenExports in @aicore-fivem/shared). */
 function resourceExport(resource) {
 	return globalThis.exports[resource];
+}
+/** Whether a resource is running now. */
+function isResourceStarted(resource) {
+	return GetResourceState(resource) === "started";
+}
+/** Another resource's exports while it runs, null when it does not (an optional dependency). */
+function optionalExport(resource) {
+	return isResourceStarted(resource) ? globalThis.exports[resource] : null;
+}
+/** Calls an export of a resource whose exports have no type here (a third-party script); parse the result. */
+function callExport(resource, name, ...args) {
+	const fn = Reflect.get(Object(globalThis.exports[resource]), name);
+	if (typeof fn !== "function") throw new Error(`${resource} has no export ${name}`);
+	return Reflect.apply(fn, void 0, args);
 }
 
 // ../../../packages/lib/src/fivem/locale.ts
@@ -342,7 +367,7 @@ const requestEvent = (name) => `aicore:cb:${name}`;
 const responseEvent = (resource) => `aicore:cbr:${resource}`;
 
 // ../../../packages/lib/src/server/gate.ts
-const log$5 = createLogger(GetCurrentResourceName());
+const log$6 = createLogger(GetCurrentResourceName());
 /** The player is in ai-core's admin group (ACE `ai.admin` unless another ace is named). */
 const isAdmin = (ace = ADMIN.ace) => (source) => Boolean(IsPlayerAceAllowed(String(source), ace)) || `not allowed (${ace})`;
 /** Every gate of this resource; one playerDropped listener frees them all (one listener per gate trips Node's limit). */
@@ -391,13 +416,13 @@ var ClientGate = class {
 		this.lock?.release(source);
 	}
 	refuse(source, reason) {
-		log$5.warn(`${this.name} refused for ${GetPlayerName(String(source))} (${source}): ${reason}`);
+		log$6.warn(`${this.name} refused for ${GetPlayerName(String(source))} (${source}): ${reason}`);
 	}
 };
 
 // ../../../packages/lib/src/server/callback.ts
-const log$4 = createLogger(GetCurrentResourceName());
-const resource$3 = GetCurrentResourceName();
+const log$5 = createLogger(GetCurrentResourceName());
+const resource$4 = GetCurrentResourceName();
 const REFUSED = Symbol("refused");
 function onClientCallback(name, first, second) {
 	const [handler, options] = typeof first === "function" ? [first, second ?? {}] : [second, first];
@@ -412,13 +437,13 @@ function onClientCallback(name, first, second) {
 			if (result === REFUSED) emitNet(responseEvent(caller), source, id, false, null);
 			else emitNet(responseEvent(caller), source, id, true, result ?? null);
 		} catch (error) {
-			log$4.error(`callback ${name} failed for ${source}`, error);
+			log$5.error(`callback ${name} failed for ${source}`, error);
 			emitNet(responseEvent(caller), source, id, false, null);
 		}
 	});
 }
 const pending$1 = /* @__PURE__ */ new Map();
-onNet(responseEvent(resource$3), (id, ok, result) => {
+onNet(responseEvent(resource$4), (id, ok, result) => {
 	const entry = typeof id === "number" ? pending$1.get(id) : void 0;
 	if (!entry || entry.source !== Number(globalThis.source)) return;
 	pending$1.delete(id);
@@ -582,7 +607,7 @@ var AdminPanel = class {
 	apply(admin, raw) {
 		const patch = toPatch(raw);
 		const spec = patch ? this.schema.files[patch.file] : void 0;
-		if (!patch || !spec) return {
+		if (!patch || !spec || spec.memory) return {
 			ok: false,
 			error: ERR.type
 		};
@@ -597,7 +622,7 @@ var AdminPanel = class {
 		this.store(patch, spec);
 		return { ok: true };
 	}
-	/** A change made by the resource itself (game state the panel shows), stored without validation. */
+	/** A change made by the resource itself (game state the panel shows), stored without validation (a `memory` file only in memory). */
 	commit(file, key, value) {
 		const data = this.data.get(file);
 		if (!data) return;
@@ -666,6 +691,10 @@ var AdminPanel = class {
 		emitNet(ADMIN.worldEvent(this.resource), -1, file, key ?? null, value);
 	}
 	load(name, spec) {
+		if (spec.memory) {
+			this.data.set(name, {});
+			return;
+		}
 		const file = new DataFile(this.resource, name, this.log);
 		this.dataFiles.set(name, file);
 		const raw = file.read();
@@ -680,6 +709,166 @@ var AdminPanel = class {
 		if (filled || raw === null) file.write(data);
 	}
 };
+
+// ../../../packages/lib/src/server/notify.ts
+/** Shows a notification card on one player's screen (ai-core draws it); `text` is already translated. */
+function notify(source, text, kind = "info", duration) {
+	const notification = {
+		text,
+		kind,
+		duration
+	};
+	emitNet(CORE.clientNotifyEvent, source, notification);
+}
+
+// ../../../packages/lib/src/server/command.ts
+const resource$3 = GetCurrentResourceName();
+const log$4 = createLogger(resource$3);
+let texts = null;
+const t = (key, ...args) => formatText((texts ??= loadLocaleTexts(CORE.resource))[key] ?? key, args);
+/** A command answer: an ai-core notification for a player, a console line for the server. */
+function reply$1(source, text, kind) {
+	if (source > 0) notify(source, text, kind);
+	else log$4.info(text);
+}
+var Command = class {
+	params;
+	handler;
+	info;
+	usage;
+	constructor(names, params, help, aces, handler) {
+		this.params = params;
+		this.handler = handler;
+		this.info = {
+			names,
+			help,
+			params: params.map((p) => ({ ...p })),
+			aces
+		};
+		this.usage = [`/${names[0]}`, ...params.map((p) => p.optional ? `[${p.name}]` : `<${p.name}>`)].join(" ");
+	}
+	/** Whether `source` may run it under `name` (the console always may). */
+	allowed(source, name) {
+		const aces = this.info.aces;
+		if (source <= 0 || !aces) return true;
+		const player = String(source);
+		return aces.some((ace) => IsPlayerAceAllowed(player, ace)) || Boolean(IsPlayerAceAllowed(player, `command.${name}`));
+	}
+	suggestion(name) {
+		return {
+			name: `/${name}`,
+			help: this.info.help,
+			params: this.params.map((p) => ({
+				name: p.name,
+				help: p.help ?? ""
+			}))
+		};
+	}
+	run(source, name, raw, line) {
+		if (!this.allowed(source, name)) return reply$1(source, t("COMMAND_NOT_ALLOWED"), "error");
+		const args = this.parse(raw);
+		if (typeof args === "string") {
+			reply$1(source, args, "error");
+			return reply$1(source, t("COMMAND_USAGE", this.usage), "info");
+		}
+		const fail = (error) => log$4.error(`command /${name} failed`, error);
+		try {
+			const result = this.handler(source, args, line);
+			if (result instanceof Promise) result.catch(fail);
+		} catch (error) {
+			fail(error);
+		}
+	}
+	/** The checked values by param name, or the error text to show. */
+	parse(raw) {
+		const args = {};
+		for (const [i, param] of this.params.entries()) {
+			const token = param.type === "longString" ? raw.slice(i).join(" ").trim() : raw[i] ?? "";
+			if (token === "") {
+				if (!param.optional) return t("COMMAND_MISSING", param.name);
+				continue;
+			}
+			if (param.type === "number" || param.type === "playerId") {
+				const value = Number(token);
+				if (!Number.isFinite(value)) return t("COMMAND_NUMBER", param.name);
+				if (param.type === "playerId" && (!Number.isInteger(value) || value <= 0 || !GetPlayerName(String(value)))) return t("COMMAND_PLAYER", token);
+				args[param.name] = value;
+			} else args[param.name] = token;
+			if (param.type === "longString") break;
+		}
+		return args;
+	}
+};
+/**
+* This resource's commands: announces them to ai-core (one call per tick of additions) and keeps each player's chat
+* suggestions as a delta of the commands they may use (sent when a character loads, after job or gang changes, and
+* to everyone online when commands are added; removed for everyone when the resource stops).
+*/
+var CommandSet = class {
+	list = [];
+	sent = /* @__PURE__ */ new Map();
+	announced = 0;
+	queued = false;
+	listening = false;
+	add(command) {
+		if (!this.listening) this.listen();
+		this.list.push(command);
+		if (this.queued) return;
+		this.queued = true;
+		setImmediate(() => this.flush());
+	}
+	/** Sends `source` the suggestions they gained and removes the ones they lost. */
+	refresh(source) {
+		const before = this.sent.get(source);
+		const now = /* @__PURE__ */ new Set();
+		const add = [];
+		for (const command of this.list) for (const name of command.info.names) {
+			if (!command.allowed(source, name)) continue;
+			now.add(name);
+			if (!before?.has(name)) add.push(command.suggestion(name));
+		}
+		this.sent.set(source, now);
+		if (add.length) emitNet("chat:addSuggestions", source, add);
+		if (before) {
+			for (const name of before) if (!now.has(name)) emitNet("chat:removeSuggestion", source, `/${name}`);
+		}
+	}
+	flush() {
+		this.queued = false;
+		optionalExport(CORE.resource)?.RegisterCommands(resource$3, this.list.slice(this.announced).map((c) => c.info));
+		this.announced = this.list.length;
+		for (const player of getPlayers()) this.refresh(Number(player));
+	}
+	listen() {
+		this.listening = true;
+		const refresh = (source) => this.refresh(Number(source));
+		on(CORE.playerLoadedEvent, refresh);
+		on(CORE.jobsChangedEvent, refresh);
+		on(CORE.gangsChangedEvent, refresh);
+		on("playerDropped", () => this.sent.delete(Number(globalThis.source)));
+		on("onResourceStop", (name) => {
+			if (name !== resource$3) return;
+			for (const command of this.list) for (const n of command.info.names) emitNet("chat:removeSuggestion", -1, `/${n}`);
+		});
+	}
+};
+const commands = new CommandSet();
+/**
+* Registers a server command (an array name adds aliases). Arguments are parsed and checked against `params` before
+* the handler runs; wrong input shows the error and the usage line to the player. The permission is checked here
+* with ACE (`restricted`), chat suggestions go only to players allowed to use it, and ai-core's panel lists it.
+*
+*   addCommand("tp", { help: t("CMD_TP"), restricted: true, params: [{ name: "id", type: "playerId" }] }, (src, { id }) => ...);
+*/
+function addCommand(name, options, handler) {
+	const names = (Array.isArray(name) ? name : [name]).map((n) => n.toLowerCase());
+	if (names.length === 0) throw new Error("addCommand needs a name");
+	const restricted = options.restricted ?? false;
+	const aces = restricted === false ? null : restricted === true ? [ADMIN.ace] : Array.isArray(restricted) ? [...restricted] : [restricted];
+	const command = new Command(names, options.params ?? [], options.help ?? "", aces, handler);
+	for (const n of names) RegisterCommand(n, (source, raw, line) => command.run(Number(source), n, raw, line), false);
+	commands.add(command);
+}
 
 // ../../../packages/lib/src/server/netEvent.ts
 const log$3 = createLogger(GetCurrentResourceName());
@@ -25631,95 +25820,374 @@ on("onResourceStop", (resource) => {
 	if (resource === ResourceName) flushFivemanage();
 });
 
-// resource/server/admin/host.ts
-/**
-* The admin panel host: every ai-* resource with a panel registers here; ai-core checks the admin, opens the panel
-* with each resource's snapshot, forwards edits to the resource that owns the data and sends the changes to the
-* admins who have the panel open. The data itself is never stored or saved here.
-*/
-var AdminHost = class {
-	resources = /* @__PURE__ */ new Set();
-	/** Admins with the panel open: they get every change as a delta. */
-	watchers = /* @__PURE__ */ new Set();
-	register(resource) {
-		this.resources.add(resource);
-	}
-	unregister(resource) {
-		this.resources.delete(resource);
-	}
-	open(source) {
-		this.watchers.add(source);
-		const panels = [];
-		for (const resource of this.resources) {
-			const panel = this.call(resource);
-			if (panel) panels.push(panel.AdminPanelSnapshot());
-		}
-		return panels;
-	}
-	close(source) {
-		this.watchers.delete(source);
-	}
-	apply(source, resource, patch) {
-		const panel = this.resources.has(resource) ? this.call(resource) : null;
-		if (!panel) return {
-			ok: false,
-			error: "ADMIN_ERR_GONE"
-		};
-		const result = panel.AdminPanelApply(source, patch);
-		if (result.ok) coreLog("admin", `${resource}: ${describe(patch)}`, {
-			source,
-			metadata: {
-				resource,
-				patch
+// resource/server/content/scene.ts
+/** The character screen scene (settings section `characterScene`): parsing and the default scene. */
+/** Weather types the scene may force (the game's names). */
+const WEATHERS = [
+	"EXTRASUNNY",
+	"CLEAR",
+	"NEUTRAL",
+	"SMOG",
+	"FOGGY",
+	"OVERCAST",
+	"CLOUDS",
+	"CLEARING",
+	"RAIN",
+	"THUNDER",
+	"SNOW",
+	"BLIZZARD",
+	"SNOWLIGHT",
+	"XMAS",
+	"HALLOWEEN"
+];
+const spot = (x, y, z, heading, anim, clip, cam) => ({
+	ped: {
+		x,
+		y,
+		z,
+		heading
+	},
+	anim,
+	clip,
+	camDistance: cam[0],
+	camHeight: cam[1],
+	camAngle: cam[2],
+	targetHeight: cam[3],
+	sway: cam[4],
+	blur: false,
+	blurNear: 0,
+	blurFar: 2,
+	blurStrength: 100
+});
+/** A Vinewood hills terrace over the city at night, five characters side by side. */
+const DEFAULT_SCENE = {
+	fov: 50,
+	time: {
+		enabled: true,
+		hour: 20,
+		minute: 56,
+		weather: "EXTRASUNNY"
+	},
+	spots: [
+		spot(-281.1319, 727.0618, 207.8448, -20.9096, "timetable@mime@01_gc", "idle_a", [
+			1.15,
+			-.05,
+			0,
+			.4,
+			17
+		]),
+		spot(-281.9063, 727.9929, 207.9987, -45.4143, "amb@world_human_leaning@male@wall@back@foot_up@idle_a", "idle_a", [
+			1.15,
+			.2,
+			-46,
+			.4,
+			20
+		]),
+		spot(-282.8329, 729.1763, 208.039, -63.5697, "anim@scripted@freemode_npc@fix_agy_ig4_lamar@", "lean_wall_idle_03_lamar", [
+			1,
+			.2,
+			22,
+			.4,
+			18
+		]),
+		spot(-283.7728, 730.2242, 208.09, -64.6121, "amb@world_human_leaning@male@wall@back@hands_together@idle_b", "idle_e", [
+			1.7,
+			-.1,
+			22,
+			.25,
+			16
+		]),
+		spot(-284.6422, 731.1928, 208.1435, -29.6066, "misscarstealfinale", "packer_idle_1_trevor", [
+			1.75,
+			.25,
+			10,
+			.35,
+			19
+		])
+	]
+};
+function readSpot(raw, fallback) {
+	const s = record(raw);
+	return {
+		ped: vec4(s.ped, fallback.ped),
+		anim: typeof s.anim === "string" ? s.anim.trim().slice(0, 64) : fallback.anim,
+		clip: typeof s.clip === "string" ? s.clip.trim().slice(0, 64) : fallback.clip,
+		camDistance: num$1(s.camDistance, fallback.camDistance, .3, 15),
+		camHeight: num$1(s.camHeight, fallback.camHeight, -2, 2),
+		camAngle: num$1(s.camAngle, fallback.camAngle, -180, 180),
+		targetHeight: num$1(s.targetHeight, fallback.targetHeight, -2, 3),
+		sway: num$1(s.sway, fallback.sway, 0, 45),
+		blur: bool$1(s.blur, fallback.blur),
+		blurNear: num$1(s.blurNear, fallback.blurNear, 0, 50),
+		blurFar: num$1(s.blurFar, fallback.blurFar, 0, 100),
+		blurStrength: num$1(s.blurStrength, fallback.blurStrength, 0, 100)
+	};
+}
+function readScene(raw) {
+	const s = record(raw);
+	const time = record(s.time);
+	const spots = (Array.isArray(s.spots) ? s.spots.slice(0, 10) : []).map((value, i) => readSpot(value, DEFAULT_SCENE.spots[i] ?? DEFAULT_SCENE.spots[0]));
+	return {
+		fov: num$1(s.fov, DEFAULT_SCENE.fov, 20, 90),
+		time: {
+			enabled: bool$1(time.enabled, DEFAULT_SCENE.time.enabled),
+			hour: int$2(time.hour, DEFAULT_SCENE.time.hour, 0, 23),
+			minute: int$2(time.minute, DEFAULT_SCENE.time.minute, 0, 59),
+			weather: WEATHERS.includes(str(time.weather, "")) ? str(time.weather, "") : DEFAULT_SCENE.time.weather
+		},
+		spots: spots.length ? spots : DEFAULT_SCENE.spots
+	};
+}
+
+// resource/server/admin/sceneSchema.ts
+/** Panel part of the character screen scene (settings section `characterScene`). */
+const num = (min, max) => ({
+	type: "number",
+	min,
+	max
+});
+const int$1 = (min, max) => ({
+	type: "number",
+	min,
+	max,
+	integer: true
+});
+const sceneSection = {
+	type: "object",
+	fields: {
+		fov: int$1(20, 90),
+		time: {
+			type: "object",
+			fields: {
+				enabled: { type: "bool" },
+				hour: int$1(0, 23),
+				minute: int$1(0, 59),
+				weather: {
+					type: "enum",
+					values: WEATHERS
+				}
 			}
-		});
-		return result;
-	}
-	changed(delta) {
-		for (const source of this.watchers) emitNet(ADMIN.deltaEvent, source, delta);
-	}
-	call(resource) {
-		if (GetResourceState(resource) !== "started") return null;
-		return globalThis.exports[resource];
+		},
+		spots: {
+			type: "list",
+			min: 1,
+			max: 10,
+			of: {
+				type: "object",
+				fields: {
+					ped: { type: "vec4" },
+					anim: {
+						type: "text",
+						min: 0,
+						max: 64
+					},
+					clip: {
+						type: "text",
+						min: 0,
+						max: 64
+					},
+					camDistance: num(.3, 15),
+					camHeight: num(-2, 2),
+					camAngle: num(-180, 180),
+					targetHeight: num(-2, 3),
+					sway: num(0, 45),
+					blur: { type: "bool" },
+					blurNear: num(0, 50),
+					blurFar: num(0, 100),
+					blurStrength: num(0, 100)
+				}
+			}
+		}
 	}
 };
-function describe(patch) {
-	if (!isRecord(patch)) return "edit";
-	const target = [
-		patch.file,
-		patch.key,
-		patch.section
-	].filter((part) => typeof part === "string").join(".");
-	return `${String(patch.action)} ${target}`;
-}
-const adminHost = new AdminHost();
-registerExport("RegisterAdminPanel", (resource) => {
-	if (typeof resource === "string") adminHost.register(resource);
+/** The spots are one list shown in three cards (place, camera, blur); each card edits its own fields of the same rows. */
+const spots = (rows) => ({
+	widget: "list",
+	path: "characterScene.spots",
+	label: "",
+	rows,
+	newRow: { ...DEFAULT_SCENE.spots[0] },
+	addLabel: "ADMIN_ADD_SPOT",
+	rowLabel: "ADMIN_ROW_SPOT",
+	max: 10
 });
-registerExport("AdminPanelChanged", (delta) => adminHost.changed(delta));
-onClientCallback(ADMIN.openCallback, (source) => adminHost.open(source), {
-	guards: [isAdmin()],
-	rate: {
-		count: 2,
-		windowMs: 1e3
-	}
-});
-onClientCallback(ADMIN.applyCallback, {
-	guards: [isAdmin()],
-	rate: {
-		count: 30,
-		windowMs: 1e4
-	},
-	args: ([resource, patch]) => typeof resource === "string" ? [resource, patch] : null
-}, (source, resource, patch) => adminHost.apply(source, resource, patch));
-onClientEvent(ADMIN.closeEvent, (source) => adminHost.close(source));
-on("playerDropped", () => adminHost.close(Number(globalThis.source)));
-on("onResourceStop", (resource) => adminHost.unregister(resource));
+const sceneTab = {
+	id: "scene",
+	file: "settings",
+	icon: "users",
+	label: "ADMIN_TAB_SCENE",
+	desc: "ADMIN_TAB_SCENE_DESC",
+	cards: [
+		{
+			icon: "sliders",
+			title: "ADMIN_C_SCENE_LOOK",
+			desc: "ADMIN_C_SCENE_LOOK_DESC",
+			fields: [
+				{
+					widget: "number",
+					path: "characterScene.fov",
+					label: "ADMIN_F_FOV",
+					hint: "ADMIN_H_FOV",
+					min: 20,
+					max: 90,
+					unit: "ADMIN_U_DEGREES"
+				},
+				{
+					widget: "switch",
+					path: "characterScene.time.enabled",
+					label: "ADMIN_F_SCENE_TIME",
+					hint: "ADMIN_H_SCENE_TIME"
+				},
+				{
+					widget: "number",
+					path: "characterScene.time.hour",
+					label: "ADMIN_F_HOUR",
+					min: 0,
+					max: 23
+				},
+				{
+					widget: "number",
+					path: "characterScene.time.minute",
+					label: "ADMIN_F_MINUTE",
+					min: 0,
+					max: 59
+				},
+				{
+					widget: "select",
+					path: "characterScene.time.weather",
+					label: "ADMIN_F_WEATHER",
+					options: WEATHERS.map((value) => ({
+						value,
+						label: value
+					}))
+				}
+			]
+		},
+		{
+			icon: "users",
+			title: "ADMIN_C_SCENE_SPOTS",
+			desc: "ADMIN_C_SCENE_SPOTS_DESC",
+			fields: [spots([
+				{
+					widget: "point",
+					path: "ped",
+					label: "ADMIN_F_SPOT_PED",
+					heading: true
+				},
+				{
+					widget: "text",
+					path: "anim",
+					label: "ADMIN_F_ANIM_DICT",
+					placeholder: "ADMIN_PH_ANIM_DICT"
+				},
+				{
+					widget: "text",
+					path: "clip",
+					label: "ADMIN_F_ANIM_CLIP",
+					placeholder: "ADMIN_PH_ANIM_CLIP"
+				}
+			])]
+		},
+		{
+			icon: "camera",
+			title: "ADMIN_C_SCENE_CAMERAS",
+			desc: "ADMIN_C_SCENE_CAMERAS_DESC",
+			fields: [spots([
+				{
+					widget: "number",
+					path: "camDistance",
+					label: "ADMIN_F_CAM_DISTANCE",
+					min: .3,
+					max: 15,
+					step: .05,
+					unit: "ADMIN_U_METRES"
+				},
+				{
+					widget: "number",
+					path: "camHeight",
+					label: "ADMIN_F_CAM_HEIGHT",
+					hint: "ADMIN_H_CAM_HEIGHT",
+					min: -2,
+					max: 2,
+					step: .05
+				},
+				{
+					widget: "number",
+					path: "camAngle",
+					label: "ADMIN_F_CAM_ANGLE",
+					hint: "ADMIN_H_CAM_ANGLE",
+					min: -180,
+					max: 180,
+					step: 5,
+					unit: "ADMIN_U_DEGREES"
+				},
+				{
+					widget: "number",
+					path: "targetHeight",
+					label: "ADMIN_F_TARGET_HEIGHT",
+					min: -2,
+					max: 3,
+					step: .05,
+					unit: "ADMIN_U_METRES"
+				},
+				{
+					widget: "number",
+					path: "sway",
+					label: "ADMIN_F_SWAY",
+					hint: "ADMIN_H_SWAY",
+					min: 0,
+					max: 45,
+					unit: "ADMIN_U_DEGREES"
+				}
+			])]
+		},
+		{
+			icon: "eye",
+			title: "ADMIN_C_SCENE_BLUR",
+			desc: "ADMIN_C_SCENE_BLUR_DESC",
+			fields: [spots([
+				{
+					widget: "switch",
+					path: "blur",
+					label: "ADMIN_F_BLUR",
+					hint: "ADMIN_H_BLUR"
+				},
+				{
+					widget: "number",
+					path: "blurNear",
+					label: "ADMIN_F_BLUR_NEAR",
+					min: 0,
+					max: 50,
+					step: .1,
+					unit: "ADMIN_U_METRES"
+				},
+				{
+					widget: "number",
+					path: "blurFar",
+					label: "ADMIN_F_BLUR_FAR",
+					min: 0,
+					max: 100,
+					step: .1,
+					unit: "ADMIN_U_METRES"
+				},
+				{
+					widget: "number",
+					path: "blurStrength",
+					label: "ADMIN_F_BLUR_STRENGTH",
+					min: 0,
+					max: 100,
+					step: 5,
+					unit: "%"
+				}
+			])]
+		}
+	]
+};
 
 // resource/server/admin/schema.ts
-/** ai-core's own panel: server settings, spawn points, job rules, jobs, gangs and money accounts (`data/*.json`). */
+/** ai-core's own panel: server settings, spawn points, character screen scene, job rules, jobs, gangs and money accounts (`data/*.json`). */
 const ID = "^[a-z0-9_]{2,32}$";
-const text = (max, min = 1) => ({
+const text$3 = (max, min = 1) => ({
 	type: "text",
 	min,
 	max
@@ -25738,7 +26206,7 @@ const grades = {
 	of: {
 		type: "object",
 		fields: {
-			label: text(48),
+			label: text$3(48),
 			salary: int(0, 1e6),
 			boss: {
 				type: "bool",
@@ -25768,8 +26236,8 @@ const gradeRows = (salary) => [
 		label: "ADMIN_F_BOSS"
 	}
 ];
-/** `accounts`: the account types at start, offered where an account is picked. */
-function coreSchema(accounts) {
+/** `accounts`: the account types at start, offered where an account is picked; `inventories`: the inventory adapters. */
+function coreSchema(accounts, inventories = []) {
 	const accountOptions = accounts.map((value) => ({
 		value,
 		label: value
@@ -25785,10 +26253,10 @@ function coreSchema(accounts) {
 					branding: {
 						type: "object",
 						fields: {
-							name: text(32),
-							subtitle: text(32),
-							tagline: text(48, 0),
-							taglineSub: text(64, 0),
+							name: text$3(32),
+							subtitle: text$3(32),
+							tagline: text$3(48, 0),
+							taglineSub: text$3(64, 0),
 							background: {
 								type: "enum",
 								values: ["skyline", "wet-drive"]
@@ -25836,20 +26304,19 @@ function coreSchema(accounts) {
 						}
 					},
 					saveIntervalMinutes: int(1, 60),
+					inventory: {
+						type: "enum",
+						values: ["auto", ...inventories]
+					},
 					spawn: {
 						type: "object",
-						fields: {
-							default: { type: "vec4" },
-							select: {
-								type: "object",
-								fields: {
-									ped: { type: "vec4" },
-									camera: { type: "vec4" },
-									fov: int(10, 120)
-								}
-							}
-						}
-					}
+						fields: { default: { type: "vec4" } }
+					},
+					characterScene: sceneSection
+				},
+				defaults: {
+					characterScene: DEFAULT_SCENE,
+					inventory: "auto"
 				}
 			},
 			jobs: {
@@ -25866,7 +26333,7 @@ function coreSchema(accounts) {
 					}]
 				},
 				sections: {
-					label: text(48),
+					label: text$3(48),
 					type: {
 						type: "text",
 						max: 32,
@@ -25885,7 +26352,7 @@ function coreSchema(accounts) {
 					salary: 0
 				}] },
 				sections: {
-					label: text(48),
+					label: text$3(48),
 					grades
 				}
 			},
@@ -25899,10 +26366,33 @@ function coreSchema(accounts) {
 					allowNegative: false
 				},
 				sections: {
-					label: text(48),
+					label: text$3(48),
 					start: int(0, 1e8),
 					allowNegative: bool
 				}
+			},
+			keybinds: {
+				kind: "records",
+				sync: "all",
+				labelPath: "description",
+				sections: {
+					resource: text$3(64),
+					description: text$3(120, 0),
+					defaultKey: text$3(32, 0),
+					mapper: text$3(32),
+					key: {
+						type: "text",
+						min: 0,
+						max: 32,
+						pattern: "^[A-Za-z0-9_]*$"
+					}
+				}
+			},
+			commands: {
+				kind: "records",
+				sync: "admin",
+				memory: true,
+				sections: {}
 			}
 		},
 		tabs: [
@@ -25946,6 +26436,7 @@ function coreSchema(accounts) {
 								widget: "select",
 								path: "branding.background",
 								label: "ADMIN_F_BACKGROUND",
+								hint: "ADMIN_H_BACKGROUND",
 								options: [{
 									value: "skyline",
 									label: "ADMIN_O_SKYLINE"
@@ -25997,6 +26488,24 @@ function coreSchema(accounts) {
 							max: 60,
 							unit: "ADMIN_U_MINUTES"
 						}]
+					},
+					{
+						icon: "box-open",
+						title: "ADMIN_C_INVENTORY",
+						desc: "ADMIN_C_INVENTORY_DESC",
+						fields: [{
+							widget: "select",
+							path: "inventory",
+							label: "ADMIN_F_INVENTORY",
+							hint: "ADMIN_H_INVENTORY",
+							options: [{
+								value: "auto",
+								label: "ADMIN_O_INVENTORY_AUTO"
+							}, ...inventories.map((value) => ({
+								value,
+								label: value
+							}))]
+						}]
 					}
 				]
 			},
@@ -26016,35 +26525,9 @@ function coreSchema(accounts) {
 						label: "ADMIN_F_SPAWN_POINT",
 						heading: true
 					}]
-				}, {
-					icon: "camera",
-					title: "ADMIN_C_SELECT_SCENE",
-					desc: "ADMIN_C_SELECT_SCENE_DESC",
-					fields: [
-						{
-							widget: "point",
-							path: "spawn.select.ped",
-							label: "ADMIN_F_SCENE_PED",
-							heading: true
-						},
-						{
-							widget: "point",
-							path: "spawn.select.camera",
-							label: "ADMIN_F_SCENE_CAMERA",
-							hint: "ADMIN_H_SCENE_CAMERA",
-							heading: true,
-							from: "camera"
-						},
-						{
-							widget: "number",
-							path: "spawn.select.fov",
-							label: "ADMIN_F_FOV",
-							min: 10,
-							max: 120
-						}
-					]
 				}]
 			},
+			sceneTab,
 			{
 				id: "rules",
 				file: "settings",
@@ -26247,10 +26730,314 @@ function coreSchema(accounts) {
 						}
 					]
 				}]
+			},
+			{
+				id: "keybinds",
+				file: "keybinds",
+				icon: "keyboard",
+				label: "ADMIN_TAB_KEYBINDS",
+				desc: "ADMIN_TAB_KEYBINDS_DESC",
+				listSub: "resource",
+				cards: [{
+					icon: "keyboard",
+					title: "ADMIN_C_KEYBIND",
+					desc: "ADMIN_C_KEYBIND_DESC",
+					fields: [
+						{
+							widget: "info",
+							path: "resource",
+							label: "ADMIN_F_SCRIPT",
+							mono: true
+						},
+						{
+							widget: "info",
+							path: "mapper",
+							label: "ADMIN_F_DEVICE",
+							values: {
+								keyboard: "ADMIN_O_KEYBOARD",
+								MOUSE_BUTTON: "ADMIN_O_MOUSE",
+								PAD_DIGITALBUTTON: "ADMIN_O_PAD"
+							}
+						},
+						{
+							widget: "info",
+							path: "defaultKey",
+							label: "ADMIN_F_SCRIPT_KEY",
+							mono: true,
+							empty: "ADMIN_NO_KEY"
+						},
+						{
+							widget: "text",
+							path: "key",
+							label: "ADMIN_F_DEFAULT_KEY",
+							hint: "ADMIN_H_DEFAULT_KEY",
+							placeholder: "ADMIN_PH_KEYBIND"
+						}
+					]
+				}]
+			},
+			{
+				id: "commands",
+				file: "commands",
+				icon: "terminal",
+				label: "ADMIN_TAB_COMMANDS",
+				desc: "ADMIN_TAB_COMMANDS_DESC",
+				cards: [],
+				table: {
+					sort: "name",
+					columns: [
+						{
+							path: "usage",
+							label: "ADMIN_COL_COMMAND",
+							mono: true,
+							width: 2.2
+						},
+						{
+							path: "help",
+							label: "ADMIN_COL_HELP",
+							width: 3,
+							empty: "ADMIN_CMD_NO_HELP"
+						},
+						{
+							path: "aliases",
+							label: "ADMIN_COL_ALIASES",
+							mono: true,
+							width: 1,
+							empty: "ADMIN_NONE"
+						},
+						{
+							path: "access",
+							label: "ADMIN_COL_ACCESS",
+							mono: true,
+							width: 1.4,
+							empty: "ADMIN_CMD_EVERYONE",
+							values: { "?": "ADMIN_CMD_UNDECLARED" }
+						},
+						{
+							path: "resource",
+							label: "ADMIN_COL_SCRIPT",
+							mono: true,
+							width: 1.2
+						},
+						{
+							path: "kind",
+							label: "ADMIN_COL_KIND",
+							width: 1,
+							values: {
+								lib: "ADMIN_CMD_KIND_LIB",
+								plain: "ADMIN_CMD_KIND_PLAIN"
+							}
+						}
+					]
+				}
 			}
 		]
 	};
 }
+
+// resource/server/inventory/parse.ts
+/** Readers for what inventory exports answer (adapters parse every result at the boundary). */
+/** A Lua export returning several values arrives as an array; the first value is the result. */
+const first = (value) => Array.isArray(value) ? value[0] : value;
+const isTrue = (value) => first(value) === true;
+const number = (value, fallback = 0) => {
+	const v = first(value);
+	return typeof v === "number" && Number.isFinite(v) ? v : fallback;
+};
+const text$2 = (value, fallback) => typeof value === "string" ? value : fallback;
+const metadata = (value) => isRecord(value) ? { ...value } : {};
+/** Rows of a Lua item table: an array, or a map keyed by slot when the slots have gaps. */
+function rows(value) {
+	return (Array.isArray(value) ? value : isRecord(value) ? Object.values(value) : []).filter(isRecord);
+}
+/** A text, or the first text of a per-language table (`{ en = "Bread", tr = "Ekmek" }`). */
+function label(value, fallback) {
+	if (typeof value === "string") return value;
+	if (isRecord(value)) {
+		for (const v of Object.values(value)) if (typeof v === "string") return v;
+	}
+	return fallback;
+}
+/** A stack from the common field names: `count` / `amount`, `metadata` / `info`. */
+function stack(row, labelOf) {
+	if (typeof row.name !== "string") return null;
+	return {
+		name: row.name,
+		label: typeof row.label === "string" ? row.label : labelOf(row.name),
+		count: number(row.count ?? row.amount),
+		slot: number(Number(row.slot)),
+		metadata: metadata(row.metadata ?? row.info)
+	};
+}
+/** An item definition in ox, QB or tgiann shape. */
+function definition(raw, name) {
+	if (!isRecord(raw)) return null;
+	return {
+		name: text$2(raw.name, name),
+		label: label(raw.label, name),
+		weight: number(raw.weight),
+		unique: raw.unique === true || raw.stack === false,
+		close: (raw.close ?? raw.shouldClose) !== false,
+		description: label(raw.description, "")
+	};
+}
+/** Every definition of an item list keyed by name. */
+function definitions(raw) {
+	const out = {};
+	if (!isRecord(raw)) return out;
+	for (const [name, value] of Object.entries(raw)) {
+		const def = definition(value, name);
+		if (def) out[name] = def;
+	}
+	return out;
+}
+
+// resource/server/inventory/adapters/ai-inventory.ts
+/** ai-inventory, the default inventory (own exports, `@aicore-fivem/shared` `AiInventoryServerExports`). */
+const RESOURCE$3 = "ai-inventory";
+const inv = () => resourceExport(RESOURCE$3);
+const aiInventory = {
+	resource: RESOURCE$3,
+	version: "0.1.0",
+	addItem: (ref, item, count, metadata, slot) => inv().AddItem(ref, item, count, metadata, slot) === true,
+	removeItem: (ref, item, count, metadata, slot) => inv().RemoveItem(ref, item, count, metadata, slot) === true,
+	getItemCount: (ref, item, metadata) => Number(inv().GetItemCount(ref, item, metadata)) || 0,
+	canCarryItem: (ref, item, count, metadata) => inv().CanCarryItem(ref, item, count, metadata) === true,
+	getItems: (ref) => {
+		const list = inv().GetItems(ref);
+		return Array.isArray(list) ? list.filter(isRecord).flatMap((row) => stack(row, (name) => name) ?? []) : [];
+	},
+	clearInventory: (ref) => inv().ClearInventory(ref),
+	registerStash: (stash) => inv().RegisterStash(stash.name, stash.label, stash.slots, stash.maxWeight, stash.jobs),
+	openInventory: (source, ref) => inv().OpenInventory(source, ref) === true,
+	getItemDefinition: (name) => definition(inv().Items(name), name),
+	getItemDefinitions: () => definitions(inv().Items()),
+	registerUsableItem: (name, handler) => inv().RegisterUsableItem(name, handler)
+};
+on("ai-inventory:usedItem", (source, name, _slot, _metadata, status) => {
+	emit(CORE.itemUsedEvent, source, name, isRecord(status) ? status : null);
+});
+
+// resource/server/inventory/adapters/ox_inventory.ts
+/**
+* ox_inventory (modules/inventory/server.lua, server.lua, modules/items/server.lua of 2.48.1). `AddItem` /
+* `RemoveItem` answer `success, response`. Usable items: ox_inventory calls the framework (`ESX.UseItem`,
+* Qbox `CanUseItem`), which ai-core's bridge answers.
+*/
+const RESOURCE$2 = "ox_inventory";
+const call$2 = (name, ...args) => callExport(RESOURCE$2, name, ...args);
+const oxInventory = {
+	resource: RESOURCE$2,
+	version: "2.48.1",
+	addItem: (ref, item, count, metadata, slot) => isTrue(call$2("AddItem", ref, item, count, metadata, slot)),
+	removeItem: (ref, item, count, metadata, slot) => isTrue(call$2("RemoveItem", ref, item, count, metadata, slot)),
+	getItemCount: (ref, item, metadata) => number(call$2("GetItemCount", ref, item, metadata)),
+	canCarryItem: (ref, item, count, metadata) => isTrue(call$2("CanCarryItem", ref, item, count, metadata)),
+	getItems: (ref) => rows(call$2("GetInventoryItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []),
+	clearInventory: (ref) => void call$2("ClearInventory", ref),
+	registerStash: (stash) => void call$2("RegisterStash", stash.name, stash.label, stash.slots, stash.maxWeight, void 0, stash.jobs.length ? Object.fromEntries(stash.jobs.map((job) => [job, 0])) : void 0),
+	openInventory: (source, ref) => first(call$2("forceOpenInventory", source, typeof ref === "number" ? "player" : "stash", ref)) != null,
+	getItemDefinition: (name) => definition(call$2("Items", name), name),
+	getItemDefinitions: () => definitions(call$2("Items"))
+};
+
+// resource/server/inventory/adapters/qb-inventory.ts
+/**
+* qb-inventory (server/functions.lua of 2.2.3). Player items live in qb-core's `PlayerData.items`; other inventories
+* are read with `GetInventory(id)`. Item definitions come from qb-core's shared items, which ai-core does not keep,
+* so this adapter answers none (docs/compat/inventory.md). Usable items: qb-inventory calls QB `CanUseItem`, which
+* ai-core's bridge answers.
+*/
+const RESOURCE$1 = "qb-inventory";
+const call$1 = (name, ...args) => callExport(RESOURCE$1, name, ...args);
+function itemsOf$1(ref) {
+	if (typeof ref === "string") {
+		const inventory = call$1("GetInventory", ref);
+		return isRecord(inventory) ? inventory.items : void 0;
+	}
+	const player = callExport("qb-core", "GetPlayer", ref);
+	return isRecord(player) && isRecord(player.PlayerData) ? player.PlayerData.items : void 0;
+}
+const stacksOf = (ref) => rows(itemsOf$1(ref)).flatMap((row) => stack(row, (name) => name) ?? []);
+const qbInventory = {
+	resource: RESOURCE$1,
+	version: "2.2.3",
+	addItem: (ref, item, count, metadata, slot) => isTrue(call$1("AddItem", ref, item, count, slot, metadata)),
+	removeItem: (ref, item, count, _metadata, slot) => isTrue(call$1("RemoveItem", ref, item, count, slot)),
+	getItemCount: (ref, item) => typeof ref === "number" ? number(call$1("GetItemCount", ref, item)) : stacksOf(ref).reduce((sum, s) => s.name === item ? sum + s.count : sum, 0),
+	canCarryItem: (ref, item, count) => isTrue(call$1("CanAddItem", ref, item, count)),
+	getItems: stacksOf,
+	clearInventory: (ref) => void (typeof ref === "number" ? call$1("ClearInventory", ref) : call$1("ClearStash", ref)),
+	registerStash: (stash) => void call$1("CreateInventory", stash.name, {
+		label: stash.label,
+		maxweight: stash.maxWeight,
+		slots: stash.slots
+	}),
+	openInventory: (source, ref) => {
+		if (typeof ref === "number") call$1("OpenInventoryById", source, ref);
+		else call$1("OpenInventory", source, ref);
+		return true;
+	},
+	getItemDefinition: () => null,
+	getItemDefinitions: () => ({})
+};
+
+// resource/server/inventory/adapters/tgiann-inventory.ts
+/**
+* tgiann-inventory (server/exports.lua, shared/shared.lua of 2.4.1). Stacks are `{ slot, name, amount, info }`
+* keyed by slot; `AddItem` / `RemoveItem` take `(inv, item, amount, slot, info)` and accept a stash name as `inv`.
+* Usable items: tgiann-inventory calls the framework (`ESX.UseItem` / QB `CanUseItem`), which ai-core's bridge answers.
+*/
+const RESOURCE = "tgiann-inventory";
+const call = (name, ...args) => callExport(RESOURCE, name, ...args);
+/** `Items(name)` asserts on an unknown item: a missing item is null here, not an error. */
+function item(name) {
+	try {
+		return call("Items", name);
+	} catch {
+		return null;
+	}
+}
+const itemsOf = (ref) => typeof ref === "number" ? call("GetPlayerItems", ref) : call("GetInventoryItems", ref);
+const tgiannInventory = {
+	resource: RESOURCE,
+	version: "2.4.1",
+	addItem: (ref, name, count, metadata, slot) => isTrue(call("AddItem", ref, name, count, slot, metadata)),
+	removeItem: (ref, name, count, metadata, slot) => isTrue(call("RemoveItem", ref, name, count, slot, metadata)),
+	getItemCount: (ref, name, metadata) => number(call("GetItemCount", ref, name, metadata)),
+	canCarryItem: (ref, name, count) => isTrue(call("CanCarryItem", ref, name, count)),
+	getItems: (ref) => {
+		const labels = /* @__PURE__ */ new Map();
+		const labelOf = (name) => {
+			let text = labels.get(name);
+			if (text === void 0) labels.set(name, text = definition(item(name), name)?.label ?? name);
+			return text;
+		};
+		return rows(itemsOf(ref)).flatMap((row) => stack(row, labelOf) ?? []);
+	},
+	clearInventory: (ref) => void call("ClearInventory", ref),
+	registerStash: (stash) => void call("RegisterStash", stash.name, stash.label, stash.slots, stash.maxWeight, void 0, stash.jobs.length ? stash.jobs : void 0),
+	openInventory: (source, ref) => {
+		if (typeof ref === "number") call("ForceOpenInventoryById", source, ref);
+		else call("ForceOpenInventory", source, "stash", ref);
+		return true;
+	},
+	getItemDefinition: (name) => definition(item(name), name),
+	getItemDefinitions: () => definitions(call("Items"))
+};
+
+// resource/server/inventory/registry.ts
+/**
+* Every supported inventory, in detection order: `auto` uses the first one running. ai-inventory comes first
+* because it `provide`s ox_inventory and qb-inventory (those names read started while it runs).
+* A new inventory = one file in `adapters/` and one line here.
+*/
+const INVENTORIES = [
+	aiInventory,
+	tgiannInventory,
+	oxInventory,
+	qbInventory
+];
 
 // resource/server/content/index.ts
 function readSettings(raw) {
@@ -26261,7 +27048,6 @@ function readSettings(raw) {
 	const gangs = record(s.gangs);
 	const pay = record(s.paycheck);
 	const spawn = record(s.spawn);
-	const select = record(spawn.select);
 	return {
 		branding: {
 			name: str(brand.name, "Los Santos", 32),
@@ -26271,49 +27057,34 @@ function readSettings(raw) {
 			background: brand.background === "wet-drive" ? "wet-drive" : "skyline"
 		},
 		characters: {
-			slots: int$1(chars.slots, 3, 1, 10),
+			slots: int$2(chars.slots, 3, 1, 10),
 			canDelete: bool$1(chars.canDelete, true),
-			minAge: int$1(chars.minAge, 18, 0, 99)
+			minAge: int$2(chars.minAge, 18, 0, 99)
 		},
 		jobs: {
 			multiJob: bool$1(jobs.multiJob, true),
-			maxJobs: int$1(jobs.maxJobs, 3, 1, 20),
+			maxJobs: int$2(jobs.maxJobs, 3, 1, 20),
 			unemployed: str(jobs.unemployed, "unemployed", 32),
 			restoreDuty: bool$1(jobs.restoreDuty, false)
 		},
 		gangs: {
 			multiGang: bool$1(gangs.multiGang, true),
-			maxGangs: int$1(gangs.maxGangs, 2, 1, 20)
+			maxGangs: int$2(gangs.maxGangs, 2, 1, 20)
 		},
 		paycheck: {
-			intervalMinutes: int$1(pay.intervalMinutes, 15, 0, 1440),
+			intervalMinutes: int$2(pay.intervalMinutes, 15, 0, 1440),
 			account: str(pay.account, "bank", 32),
 			fromJobAccount: bool$1(pay.fromJobAccount, false)
 		},
-		saveIntervalMinutes: int$1(s.saveIntervalMinutes, 5, 1, 60),
-		spawn: {
-			default: vec4(spawn.default, {
-				x: -1035.71,
-				y: -2731.87,
-				z: 13.76,
-				heading: 330
-			}),
-			select: {
-				ped: vec4(select.ped, {
-					x: -813.97,
-					y: 176.22,
-					z: 76.74,
-					heading: -7.5
-				}),
-				camera: vec4(select.camera, {
-					x: -814.02,
-					y: 179.56,
-					z: 77.4,
-					heading: 198.5
-				}),
-				fov: num(select.fov, 40, 10, 120)
-			}
-		}
+		saveIntervalMinutes: int$2(s.saveIntervalMinutes, 5, 1, 60),
+		inventory: str(s.inventory, "auto", 32),
+		spawn: { default: vec4(spawn.default, {
+			x: -1035.71,
+			y: -2731.87,
+			z: 13.76,
+			heading: 330
+		}) },
+		characterScene: readScene(s.characterScene)
 	};
 }
 function readGrades(raw) {
@@ -26321,7 +27092,7 @@ function readGrades(raw) {
 		const v = record(g);
 		return {
 			label: str(v.label, "Member"),
-			salary: int$1(v.salary, 0, 0),
+			salary: int$2(v.salary, 0, 0),
 			boss: bool$1(v.boss, false)
 		};
 	});
@@ -26345,7 +27116,7 @@ function entries(raw, read) {
 }
 const readAccount = (v) => ({
 	label: str(v.label, "Account"),
-	start: int$1(v.start, 0),
+	start: int$2(v.start, 0),
 	allowNegative: bool$1(v.allowNegative, false)
 });
 const readJob = (v) => ({
@@ -26367,7 +27138,7 @@ function follow(file, target, read) {
 	});
 }
 const startAccounts = Object.keys(record(new DataFile(ResourceName, "accounts", log$1).read()));
-const panel = new AdminPanel(coreSchema(startAccounts));
+const panel = new AdminPanel(coreSchema(startAccounts, INVENTORIES.map((adapter) => adapter.resource)));
 const settings = readSettings(panel.get("settings"));
 panel.onChange("settings", (_key, value) => Object.assign(settings, readSettings(value)));
 const accountTypes = entries(panel.get("accounts"), readAccount);
@@ -26387,6 +27158,376 @@ if (accountTypes.size === 0) accountTypes.set("cash", {
 	start: 0,
 	allowNegative: false
 });
+
+// resource/server/admin/commands.ts
+const FILE$1 = "commands";
+const PARAM_TYPES = /* @__PURE__ */ new Set([
+	"number",
+	"playerId",
+	"string",
+	"longString"
+]);
+const text$1 = (value, max) => typeof value === "string" ? value.slice(0, max) : "";
+const names = (value) => Array.isArray(value) ? value.filter((n) => typeof n === "string" && /^[\w.:-]{1,64}$/.test(n)).map((n) => n.toLowerCase()) : [];
+function readParam(value) {
+	if (!isRecord(value) || typeof value.name !== "string" || typeof value.type !== "string" || !PARAM_TYPES.has(value.type)) return null;
+	return {
+		name: text$1(value.name, 32),
+		type: value.type,
+		help: text$1(value.help, 120),
+		optional: value.optional === true
+	};
+}
+function readInfo(value) {
+	if (!isRecord(value)) return null;
+	const list = names(value.names);
+	if (!list.length) return null;
+	const params = Array.isArray(value.params) ? value.params.map(readParam).filter((p) => p !== null) : [];
+	const aces = Array.isArray(value.aces) ? value.aces.filter((a) => typeof a === "string" && /^[\w.:-]{1,64}$/.test(a)) : null;
+	return {
+		names: list,
+		help: text$1(value.help, 200),
+		params,
+		aces
+	};
+}
+/**
+* Every command on the server for the panel: the lib's `addCommand` commands as their resources announce them, and
+* every other registered command (`GetRegisteredCommands`) as plain. Rows go through the panel's `commit`, so admins
+* with the panel open get them as deltas. Plain commands are re-read when the panel opens and after resources start
+* or stop (debounced).
+*/
+var CommandRegistry = class {
+	/** resource -> its announced commands' names (every alias), for the stop. */
+	byResource = /* @__PURE__ */ new Map();
+	/** Every name and alias of a lib command -> its row key. */
+	libNames = /* @__PURE__ */ new Map();
+	/** Keys of the plain rows. */
+	plain = /* @__PURE__ */ new Set();
+	/** Principals granted `command.<name>` per resource, taken back when it stops. */
+	grants = /* @__PURE__ */ new Map();
+	timer = null;
+	warned = false;
+	register(resource, list) {
+		const owned = this.byResource.get(resource) ?? /* @__PURE__ */ new Set();
+		this.byResource.set(resource, owned);
+		for (const info of list) {
+			const [name, ...aliases] = info.names;
+			if (!name) continue;
+			for (const n of info.names) {
+				owned.add(n);
+				this.libNames.set(n, name);
+				if (this.plain.delete(n)) panel.commit(FILE$1, n, null);
+			}
+			this.grant(resource, info);
+			const row = {
+				name,
+				aliases: aliases.join(", "),
+				resource,
+				help: info.help,
+				usage: [`/${name}`, ...info.params.map((p) => p.optional ? `[${p.name}]` : `<${p.name}>`)].join(" "),
+				access: info.aces ? info.aces.join(", ") : "",
+				kind: "lib"
+			};
+			panel.commit(FILE$1, name, row);
+		}
+	}
+	drop(resource) {
+		for (const n of this.byResource.get(resource) ?? []) {
+			const key = this.libNames.get(n);
+			this.libNames.delete(n);
+			if (key === n) panel.commit(FILE$1, n, null);
+		}
+		this.byResource.delete(resource);
+		for (const [principal, ace] of this.grants.get(resource) ?? []) ExecuteCommand(`remove_ace ${principal} ${ace} allow`);
+		this.grants.delete(resource);
+		this.refreshSoon();
+	}
+	/** Re-reads the registered commands: adds the new plain ones, removes the gone ones. */
+	refreshPlain() {
+		const seen = /* @__PURE__ */ new Set();
+		for (const command of GetRegisteredCommands()) {
+			const name = command.name.toLowerCase();
+			if (!command.resource || name.startsWith("+") || name.startsWith("-") || this.libNames.has(name) || seen.has(name)) continue;
+			seen.add(name);
+			if (this.plain.has(name)) continue;
+			this.plain.add(name);
+			const row = {
+				name,
+				aliases: "",
+				resource: command.resource,
+				help: "",
+				usage: `/${name}`,
+				access: "?",
+				kind: "plain"
+			};
+			panel.commit(FILE$1, name, row);
+		}
+		for (const name of this.plain) {
+			if (seen.has(name)) continue;
+			this.plain.delete(name);
+			panel.commit(FILE$1, name, null);
+		}
+	}
+	refreshSoon() {
+		if (this.timer) clearTimeout(this.timer);
+		this.timer = setTimeout(() => {
+			this.timer = null;
+			this.refreshPlain();
+		}, 1e3);
+	}
+	/**
+	* `group.admin` and other principals are not aces (IsPlayerAceAllowed is always false for them): like ox_lib, give
+	* each listed principal `command.<name>`, which the lib's check accepts. Needs `command.add_ace` for ai-core.
+	*/
+	grant(resource, info) {
+		const list = this.grants.get(resource) ?? [];
+		this.grants.set(resource, list);
+		for (const principal of info.aces ?? []) {
+			if (principal === ADMIN.ace || principal.startsWith("command.")) continue;
+			if (!IsPrincipalAceAllowed("resource.ai-core", "command.add_ace")) {
+				if (!this.warned) log$1.warn("permission.cfg lacks `add_ace resource.ai-core command.add_ace allow` (and remove_ace): commands restricted to a principal like group.admin work only through command.<name>");
+				this.warned = true;
+				return;
+			}
+			for (const name of info.names) {
+				const ace = `command.${name}`;
+				if (IsPrincipalAceAllowed(principal, ace)) continue;
+				ExecuteCommand(`add_ace ${principal} ${ace} allow`);
+				list.push([principal, ace]);
+			}
+		}
+	}
+};
+const commandRegistry = new CommandRegistry();
+registerExport("RegisterCommands", (resource, list) => {
+	if (typeof resource !== "string" || !Array.isArray(list)) return;
+	const infos = list.map(readInfo).filter((i) => i !== null);
+	if (infos.length !== list.length) log$1.warn(`${resource}: ${list.length - infos.length} command(s) with an invalid description skipped`);
+	commandRegistry.register(resource, infos);
+});
+on("onResourceStop", (resource) => commandRegistry.drop(resource));
+on("onServerResourceStart", () => commandRegistry.refreshSoon());
+
+// resource/server/admin/keybinds.ts
+/**
+* The panel's Keybinds tab: `data/keybinds.json` (`sync: "all"`, key = keybind name) holds each keybind's description
+* as its script reports it plus the owner's `key`. Keybinds live on clients, so an admin's client reports the ones it
+* knows when the panel opens; new or changed ones are stored with `commit` (the owner's key is kept).
+*/
+const FILE = "keybinds";
+const MAX = 500;
+const NAME = /^[\w.-]{1,64}$/;
+const KEYBOARD = /* @__PURE__ */ new Set([
+	..."ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+	...Array.from({ length: 24 }, (_, i) => `F${i + 1}`),
+	...Array.from({ length: 10 }, (_, i) => `NUMPAD${i}`),
+	"ESCAPE",
+	"BACK",
+	"TAB",
+	"RETURN",
+	"SPACE",
+	"CAPITAL",
+	"LSHIFT",
+	"RSHIFT",
+	"LCONTROL",
+	"RCONTROL",
+	"LMENU",
+	"RMENU",
+	"LWIN",
+	"RWIN",
+	"APPS",
+	"INSERT",
+	"DELETE",
+	"HOME",
+	"END",
+	"PAGEUP",
+	"PAGEDOWN",
+	"UP",
+	"DOWN",
+	"LEFT",
+	"RIGHT",
+	"PAUSE",
+	"SCROLL",
+	"NUMLOCK",
+	"MULTIPLY",
+	"ADD",
+	"SUBTRACT",
+	"DECIMAL",
+	"DIVIDE",
+	"NUMPADENTER",
+	"NUMPADEQUALS",
+	"GRAVE",
+	"MINUS",
+	"EQUALS",
+	"PLUS",
+	"LBRACKET",
+	"RBRACKET",
+	"BACKSLASH",
+	"SEMICOLON",
+	"APOSTROPHE",
+	"COMMA",
+	"PERIOD",
+	"SLASH",
+	"OEM_102"
+]);
+const MOUSE = /* @__PURE__ */ new Set([
+	"MOUSE_LEFT",
+	"MOUSE_RIGHT",
+	"MOUSE_MIDDLE",
+	"MOUSE_EXTRABTN1",
+	"MOUSE_EXTRABTN2",
+	"MOUSE_EXTRABTN3",
+	"MOUSE_EXTRABTN4",
+	"MOUSE_EXTRABTN5",
+	"IOM_WHEEL_UP",
+	"IOM_WHEEL_DOWN"
+]);
+const text = (value, max) => typeof value === "string" && value.length <= max ? value : null;
+function readKeybind(value) {
+	if (!isRecord(value)) return null;
+	const resource = text(value.resource, 64);
+	const name = text(value.name, 64);
+	const description = text(value.description, 120);
+	const defaultKey = text(value.defaultKey, 32);
+	const mapper = text(value.mapper, 32);
+	if (!resource || !name || !NAME.test(name) || description === null || defaultKey === null || !mapper) return null;
+	return {
+		resource,
+		name,
+		description,
+		defaultKey: defaultKey.toUpperCase(),
+		mapper
+	};
+}
+/** The keybinds an admin's client sent with the panel open (`null` refuses the call). */
+function readKeybinds(value) {
+	if (!Array.isArray(value) || value.length > MAX) return null;
+	return value.map(readKeybind).filter((k) => k !== null);
+}
+/** Stores keybinds that are new or whose description, default or mapper changed. */
+function reportKeybinds(list) {
+	const stored = panel.get(FILE);
+	for (const info of list) {
+		const raw = stored[info.name];
+		const old = isRecord(raw) ? raw : null;
+		if (old && old.resource === info.resource && old.description === info.description && old.defaultKey === info.defaultKey && old.mapper === info.mapper) continue;
+		const key = typeof old?.key === "string" ? old.key : "";
+		panel.commit(FILE, info.name, {
+			resource: info.resource,
+			description: info.description,
+			defaultKey: info.defaultKey,
+			mapper: info.mapper,
+			key
+		});
+	}
+}
+panel.rule(FILE, (_key, next) => {
+	const key = typeof next.key === "string" ? next.key.toUpperCase() : "";
+	if (key === "") return null;
+	if (next.mapper === "keyboard") return KEYBOARD.has(key) ? null : "ADMIN_ERR_KEY";
+	if (next.mapper === "MOUSE_BUTTON") return MOUSE.has(key) ? null : "ADMIN_ERR_KEY";
+	return null;
+});
+
+// resource/server/admin/host.ts
+/**
+* The admin panel host: every ai-* resource with a panel registers here; ai-core checks the admin, opens the panel
+* with each resource's snapshot, forwards edits to the resource that owns the data and sends the changes to the
+* admins who have the panel open. The data itself is never stored or saved here.
+*/
+var AdminHost = class {
+	resources = /* @__PURE__ */ new Set();
+	/** Admins with the panel open: they get every change as a delta. */
+	watchers = /* @__PURE__ */ new Set();
+	register(resource) {
+		this.resources.add(resource);
+	}
+	unregister(resource) {
+		this.resources.delete(resource);
+	}
+	open(source) {
+		this.watchers.add(source);
+		const panels = [];
+		for (const resource of this.resources) {
+			const panel = this.call(resource);
+			if (panel) panels.push(panel.AdminPanelSnapshot());
+		}
+		return panels;
+	}
+	close(source) {
+		this.watchers.delete(source);
+	}
+	apply(source, resource, patch) {
+		const panel = this.resources.has(resource) ? this.call(resource) : null;
+		if (!panel) return {
+			ok: false,
+			error: "ADMIN_ERR_GONE"
+		};
+		const result = panel.AdminPanelApply(source, patch);
+		if (result.ok) coreLog("admin", `${resource}: ${describe(patch)}`, {
+			source,
+			metadata: {
+				resource,
+				patch
+			}
+		});
+		return result;
+	}
+	changed(delta) {
+		for (const source of this.watchers) emitNet(ADMIN.deltaEvent, source, delta);
+	}
+	call(resource) {
+		if (GetResourceState(resource) !== "started") return null;
+		return globalThis.exports[resource];
+	}
+};
+function describe(patch) {
+	if (!isRecord(patch)) return "edit";
+	const target = [
+		patch.file,
+		patch.key,
+		patch.section
+	].filter((part) => typeof part === "string").join(".");
+	return `${String(patch.action)} ${target}`;
+}
+const adminHost = new AdminHost();
+registerExport("RegisterAdminPanel", (resource) => {
+	if (typeof resource === "string") adminHost.register(resource);
+});
+registerExport("AdminPanelChanged", (delta) => adminHost.changed(delta));
+onClientCallback(ADMIN.openCallback, {
+	guards: [isAdmin()],
+	rate: {
+		count: 2,
+		windowMs: 1e3
+	},
+	args: ([keybinds]) => {
+		const list = readKeybinds(keybinds);
+		return list ? [list] : null;
+	}
+}, (source, keybinds) => {
+	reportKeybinds(keybinds);
+	commandRegistry.refreshPlain();
+	return adminHost.open(source);
+});
+addCommand("aiadmin", {
+	help: Locale("COMMAND_AIADMIN"),
+	restricted: true
+}, (source) => {
+	if (source > 0) emitNet(ADMIN.showEvent, source);
+});
+onClientCallback(ADMIN.applyCallback, {
+	guards: [isAdmin()],
+	rate: {
+		count: 30,
+		windowMs: 1e4
+	},
+	args: ([resource, patch]) => typeof resource === "string" ? [resource, patch] : null
+}, (source, resource, patch) => adminHost.apply(source, resource, patch));
+onClientEvent(ADMIN.closeEvent, (source) => adminHost.close(source));
+on("playerDropped", () => adminHost.close(Number(globalThis.source)));
+on("onResourceStop", (resource) => adminHost.unregister(resource));
 
 // resource/server/database.ts
 /** Resolves when ai-core's tables exist; every first DB use of a player waits on it. */
@@ -26658,29 +27799,27 @@ async function getCharacter(userId, charId) {
 	const row = await mysql.single(`SELECT ${COLUMNS} FROM ai_core_characters WHERE id = ? AND user_id = ? AND deleted_at IS NULL`, [charId, userId]);
 	return row ? toRow(row) : null;
 }
-const CITIZENID_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-function newCitizenId() {
-	let id = "";
-	for (let i = 0; i < 8; i++) id += CITIZENID_CHARS[Math.floor(Math.random() * 32)];
-	return id;
-}
-/** Inserts a character with a unique 8-character citizen id (retried on the rare collision). */
+/**
+* Inserts a character; its citizen id is its row id ("1", "2", ...: ids count up one by one, owner decision). The row
+* goes in with a unique placeholder (the column is NOT NULL UNIQUE) and takes its id right after.
+*/
 async function insertCharacter(userId, input) {
-	for (let attempt = 0; attempt < 5; attempt++) {
-		const citizenid = newCitizenId();
-		if (await mysql.scalar("SELECT 1 FROM ai_core_characters WHERE citizenid = ?", [citizenid])) continue;
-		const id = await mysql.insert("INSERT INTO ai_core_characters (user_id, citizenid, slot, firstname, lastname, birthdate, sex) VALUES (?, ?, ?, ?, ?, ?, ?)", [
-			userId,
-			citizenid,
-			input.slot,
-			input.firstname,
-			input.lastname,
-			input.birthdate,
-			input.sex
-		]);
-		if (id) return id;
+	const placeholder = `~${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`.slice(0, 16);
+	const id = await mysql.insert("INSERT INTO ai_core_characters (user_id, citizenid, slot, firstname, lastname, birthdate, sex) VALUES (?, ?, ?, ?, ?, ?, ?)", [
+		userId,
+		placeholder,
+		input.slot,
+		input.firstname,
+		input.lastname,
+		input.birthdate,
+		input.sex
+	]);
+	if (!id) throw new Error("could not create the character");
+	if (!await mysql.update("UPDATE ai_core_characters SET citizenid = ? WHERE id = ?", [String(id), id]).catch(() => 0)) {
+		await mysql.update("DELETE FROM ai_core_characters WHERE id = ?", [id]);
+		throw new Error(`citizen id ${id} is already taken`);
 	}
-	throw new Error("could not create a unique citizen id");
+	return id;
 }
 /** Soft delete: the row stays for logs and is never loaded again. */
 async function deleteCharacter(userId, charId) {
@@ -27194,7 +28333,7 @@ async function characterScreen(user) {
 		slots: slotsOf(user),
 		characters,
 		canDelete: settings.characters.canDelete,
-		scene: settings.spawn.select
+		scene: settings.characterScene
 	};
 }
 
@@ -27478,50 +28617,297 @@ registerExport("GetSharedMoney", (ownerType, ownerId, account) => sharedAccounts
 registerExport("AddSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(amount, reasonOf(reason)).ok ?? false : false);
 registerExport("RemoveSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(-amount, reasonOf(reason)).ok ?? false : false);
 
+// resource/server/inventory/layer.ts
+/** The handler's item from any inventory's shape (`count` / `amount`, `metadata` / `info`). */
+function toUsedItem(name, raw) {
+	const v = isRecord(raw) ? raw : {};
+	const meta = isRecord(v.metadata) ? v.metadata : isRecord(v.info) ? v.info : {};
+	const count = typeof v.count === "number" ? v.count : typeof v.amount === "number" ? v.amount : 0;
+	return {
+		name,
+		slot: Number(v.slot) || 0,
+		count,
+		metadata: { ...meta }
+	};
+}
+/**
+* ai-core's inventory layer: picks the active inventory (the panel's choice, or the first running one in priority
+* order) and keeps the usable items and stashes scripts register, so an inventory that becomes active later (or
+* restarts) gets them all again.
+*/
+var InventoryLayer = class {
+	adapters;
+	host;
+	current = null;
+	choice = "auto";
+	usable = /* @__PURE__ */ new Map();
+	stashes = /* @__PURE__ */ new Map();
+	constructor(adapters, host) {
+		this.adapters = adapters;
+		this.host = host;
+	}
+	/** `auto`, or the resource name of one adapter. */
+	setChoice(choice) {
+		this.choice = choice;
+		this.select();
+	}
+	/** Picks the inventory again; `stopping` is a resource on its way down whose state may still read started. */
+	select(stopping) {
+		const runs = (a) => a.resource !== stopping && this.host.isStarted(a.resource);
+		const auto = this.choice === "auto" || !this.adapters.some((a) => a.resource === this.choice);
+		const next = (auto ? this.adapters.find(runs) : this.adapters.find((a) => a.resource === this.choice && runs(a))) ?? null;
+		if (next === this.current) return;
+		this.current = next;
+		this.host.announce(next?.resource ?? null);
+		if (!next) {
+			this.host.log.info(auto ? "no inventory runs yet: item calls fail until one starts" : `the inventory picked in the panel (${this.choice}) does not run yet`);
+			return;
+		}
+		const installed = this.host.version(next.resource);
+		this.host.log.info(`inventory: ${next.resource} ${installed}`);
+		if (installed !== next.version) this.host.log.warn(`${next.resource} ${installed} is installed; its adapter is written for ${next.version}`);
+		for (const stash of this.stashes.values()) this.call("RegisterStash", (a) => a.registerStash(stash), void 0);
+		if (next.registerUsableItem) for (const name of this.usable.keys()) this.call("RegisterUsableItem", (a) => a.registerUsableItem?.(name, this.dispatcher(name)), void 0);
+	}
+	/** Runs `fn` on the active adapter; `fallback` while none runs or when the inventory's export throws. */
+	call(what, fn, fallback) {
+		const adapter = this.current;
+		if (!adapter) return fallback;
+		try {
+			return fn(adapter);
+		} catch (error) {
+			this.host.log.error(`${adapter.resource} ${what} failed`, error);
+			return fallback;
+		}
+	}
+	registerStash(stash) {
+		this.stashes.set(stash.name, stash);
+		this.call("RegisterStash", (a) => a.registerStash(stash), void 0);
+	}
+	registerUsableItem(name, handler) {
+		this.usable.set(name, handler);
+		this.call("RegisterUsableItem", (a) => a.registerUsableItem?.(name, this.dispatcher(name)), void 0);
+	}
+	isUsable(name) {
+		return this.usable.has(name);
+	}
+	/** Runs an item's handler; false (keep the item) when none is registered or it throws (its resource stopped). */
+	useItem(source, name, item) {
+		const handler = this.usable.get(name);
+		if (!handler) return false;
+		try {
+			return handler(source, toUsedItem(name, item));
+		} catch (error) {
+			this.host.log.error(`usable item ${name} failed`, error);
+			return false;
+		}
+	}
+	dispatcher(name) {
+		return (source, item) => this.useItem(source, name, item);
+	}
+};
+
+// resource/server/inventory/index.ts
+/**
+* ai-core's inventory exports: every script (lib `inventory`) and the bridge call these, the active inventory
+* answers through its adapter (`registry.ts`). The choice follows the panel setting and inventory starts / stops.
+*/
+const inventory = new InventoryLayer(INVENTORIES, {
+	isStarted: isResourceStarted,
+	version: (resource) => GetResourceMetadata(resource, "version", 0) || "?",
+	announce: (resource) => {
+		GlobalState.set(INVENTORY_STATE_KEY, resource, true);
+		emit(CORE.inventoryChangedEvent, resource);
+	},
+	log: log$1
+});
+inventory.setChoice(settings.inventory);
+panel.onChange("settings", () => inventory.setChoice(settings.inventory));
+const candidates = new Set(INVENTORIES.map((adapter) => adapter.resource));
+on("onServerResourceStart", (resource) => candidates.has(resource) && inventory.select());
+on("onResourceStop", (resource) => {
+	if (!candidates.has(resource)) return;
+	inventory.select(resource);
+	setTimeout(() => inventory.select(), 0);
+});
+const ref = (v) => typeof v === "number" || typeof v === "string" && v !== "" ? v : null;
+const name = (v) => typeof v === "string" && v !== "" ? v : null;
+/** A whole positive amount; 1 when left out. */
+const amount = (v) => v == null ? 1 : typeof v === "number" && Number.isFinite(v) && v >= 1 ? Math.floor(v) : null;
+const meta = (v) => isRecord(v) ? v : void 0;
+const slot = (v) => typeof v === "number" && Number.isInteger(v) && v > 0 ? v : void 0;
+registerExport("AddItem", (inv, item, count, metadata, at) => {
+	const [r, i, n] = [
+		ref(inv),
+		name(item),
+		amount(count)
+	];
+	return r !== null && i !== null && n !== null && inventory.call("AddItem", (a) => a.addItem(r, i, n, meta(metadata), slot(at)), false);
+});
+registerExport("RemoveItem", (inv, item, count, metadata, at) => {
+	const [r, i, n] = [
+		ref(inv),
+		name(item),
+		amount(count)
+	];
+	return r !== null && i !== null && n !== null && inventory.call("RemoveItem", (a) => a.removeItem(r, i, n, meta(metadata), slot(at)), false);
+});
+const count = (inv, item, metadata) => {
+	const [r, i] = [ref(inv), name(item)];
+	return r !== null && i !== null ? inventory.call("GetItemCount", (a) => a.getItemCount(r, i, meta(metadata)), 0) : 0;
+};
+registerExport("GetItemCount", count);
+registerExport("HasItem", (inv, item, need) => {
+	const n = amount(need);
+	return n !== null && count(inv, item) >= n;
+});
+registerExport("CanCarryItem", (inv, item, count, metadata) => {
+	const [r, i, n] = [
+		ref(inv),
+		name(item),
+		amount(count)
+	];
+	return r !== null && i !== null && n !== null && inventory.call("CanCarryItem", (a) => a.canCarryItem(r, i, n, meta(metadata)), false);
+});
+registerExport("GetItems", (inv) => {
+	const r = ref(inv);
+	return r === null ? [] : inventory.call("GetItems", (a) => a.getItems(r), []);
+});
+registerExport("ClearInventory", (inv) => {
+	const r = ref(inv);
+	if (r !== null) inventory.call("ClearInventory", (a) => a.clearInventory(r), void 0);
+});
+registerExport("RegisterStash", (id, label, slots, maxWeight, jobs) => {
+	const n = name(id);
+	if (n === null) return;
+	inventory.registerStash({
+		name: n,
+		label: typeof label === "string" ? label : n,
+		slots: typeof slots === "number" && slots > 0 ? Math.floor(slots) : 50,
+		maxWeight: typeof maxWeight === "number" && maxWeight > 0 ? maxWeight : 1e5,
+		jobs: Array.isArray(jobs) ? jobs.filter((j) => typeof j === "string") : []
+	});
+});
+registerExport("OpenInventory", (source, inv) => {
+	const r = ref(inv);
+	return typeof source === "number" && r !== null && inventory.call("OpenInventory", (a) => a.openInventory(source, r), false);
+});
+registerExport("RegisterUsableItem", (item, handler) => {
+	const n = name(item);
+	if (n !== null && typeof handler === "function") inventory.registerUsableItem(n, handler);
+});
+registerExport("GetItemDefinition", (item) => {
+	const n = name(item);
+	return n === null ? null : inventory.call("GetItemDefinition", (a) => a.getItemDefinition(n), null);
+});
+registerExport("GetItemDefinitions", () => inventory.call("GetItemDefinitions", (a) => a.getItemDefinitions(), {}));
+registerExport("UseItem", (source, item, data) => {
+	const n = name(item);
+	return typeof source === "number" && n !== null ? inventory.useItem(source, n, data) : false;
+});
+registerExport("IsUsableItem", (item) => typeof item === "string" && inventory.isUsable(item));
+
 // resource/server/devCommands.ts
 /**
-* Developer test commands (restricted: group.admin), only until the admin panel covers these. Players never use
-* commands. Each acts on the caller, or on `id` (server id) when given.
+* Developer test commands (ai-core admins), only until the admin panel covers these. Players never use commands.
+* Each acts on the caller, or on `id` (server id) when given.
 */
 const log = createLogger("ai-core:dev");
-function target(source, raw) {
-	const id = Number(raw);
-	return Number.isInteger(id) && id > 0 ? id : source;
-}
 /** The answer goes to the server console (chat may not run); the caller sees it there or in txAdmin's live console. */
 function reply(source, text) {
 	log.info(`${source > 0 ? `src ${source}: ` : ""}${text}`);
 }
-RegisterCommand("aicore_switch", (source, args) => {
-	reply(source, switchCharacter(target(source, args[0])) ? "switched" : "no character");
-}, true);
-RegisterCommand("aicore_job", (source, args) => {
-	const result = players.get(target(source, args[2]))?.jobs.set(args[0] ?? "", Number(args[1] ?? 0));
-	reply(source, result ? JSON.stringify(result) : "no character");
-}, true);
-RegisterCommand("aicore_duty", (source, args) => {
-	const player = players.get(target(source, args[1]));
-	const job = args[0] && args[0] !== "off" ? args[0] : null;
-	reply(source, player ? JSON.stringify(player.jobs.setDuty(job)) : "no character");
-}, true);
-RegisterCommand("aicore_money", (source, args) => {
-	const result = players.get(target(source, args[2]))?.wallet.change(args[0] ?? "", Number(args[1] ?? 0), "DEV_COMMAND", `src:${source}`);
-	reply(source, result ? JSON.stringify(result) : "no character");
-}, true);
-RegisterCommand("aicore_gang", (source, args) => {
-	const result = players.get(target(source, args[2]))?.gangs.set(args[0] ?? "", Number(args[1] ?? 0));
-	reply(source, result ? JSON.stringify(result) : "no character");
-}, true);
+const id = {
+	name: "id",
+	type: "playerId",
+	help: Locale("COMMAND_P_ID"),
+	optional: true
+};
+const result = (value) => value ? JSON.stringify(value) : "no character";
+addCommand("aicore_switch", {
+	help: Locale("COMMAND_AICORE_SWITCH"),
+	restricted: true,
+	params: [id]
+}, (source, args) => {
+	reply(source, switchCharacter(args.id ?? source) ? "switched" : "no character");
+});
+addCommand("aicore_job", {
+	help: Locale("COMMAND_AICORE_JOB"),
+	restricted: true,
+	params: [
+		{
+			name: "job",
+			type: "string",
+			help: Locale("COMMAND_P_JOB")
+		},
+		{
+			name: "grade",
+			type: "number",
+			help: Locale("COMMAND_P_GRADE")
+		},
+		id
+	]
+}, (source, args) => reply(source, result(players.get(args.id ?? source)?.jobs.set(args.job, args.grade))));
+addCommand("aicore_duty", {
+	help: Locale("COMMAND_AICORE_DUTY"),
+	restricted: true,
+	params: [{
+		name: "job",
+		type: "string",
+		help: Locale("COMMAND_P_DUTY")
+	}, id]
+}, (source, args) => reply(source, result(players.get(args.id ?? source)?.jobs.setDuty(args.job === "off" ? null : args.job))));
+addCommand("aicore_money", {
+	help: Locale("COMMAND_AICORE_MONEY"),
+	restricted: true,
+	params: [
+		{
+			name: "account",
+			type: "string",
+			help: Locale("COMMAND_P_ACCOUNT")
+		},
+		{
+			name: "amount",
+			type: "number",
+			help: Locale("COMMAND_P_AMOUNT")
+		},
+		id
+	]
+}, (source, args) => reply(source, result(players.get(args.id ?? source)?.wallet.change(args.account, args.amount, "DEV_COMMAND", `src:${source}`))));
+addCommand("aicore_gang", {
+	help: Locale("COMMAND_AICORE_GANG"),
+	restricted: true,
+	params: [
+		{
+			name: "gang",
+			type: "string",
+			help: Locale("COMMAND_P_GANG")
+		},
+		{
+			name: "grade",
+			type: "number",
+			help: Locale("COMMAND_P_GRADE")
+		},
+		id
+	]
+}, (source, args) => reply(source, result(players.get(args.id ?? source)?.gangs.set(args.gang, args.grade))));
 /** Database statistics of every resource (queries, time, slow ones); `aicore_db slow` lists recent slow queries. */
-RegisterCommand("aicore_db", (source, args) => {
-	collectQueryStats().then((reports) => {
-		for (const r of reports) {
-			const avg = r.queries ? (r.totalMs / r.queries).toFixed(2) : "0";
-			reply(source, `${r.resource}: ${r.queries} queries, ${r.totalMs.toFixed(0)} ms total, avg ${avg} ms, ${r.slow} slow, ${r.errors} errors`);
-			if (args[0] === "slow") for (const q of r.recentSlow.slice(-5)) reply(source, `  ${q.ms} ms  ${q.sql}`);
-		}
-	});
-}, true);
+addCommand("aicore_db", {
+	help: Locale("COMMAND_AICORE_DB"),
+	restricted: true,
+	params: [{
+		name: "slow",
+		type: "string",
+		help: Locale("COMMAND_P_SLOW"),
+		optional: true
+	}]
+}, async (source, args) => {
+	for (const r of await collectQueryStats()) {
+		const avg = r.queries ? (r.totalMs / r.queries).toFixed(2) : "0";
+		reply(source, `${r.resource}: ${r.queries} queries, ${r.totalMs.toFixed(0)} ms total, avg ${avg} ms, ${r.slow} slow, ${r.errors} errors`);
+		if (args.slow === "slow") for (const q of r.recentSlow.slice(-5)) reply(source, `  ${q.ms} ms  ${q.sql}`);
+	}
+});
 
 // resource/server/index.ts
 resetDutyCounts(jobs.keys());

@@ -54,5 +54,5 @@ export async function characterScreen(user: User): Promise<CharacterScreen> {
       lastPlayed: row.lastPlayed,
     };
   });
-  return { branding: settings.branding, slots: slotsOf(user), characters, canDelete: settings.characters.canDelete, scene: settings.spawn.select };
+  return { branding: settings.branding, slots: slotsOf(user), characters, canDelete: settings.characters.canDelete, scene: settings.characterScene };
 }

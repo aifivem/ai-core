@@ -55,6 +55,7 @@
     "qbx_core"
   ],
   "fxFiles": [
+    "data/keybinds.json",
     "modules/playerdata.lua",
     "shared/locale.lua",
     "imports.lua",

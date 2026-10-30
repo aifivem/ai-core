@@ -13,9 +13,11 @@ export interface ScreenState {
   error: string | null;
   /** Portrait image urls by character id (sent by an appearance resource, may be missing). */
   portraits: Record<number, string>;
+  /** The game's scene with the characters stands behind the screen; without it the background picture shows. */
+  scene: boolean;
 }
 
-let state: ScreenState = { open: false, screen: null, selected: null, view: { kind: "list" }, busy: false, error: null, portraits: {} };
+let state: ScreenState = { open: false, screen: null, selected: null, view: { kind: "list" }, busy: false, error: null, portraits: {}, scene: false };
 const listeners = new Set<() => void>();
 
 export function update(patch: Partial<ScreenState>): void {

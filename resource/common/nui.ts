@@ -2,7 +2,7 @@
 
 /** Client -> NUI messages: `{ action, data }`. */
 export const NuiMessage = {
-  /** data: CharacterScreen */
+  /** data: { screen: CharacterScreen, texts, portraits, scene: boolean } (scene: the world scene stands behind the screen). */
   openCharacters: "openCharacters",
   closeCharacters: "closeCharacters",
   /** data: { id: number, url: string }, a character's portrait arrived (from an appearance resource). */
@@ -29,12 +29,14 @@ export const NuiMessage = {
 
 /** NUI -> client callbacks (fetch `https://ai-core/<name>`), each answers `{ ok, error? }` or data. */
 export const NuiCallback = {
-  /** () -> CharacterScreen | null, the screen asks for its data once it is mounted. */
+  /** () -> open payload | null, the screen asks for its data once it is mounted. */
   ready: "ready",
   /** (CreateCharacterInput) -> CharacterActionResult */
   create: "create",
   /** (characterId) -> CharacterActionResult */
   select: "select",
+  /** (characterId) -> true, the picked card changed: the scene camera moves to that character. */
+  focus: "focus",
   /** (characterId) -> CharacterActionResult, then the screen is reloaded. */
   remove: "remove",
   /** ({ resource, patch }) -> AdminResult */

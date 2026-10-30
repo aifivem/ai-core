@@ -20,9 +20,12 @@ export function ScreenHeader({ title, desc }: { title: string; desc?: string }) 
 const VIGNETTES = {
   radial: "bg-[radial-gradient(circle,rgba(0,0,0,0)_0%,rgba(0,0,0,0.3)_50%,rgba(0,0,0,0.85)_100%)]",
   left: "bg-[linear-gradient(90deg,rgba(0,0,0,0.85)_0%,rgba(0,0,0,0.45)_25%,rgba(0,0,0,0.15)_50%,rgba(0,0,0,0)_65%)]",
+  /** Over the game's own scene: only enough to keep the text readable. */
+  sceneRadial: "bg-[radial-gradient(circle,rgba(0,0,0,0)_0%,rgba(0,0,0,0)_55%,rgba(0,0,0,0.55)_100%)]",
+  sceneLeft: "bg-[linear-gradient(90deg,rgba(0,0,0,0.7)_0%,rgba(0,0,0,0.3)_25%,rgba(0,0,0,0)_45%)]",
 };
 
-/** Darkens the screen edges so white text stays readable over the picture. */
+/** Darkens the screen edges so white text stays readable over the picture or the scene. */
 export function Vignette({ variant = "radial" }: { variant?: keyof typeof VIGNETTES }) {
   return <div aria-hidden className={cn("pointer-events-none absolute inset-0", VIGNETTES[variant])} />;
 }

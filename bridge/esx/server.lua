@@ -200,6 +200,13 @@ function ESX.RegisterUsableItem(name, cb)
     if inv then inv:RegisterUsableItem(name, function(source, item) cb(source, item and item.name, item) end) end
 end
 
+--- Called by the inventory (ox_inventory, tgiann-inventory) when a player uses an item.
+---@param source integer
+---@param item string
+function ESX.UseItem(source, item, ...)
+    Bridge.useItem(source, item, ...)
+end
+
 ---@param name string
 function ESX.GetItemLabel(name)
     local definition = Bridge.itemDefinition(name)

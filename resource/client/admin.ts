@@ -3,12 +3,13 @@ import { isRecord } from "@aicore-fivem/lib/shared";
 import { ADMIN } from "@aicore-fivem/shared";
 import { Locale } from "common";
 import { NuiCallback, NuiMessage } from "common/nui";
+import { keybinds } from "./keybinds";
 import { isLoaded } from "./playerState";
 
 type NuiReply = (value: unknown) => void;
 const round = (value: number): number => Math.round(value * 100) / 100;
 
-/** The admin panel on this client: opens it for admins (F10 or /aiadmin), relays edits and the server's deltas. */
+/** The admin panel on this client: opens it for admins (F10, or /aiadmin on the server), relays edits and the server's deltas. */
 class AdminPanelClient {
   private open = false;
   private opening = false;
@@ -16,7 +17,8 @@ class AdminPanelClient {
   async show(): Promise<void> {
     if (this.open || this.opening || !isLoaded()) return;
     this.opening = true;
-    const panels = await triggerServerCallback(ADMIN.openCallback).catch(() => null);
+    // The keybinds live on clients: the admin's own list fills the panel's Keybinds tab.
+    const panels = await triggerServerCallback(ADMIN.openCallback, [keybinds.list()]).catch(() => null);
     this.opening = false;
     // Not an admin: nothing happens, not even a message.
     if (!Array.isArray(panels)) return;
@@ -39,8 +41,8 @@ class AdminPanelClient {
 
 const panel = new AdminPanelClient();
 
-new Keybind({ name: "aicore_admin_F10", description: Locale("KEYBIND_ADMIN"), defaultKey: "F10", onPressed: () => void panel.show() });
-RegisterCommand("aiadmin", () => void panel.show(), false);
+new Keybind({ name: "aicore_admin", description: Locale("KEYBIND_ADMIN"), defaultKey: "F10", onPressed: () => void panel.show() });
+onServerEvent(ADMIN.showEvent, () => void panel.show());
 
 // The NUI checks the delta's shape itself; here it is only passed on while the panel is open.
 onServerEvent(ADMIN.deltaEvent, { args: ([delta]) => [delta] }, (delta) => {

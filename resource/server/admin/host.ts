@@ -1,7 +1,10 @@
-import { isAdmin, onClientCallback, onClientEvent, registerExport } from "@aicore-fivem/lib/server";
+import { addCommand, isAdmin, onClientCallback, onClientEvent, registerExport } from "@aicore-fivem/lib/server";
 import { isRecord } from "@aicore-fivem/lib/shared";
 import { ADMIN, type AdminDelta, type AdminPanelResourceExports, type AdminPanelSnapshot, type AdminResult } from "@aicore-fivem/shared";
+import { Locale } from "common";
 import { coreLog } from "../logs";
+import { commandRegistry } from "./commands";
+import { readKeybinds, reportKeybinds } from "./keybinds";
 
 /**
  * The admin panel host: every ai-* resource with a panel registers here; ai-core checks the admin, opens the panel
@@ -66,8 +69,20 @@ registerExport("RegisterAdminPanel", (resource: unknown) => {
 });
 registerExport("AdminPanelChanged", (delta: AdminDelta) => adminHost.changed(delta));
 
-// Every panel call is an admin's (ACE checked by the gate); a refused open simply opens nothing on the client.
-onClientCallback(ADMIN.openCallback, (source) => adminHost.open(source), { guards: [isAdmin()], rate: { count: 2, windowMs: 1000 } });
+// Every panel call is an admin's (ACE checked by the gate); a refused open simply opens nothing on the client. The
+// admin's client sends the keybinds it knows; the plain command list is re-read; both before the snapshot is taken.
+onClientCallback(
+  ADMIN.openCallback,
+  { guards: [isAdmin()], rate: { count: 2, windowMs: 1000 }, args: ([keybinds]) => { const list = readKeybinds(keybinds); return list ? [list] : null; } },
+  (source, keybinds) => {
+    reportKeybinds(keybinds);
+    commandRegistry.refreshPlain();
+    return adminHost.open(source);
+  },
+);
+addCommand("aiadmin", { help: Locale("COMMAND_AIADMIN"), restricted: true }, (source) => {
+  if (source > 0) emitNet(ADMIN.showEvent, source);
+});
 onClientCallback(
   ADMIN.applyCallback,
   { guards: [isAdmin()], rate: { count: 30, windowMs: 10_000 }, args: ([resource, patch]) => (typeof resource === "string" ? [resource, patch] : null) },

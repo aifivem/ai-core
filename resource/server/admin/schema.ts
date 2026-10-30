@@ -1,6 +1,8 @@
 import type { DataSpec, PanelSchema, WidgetSpec } from "@aicore-fivem/shared";
+import { DEFAULT_SCENE } from "../content/scene";
+import { sceneSection, sceneTab } from "./sceneSchema";
 
-/** ai-core's own panel: server settings, spawn points, job rules, jobs, gangs and money accounts (`data/*.json`). */
+/** ai-core's own panel: server settings, spawn points, character screen scene, job rules, jobs, gangs and money accounts (`data/*.json`). */
 
 const ID = "^[a-z0-9_]{2,32}$";
 const text = (max: number, min = 1): DataSpec => ({ type: "text", min, max });
@@ -19,8 +21,8 @@ const gradeRows = (salary: boolean): WidgetSpec[] => [
   { widget: "switch", path: "boss", label: "ADMIN_F_BOSS" },
 ];
 
-/** `accounts`: the account types at start, offered where an account is picked. */
-export function coreSchema(accounts: string[]): PanelSchema {
+/** `accounts`: the account types at start, offered where an account is picked; `inventories`: the inventory adapters. */
+export function coreSchema(accounts: string[], inventories: string[] = []): PanelSchema {
   const accountOptions = accounts.map((value) => ({ value, label: value }));
   return {
     title: "ADMIN_CORE_TITLE",
@@ -39,11 +41,14 @@ export function coreSchema(accounts: string[]): PanelSchema {
           gangs: { type: "object", fields: { multiGang: bool, maxGangs: int(1, 20) } },
           paycheck: { type: "object", fields: { intervalMinutes: int(0, 1440), account: { type: "text", max: 32, pattern: ID }, fromJobAccount: bool } },
           saveIntervalMinutes: int(1, 60),
+          inventory: { type: "enum", values: ["auto", ...inventories] },
           spawn: {
             type: "object",
-            fields: { default: { type: "vec4" }, select: { type: "object", fields: { ped: { type: "vec4" }, camera: { type: "vec4" }, fov: int(10, 120) } } },
+            fields: { default: { type: "vec4" } },
           },
+          characterScene: sceneSection,
         },
+        defaults: { characterScene: DEFAULT_SCENE, inventory: "auto" },
       },
       jobs: {
         kind: "records",
@@ -68,6 +73,14 @@ export function coreSchema(accounts: string[]): PanelSchema {
         newRecord: { start: 0, allowNegative: false },
         sections: { label: text(48), start: int(0, 100_000_000), allowNegative: bool },
       },
+      // Records come from the scripts (an admin's client reports them); the owner only sets `key`.
+      keybinds: {
+        kind: "records",
+        sync: "all",
+        labelPath: "description",
+        sections: { resource: text(64), description: text(120, 0), defaultKey: text(32, 0), mapper: text(32), key: { type: "text", min: 0, max: 32, pattern: "^[A-Za-z0-9_]*$" } },
+      },
+      commands: { kind: "records", sync: "admin", memory: true, sections: {} },
     },
     tabs: [
       {
@@ -90,6 +103,7 @@ export function coreSchema(accounts: string[]): PanelSchema {
                 widget: "select",
                 path: "branding.background",
                 label: "ADMIN_F_BACKGROUND",
+                hint: "ADMIN_H_BACKGROUND",
                 options: [
                   { value: "skyline", label: "ADMIN_O_SKYLINE" },
                   { value: "wet-drive", label: "ADMIN_O_WET_DRIVE" },
@@ -113,6 +127,20 @@ export function coreSchema(accounts: string[]): PanelSchema {
             desc: "ADMIN_C_SAVING_DESC",
             fields: [{ widget: "number", path: "saveIntervalMinutes", label: "ADMIN_F_SAVE_INTERVAL", min: 1, max: 60, unit: "ADMIN_U_MINUTES" }],
           },
+          {
+            icon: "box-open",
+            title: "ADMIN_C_INVENTORY",
+            desc: "ADMIN_C_INVENTORY_DESC",
+            fields: [
+              {
+                widget: "select",
+                path: "inventory",
+                label: "ADMIN_F_INVENTORY",
+                hint: "ADMIN_H_INVENTORY",
+                options: [{ value: "auto", label: "ADMIN_O_INVENTORY_AUTO" }, ...inventories.map((value) => ({ value, label: value }))],
+              },
+            ],
+          },
         ],
       },
       {
@@ -128,18 +156,9 @@ export function coreSchema(accounts: string[]): PanelSchema {
             desc: "ADMIN_C_FIRST_SPAWN_DESC",
             fields: [{ widget: "point", path: "spawn.default", label: "ADMIN_F_SPAWN_POINT", heading: true }],
           },
-          {
-            icon: "camera",
-            title: "ADMIN_C_SELECT_SCENE",
-            desc: "ADMIN_C_SELECT_SCENE_DESC",
-            fields: [
-              { widget: "point", path: "spawn.select.ped", label: "ADMIN_F_SCENE_PED", heading: true },
-              { widget: "point", path: "spawn.select.camera", label: "ADMIN_F_SCENE_CAMERA", hint: "ADMIN_H_SCENE_CAMERA", heading: true, from: "camera" },
-              { widget: "number", path: "spawn.select.fov", label: "ADMIN_F_FOV", min: 10, max: 120 },
-            ],
-          },
         ],
       },
+      sceneTab,
       {
         id: "rules",
         file: "settings",
@@ -242,6 +261,46 @@ export function coreSchema(accounts: string[]): PanelSchema {
             ],
           },
         ],
+      },
+      {
+        id: "keybinds",
+        file: "keybinds",
+        icon: "keyboard",
+        label: "ADMIN_TAB_KEYBINDS",
+        desc: "ADMIN_TAB_KEYBINDS_DESC",
+        listSub: "resource",
+        cards: [
+          {
+            icon: "keyboard",
+            title: "ADMIN_C_KEYBIND",
+            desc: "ADMIN_C_KEYBIND_DESC",
+            fields: [
+              { widget: "info", path: "resource", label: "ADMIN_F_SCRIPT", mono: true },
+              { widget: "info", path: "mapper", label: "ADMIN_F_DEVICE", values: { keyboard: "ADMIN_O_KEYBOARD", MOUSE_BUTTON: "ADMIN_O_MOUSE", PAD_DIGITALBUTTON: "ADMIN_O_PAD" } },
+              { widget: "info", path: "defaultKey", label: "ADMIN_F_SCRIPT_KEY", mono: true, empty: "ADMIN_NO_KEY" },
+              { widget: "text", path: "key", label: "ADMIN_F_DEFAULT_KEY", hint: "ADMIN_H_DEFAULT_KEY", placeholder: "ADMIN_PH_KEYBIND" },
+            ],
+          },
+        ],
+      },
+      {
+        id: "commands",
+        file: "commands",
+        icon: "terminal",
+        label: "ADMIN_TAB_COMMANDS",
+        desc: "ADMIN_TAB_COMMANDS_DESC",
+        cards: [],
+        table: {
+          sort: "name",
+          columns: [
+            { path: "usage", label: "ADMIN_COL_COMMAND", mono: true, width: 2.2 },
+            { path: "help", label: "ADMIN_COL_HELP", width: 3, empty: "ADMIN_CMD_NO_HELP" },
+            { path: "aliases", label: "ADMIN_COL_ALIASES", mono: true, width: 1, empty: "ADMIN_NONE" },
+            { path: "access", label: "ADMIN_COL_ACCESS", mono: true, width: 1.4, empty: "ADMIN_CMD_EVERYONE", values: { "?": "ADMIN_CMD_UNDECLARED" } },
+            { path: "resource", label: "ADMIN_COL_SCRIPT", mono: true, width: 1.2 },
+            { path: "kind", label: "ADMIN_COL_KIND", width: 1, values: { lib: "ADMIN_CMD_KIND_LIB", plain: "ADMIN_CMD_KIND_PLAIN" } },
+          ],
+        },
       },
     ],
   };

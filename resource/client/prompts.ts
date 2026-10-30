@@ -17,7 +17,7 @@ interface Prompt {
 class Prompts {
   private readonly list = new Map<string, Prompt>();
   private readonly key = new Keybind({
-    name: "aicore_interact_E",
+    name: "aicore_interact",
     description: Locale("KEYBIND_INTERACT"),
     defaultKey: "E",
     onPressed: () => this.press(),
