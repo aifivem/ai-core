@@ -1,8 +1,10 @@
-import { callExport, resourceExport } from "@aicore-fivem/lib/server";
+import { callExport, EntityState, resourceExport, stateBoolean } from "@aicore-fivem/lib/server";
 import { CORE, type VehicleKeysAdapter } from "@aicore-fivem/shared";
 
 // ai-core's own inventory export: importing the inventory layer here would load it before the panel content.
 const core = resourceExport(CORE.resource);
+const inIgnition = new EntityState("keyInIgnition", stateBoolean);
+const fixedIgnition = new EntityState("nonRemoveableIgnition", stateBoolean);
 
 const hotwire = (name: string, ...args: unknown[]) =>
   callExport("tgiann-hotwire", name, ...args);
@@ -26,11 +28,11 @@ export const tgiannHotwire: VehicleKeysAdapter = {
   },
   // Key items stay with the player (they carry their own key id); a fixed ignition key goes away.
   remove: (_source, t) => {
-    if (t.vehicle !== null && Entity(t.vehicle).state.nonRemoveableIgnition)
+    if (t.vehicle !== null && fixedIgnition.get(t.vehicle))
       hotwire("SetNonRemoveableIgnition", t.netId, t.vehicle, false);
   },
   has: (source, t) => {
-    if (t.vehicle !== null && Entity(t.vehicle).state.keyInIgnition)
+    if (t.vehicle !== null && inIgnition.get(t.vehicle))
       return true;
     const plate = t.plate.toUpperCase();
     return core

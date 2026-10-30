@@ -1,4 +1,4 @@
-import { registerExport } from "@aicore-fivem/lib/client";
+import { GlobalKey, registerExport, stateString } from "@aicore-fivem/lib/client";
 import { createLogger } from "@aicore-fivem/lib/shared";
 import {
   INVENTORY_STATE_KEY,
@@ -51,12 +51,9 @@ const inventory = new ClientInventory([
   oxInventory,
   qbInventory,
 ]);
-inventory.set(GlobalState[INVENTORY_STATE_KEY]);
-AddStateBagChangeHandler(
-  INVENTORY_STATE_KEY,
-  "global",
-  (_bag: string, _key: string, value: unknown) => inventory.set(value),
-);
+const active = new GlobalKey(INVENTORY_STATE_KEY, stateString);
+inventory.set(active.get());
+active.onChange((_id, value) => inventory.set(value));
 
 registerExport("OpenInventory", () => inventory.open());
 registerExport(

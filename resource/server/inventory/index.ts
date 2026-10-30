@@ -1,4 +1,4 @@
-import { isResourceStarted, registerExport } from "@aicore-fivem/lib/server";
+import { GlobalKey, isResourceStarted, registerExport, stateString } from "@aicore-fivem/lib/server";
 import { isRecord } from "@aicore-fivem/lib/shared";
 import {
   CORE,
@@ -16,11 +16,13 @@ import { INVENTORIES } from "./registry";
  * answers through its adapter (`registry.ts`). The choice follows the panel setting and inventory starts / stops.
  */
 
+const activeInventory = new GlobalKey(INVENTORY_STATE_KEY, stateString);
+
 export const inventory = new InventoryLayer(INVENTORIES, {
   isStarted: isResourceStarted,
   version: (resource) => GetResourceMetadata(resource, "version", 0) || "?",
   announce: (resource) => {
-    GlobalState.set(INVENTORY_STATE_KEY, resource, true);
+    activeInventory.set(resource ?? undefined);
     emit(CORE.inventoryChangedEvent, resource);
   },
   log,

@@ -2,6 +2,7 @@ import { onClientEvent } from "@aicore-fivem/lib/server";
 import { logSafe } from "@aicore-fivem/lib/shared";
 import { CORE } from "@aicore-fivem/shared";
 import { coreLog } from "./logs";
+import { sourceMaps } from "./sourceMaps";
 
 /**
  * Client script errors go to the log system (channel `clientErrors`), with who got them. Each client sends a line
@@ -20,7 +21,7 @@ onClientEvent(
     // Client text: one line, no colour codes, so it cannot forge other log lines.
     coreLog(
       "clientErrors",
-      `[client error] ${logSafe(resource, 64)}: ${logSafe(text, 4000)}`,
+      `[client error] ${logSafe(resource, 64)}: ${logSafe(sourceMaps.resolve(text), 4000)}`,
       { level: "error", source },
     );
   },

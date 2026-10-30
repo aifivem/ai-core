@@ -1,4 +1,4 @@
-import { onServerEvent } from "@aicore-fivem/lib/client";
+import { GlobalKey, onServerEvent, stateString } from "@aicore-fivem/lib/client";
 import { createLogger, waitFor } from "@aicore-fivem/lib/shared";
 import {
   VEHICLE_KEYS_CLIENT_EVENT,
@@ -77,12 +77,9 @@ class ClientKeys {
 }
 
 const keys = new ClientKeys();
-keys.pick(GlobalState[VEHICLE_KEYS_STATE_KEY]);
-AddStateBagChangeHandler(
-  VEHICLE_KEYS_STATE_KEY,
-  "global",
-  (_bag: string, _key: string, value: unknown) => keys.pick(value),
-);
+const active = new GlobalKey(VEHICLE_KEYS_STATE_KEY, stateString);
+keys.pick(active.get());
+active.onChange((_id, value) => keys.pick(value));
 
 onServerEvent(
   VEHICLE_KEYS_CLIENT_EVENT,

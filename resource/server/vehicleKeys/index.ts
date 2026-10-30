@@ -1,4 +1,4 @@
-import { isResourceStarted, registerExport } from "@aicore-fivem/lib/server";
+import { GlobalKey, isResourceStarted, registerExport, stateString } from "@aicore-fivem/lib/server";
 import {
   toKeyPurpose,
   VEHICLE_KEYS_STATE_KEY,
@@ -14,6 +14,8 @@ import { KEY_SYSTEMS } from "./registry";
  * through its adapter (`registry.ts`), picked by the panel setting `vehicleKeys` (`auto` = first running) and again
  * when a key system starts or stops.
  */
+const activeKeys = new GlobalKey(VEHICLE_KEYS_STATE_KEY, stateString);
+
 class VehicleKeysLayer {
   private current: VehicleKeysAdapter | null = null;
   private choice = "auto";
@@ -37,7 +39,7 @@ class VehicleKeysLayer {
       null;
     if (next === this.current) return;
     this.current = next;
-    GlobalState.set(VEHICLE_KEYS_STATE_KEY, next?.resource ?? null, true);
+    activeKeys.set(next?.resource);
     log.info(
       next
         ? `vehicle keys: ${next.resource}`

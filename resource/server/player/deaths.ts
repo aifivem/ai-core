@@ -1,3 +1,4 @@
+import { GlobalKey, stateBoolean } from "@aicore-fivem/lib/server";
 import {
   CORE,
   PED_DEATH_STATE_KEY,
@@ -25,7 +26,7 @@ function sourceOfPed(ped: number): number | null {
 
 // FXServer reports ped deaths from the synced health itself: no client needs to watch its own health. Older builds
 // leave the key false and death resources keep their client check.
-GlobalState.set(PED_DEATH_STATE_KEY, supported, true);
+new GlobalKey(PED_DEATH_STATE_KEY, stateBoolean).set(supported);
 if (supported) {
   on("onPedDeath", (ped: number, attacker: number, weaponHash: number) => {
     const source = sourceOfPed(ped);
