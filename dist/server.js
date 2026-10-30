@@ -834,7 +834,10 @@ var AdminPanel = class {
 	constructor(schema) {
 		this.schema = schema;
 		for (let [name, spec] of Object.entries(schema.files)) this.load(name, spec);
-		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges)), setImmediate(() => core$14.RegisterAdminPanel(this.resource));
+		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges), { rate: {
+			count: 4,
+			windowMs: 1e4
+		} }), setImmediate(() => core$14.RegisterAdminPanel(this.resource));
 	}
 	get(file) {
 		return this.data.get(file) ?? {};
@@ -19835,14 +19838,17 @@ const sourceMaps = new class {
 		on("onResourceStart", (resource) => this.maps.delete(resource));
 	}
 	get(resource) {
+		if (GetResourceState(resource) !== "started") return null;
 		if (!this.maps.has(resource)) {
-			let raw = GetResourceState(resource) === "started" ? LoadResourceFile(resource, "dist/client.js.map") : null;
+			let raw = LoadResourceFile(resource, "dist/client.js.map");
 			this.maps.set(resource, raw ? decode(raw) : null);
 		}
 		return this.maps.get(resource) ?? null;
 	}
 	resolve(text) {
+		let left = 20;
 		return text.replace(/@([\w.-]{1,64})\/dist\/client\.js:(\d+):(\d+)/g, (whole, resource, line, col) => {
+			if (left-- <= 0) return whole;
 			let map = this.get(resource), segments = map?.lines[Number(line) - 1 - 2];
 			if (!map || !segments?.length) return whole;
 			let column = Number(col) - 1, found;
@@ -19864,7 +19870,7 @@ onClientEvent(CORE.clientErrorEvent, {
 		windowMs: 6e4
 	}
 }, (source, resource, text) => {
-	coreLog("clientErrors", `[client error] ${logSafe(resource, 64)}: ${logSafe(sourceMaps.resolve(text), 4e3)}`, {
+	coreLog("clientErrors", `[client error] ${logSafe(resource, 64)}: ${logSafe(sourceMaps.resolve(text.slice(0, 4e3)), 4e3)}`, {
 		level: "error",
 		source
 	});

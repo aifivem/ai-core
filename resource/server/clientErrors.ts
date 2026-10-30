@@ -21,7 +21,7 @@ onClientEvent(
     // Client text: one line, no colour codes, so it cannot forge other log lines.
     coreLog(
       "clientErrors",
-      `[client error] ${logSafe(resource, 64)}: ${logSafe(sourceMaps.resolve(text), 4000)}`,
+      `[client error] ${logSafe(resource, 64)}: ${logSafe(sourceMaps.resolve(text.slice(0, 4000)), 4000)}`,
       { level: "error", source },
     );
   },

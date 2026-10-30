@@ -64,6 +64,8 @@ function decode(raw: string): Decoded | null {
   return { sources, lines };
 }
 
+const MAX_POSITIONS = 20;
+
 /**
  * Client bundles are minified; their hidden source maps (never in `files`, so players cannot download them) turn the
  * positions in a client error back into source files and lines. One decoded map per resource, dropped on restart.
@@ -75,22 +77,26 @@ class SourceMaps {
     on("onResourceStart", (resource: string) => this.maps.delete(resource));
   }
 
+  /** Only started resources are looked up and kept (names come from client text: a miss is never cached). */
   private get(resource: string): Decoded | null {
+    if (GetResourceState(resource) !== "started") return null;
     if (!this.maps.has(resource)) {
-      const raw =
-        GetResourceState(resource) === "started"
-          ? LoadResourceFile(resource, "dist/client.js.map")
-          : null;
+      const raw = LoadResourceFile(resource, "dist/client.js.map");
       this.maps.set(resource, raw ? decode(raw) : null);
     }
     return this.maps.get(resource) ?? null;
   }
 
-  /** `@res/dist/client.js:line:col` positions in a client error, written as source positions when a map has them. */
+  /**
+   * `@res/dist/client.js:line:col` positions in a client error, written as source positions when a map has them; at
+   * most `MAX_POSITIONS` per text (a stack has a handful).
+   */
   resolve(text: string): string {
+    let left = MAX_POSITIONS;
     return text.replace(
       /@([\w.-]{1,64})\/dist\/client\.js:(\d+):(\d+)/g,
       (whole, resource: string, line: string, col: string) => {
+        if (left-- <= 0) return whole;
         const map = this.get(resource);
         const segments = map?.lines[Number(line) - 1 - WRAPPER_LINES];
         if (!map || !segments?.length) return whole;
