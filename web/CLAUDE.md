@@ -1,6 +1,6 @@
 # ai-core NUI
 
-Two screens in one page: the character screen (`src/features/characters`, its own small store and `lib/nui.ts`) and the admin panel (`src/features/admin`, the `tgiann-ui` stack: Redux `src/store`, TanStack Router `src/router.tsx` for script / tab / record, Radix primitives `src/components/ui`, fivem-nui-react).
+Two screens in one page: the character screen (`src/features/characters`, its own small store and `lib/nui.ts`) and the admin panel (`src/features/admin`, the `aicore-ui` stack: Redux `src/store`, TanStack Router `src/router.tsx` for script / tab / record, Radix primitives `src/components/ui`, fivem-nui-react).
 
 ## Look
 
