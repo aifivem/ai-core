@@ -9,6 +9,7 @@ Two screens in one page: the character screen (`src/features/characters`, its ow
 - Live save per field: the value shows at once, `FieldShell` shows saving / saved / the refusal under the field; a list shows the state of its rows.
 - Texts: the script's own lang table first, ai-core's generic panel words second (`lang.ts`).
 - Browser preview: `bun run webdev`, `?view=admin#/admin/ai-core/<tab>?key=<record>` (real schema and data files from `dev/adminMock.ts`), `&error=1` refuses every edit.
+- Another script's panel in the browser: fivem-nui-react listens to messages only when `window.invokeNative` exists, so define it before the page loads (puppeteer `evaluateOnNewDocument`), open `#/admin/<resource>/<tab>?key=<record>` and post `{ action: "adminOpen", data: { panels: [{ resource, schema, texts, data }], texts } }` built from the script's schema, `data/*.json` and `locales/en.json`.
 
 ## Pitfalls
 
