@@ -1,4 +1,4 @@
-import { TickLoop } from "@aicore-fivem/lib/client";
+import { every, TickLoop, type Job } from "@aicore-fivem/lib/client";
 import type { SceneSpot } from "@aicore-fivem/shared";
 
 const MOVE_MS = 500;
@@ -26,6 +26,7 @@ export class SceneCamera {
   /** Cameras still interpolating away; destroyed after the move or on `destroy`. */
   private readonly retired = new Set<number>();
   private sway: ReturnType<typeof setTimeout> | null = null;
+  private swayJob: Job | null = null;
   private readonly dof = new TickLoop(() => SetUseHiDof());
 
   /** Frames `spot` at once (`instant`) or with a short glide from the current shot. */
@@ -85,14 +86,19 @@ export class SceneCamera {
       SetCamParams(this.camera, x, y, z, 0, 0, 0, fov, SWAY_MS, 0, 0, 2);
       SetFocusPosAndVel(x, y, z, 0, 0, 0);
       side = -side;
-      this.sway = setTimeout(leg, SWAY_MS);
     };
-    this.sway = setTimeout(leg, delay);
+    this.sway = setTimeout(() => {
+      this.sway = null;
+      leg();
+      this.swayJob = every(SWAY_MS, leg, { name: "sceneSway" });
+    }, delay);
   }
 
   private stopSway(): void {
     if (this.sway !== null) clearTimeout(this.sway);
     this.sway = null;
+    this.swayJob?.stop();
+    this.swayJob = null;
   }
 
   /** Depth of field needs `SetUseHiDof` every frame, so the tick runs only while a blurred spot is framed. */

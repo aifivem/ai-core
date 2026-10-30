@@ -4,6 +4,7 @@ import { settings } from "./content";
 import { log } from "./log";
 import { players } from "./player/registry";
 import { sharedAccounts } from "./money/book";
+import { ResourceName } from "common";
 
 /** Writes position and metadata of every online character (money and memberships are written as they change). */
 export async function saveAll(): Promise<void> {
@@ -32,5 +33,5 @@ every(settings.saveIntervalMinutes * 60_000, () => saveNow("interval"), {
 on("txAdmin:events:serverShuttingDown", () => saveNow("shutdown"));
 
 on("onResourceStop", (resource: string) => {
-  if (resource === GetCurrentResourceName()) saveNow("resource stop");
+  if (resource === ResourceName) saveNow("resource stop");
 });

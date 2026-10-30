@@ -1,5 +1,6 @@
 import {
   cache,
+  controls,
   locationName,
   raycast,
   TickLoop,
@@ -81,9 +82,12 @@ function freeFly<T>(
     );
     RenderScriptCams(true, false, 0, true, true);
     FreezeEntityPosition(cache.ped, true);
+    // Every control off while flying; the loop reads the disabled ones.
+    controls.disableAll("freecam");
 
     const finish = (answer: T | null) => {
       loop.set(false);
+      controls.enable("freecam");
       RenderScriptCams(false, false, 0, true, true);
       DestroyCam(cam, false);
       ClearFocus();
@@ -92,7 +96,6 @@ function freeFly<T>(
     };
 
     const loop = new TickLoop(() => {
-      DisableAllControlActions(0);
       rot.yaw -= GetDisabledControlNormal(0, C.lookX) * 6;
       rot.pitch = Math.max(
         -89,

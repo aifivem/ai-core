@@ -20640,7 +20640,7 @@ function saveNow(why) {
 	saveAll().then(drainWrites).then(() => log$3.info(`saved ${players.size} characters (${why})`)).catch((error) => log$3.error(`save failed (${why})`, error));
 }
 every(settings.saveIntervalMinutes * 6e4, () => saveNow("interval"), { name: "save" }), on("txAdmin:events:serverShuttingDown", () => saveNow("shutdown")), on("onResourceStop", (resource) => {
-	resource === GetCurrentResourceName() && saveNow("resource stop");
+	resource === ResourceName && saveNow("resource stop");
 });
 // resource/server/jobs/primeTime/adapters/tgiann-policealert.ts
 const RESOURCE = "tgiann-policealert", PRIME_TIME_SYSTEMS = [{
