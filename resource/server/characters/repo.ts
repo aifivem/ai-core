@@ -95,6 +95,17 @@ export async function getCharacter(
   return row ? toRow(row) : null;
 }
 
+/** Any account's character by id (admin panel; the caller checked the admin). */
+export async function findCharacter(
+  charId: number,
+): Promise<CharacterRow | null> {
+  const row = await mysql.single<RawRow>(
+    `SELECT ${COLUMNS} FROM ai_core_characters WHERE id = ? AND deleted_at IS NULL`,
+    [charId],
+  );
+  return row ? toRow(row) : null;
+}
+
 /**
  * Inserts a character; its citizen id is its row id ("1", "2", ...: ids count up one by one, owner decision). The row
  * goes in with a unique placeholder (the column is NOT NULL UNIQUE) and takes its id right after.

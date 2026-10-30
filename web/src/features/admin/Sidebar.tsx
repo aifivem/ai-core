@@ -1,28 +1,23 @@
 import { useState } from "react";
+import { useParams, useRouterState } from "@tanstack/react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faChevronDown,
   faFilter,
   faGauge,
   faShieldHalved,
+  faUsers,
 } from "@fortawesome/free-solid-svg-icons";
 import type { AdminPanelSnapshot } from "@aicore-fivem/shared";
 import { ScrollArea } from "../../components/ui/scroll-area";
-import { cn } from "../../lib/utils";
 import { useAppSelector } from "../../store";
 import { goDashboard, goTo } from "./actions";
 import { iconOf } from "./icons";
+import { EXTERNAL_TAB, OtherPanelsNav } from "./OtherPanelsNav";
+import { goPlayers } from "./players/actions";
+import { NavGroup, NavLabel, navRow, tabRow } from "./SidebarItems";
 
 const fill = (texts: Record<string, string>, key: string): string =>
   texts[key] ?? key;
-
-const row = (active: boolean) =>
-  cn(
-    "flex h-[5vh] items-center gap-[1.2vh] rounded-[0.9vh] px-[1.4vh] text-left text-[1.5vh] transition-[background-color,color] duration-150 ease-out",
-    active
-      ? "bg-tgi-green-15 font-semibold text-tgi-green"
-      : "font-medium text-text-2 hover:bg-white/5 hover:text-text",
-  );
 
 /**
  * Brand block, the dashboard, a filter over scripts, then every script with its tabs (tgiann-core admin sidebar); the
@@ -41,8 +36,17 @@ export function Sidebar({
     (state) => state.admin.panels,
   );
   const core = useAppSelector((state) => state.admin.texts);
+  const { id: externalId } = useParams({ strict: false });
+  const players = useRouterState({
+    select: (s) => s.location.pathname === "/admin/players",
+  });
   const [filter, setFilter] = useState("");
   const q = filter.trim().toLocaleLowerCase();
+  // The other panels editor is an ai-core tab, listed under "Other panels" instead of under Server.
+  const isEditor = (res: string, id: string) =>
+    res === EXTERNAL_TAB.resource && id === EXTERNAL_TAB.tab;
+  const editing = !!resource && !!tab && isEditor(resource, tab);
+  const openResource = editing ? undefined : resource;
   const panels = q
     ? all.filter(
         (p) =>
@@ -73,14 +77,27 @@ export function Sidebar({
           type="button"
           aria-current={dashboard ? "page" : undefined}
           onClick={goDashboard}
-          className={row(dashboard)}
+          className={navRow(dashboard)}
         >
           <FontAwesomeIcon
             icon={faGauge}
-            className="w-[1.8vh] text-[1.6vh]"
+            className="w-[1.8vh] shrink-0 text-[1.6vh]"
             aria-hidden
           />
-          <span className="truncate">{fill(core, "ADMIN_DASHBOARD")}</span>
+          <NavLabel text={fill(core, "ADMIN_DASHBOARD")} />
+        </button>
+        <button
+          type="button"
+          aria-current={players ? "page" : undefined}
+          onClick={() => goPlayers()}
+          className={navRow(players)}
+        >
+          <FontAwesomeIcon
+            icon={faUsers}
+            className="w-[1.8vh] shrink-0 text-[1.6vh]"
+            aria-hidden
+          />
+          <NavLabel text={fill(core, "ADMIN_PLAYERS")} />
         </button>
         <label className="flex h-[3.6vh] items-center gap-[0.8vh] rounded-full border border-white/8 bg-[#2222224D] px-[1.2vh] transition-[border-color] duration-150 focus-within:border-tgi-green-40">
           <FontAwesomeIcon
@@ -101,7 +118,7 @@ export function Sidebar({
         <div className="flex flex-col gap-[0.6vh] p-[1.4vh]">
           {panels.map((panel) =>
             // Only the open script (or every match while filtering) shows its tabs; the others fold into one row.
-            panel.resource !== resource && !q ? (
+            panel.resource !== openResource && !q ? (
               <button
                 key={panel.resource}
                 type="button"
@@ -109,48 +126,28 @@ export function Sidebar({
                   panel.schema.tabs[0] &&
                   goTo(panel.resource, panel.schema.tabs[0].id)
                 }
-                className={row(false)}
+                className={navRow(false)}
               >
                 <FontAwesomeIcon
                   icon={iconOf(panel.schema.icon)}
-                  className="w-[1.8vh] text-[1.6vh]"
+                  className="w-[1.8vh] shrink-0 text-[1.6vh]"
                   aria-hidden
                 />
-                <span className="truncate">
-                  {fill(panel.texts, panel.schema.title)}
-                </span>
+                <NavLabel text={fill(panel.texts, panel.schema.title)} />
               </button>
             ) : (
-              <div
+              <NavGroup
                 key={panel.resource}
-                className="flex flex-col gap-[0.4vh] rounded-[1.1vh] bg-white/3 p-[0.4vh] [box-shadow:inset_0_0_0_1px_rgba(255,255,255,0.05)]"
+                icon={iconOf(panel.schema.icon)}
+                label={fill(panel.texts, panel.schema.title)}
+                onClick={() =>
+                  panel.schema.tabs[0] &&
+                  goTo(panel.resource, panel.schema.tabs[0].id)
+                }
               >
-                {/* The open script: its own row, then its tabs one step in, on a guide line. */}
-                <button
-                  type="button"
-                  onClick={() =>
-                    panel.schema.tabs[0] &&
-                    goTo(panel.resource, panel.schema.tabs[0].id)
-                  }
-                  className="flex h-[5vh] items-center gap-[1.2vh] rounded-[0.9vh] px-[1vh] text-left text-[1.5vh] font-semibold text-text transition-colors duration-150 hover:bg-white/5"
-                >
-                  <span className="flex size-[3vh] shrink-0 items-center justify-center rounded-[0.7vh] bg-tgi-green-15 text-[1.4vh] text-tgi-green">
-                    <FontAwesomeIcon
-                      icon={iconOf(panel.schema.icon)}
-                      aria-hidden
-                    />
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">
-                    {fill(panel.texts, panel.schema.title)}
-                  </span>
-                  <FontAwesomeIcon
-                    icon={faChevronDown}
-                    className="text-[1.1vh] text-text-3"
-                    aria-hidden
-                  />
-                </button>
-                <div className="ml-[2.5vh] flex flex-col gap-[0.3vh] border-l border-white/10 pb-[0.4vh] pl-[0.8vh]">
-                  {panel.schema.tabs.map((item) => {
+                {panel.schema.tabs
+                  .filter((item) => !isEditor(panel.resource, item.id))
+                  .map((item) => {
                     const active =
                       panel.resource === resource && item.id === tab;
                     return (
@@ -159,27 +156,27 @@ export function Sidebar({
                         type="button"
                         aria-current={active ? "page" : undefined}
                         onClick={() => goTo(panel.resource, item.id)}
-                        className={cn(
-                          "flex h-[4.2vh] items-center gap-[1vh] rounded-[0.8vh] px-[1vh] text-left text-[1.4vh] transition-[background-color,color] duration-150 ease-out",
-                          active
-                            ? "bg-tgi-green-15 font-semibold text-tgi-green"
-                            : "font-medium text-text-2 hover:bg-white/5 hover:text-text",
-                        )}
+                        className={tabRow(active)}
                       >
                         <FontAwesomeIcon
                           icon={iconOf(item.icon)}
-                          className="w-[1.6vh] text-[1.3vh]"
+                          className="w-[1.6vh] shrink-0 text-[1.3vh]"
                           aria-hidden
                         />
-                        <span className="truncate">
-                          {fill(panel.texts, item.label)}
-                        </span>
+                        <NavLabel text={fill(panel.texts, item.label)} />
                       </button>
                     );
                   })}
-                </div>
-              </div>
+              </NavGroup>
             ),
+          )}
+          {all.some((p) => p.resource === EXTERNAL_TAB.resource) && (
+            <OtherPanelsNav
+              open={editing || !!externalId}
+              activeId={externalId}
+              editing={editing}
+              filter={q}
+            />
           )}
         </div>
       </ScrollArea>

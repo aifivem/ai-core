@@ -1,12 +1,17 @@
 import { useEffect, useState, type KeyboardEvent } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCube, faVideo } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCube,
+  faLocationArrow,
+  faVideo,
+} from "@fortawesome/free-solid-svg-icons";
 import type { WidgetSpec } from "@aicore-fivem/shared";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Popover } from "../../../components/ui/popover";
+import { Tooltip } from "../../../components/ui/tooltip";
 import { cn } from "../../../lib/utils";
-import { pickEntity, saveField } from "../actions";
+import { pickEntity, saveField, teleport } from "../actions";
 import { useEditor } from "../context";
 import { getAt } from "../path";
 import { useField } from "./basic";
@@ -201,6 +206,13 @@ export function EntityW({
       : null;
   const model = getAt(record, spec.modelPath);
   const fmt = (n: unknown) => (typeof n === "number" ? n.toFixed(2) : "?");
+  const at =
+    point &&
+    typeof point.x === "number" &&
+    typeof point.y === "number" &&
+    typeof point.z === "number"
+      ? { x: point.x, y: point.y, z: point.z }
+      : null;
   return (
     <div className="flex items-center gap-[0.8vh]">
       <Input
@@ -225,6 +237,16 @@ export function EntityW({
         <FontAwesomeIcon icon={faVideo} data-icon="inline-start" aria-hidden />
         {t("ADMIN_PICK_ENTITY")}
       </Button>
+      <Tooltip content={t("ADMIN_TELEPORT")}>
+        <Button
+          variant="icon"
+          disabled={!at}
+          aria-label={t("ADMIN_TELEPORT")}
+          onClick={() => at && teleport(at, true)}
+        >
+          <FontAwesomeIcon icon={faLocationArrow} aria-hidden />
+        </Button>
+      </Tooltip>
     </div>
   );
 }

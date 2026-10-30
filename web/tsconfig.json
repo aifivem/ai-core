@@ -14,5 +14,5 @@
     "noEmit": true,
     "types": ["vite/client"]
   },
-  "include": ["src", "vite.config.ts", "../resource/common/nui.ts"]
+  "include": ["src", "vite.config.ts", "../resource/common/nui.ts", "../resource/common/adminPlayers.ts"]
 }

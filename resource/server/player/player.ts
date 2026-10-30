@@ -1,6 +1,7 @@
 import { sendPlayerData, WriteQueue } from "@aicore-fivem/lib/server";
 import type { AiPlayerData, CharacterInfo } from "@aicore-fivem/shared";
 import type { CharacterRow, CharacterSave } from "../characters/repo";
+import { playerWatchers } from "../admin/players/watchers";
 import { settings } from "../content";
 import { GangSet } from "../jobs/gangSet";
 import { JobSet, logWriteError } from "../jobs/jobSet";
@@ -82,6 +83,23 @@ export class Player {
   setMeta(key: string, value: unknown): void {
     if (value === undefined || value === null) delete this.row.metadata[key];
     else this.row.metadata[key] = value;
+    playerWatchers.meta(this.row.id, key, value ?? null);
+  }
+
+  /** A copy of the whole metadata bag (the admin panel's snapshot). */
+  metadata(): Record<string, unknown> {
+    return { ...this.row.metadata };
+  }
+
+  /** Name and birth date from the admin panel (the caller writes the row); scripts that copied them see the change after the next load. */
+  setInfo(
+    info: Pick<CharacterInfo, "firstname" | "lastname" | "birthdate">,
+  ): void {
+    this.row.firstname = info.firstname;
+    this.row.lastname = info.lastname;
+    this.row.birthdate = info.birthdate;
+    sendPlayerData(this.source, "character", this.info());
+    playerWatchers.char(this.row.id, info);
   }
 
   /** The full snapshot for the owner's client. */

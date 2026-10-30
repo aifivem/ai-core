@@ -51,6 +51,16 @@ const externalRoute = createRoute({
   path: "/admin/external/$id",
   component: () => null,
 });
+/** The Players section: the list, or one character with `?char=<id>`. */
+const playersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/players",
+  validateSearch: (search: Record<string, unknown>): { char?: number } =>
+    typeof search.char === "number" && Number.isInteger(search.char)
+      ? { char: search.char }
+      : {},
+  component: () => null,
+});
 const adminRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/$resource/$tab",
@@ -69,6 +79,7 @@ export const router = createRouter({
     dashboardRoute,
     setupRoute,
     externalRoute,
+    playersRoute,
     adminRoute,
   ]),
   history: createMemoryHistory({ initialEntries: [start] }),

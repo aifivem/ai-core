@@ -30,7 +30,7 @@
   "inventory_open": {
     "resource": "ai-inventory",
     "description": "Open the inventory",
-    "defaultKey": "F1",
+    "defaultKey": "F2",
     "mapper": "keyboard",
     "key": "",
     "hintWhen": "always",

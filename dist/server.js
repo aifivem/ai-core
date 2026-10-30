@@ -201,6 +201,33 @@ const KEY_PURPOSES = [
 function toKeyPurpose(value) {
 	return KEY_PURPOSES.find((p) => p === value) ?? "temporary";
 }
+const text$7 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, finite = (v) => typeof v == "number" && Number.isFinite(v), obj = (v) => typeof v == "object" && v && !Array.isArray(v) ? v : null;
+function toDispatchAlert(value) {
+	let v = obj(value), title = text$7(v?.title, 80);
+	if (!v || !title) return null;
+	let c = obj(v.coords), b = obj(v.blip), jobs = Array.isArray(v.jobs) ? v.jobs.filter((j) => typeof j == "string" && j.length <= 32).slice(0, 10) : [];
+	return {
+		code: text$7(v.code, 12),
+		title,
+		message: text$7(v.message, 160),
+		coords: c && finite(c.x) && finite(c.y) && finite(c.z) ? {
+			x: c.x,
+			y: c.y,
+			z: c.z
+		} : void 0,
+		jobs: jobs.length ? jobs : void 0,
+		source: finite(v.source) && Number.isInteger(v.source) && v.source > 0 ? v.source : void 0,
+		blip: b && finite(b.sprite) ? {
+			sprite: Math.trunc(b.sprite),
+			color: finite(b.color) ? Math.trunc(b.color) : void 0,
+			scale: finite(b.scale) ? Math.min(3, Math.max(.1, b.scale)) : void 0
+		} : void 0,
+		duration: finite(v.duration) ? Math.min(3600, Math.max(1, Math.round(v.duration))) : void 0,
+		icon: text$7(v.icon, 40),
+		priority: v.priority === "high" ? "high" : "normal"
+	};
+}
+// ../../../packages/shared/src/admin.ts
 const ADMIN = {
 	ace: "ai.admin",
 	openCallback: "ai-core:admin:open",
@@ -251,9 +278,7 @@ function loadLocaleTexts(resource = GetCurrentResourceName()) {
 	return texts;
 }
 // ../../../packages/lib/src/fivem/callbackNames.ts
-const requestEvent = (name) => `aicore:cb:${name}`, responseEvent = (resource) => `aicore:cbr:${resource}`;
-resourceExport(CORE.resource);
-const log$8 = createLogger(GetCurrentResourceName()), isAdmin = (ace = ADMIN.ace) => (source) => !!IsPlayerAceAllowed(String(source), ace) || `not allowed (${ace})`, gates = new Set();
+const requestEvent = (name) => `aicore:cb:${name}`, responseEvent = (resource) => `aicore:cbr:${resource}`, core$10 = resourceExport(CORE.resource), log$8 = createLogger(GetCurrentResourceName()), isAdmin = (ace = ADMIN.ace) => (source) => !!IsPlayerAceAllowed(String(source), ace) || `not allowed (${ace})`, hasCharacter = () => (source) => core$10.GetCharacter(source) !== null || "no character loaded", gates = new Set();
 on("playerDropped", () => {
 	let source = Number(globalThis.source);
 	for (let gate of gates) gate.release(source);
@@ -344,7 +369,7 @@ function toPatch(value) {
 		default: return null;
 	}
 }
-const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$8 = resourceExport(CORE.resource), ERR = {
+const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$9 = resourceExport(CORE.resource), ERR = {
 	type: "ADMIN_ERR_TYPE",
 	range: "ADMIN_ERR_RANGE",
 	length: "ADMIN_ERR_LENGTH",
@@ -358,7 +383,7 @@ const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(va
 		if (cached && Date.now() - cached.at < 2e3) return cached.values.size > 0 ? cached.values : null;
 		let list = [];
 		try {
-			list = core$8.GetLookupValues(source);
+			list = core$9.GetLookupValues(source);
 		} catch {}
 		let values = new Set(Array.isArray(list) ? list.filter((v) => typeof v == "string") : []);
 		return this.lists.set(source, {
@@ -560,7 +585,7 @@ function writeSchema(resource, name, text, log) {
 	(0, node_fs_promises.mkdir)(dir, { recursive: !0 }).then(() => (0, node_fs_promises.writeFile)(`${dir}/${name}.schema.json`, text, "utf8")).catch((error) => log.error(`writing ${resource}/${path} failed`, error));
 }
 // ../../../packages/lib/src/server/admin/panel.ts
-const core$7 = resourceExport(CORE.resource), DEFAULT_KEY = "^[a-z0-9_]{2,32}$";
+const core$8 = resourceExport(CORE.resource), DEFAULT_KEY = "^[a-z0-9_]{2,32}$";
 function imported(spec, value) {
 	let base = clone(spec.newRecord ?? {}), out = {};
 	for (let name of Object.keys(spec.sections)) {
@@ -581,7 +606,7 @@ var AdminPanel = class {
 	constructor(schema) {
 		this.schema = schema;
 		for (let [name, spec] of Object.entries(schema.files)) this.load(name, spec);
-		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges)), setImmediate(() => core$7.RegisterAdminPanel(this.resource));
+		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges)), setImmediate(() => core$8.RegisterAdminPanel(this.resource));
 	}
 	get(file) {
 		return this.data.get(file) ?? {};
@@ -674,7 +699,7 @@ var AdminPanel = class {
 		let spec = this.schema.files[file], data = this.get(file), value = key === void 0 ? data : data[key] ?? null;
 		this.dataFiles.get(file)?.write(data);
 		for (let handler of this.handlers.get(file) ?? []) handler(key, value);
-		if (core$7.AdminPanelChanged({
+		if (core$8.AdminPanelChanged({
 			resource: this.resource,
 			file,
 			key,
@@ -706,7 +731,7 @@ function notify(source, text, kind = "info", duration) {
 }
 resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/online.ts
-const core$5 = resourceExport(CORE.resource);
+const core$6 = resourceExport(CORE.resource);
 var OnlinePlayers = class {
 	players = new Map();
 	onDuty = new Map();
@@ -715,7 +740,7 @@ var OnlinePlayers = class {
 		if (this.started) return;
 		this.started = !0;
 		let load = (source, character) => {
-			this.put(source, character, (core$5.GetJobs(source) ?? []).map((m) => m.job), (core$5.GetGangs(source) ?? []).map((m) => m.gang)), this.setDuty(source, core$5.GetDutyJob(source));
+			this.put(source, character, (core$6.GetJobs(source) ?? []).map((m) => m.job), (core$6.GetGangs(source) ?? []).map((m) => m.gang)), this.setDuty(source, core$6.GetDutyJob(source));
 		};
 		on(CORE.playerLoadedEvent, load), on(CORE.playerUnloadedEvent, (source) => this.drop(source)), on(CORE.jobsChangedEvent, (source, jobs) => {
 			let player = this.players.get(source);
@@ -724,8 +749,8 @@ var OnlinePlayers = class {
 			let player = this.players.get(source);
 			player && (player.gangs = gangs.map((m) => m.gang));
 		}), on(CORE.dutyChangedEvent, (source, job) => this.setDuty(source, job));
-		for (let source of core$5.GetLoadedSources()) {
-			let character = core$5.GetCharacter(source);
+		for (let source of core$6.GetLoadedSources()) {
+			let character = core$6.GetCharacter(source);
 			character && load(source, character);
 		}
 	}
@@ -15333,7 +15358,7 @@ var GlobalGroup$1 = class extends Mirror {
 		GlobalState.set(this.prefix + id, value ?? null, !0), this.put(id, value);
 	}
 };
-resourceExport(CORE.resource), resourceExport(CORE.resource);
+resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/index.ts
 function isOnline(source) {
 	return !!GetPlayerName(String(source));
@@ -15385,7 +15410,24 @@ const players = new class {
 	get size() {
 		return this.bySource.size;
 	}
-}(), selecting = new Map(), log$3 = createLogger(ResourceName), ID_PATTERN = /^[a-z0-9_]{2,32}$/, LEVELS = {
+}(), selecting = new Map(), claims = new class {
+	held = new Map();
+	has(charId) {
+		return this.held.has(charId);
+	}
+	async hold(charId, work) {
+		this.held.set(charId, (this.held.get(charId) ?? 0) + 1);
+		try {
+			return await work();
+		} finally {
+			let left = (this.held.get(charId) ?? 1) - 1;
+			left > 0 ? this.held.set(charId, left) : this.held.delete(charId);
+		}
+	}
+	run(charId, busy, work) {
+		return this.has(charId) ? Promise.resolve(busy) : this.hold(charId, work);
+	}
+}(), log$3 = createLogger(ResourceName), ID_PATTERN = /^[a-z0-9_]{2,32}$/, LEVELS = {
 	debug: 1,
 	info: 2,
 	warn: 3,
@@ -16024,7 +16066,7 @@ const num = (min, max) => ({
 		label: "ADMIN_F_BOSS"
 	}
 ];
-function coreSchema(accounts, inventories = [], keySystems = []) {
+function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = []) {
 	let accountOptions = accounts.map((value) => ({
 		value,
 		label: value
@@ -16099,6 +16141,10 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 						type: "enum",
 						values: ["auto", ...keySystems]
 					},
+					dispatch: {
+						type: "enum",
+						values: ["auto", ...alertSystems]
+					},
 					interaction: {
 						type: "enum",
 						values: ["prompt", "target"]
@@ -16127,6 +16173,7 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 					characterScene: DEFAULT_SCENE,
 					inventory: "auto",
 					vehicleKeys: "auto",
+					dispatch: "auto",
 					interaction: "prompt",
 					refuseOnConflict: !0,
 					setupDone: !1,
@@ -16406,6 +16453,24 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 								value: "auto",
 								label: "ADMIN_O_INVENTORY_AUTO"
 							}, ...keySystems.map((value) => ({
+								value,
+								label: value
+							}))]
+						}]
+					},
+					{
+						icon: "triangle-exclamation",
+						title: "ADMIN_C_DISPATCH",
+						desc: "ADMIN_C_DISPATCH_DESC",
+						fields: [{
+							widget: "select",
+							path: "dispatch",
+							label: "ADMIN_F_DISPATCH",
+							hint: "ADMIN_H_DISPATCH",
+							options: [{
+								value: "auto",
+								label: "ADMIN_O_INVENTORY_AUTO"
+							}, ...alertSystems.map((value) => ({
 								value,
 								label: value
 							}))]
@@ -16925,8 +16990,8 @@ function definitions(raw, imageOf) {
 	return out;
 }
 // resource/server/inventory/adapters/ai-inventory.ts
-const RESOURCE$3 = "ai-inventory", inv = () => resourceExport(RESOURCE$3), imageOf = (_name, image) => image ? `nui://${RESOURCE$3}/dist/web/images/${image}` : void 0, aiInventory = {
-	resource: RESOURCE$3,
+const RESOURCE$4 = "ai-inventory", inv = () => resourceExport(RESOURCE$4), imageOf = (_name, image) => image ? `nui://${RESOURCE$4}/dist/web/images/${image}` : void 0, aiInventory = {
+	resource: RESOURCE$4,
 	version: "0.1.0",
 	addItem: (ref, item, count, metadata, slot) => inv().AddItem(ref, item, count, metadata, slot) === !0,
 	removeItem: (ref, item, count, metadata, slot) => inv().RemoveItem(ref, item, count, metadata, slot) === !0,
@@ -16954,8 +17019,8 @@ on("ai-inventory:usedItem", (source, name, _slot, _metadata, status) => {
 	emit(CORE.itemUsedEvent, source, name, isRecord(status) ? status : null);
 });
 // resource/server/inventory/adapters/ox_inventory.ts
-const oxImage = (name, image) => `nui://ox_inventory/web/images/${image || `${name}.png`}`, RESOURCE$2 = "ox_inventory", call$3 = (name, ...args) => callExport(RESOURCE$2, name, ...args), oxInventory = {
-	resource: RESOURCE$2,
+const oxImage = (name, image) => `nui://ox_inventory/web/images/${image || `${name}.png`}`, RESOURCE$3 = "ox_inventory", call$3 = (name, ...args) => callExport(RESOURCE$3, name, ...args), oxInventory = {
+	resource: RESOURCE$3,
 	version: "2.48.1",
 	addItem: (ref, item, count, metadata, slot) => isTrue(call$3("AddItem", ref, item, count, metadata, slot)),
 	removeItem: (ref, item, count, metadata, slot) => isTrue(call$3("RemoveItem", ref, item, count, metadata, slot)),
@@ -16974,7 +17039,7 @@ const oxImage = (name, image) => `nui://ox_inventory/web/images/${image || `${na
 			maxWeight: inv.maxWeight
 		} : null;
 	}
-}, RESOURCE$1 = "qb-inventory", call$2 = (name, ...args) => callExport(RESOURCE$1, name, ...args);
+}, RESOURCE$2 = "qb-inventory", call$2 = (name, ...args) => callExport(RESOURCE$2, name, ...args);
 function itemsOf$1(ref) {
 	if (typeof ref == "string") {
 		let inventory = call$2("GetInventory", ref);
@@ -16984,7 +17049,7 @@ function itemsOf$1(ref) {
 	return isRecord(player) && isRecord(player.PlayerData) ? player.PlayerData.items : void 0;
 }
 const stacksOf = (ref) => rows(itemsOf$1(ref)).flatMap((row) => stack(row, (name) => name) ?? []), qbInventory = {
-	resource: RESOURCE$1,
+	resource: RESOURCE$2,
 	version: "2.2.3",
 	addItem: (ref, item, count, metadata, slot) => isTrue(call$2("AddItem", ref, item, count, slot, metadata)),
 	removeItem: (ref, item, count, _metadata, slot) => isTrue(call$2("RemoveItem", ref, item, count, slot)),
@@ -17000,7 +17065,7 @@ const stacksOf = (ref) => rows(itemsOf$1(ref)).flatMap((row) => stack(row, (name
 	openInventory: (source, ref) => (call$2(typeof ref == "number" ? "OpenInventoryById" : "OpenInventory", source, ref), !0),
 	getItemDefinition: () => null,
 	getItemDefinitions: () => ({})
-}, RESOURCE = "tgiann-inventory", call$1 = (name, ...args) => callExport(RESOURCE, name, ...args);
+}, RESOURCE$1 = "tgiann-inventory", call$1 = (name, ...args) => callExport(RESOURCE$1, name, ...args);
 function item(name) {
 	try {
 		return call$1("Items", name);
@@ -17011,7 +17076,7 @@ function item(name) {
 const itemsOf = (ref) => call$1(typeof ref == "number" ? "GetPlayerItems" : "GetInventoryItems", ref), INVENTORIES = [
 	aiInventory,
 	{
-		resource: RESOURCE,
+		resource: RESOURCE$1,
 		version: "2.4.1",
 		addItem: (ref, name, count, metadata, slot) => isTrue(call$1("AddItem", ref, name, count, slot, metadata)),
 		removeItem: (ref, name, count, metadata, slot) => isTrue(call$1("RemoveItem", ref, name, count, slot, metadata)),
@@ -17116,7 +17181,39 @@ const itemsOf = (ref) => call$1(typeof ref == "number" ? "GetPlayerItems" : "Get
 		"p_carkeys",
 		"rd_vehiclekeys"
 	].map(clientKeys)
-];
+], alerts = resourceExport("ai-policealert"), aiPoliceAlert = {
+	resource: "ai-policealert",
+	alert: (alert) => alerts.DispatchAlert(alert)
+}, RESOURCE = "tgiann-policealert", DISPATCH_SYSTEMS = [{
+	resource: RESOURCE,
+	version: "2.10.0",
+	answersPoliceAlert: !0,
+	alert: (a) => {
+		let jobs = a.jobs ?? ["police"], custom = a.message ? [{
+			labelLeft: a.message,
+			labelRight: "",
+			icon: "circle-info"
+		}] : void 0, common = {
+			label: a.title,
+			code: a.code,
+			icon: a.icon,
+			coords: a.coords,
+			duration: a.duration,
+			bgAnimate: a.priority === "high",
+			blip: a.blip?.sprite
+		};
+		a.source === void 0 ? callExport(RESOURCE, "SendCustomAlert", {
+			...common,
+			duration: a.duration ?? 5,
+			sound: { active: !0 },
+			information: { custom }
+		}, jobs) : callExport(RESOURCE, "Alert", a.source, {
+			...common,
+			jobs,
+			custom
+		});
+	}
+}, aiPoliceAlert];
 // resource/server/content/index.ts
 function readUpdates(u) {
 	let ignore = Array.isArray(u.ignore) ? u.ignore : [];
@@ -17158,6 +17255,7 @@ function readSettings(raw) {
 		saveIntervalMinutes: int$2(s.saveIntervalMinutes, 5, 1, 60),
 		inventory: str(s.inventory, "auto", 32),
 		vehicleKeys: str(s.vehicleKeys, "auto", 32),
+		dispatch: str(s.dispatch, "auto", 32),
 		interaction: s.interaction === "target" ? "target" : "prompt",
 		refuseOnConflict: bool$1(s.refuseOnConflict, !0),
 		updates: readUpdates(record(s.updates)),
@@ -17209,7 +17307,7 @@ function follow(file, target, read) {
 		key !== void 0 && (value === null ? target.delete(key) : ID_PATTERN.test(key) && target.set(key, read(record(value))));
 	});
 }
-const panel = new AdminPanel(coreSchema(Object.keys(record(new DataFile(ResourceName, "accounts", log$3).read())), INVENTORIES.map((adapter) => adapter.resource), KEY_SYSTEMS.map((adapter) => adapter.resource))), settings = readSettings(panel.get("settings"));
+const panel = new AdminPanel(coreSchema(Object.keys(record(new DataFile(ResourceName, "accounts", log$3).read())), INVENTORIES.map((adapter) => adapter.resource), KEY_SYSTEMS.map((adapter) => adapter.resource), DISPATCH_SYSTEMS.map((adapter) => adapter.resource))), settings = readSettings(panel.get("settings"));
 panel.onChange("settings", (_key, value) => Object.assign(settings, readSettings(value)));
 const accountTypes = entries(panel.get("accounts"), readAccount), jobs = entries(panel.get("jobs"), readJob), gangs = entries(panel.get("gangs"), readGang);
 follow("accounts", accountTypes, readAccount), follow("jobs", jobs, readJob), follow("gangs", gangs, readGang), jobs.has(settings.jobs.unemployed) || jobs.set(settings.jobs.unemployed, {
@@ -17570,9 +17668,9 @@ const activeInventory = new GlobalKey("ai:inventory", stateString), inventory = 
 	log: log$3
 });
 inventory.setChoice(settings.inventory), panel.onChange("settings", () => inventory.setChoice(settings.inventory));
-const candidates$1 = new Set(INVENTORIES.map((adapter) => adapter.resource));
-on("onServerResourceStart", (resource) => candidates$1.has(resource) && inventory.select()), on("onResourceStop", (resource) => {
-	candidates$1.has(resource) && (inventory.select(resource), setTimeout(() => inventory.select(), 0));
+const candidates$2 = new Set(INVENTORIES.map((adapter) => adapter.resource));
+on("onServerResourceStart", (resource) => candidates$2.has(resource) && inventory.select()), on("onResourceStop", (resource) => {
+	candidates$2.has(resource) && (inventory.select(resource), setTimeout(() => inventory.select(), 0));
 });
 const ref = (v) => typeof v == "number" || typeof v == "string" && v !== "" ? v : null, name = (v) => typeof v == "string" && v !== "" ? v : null, amount = (v) => v == null ? 1 : typeof v == "number" && Number.isFinite(v) && v >= 1 ? Math.floor(v) : null, meta = (v) => isRecord(v) ? v : void 0, slot = (v) => typeof v == "number" && Number.isInteger(v) && v > 0 ? v : void 0;
 registerExport("AddItem", (inv, item, count, metadata, at) => {
@@ -17843,7 +17941,7 @@ function describe(patch) {
 	return `${String(patch.action)} ${target}`;
 }
 const adminHost = new AdminHost();
-// resource/server/database.ts
+// resource/server/admin/items.ts
 registerExport("RegisterAdminPanel", (resource) => {
 	typeof resource == "string" && adminHost.register(resource);
 }), registerExport("AdminPanelChanged", (delta) => adminHost.changed(delta)), onClientCallback(ADMIN.openCallback, {
@@ -17886,19 +17984,137 @@ registerExport("RegisterAdminPanel", (resource) => {
 		})).sort((a, b) => a.label.localeCompare(b.label)),
 		room: inventory.call("GetWeight", (a) => a.getWeight?.(who) ?? null, null)
 	};
-}), mysql.setPoolSize(GetConvarInt("ai_core_pool_size", 10));
-const databaseReady = createDatabaseTables(ResourceName, "sql/main.sql").catch((error) => {
-	throw log$3.error("database setup failed", error), error;
-}), counts = new Map(), published = new GlobalGroup("ai:duty:", stateNumber);
-function changeDutyCount(job, delta) {
-	let next = Math.max(0, (counts.get(job) ?? 0) + delta);
-	counts.set(job, next), published.set(job, next);
+});
+// resource/common/adminPlayers.ts
+const ADMIN_PLAYERS = {
+	deltaEvent: "ai-core:client:adminPlayers",
+	teleportEvent: "ai-core:client:adminTeleport",
+	callback: (action) => `ai-core:adminPlayers:${action}`
+}, COLUMNS = "id, user_id, citizenid, slot, firstname, lastname, birthdate, sex, pos_x, pos_y, pos_z, pos_h, metadata, last_played";
+function toDate(value) {
+	if (typeof value == "string") return value.slice(0, 10);
+	let date = new Date(value), pad = (n) => String(n).padStart(2, "0");
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
-function dutyCount(job) {
-	return counts.get(job) ?? 0;
+function toRow(raw) {
+	let metadata = {};
+	try {
+		let parsed = JSON.parse(raw.metadata);
+		isRecord(parsed) && (metadata = parsed);
+	} catch {}
+	let sex = raw.sex === "female" ? "female" : "male", hasPosition = raw.pos_x !== null && raw.pos_y !== null && raw.pos_z !== null;
+	return {
+		id: raw.id,
+		userId: raw.user_id,
+		citizenid: raw.citizenid,
+		slot: raw.slot,
+		firstname: raw.firstname,
+		lastname: raw.lastname,
+		birthdate: toDate(raw.birthdate),
+		sex,
+		position: hasPosition ? {
+			x: raw.pos_x ?? 0,
+			y: raw.pos_y ?? 0,
+			z: raw.pos_z ?? 0,
+			heading: raw.pos_h ?? 0
+		} : null,
+		metadata,
+		lastPlayed: raw.last_played
+	};
 }
-function resetDutyCounts(jobs) {
-	for (let job of jobs) counts.set(job, 0), published.set(job, 0);
+async function listCharacters(userId) {
+	return (await mysql.query(`SELECT ${COLUMNS} FROM ai_core_characters WHERE user_id = ? AND deleted_at IS NULL ORDER BY slot`, [userId]) ?? []).map(toRow);
+}
+async function getCharacter(userId, charId) {
+	let row = await mysql.single(`SELECT ${COLUMNS} FROM ai_core_characters WHERE id = ? AND user_id = ? AND deleted_at IS NULL`, [charId, userId]);
+	return row ? toRow(row) : null;
+}
+async function findCharacter(charId) {
+	let row = await mysql.single(`SELECT ${COLUMNS} FROM ai_core_characters WHERE id = ? AND deleted_at IS NULL`, [charId]);
+	return row ? toRow(row) : null;
+}
+async function insertCharacter(userId, input) {
+	let placeholder = `~${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`.slice(0, 16), id = await mysql.insert("INSERT INTO ai_core_characters (user_id, citizenid, slot, firstname, lastname, birthdate, sex) VALUES (?, ?, ?, ?, ?, ?, ?)", [
+		userId,
+		placeholder,
+		input.slot,
+		input.firstname,
+		input.lastname,
+		input.birthdate,
+		input.sex
+	]);
+	if (!id) throw Error("could not create the character");
+	if (!await mysql.update("UPDATE ai_core_characters SET citizenid = ? WHERE id = ?", [String(id), id]).catch(() => 0)) throw await mysql.update("DELETE FROM ai_core_characters WHERE id = ?", [id]), Error(`citizen id ${id} is already taken`);
+	return id;
+}
+async function deleteCharacter(userId, charId) {
+	return (await mysql.update("UPDATE ai_core_characters SET deleted_at = NOW() WHERE id = ? AND user_id = ? AND deleted_at IS NULL", [charId, userId]) ?? 0) > 0;
+}
+async function saveCharacters(saves) {
+	for (let i = 0; i < saves.length; i += 500) {
+		let part = saves.slice(i, i + 500), rows = part.map((_, n) => n === 0 ? "SELECT ? AS id, ? AS x, ? AS y, ? AS z, ? AS h, ? AS m" : "SELECT ?, ?, ?, ?, ?, ?").join(" UNION ALL ");
+		await mysql.query(`UPDATE ai_core_characters c JOIN (${rows}) v ON c.id = v.id
+       SET c.pos_x = v.x, c.pos_y = v.y, c.pos_z = v.z, c.pos_h = v.h, c.metadata = v.m, c.last_played = NOW()`, part.flatMap((s) => [
+			s.id,
+			s.position.x,
+			s.position.y,
+			s.position.z,
+			s.position.heading,
+			JSON.stringify(s.metadata)
+		]));
+	}
+}
+// resource/server/db.ts
+const db = tables();
+// resource/server/jobs/repo.ts
+async function loadJobs(charId) {
+	return (await db.select("ai_core_character_jobs", ["job", "grade"], { char_id: charId })).map((row) => ({
+		job: row.job,
+		grade: row.grade
+	}));
+}
+async function loadGangs(charId) {
+	let list = await db.select("ai_core_character_gangs", [
+		"gang",
+		"grade",
+		"active"
+	], { char_id: charId });
+	return {
+		gangs: list.map((row) => ({
+			gang: row.gang,
+			grade: row.grade
+		})),
+		active: list.find((row) => row.active)?.gang ?? null
+	};
+}
+function saveJob(charId, job, grade) {
+	return mysql.query("INSERT INTO ai_core_character_jobs (char_id, job, grade) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE grade = VALUES(grade)", [
+		charId,
+		job,
+		grade
+	]);
+}
+function deleteJob(charId, job) {
+	return db.remove("ai_core_character_jobs", {
+		char_id: charId,
+		job
+	});
+}
+function saveGang(charId, gang, grade) {
+	return mysql.query("INSERT INTO ai_core_character_gangs (char_id, gang, grade) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE grade = VALUES(grade)", [
+		charId,
+		gang,
+		grade
+	]);
+}
+function deleteGang(charId, gang) {
+	return db.remove("ai_core_character_gangs", {
+		char_id: charId,
+		gang
+	});
+}
+function saveActiveGang(charId, gang) {
+	return mysql.query("UPDATE ai_core_character_gangs SET active = (gang = ?) WHERE char_id = ?", [gang ?? "", charId]);
 }
 // resource/server/money/writer.ts
 const CHUNK = 1e3;
@@ -18038,6 +18254,680 @@ const sharedAccounts = new class {
 		return [...this.loaded.values()].flatMap((accounts) => [...accounts.values()]);
 	}
 }();
+// resource/server/admin/players/repo.ts
+async function characterExists(charId) {
+	let row = await db.first("ai_core_characters", ["deleted_at"], { id: charId });
+	return row !== null && row.deleted_at === null;
+}
+async function userOf(userId) {
+	return db.first("ai_core_users", [
+		"fivem",
+		"license",
+		"discord",
+		"name"
+	], { id: userId });
+}
+async function storedBalances(charId) {
+	let rows = await db.select("ai_core_accounts", ["name", "balance"], {
+		owner_type: "character",
+		owner_id: String(charId)
+	});
+	return new Map(rows.map((row) => [row.name, Number(row.balance)]));
+}
+async function updateInfo(charId, info) {
+	await mysql.update("UPDATE ai_core_characters SET firstname = ?, lastname = ?, birthdate = ?, sex = ? WHERE id = ?", [
+		info.firstname,
+		info.lastname,
+		info.birthdate,
+		info.sex,
+		charId
+	]);
+}
+async function updateMetadata(charId, metadata) {
+	await db.update("ai_core_characters", { metadata: JSON.stringify(metadata) }, { id: charId });
+}
+async function updatePosition(charId, p) {
+	await db.update("ai_core_characters", {
+		pos_x: p.x,
+		pos_y: p.y,
+		pos_z: p.z,
+		pos_h: p.heading
+	}, { id: charId });
+}
+async function softDelete(charId) {
+	return (await mysql.update("UPDATE ai_core_characters SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL", [charId]) ?? 0) > 0;
+}
+// resource/server/admin/players/watchers.ts
+function onlineRow(player) {
+	let job = player.jobs.current();
+	return {
+		source: player.source,
+		charId: player.charId,
+		citizenid: player.citizenid,
+		name: player.fullName,
+		account: GetPlayerName(String(player.source)) || "",
+		job: job.job,
+		grade: job.grade,
+		duty: player.jobs.onDuty() !== null
+	};
+}
+const playerWatchers = new class {
+	list = new Set();
+	byChar = new Map();
+	charOf = new Map();
+	dirty = new Set();
+	gone = new Set();
+	timer = null;
+	watchList(admin) {
+		this.list.add(admin);
+	}
+	watchChar(admin, charId) {
+		this.unwatchChar(admin), this.charOf.set(admin, charId);
+		let set = this.byChar.get(charId);
+		set || this.byChar.set(charId, set = new Set()), set.add(admin);
+	}
+	unwatchChar(admin) {
+		let charId = this.charOf.get(admin);
+		if (charId === void 0) return;
+		this.charOf.delete(admin);
+		let set = this.byChar.get(charId);
+		set?.delete(admin), set?.size === 0 && this.byChar.delete(charId);
+	}
+	unwatchList(admin) {
+		this.list.delete(admin);
+	}
+	drop(admin) {
+		this.unwatchList(admin), this.unwatchChar(admin);
+	}
+	watching(charId) {
+		return this.byChar.has(charId);
+	}
+	put(source) {
+		this.list.size !== 0 && (this.gone.delete(source), this.dirty.add(source), this.schedule());
+	}
+	remove(source) {
+		this.list.size !== 0 && (this.dirty.delete(source), this.gone.add(source), this.schedule());
+	}
+	char(charId, patch) {
+		this.toChar(charId, {
+			kind: "char",
+			charId,
+			patch
+		});
+	}
+	money(charId, account, balance) {
+		this.toChar(charId, {
+			kind: "money",
+			charId,
+			account,
+			balance
+		});
+	}
+	meta(charId, key, value) {
+		this.byChar.has(charId) && this.toChar(charId, {
+			kind: "meta",
+			charId,
+			key,
+			value
+		});
+	}
+	view(view) {
+		this.toChar(view.charId, {
+			kind: "view",
+			view
+		});
+	}
+	deleted(charId) {
+		this.toChar(charId, {
+			kind: "gone",
+			charId
+		});
+	}
+	toChar(charId, delta) {
+		let set = this.byChar.get(charId);
+		if (set) for (let admin of set) emitNet(ADMIN_PLAYERS.deltaEvent, admin, delta);
+	}
+	schedule() {
+		this.timer ??= setTimeout(() => this.flush(), 1e3);
+	}
+	flush() {
+		this.timer = null;
+		let put = [];
+		for (let source of this.dirty) {
+			let player = players.get(source);
+			player ? put.push(onlineRow(player)) : this.gone.add(source);
+		}
+		let delta = {
+			kind: "rows",
+			put,
+			remove: [...this.gone]
+		};
+		this.dirty.clear(), this.gone.clear();
+		for (let admin of this.list) emitNet(ADMIN_PLAYERS.deltaEvent, admin, delta);
+	}
+}(), OK = { ok: !0 }, fail = (error) => ({
+	ok: !1,
+	error
+}), CHANGE_ERRORS = {
+	UNKNOWN_JOB: "ADMIN_PLAYERS_ERR_JOB",
+	UNKNOWN_GANG: "ADMIN_PLAYERS_ERR_GANG",
+	INVALID_GRADE: "ADMIN_PLAYERS_ERR_GRADE",
+	LIMIT: "ADMIN_PLAYERS_ERR_LIMIT",
+	NOT_MEMBER: "ADMIN_PLAYERS_ERR_NOT_MEMBER",
+	NO_ACCOUNT: "ADMIN_PLAYERS_ERR_ACCOUNT",
+	INVALID_AMOUNT: "ADMIN_PLAYERS_ERR_AMOUNT",
+	INSUFFICIENT_FUNDS: "ADMIN_PLAYERS_ERR_FUNDS"
+}, changeError = (error) => fail(CHANGE_ERRORS[error] ?? "ADMIN_PLAYERS_ERR_BUSY"), gradeOk = (grades, grade) => Number.isInteger(grade) && grade >= 0 && grade < grades, offline = {
+	async money(charId, name, mode, amount, reason, actor) {
+		let account = (await loadAccounts("character", String(charId))).get(name);
+		if (!account) return changeError("NO_ACCOUNT");
+		let result = mode === "set" ? account.set(amount, reason, actor) : account.change(mode === "add" ? amount : -amount, reason, actor);
+		return result.ok ? (await account.idle(), playerWatchers.money(charId, name, result.balance), OK) : changeError(result.error);
+	},
+	async setJob(charId, job, grade) {
+		let def = jobs.get(job);
+		if (!def) return changeError("UNKNOWN_JOB");
+		if (!gradeOk(def.grades.length, grade)) return changeError("INVALID_GRADE");
+		let list = await loadJobs(charId), existing = list.find((m) => m.job === job);
+		if (existing) existing.grade = grade;
+		else {
+			if (!settings.jobs.multiJob) {
+				for (let other of list) await deleteJob(charId, other.job);
+				list = [];
+			} else if (list.length >= settings.jobs.maxJobs) return changeError("LIMIT");
+			list.push({
+				job,
+				grade
+			});
+		}
+		return await saveJob(charId, job, grade), playerWatchers.char(charId, { jobs: list }), OK;
+	},
+	async removeJob(charId, job) {
+		let list = await loadJobs(charId);
+		return list.some((m) => m.job === job) ? (await deleteJob(charId, job), playerWatchers.char(charId, { jobs: list.filter((m) => m.job !== job) }), OK) : changeError("NOT_MEMBER");
+	},
+	async setGang(charId, gang, grade) {
+		let def = gangs.get(gang);
+		if (!def) return changeError("UNKNOWN_GANG");
+		if (!gradeOk(def.grades.length, grade)) return changeError("INVALID_GRADE");
+		let data = await loadGangs(charId), list = data.gangs, active = data.active, existing = list.find((m) => m.gang === gang);
+		if (existing) existing.grade = grade;
+		else {
+			if (!settings.gangs.multiGang) {
+				for (let other of list) await deleteGang(charId, other.gang);
+				list = [], active = null;
+			} else if (list.length >= settings.gangs.maxGangs) return changeError("LIMIT");
+			list.push({
+				gang,
+				grade
+			});
+		}
+		return await saveGang(charId, gang, grade), active || (active = gang, await saveActiveGang(charId, gang)), playerWatchers.char(charId, {
+			gangs: list,
+			activeGang: active
+		}), OK;
+	},
+	async removeGang(charId, gang) {
+		let data = await loadGangs(charId);
+		if (!data.gangs.some((m) => m.gang === gang)) return changeError("NOT_MEMBER");
+		await deleteGang(charId, gang);
+		let list = data.gangs.filter((m) => m.gang !== gang), active = data.active;
+		return active === gang && (active = list[0]?.gang ?? null, await saveActiveGang(charId, active)), playerWatchers.char(charId, {
+			gangs: list,
+			activeGang: active
+		}), OK;
+	},
+	async setActiveGang(charId, gang) {
+		let data = await loadGangs(charId);
+		return gang !== null && !data.gangs.some((m) => m.gang === gang) ? changeError("NOT_MEMBER") : (await saveActiveGang(charId, gang), playerWatchers.char(charId, { activeGang: gang }), OK);
+	},
+	async meta(charId, key, value) {
+		let row = await findCharacter(charId);
+		return row ? (value === null ? delete row.metadata[key] : row.metadata[key] = value, await updateMetadata(charId, row.metadata), playerWatchers.meta(charId, key, value), OK) : fail("ADMIN_PLAYERS_ERR_GONE");
+	},
+	async position(charId, p) {
+		return await updatePosition(charId, p), playerWatchers.char(charId, { position: p }), OK;
+	},
+	async info(charId, info) {
+		return await updateInfo(charId, info), playerWatchers.char(charId, info), OK;
+	}
+}, parse = {
+	charId: (v) => typeof v == "number" && Number.isInteger(v) && v > 0 && v < 2 ** 32 ? v : null,
+	name: (v) => typeof v == "string" && /^[A-Za-z0-9_-]{1,48}$/.test(v) ? v : null,
+	int: (v, min, max) => typeof v == "number" && Number.isSafeInteger(v) && v >= min && v <= max ? v : null,
+	text: (v, min, max) => {
+		if (typeof v != "string") return null;
+		let text = v.trim();
+		return text.length >= min && text.length <= max ? text : null;
+	}
+}, WRITE_RATE = {
+	count: 30,
+	windowMs: 1e4
+};
+function action(name, args, handler) {
+	onClientCallback(ADMIN_PLAYERS.callback(name), {
+		guards: [isAdmin()],
+		rate: WRITE_RATE,
+		args
+	}, handler);
+}
+const BUSY$1 = fail("ADMIN_PLAYERS_ERR_BUSY"), GONE = fail("ADMIN_PLAYERS_ERR_GONE"), OFFLINE = fail("ADMIN_PLAYERS_ERR_OFFLINE");
+async function onCharacter(charId, online, offline) {
+	let player = players.byCharacter(charId);
+	return player ? online(player) : offline ? claims.run(charId, BUSY$1, async () => players.byCharacter(charId) ? BUSY$1 : await characterExists(charId) ? offline() : GONE) : OFFLINE;
+}
+function actorOf(admin) {
+	let fivem = players.get(admin)?.user.fivem;
+	return fivem ? `admin fivem:${fivem}` : `admin ${admin}`;
+}
+function logEdit(admin, charId, message, metadata = {}, level = "info") {
+	coreLog("admin", `players: ${message} (character #${charId})`, {
+		level,
+		source: admin,
+		target: players.byCharacter(charId)?.source,
+		metadata: {
+			charId,
+			...metadata
+		}
+	});
+}
+// resource/server/database.ts
+mysql.setPoolSize(GetConvarInt("ai_core_pool_size", 10));
+const databaseReady = createDatabaseTables(ResourceName, "sql/main.sql").catch((error) => {
+	throw log$3.error("database setup failed", error), error;
+}), WANTED = [
+	[
+		"ai_core_characters",
+		"search_first",
+		"`deleted_at`, `firstname`, `lastname`"
+	],
+	[
+		"ai_core_characters",
+		"search_last",
+		"`deleted_at`, `lastname`, `firstname`"
+	],
+	[
+		"ai_core_users",
+		"license",
+		"`license`"
+	],
+	[
+		"ai_core_users",
+		"discord",
+		"`discord`"
+	]
+];
+async function addMissing() {
+	let rows = await mysql.query("SELECT DISTINCT TABLE_NAME, INDEX_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN (?)", [[...new Set(WANTED.map(([table]) => table))]]) ?? [], have = new Set(rows.map((r) => `${r.TABLE_NAME}.${r.INDEX_NAME}`));
+	for (let [table, name, columns] of WANTED) have.has(`${table}.${name}`) || (log$3.info(`adding index ${name} to ${table} (player search)`), await mysql.query(`ALTER TABLE \`${table}\` ADD INDEX \`${name}\` (${columns}), ALGORITHM=INPLACE, LOCK=NONE`));
+}
+const searchReady = databaseReady.then(addMissing).catch((error) => log$3.error("adding the player search indexes failed", error)), FIRST = 2 ** 32;
+function parseSearch(raw) {
+	let q = raw.trim().replace(/\s+/g, " ");
+	if (q.length < 2 || q.length > 64) return null;
+	let prefixed = /^(fivem|license|discord):(\S+)$/i.exec(q);
+	if (prefixed?.[1] && prefixed[2]) return {
+		kind: "ids",
+		citizenid: null,
+		users: [{
+			column: prefixed[1].toLowerCase(),
+			value: prefixed[2]
+		}]
+	};
+	if (/^[0-9a-f]{40}$/i.test(q)) return {
+		kind: "ids",
+		citizenid: null,
+		users: [{
+			column: "license",
+			value: q.toLowerCase()
+		}]
+	};
+	if (/^\d+$/.test(q)) return {
+		kind: "ids",
+		citizenid: q.length <= 16 ? q : null,
+		users: [{
+			column: "fivem",
+			value: q
+		}, {
+			column: "discord",
+			value: q
+		}]
+	};
+	let [first = "", ...rest] = q.split(" ");
+	return {
+		kind: "name",
+		first,
+		last: rest.length > 0 ? rest.join(" ") : null
+	};
+}
+const prefix = (text) => `${text.replace(/[!%_]/g, (c) => `!${c}`)}%`, idsOf = (rows) => (rows ?? []).map((row) => row.id);
+async function searchIds(query, cursor) {
+	if (query.kind === "ids") {
+		let lists = await Promise.all([query.citizenid === null ? [] : idsOf(await mysql.query("SELECT id FROM ai_core_characters WHERE citizenid = ? AND deleted_at IS NULL", [query.citizenid])), ...query.users.map(async (match) => idsOf(await mysql.query(`SELECT c.id FROM ai_core_users u JOIN ai_core_characters c ON c.user_id = u.id AND c.deleted_at IS NULL WHERE u.${match.column} = ? LIMIT 50`, [match.value])))]);
+		return {
+			ids: [...new Set(lists.flat())].sort((a, b) => b - a).slice(0, 50),
+			more: !1
+		};
+	}
+	let before = cursor ?? FIRST, branches = query.last === null ? [mysql.query("SELECT id FROM ai_core_characters WHERE deleted_at IS NULL AND firstname LIKE ? ESCAPE '!' AND id < ? ORDER BY id DESC LIMIT 26", [prefix(query.first), before]), mysql.query("SELECT id FROM ai_core_characters WHERE deleted_at IS NULL AND lastname LIKE ? ESCAPE '!' AND id < ? ORDER BY id DESC LIMIT 26", [prefix(query.first), before])] : [mysql.query("SELECT id FROM ai_core_characters WHERE deleted_at IS NULL AND firstname LIKE ? ESCAPE '!' AND lastname LIKE ? ESCAPE '!' AND id < ? ORDER BY id DESC LIMIT 26", [
+		prefix(query.first),
+		prefix(query.last),
+		before
+	])], merged = [...new Set((await Promise.all(branches)).flatMap(idsOf))];
+	return merged.sort((a, b) => b - a), {
+		ids: merged.slice(0, 25),
+		more: merged.length > 25
+	};
+}
+async function search(query, cursor, online) {
+	let { ids, more } = await searchIds(query, cursor);
+	return ids.length === 0 ? {
+		rows: [],
+		next: null
+	} : {
+		rows: (await mysql.query("SELECT c.id, c.citizenid, c.firstname, c.lastname, c.last_played, u.name FROM ai_core_characters c JOIN ai_core_users u ON u.id = c.user_id WHERE c.id IN (?) ORDER BY c.id DESC", [ids]) ?? []).map((row) => ({
+			charId: row.id,
+			citizenid: row.citizenid,
+			name: `${row.firstname} ${row.lastname}`,
+			account: row.name,
+			lastPlayed: row.last_played,
+			source: online(row.id)
+		})),
+		next: more ? ids.at(-1) ?? null : null
+	};
+}
+// resource/server/admin/players/view.ts
+function pedPosition$1(source) {
+	let ped = GetPlayerPed(String(source));
+	if (!ped || !DoesEntityExist(ped)) return null;
+	let [x = 0, y = 0, z = 0] = GetEntityCoords(ped);
+	return {
+		x,
+		y,
+		z,
+		heading: GetEntityHeading(ped)
+	};
+}
+async function loadView(charId) {
+	let row = await findCharacter(charId);
+	if (!row) return null;
+	let user = await userOf(row.userId), base = {
+		charId,
+		citizenid: row.citizenid,
+		slot: row.slot,
+		user: {
+			id: row.userId,
+			fivem: user?.fivem ?? "",
+			license: user?.license ?? null,
+			discord: user?.discord ?? null,
+			name: user?.name ?? ""
+		},
+		lastPlayed: row.lastPlayed
+	}, player = players.byCharacter(charId);
+	if (player) {
+		let info = player.info();
+		return {
+			...base,
+			firstname: info.firstname,
+			lastname: info.lastname,
+			birthdate: info.birthdate,
+			sex: info.sex,
+			source: player.source,
+			money: player.wallet.snapshot(),
+			jobs: player.jobs.all(),
+			duty: player.jobs.onDuty(),
+			gangs: player.gangs.all(),
+			activeGang: player.gangs.activeGang(),
+			metadata: player.metadata(),
+			position: pedPosition$1(player.source)
+		};
+	}
+	let [balances, jobs, gangs] = await Promise.all([
+		storedBalances(charId),
+		loadJobs(charId),
+		loadGangs(charId)
+	]), money = {};
+	for (let [name, type] of accountTypes) money[name] = balances.get(name) ?? type.start;
+	return {
+		...base,
+		firstname: row.firstname,
+		lastname: row.lastname,
+		birthdate: row.birthdate,
+		sex: row.sex,
+		source: null,
+		money,
+		jobs,
+		duty: null,
+		gangs: gangs.gangs,
+		activeGang: gangs.active,
+		metadata: row.metadata,
+		position: row.position
+	};
+}
+// resource/server/admin/players/edit.ts
+const charArg = (v) => parse.charId(v);
+action("info", ([charId, raw]) => {
+	let id = charArg(charId);
+	if (id === null || typeof raw != "object" || !raw) return null;
+	let input = raw;
+	return [id, {
+		firstname: toName(input.firstname),
+		lastname: toName(input.lastname),
+		birthdate: toBirthdate(input.birthdate),
+		sex: toSex(input.sex)
+	}];
+}, async (source, charId, input) => {
+	let { firstname, lastname, birthdate, sex } = input;
+	if (!firstname) return fail("CHAR_ERR_FIRSTNAME");
+	if (!lastname) return fail("CHAR_ERR_LASTNAME");
+	if (!birthdate) return fail("CHAR_ERR_BIRTHDATE");
+	if (!sex) return fail("CHAR_ERR_SEX");
+	let info = {
+		firstname,
+		lastname,
+		birthdate,
+		sex
+	}, result = await onCharacter(charId, async (player) => player.info().sex === sex ? (await updateInfo(charId, info), player.setInfo(info), OK) : fail("ADMIN_PLAYERS_ERR_SEX_ONLINE"), () => offline.info(charId, info));
+	return result.ok && logEdit(source, charId, "changed the character info", info), result;
+}), action("money", ([charId, account, mode, amount, reason]) => {
+	let id = charArg(charId), name = parse.name(account), m = mode === "add" || mode === "remove" || mode === "set" ? mode : null, n = parse.int(amount, m === "set" ? 0 : 1, 0xe8d4a51000), why = parse.text(reason, 3, 64);
+	return id === null || name === null || m === null || n === null ? null : [
+		id,
+		name,
+		m,
+		n,
+		why
+	];
+}, async (source, charId, account, mode, amount, reason) => {
+	if (reason === null) return fail("ADMIN_PLAYERS_ERR_REASON");
+	let actor = actorOf(source), result = await onCharacter(charId, (player) => {
+		let r = mode === "set" ? player.wallet.set(account, amount, reason, actor) : player.wallet.change(account, mode === "add" ? amount : -amount, reason, actor);
+		return r.ok ? OK : changeError(r.error);
+	}, () => offline.money(charId, account, mode, amount, reason, actor));
+	return result.ok && logEdit(source, charId, `money ${mode} ${amount} ${account}`, {
+		account,
+		mode,
+		amount,
+		reason
+	}), result;
+});
+const memberArgs = ([charId, name, grade]) => {
+	let id = charArg(charId), n = parse.name(name), g = parse.int(grade, 0, 255);
+	return id === null || n === null || g === null ? null : [
+		id,
+		n,
+		g
+	];
+}, leaveArgs = ([charId, name]) => {
+	let id = charArg(charId), n = parse.name(name);
+	return id === null || n === null ? null : [id, n];
+}, pickArgs = ([charId, name]) => {
+	let id = charArg(charId), n = name == null ? null : parse.name(name);
+	return id === null || name != null && n === null ? null : [id, n];
+};
+action("job", memberArgs, async (source, charId, job, grade) => {
+	if (job === settings.jobs.unemployed) return fail("ADMIN_PLAYERS_ERR_JOB");
+	let result = await onCharacter(charId, (player) => {
+		let r = player.jobs.set(job, grade);
+		return r.ok ? OK : changeError(r.error);
+	}, () => offline.setJob(charId, job, grade));
+	return result.ok && logEdit(source, charId, `set job ${job} ${grade}`), result;
+}), action("removeJob", leaveArgs, async (source, charId, job) => {
+	let result = await onCharacter(charId, (player) => {
+		let r = player.jobs.remove(job);
+		return r.ok ? OK : changeError(r.error);
+	}, () => offline.removeJob(charId, job));
+	return result.ok && logEdit(source, charId, `removed job ${job}`), result;
+}), action("duty", pickArgs, async (source, charId, job) => {
+	let result = await onCharacter(charId, (player) => {
+		let r = player.jobs.setDuty(job);
+		return r.ok ? OK : changeError(r.error);
+	}, null);
+	return result.ok && logEdit(source, charId, `duty ${job ?? "off"}`), result;
+}), action("gang", memberArgs, async (source, charId, gang, grade) => {
+	let result = await onCharacter(charId, (player) => {
+		let r = player.gangs.set(gang, grade);
+		return r.ok ? OK : changeError(r.error);
+	}, () => offline.setGang(charId, gang, grade));
+	return result.ok && logEdit(source, charId, `set gang ${gang} ${grade}`), result;
+}), action("removeGang", leaveArgs, async (source, charId, gang) => {
+	let result = await onCharacter(charId, (player) => {
+		let r = player.gangs.remove(gang);
+		return r.ok ? OK : changeError(r.error);
+	}, () => offline.removeGang(charId, gang));
+	return result.ok && logEdit(source, charId, `removed gang ${gang}`), result;
+}), action("activeGang", pickArgs, async (source, charId, gang) => {
+	let result = await onCharacter(charId, (player) => {
+		let r = player.gangs.setActive(gang);
+		return r.ok ? OK : changeError(r.error);
+	}, () => offline.setActiveGang(charId, gang));
+	return result.ok && logEdit(source, charId, `active gang ${gang ?? "none"}`), result;
+}), action("meta", ([charId, key, value]) => {
+	let id = charArg(charId), k = typeof key == "string" && /^[A-Za-z0-9_.-]{1,48}$/.test(key) ? key : null, ok = value === null || typeof value == "boolean" || typeof value == "number" && Number.isFinite(value) || typeof value == "string" && value.length <= 256;
+	return id === null || k === null || !ok ? null : [
+		id,
+		k,
+		value
+	];
+}, async (source, charId, key, value) => {
+	let result = await onCharacter(charId, (player) => (player.setMeta(key, value), OK), () => offline.meta(charId, key, value));
+	return result.ok && logEdit(source, charId, `metadata ${key}`, {
+		key,
+		value
+	}), result;
+});
+// resource/server/admin/players/world.ts
+function pedPosition(source) {
+	let ped = GetPlayerPed(String(source)), [x = 0, y = 0, z = 0] = GetEntityCoords(ped);
+	return {
+		x,
+		y,
+		z,
+		heading: GetEntityHeading(ped)
+	};
+}
+const charOnly = ([charId]) => {
+	let id = parse.charId(charId);
+	return id === null ? null : [id];
+};
+action("goto", charOnly, async (source, charId) => {
+	let player = players.byCharacter(charId), point = player ? pedPosition(player.source) : null;
+	if (!player) {
+		let view = await loadView(charId);
+		if (!view) return GONE;
+		point = view.position;
+	}
+	return point ? (emitNet(ADMIN_PLAYERS.teleportEvent, source, point), logEdit(source, charId, "went to the character", { ...point }), OK) : fail("ADMIN_PLAYERS_ERR_POSITION");
+}), action("bring", charOnly, async (source, charId) => {
+	let point = pedPosition(source), result = await onCharacter(charId, (player) => player.source === source ? fail("ADMIN_PLAYERS_ERR_SELF") : (emitNet(ADMIN_PLAYERS.teleportEvent, player.source, point), notify(player.source, Locale("ADMIN_PLAYERS_NOTIFY_BROUGHT"), "info"), playerWatchers.char(charId, { position: point }), OK), () => offline.position(charId, point));
+	return result.ok && logEdit(source, charId, "brought the character", { ...point }), result;
+}), action("kick", ([charId, reason]) => {
+	let id = parse.charId(charId), why = parse.text(reason ?? "", 0, 120);
+	return id === null || why === null ? null : [id, why];
+}, async (source, charId, reason) => await onCharacter(charId, (player) => player.source === source ? fail("ADMIN_PLAYERS_ERR_SELF") : (logEdit(source, charId, "kicked the player", { reason }, "warn"), DropPlayer(String(player.source), reason ? Locale("ADMIN_PLAYERS_KICKED_REASON", reason) : Locale("ADMIN_PLAYERS_KICKED")), OK), null)), action("revive", charOnly, async (source, charId) => {
+	let death = optionalExport("ai-death");
+	if (!death) return fail("ADMIN_PLAYERS_ERR_NO_DEATH");
+	let result = await onCharacter(charId, (player) => (death.Revive(player.source) !== !0 && death.Heal(player.source), notify(player.source, Locale("ADMIN_PLAYERS_NOTIFY_REVIVED"), "success"), OK), null);
+	return result.ok && logEdit(source, charId, "revived the player"), result;
+}), action("item", ([charId, item, count, mode]) => {
+	let id = parse.charId(charId), name = parse.name(item), n = parse.int(count, 1, 1e4), m = mode === "give" || mode === "remove" ? mode : null;
+	return id === null || name === null || n === null || m === null ? null : [
+		id,
+		name.toLowerCase(),
+		n,
+		m
+	];
+}, async (source, charId, item, count, mode) => {
+	if (!inventory.call("GetItemDefinition", (a) => a.getItemDefinition(item), null)) return fail("ADMIN_PLAYERS_ERR_ITEM");
+	let result = await onCharacter(charId, (player) => {
+		let target = player.source;
+		if (mode === "give") return inventory.call("AddItem", (a) => a.addItem(target, item, count, void 0, void 0), !1) ? OK : fail("ADMIN_PLAYERS_ERR_ITEM_FULL");
+		let has = inventory.call("GetItemCount", (a) => a.getItemCount(target, item, void 0), 0);
+		if (has <= 0) return fail("ADMIN_PLAYERS_ERR_ITEM_NONE");
+		let take = Math.min(count, has);
+		return inventory.call("RemoveItem", (a) => a.removeItem(target, item, take, void 0, void 0), !1) ? OK : fail("ADMIN_PLAYERS_ERR_ITEM_NONE");
+	}, null);
+	return result.ok && logEdit(source, charId, `${mode} item ${item} x${count}`, {
+		item,
+		count,
+		mode
+	}), result;
+}), action("inventory", charOnly, async (source, charId) => {
+	let result = await onCharacter(charId, (player) => inventory.call("OpenInventory", (a) => a.openInventory(source, player.source), !1) ? OK : fail("ADMIN_PLAYERS_ERR_INVENTORY"), null);
+	return result.ok && logEdit(source, charId, "opened the inventory"), result;
+}), action("delete", charOnly, async (source, charId) => {
+	if (players.byCharacter(charId)) return fail("ADMIN_PLAYERS_ERR_ONLINE");
+	let result = await claims.run(charId, BUSY$1, async () => players.byCharacter(charId) ? BUSY$1 : await softDelete(charId) ? OK : GONE);
+	return result.ok && (logEdit(source, charId, "deleted the character", {}, "warn"), playerWatchers.deleted(charId)), result;
+}), action("online", () => [], (source) => (playerWatchers.watchList(source), [...players.all()].map(onlineRow))), action("search", ([query, cursor]) => {
+	let q = typeof query == "string" ? parseSearch(query) : null, c = cursor == null ? null : parse.charId(cursor);
+	return q && (cursor == null || c !== null) ? [q, c] : null;
+}, async (_source, query, cursor) => (await searchReady, search(query, cursor, (charId) => players.byCharacter(charId)?.source ?? null))), action("open", ([charId]) => {
+	let id = parse.charId(charId);
+	return id === null ? null : [id];
+}, async (source, charId) => {
+	playerWatchers.watchChar(source, charId);
+	let view = await loadView(charId);
+	return view || playerWatchers.unwatchChar(source), view;
+}), action("close", ([scope]) => scope === "char" || scope === "all" ? [scope] : null, (source, scope) => (scope === "all" ? playerWatchers.drop(source) : playerWatchers.unwatchChar(source), { ok: !0 })), on("playerDropped", () => playerWatchers.drop(Number(globalThis.source)));
+const charOf = (source) => players.get(source)?.charId;
+on(CORE.playerLoadedEvent, (source, character) => {
+	playerWatchers.put(source), playerWatchers.watching(character.id) && loadView(character.id).then((view) => view && playerWatchers.view(view)).catch((error) => log$3.error(`admin view of #${character.id} failed`, error));
+}), on(CORE.playerUnloadedEvent, (source, charId) => {
+	playerWatchers.remove(source), playerWatchers.char(charId, {
+		source: null,
+		duty: null
+	});
+}), on(CORE.moneyChangedEvent, (source, account, balance) => {
+	let charId = charOf(source);
+	charId !== void 0 && playerWatchers.money(charId, account, balance);
+}), on(CORE.jobsChangedEvent, (source, jobs) => {
+	playerWatchers.put(source);
+	let charId = charOf(source);
+	charId !== void 0 && playerWatchers.char(charId, { jobs });
+}), on(CORE.dutyChangedEvent, (source, duty) => {
+	playerWatchers.put(source);
+	let charId = charOf(source);
+	charId !== void 0 && playerWatchers.char(charId, { duty });
+}), on(CORE.gangsChangedEvent, (source, gangs) => {
+	let charId = charOf(source);
+	charId !== void 0 && playerWatchers.char(charId, { gangs });
+}), on(CORE.activeGangChangedEvent, (source, activeGang) => {
+	let charId = charOf(source);
+	charId !== void 0 && playerWatchers.char(charId, { activeGang });
+});
+// resource/server/jobs/dutyCount.ts
+const counts = new Map(), published = new GlobalGroup("ai:duty:", stateNumber);
+function changeDutyCount(job, delta) {
+	let next = Math.max(0, (counts.get(job) ?? 0) + delta);
+	counts.set(job, next), published.set(job, next);
+}
+function dutyCount(job) {
+	return counts.get(job) ?? 0;
+}
+function resetDutyCounts(jobs) {
+	for (let job of jobs) counts.set(job, 0), published.set(job, 0);
+}
 on(CORE.playerLoadedEvent, (source, character) => {
 	coreLog("characters", `loaded ${character.firstname} ${character.lastname} (${character.citizenid})`, {
 		source,
@@ -18155,8 +19045,6 @@ onClientEvent(CORE.clientErrorEvent, {
 		source
 	});
 });
-// resource/server/db.ts
-const db = tables();
 // resource/server/player/users.ts
 function identifier(source, type) {
 	let value = GetPlayerIdentifierByType(String(source), type);
@@ -18192,10 +19080,12 @@ const log$2 = createLogger("ai-core"), STAND_INS = {
 	"ai-banking": ["qb-banking", "Renewed-Banking"],
 	"ai-chat": ["chat"],
 	"ai-inventory": ["ox_inventory", "qb-inventory"],
-	"ai-radialmenu": ["qb-radialmenu"],
+	"ai-policealert": ["tgiann-policealert"],
+	"ai-radialmenu": ["qb-radialmenu", "tgiann-radialmenu-target"],
 	"ai-target": ["ox_target"],
 	"ai-vehiclekeys": ["qbx_vehiclekeys"],
 	"ai-vehicles": ["qbx_vehicles"],
+	"ai-voice": ["pma-voice"],
 	"ai-weathersync": ["qb-weathersync"]
 }, NEVER_NEXT_TO = {
 	"ai-core": [
@@ -18352,77 +19242,6 @@ gate.add("ai-core:fivem", "ai-core", (source) => identify(source) ? null : Local
 	let names = (Array.isArray(remove) ? remove : [remove]).filter((n) => typeof n == "string" && n !== ""), caller = GetInvokingResource(), owner = typeof keep == "string" && keep ? keep : caller;
 	owner && names.length > 0 && conflicts.declare(owner, names, caller ?? owner);
 }), registerExport("GetConflicts", () => conflicts.list().map((c) => ({ ...c })));
-// resource/server/characters/repo.ts
-const COLUMNS = "id, user_id, citizenid, slot, firstname, lastname, birthdate, sex, pos_x, pos_y, pos_z, pos_h, metadata, last_played";
-function toDate(value) {
-	if (typeof value == "string") return value.slice(0, 10);
-	let date = new Date(value), pad = (n) => String(n).padStart(2, "0");
-	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-function toRow(raw) {
-	let metadata = {};
-	try {
-		let parsed = JSON.parse(raw.metadata);
-		isRecord(parsed) && (metadata = parsed);
-	} catch {}
-	let sex = raw.sex === "female" ? "female" : "male", hasPosition = raw.pos_x !== null && raw.pos_y !== null && raw.pos_z !== null;
-	return {
-		id: raw.id,
-		userId: raw.user_id,
-		citizenid: raw.citizenid,
-		slot: raw.slot,
-		firstname: raw.firstname,
-		lastname: raw.lastname,
-		birthdate: toDate(raw.birthdate),
-		sex,
-		position: hasPosition ? {
-			x: raw.pos_x ?? 0,
-			y: raw.pos_y ?? 0,
-			z: raw.pos_z ?? 0,
-			heading: raw.pos_h ?? 0
-		} : null,
-		metadata,
-		lastPlayed: raw.last_played
-	};
-}
-async function listCharacters(userId) {
-	return (await mysql.query(`SELECT ${COLUMNS} FROM ai_core_characters WHERE user_id = ? AND deleted_at IS NULL ORDER BY slot`, [userId]) ?? []).map(toRow);
-}
-async function getCharacter(userId, charId) {
-	let row = await mysql.single(`SELECT ${COLUMNS} FROM ai_core_characters WHERE id = ? AND user_id = ? AND deleted_at IS NULL`, [charId, userId]);
-	return row ? toRow(row) : null;
-}
-async function insertCharacter(userId, input) {
-	let placeholder = `~${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`.slice(0, 16), id = await mysql.insert("INSERT INTO ai_core_characters (user_id, citizenid, slot, firstname, lastname, birthdate, sex) VALUES (?, ?, ?, ?, ?, ?, ?)", [
-		userId,
-		placeholder,
-		input.slot,
-		input.firstname,
-		input.lastname,
-		input.birthdate,
-		input.sex
-	]);
-	if (!id) throw Error("could not create the character");
-	if (!await mysql.update("UPDATE ai_core_characters SET citizenid = ? WHERE id = ?", [String(id), id]).catch(() => 0)) throw await mysql.update("DELETE FROM ai_core_characters WHERE id = ?", [id]), Error(`citizen id ${id} is already taken`);
-	return id;
-}
-async function deleteCharacter(userId, charId) {
-	return (await mysql.update("UPDATE ai_core_characters SET deleted_at = NOW() WHERE id = ? AND user_id = ? AND deleted_at IS NULL", [charId, userId]) ?? 0) > 0;
-}
-async function saveCharacters(saves) {
-	for (let i = 0; i < saves.length; i += 500) {
-		let part = saves.slice(i, i + 500), rows = part.map((_, n) => n === 0 ? "SELECT ? AS id, ? AS x, ? AS y, ? AS z, ? AS h, ? AS m" : "SELECT ?, ?, ?, ?, ?, ?").join(" UNION ALL ");
-		await mysql.query(`UPDATE ai_core_characters c JOIN (${rows}) v ON c.id = v.id
-       SET c.pos_x = v.x, c.pos_y = v.y, c.pos_z = v.z, c.pos_h = v.h, c.metadata = v.m, c.last_played = NOW()`, part.flatMap((s) => [
-			s.id,
-			s.position.x,
-			s.position.y,
-			s.position.z,
-			s.position.heading,
-			JSON.stringify(s.metadata)
-		]));
-	}
-}
 function enterSelectBucket(source) {
 	let bucket = 5e4 + source;
 	SetRoutingBucketPopulationEnabled(bucket, !1), SetRoutingBucketEntityLockdownMode(bucket, "strict"), SetPlayerRoutingBucket(String(source), bucket);
@@ -18442,56 +19261,6 @@ function addMembership(source, kind, name, grade) {
 }
 function removeMembership(source, kind, name, grade) {
 	for (let group of groups(kind, name, grade)) ExecuteCommand(`remove_principal player.${source} ${group}`);
-}
-// resource/server/jobs/repo.ts
-async function loadJobs(charId) {
-	return (await db.select("ai_core_character_jobs", ["job", "grade"], { char_id: charId })).map((row) => ({
-		job: row.job,
-		grade: row.grade
-	}));
-}
-async function loadGangs(charId) {
-	let list = await db.select("ai_core_character_gangs", [
-		"gang",
-		"grade",
-		"active"
-	], { char_id: charId });
-	return {
-		gangs: list.map((row) => ({
-			gang: row.gang,
-			grade: row.grade
-		})),
-		active: list.find((row) => row.active)?.gang ?? null
-	};
-}
-function saveJob(charId, job, grade) {
-	return mysql.query("INSERT INTO ai_core_character_jobs (char_id, job, grade) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE grade = VALUES(grade)", [
-		charId,
-		job,
-		grade
-	]);
-}
-function deleteJob(charId, job) {
-	return db.remove("ai_core_character_jobs", {
-		char_id: charId,
-		job
-	});
-}
-function saveGang(charId, gang, grade) {
-	return mysql.query("INSERT INTO ai_core_character_gangs (char_id, gang, grade) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE grade = VALUES(grade)", [
-		charId,
-		gang,
-		grade
-	]);
-}
-function deleteGang(charId, gang) {
-	return db.remove("ai_core_character_gangs", {
-		char_id: charId,
-		gang
-	});
-}
-function saveActiveGang(charId, gang) {
-	return mysql.query("UPDATE ai_core_character_gangs SET active = (gang = ?) WHERE char_id = ?", [gang ?? "", charId]);
 }
 // resource/server/jobs/gangSet.ts
 var GangSet = class {
@@ -18724,7 +19493,13 @@ var Wallet = class {
 		return this.row.metadata[key];
 	}
 	setMeta(key, value) {
-		value == null ? delete this.row.metadata[key] : this.row.metadata[key] = value;
+		value == null ? delete this.row.metadata[key] : this.row.metadata[key] = value, playerWatchers.meta(this.row.id, key, value ?? null);
+	}
+	metadata() {
+		return { ...this.row.metadata };
+	}
+	setInfo(info) {
+		this.row.firstname = info.firstname, this.row.lastname = info.lastname, this.row.birthdate = info.birthdate, sendPlayerData(this.source, "character", this.info()), playerWatchers.char(this.row.id, info);
 	}
 	snapshot() {
 		return {
@@ -18855,7 +19630,10 @@ onClientCallback(CORE.createCharacterCallback, { args: ([raw]) => [raw] }, async
 		error: "CHAR_ERR_NO_DELETE"
 	} : BUSY;
 });
-async function loadCharacter(source, charId) {
+function loadCharacter(source, charId) {
+	return claims.run(charId, BUSY, () => loadNow(source, charId));
+}
+async function loadNow(source, charId) {
 	let user = selecting.get(source);
 	if (!user) return BUSY;
 	if (players.byCharacter(charId)) return {
@@ -18881,12 +19659,13 @@ async function loadCharacter(source, charId) {
 	}
 }
 async function unloadCharacter(player, reason) {
-	emit(CORE.playerUnloadedEvent, player.source, player.charId, reason), players.remove(player), player.release();
-	try {
-		await saveCharacters([player.saveData()]);
-	} catch (error) {
-		log$3.error(`saving #${player.charId} on unload failed`, error);
-	}
+	emit(CORE.playerUnloadedEvent, player.source, player.charId, reason), players.remove(player), player.release(), await claims.hold(player.charId, async () => {
+		try {
+			await saveCharacters([player.saveData()]);
+		} catch (error) {
+			log$3.error(`saving #${player.charId} on unload failed`, error);
+		}
+	});
 }
 function switchCharacter(source) {
 	let player = players.get(source);
@@ -18970,9 +19749,9 @@ const activeKeys = new GlobalKey("ai:vehicleKeys", stateString), layer = new cla
 	}
 }();
 layer.setChoice(settings.vehicleKeys), panel.onChange("settings", () => layer.setChoice(settings.vehicleKeys));
-const candidates = new Set(KEY_SYSTEMS.map((a) => a.resource));
-on("onServerResourceStart", (resource) => candidates.has(resource) && layer.select()), on("onResourceStop", (resource) => {
-	candidates.has(resource) && (layer.select(resource), setTimeout(() => layer.select(), 0));
+const candidates$1 = new Set(KEY_SYSTEMS.map((a) => a.resource));
+on("onServerResourceStart", (resource) => candidates$1.has(resource) && layer.select()), on("onResourceStop", (resource) => {
+	candidates$1.has(resource) && (layer.select(resource), setTimeout(() => layer.select(), 0));
 });
 function target(vehicle) {
 	return typeof vehicle == "string" ? vehicle.trim() ? {
@@ -19138,6 +19917,103 @@ registerExport("GetPhoneNumber", (source) => typeof source == "number" ? run("nu
 }), registerExport("PhoneNotify", (source, notification) => {
 	let n = toNotification(notification);
 	return typeof source == "number" && n !== null && run("notify", (a) => a.notify(source, n), !1);
+});
+const dispatch = new class {
+	current = null;
+	choice = "auto";
+	get active() {
+		return this.current;
+	}
+	setChoice(choice) {
+		this.choice = choice, this.select();
+	}
+	select(stopping) {
+		let runs = (a) => a.resource !== stopping && isResourceStarted(a.resource), next = (this.choice === "auto" || !DISPATCH_SYSTEMS.some((a) => a.resource === this.choice) ? DISPATCH_SYSTEMS.find(runs) : DISPATCH_SYSTEMS.find((a) => a.resource === this.choice && runs(a))) ?? null;
+		if (next === this.current) return;
+		this.current = next, log$3.info(next ? `dispatch: ${next.resource}` : "no alert system runs: police alerts go nowhere");
+		let installed = next?.version && GetResourceMetadata(next.resource, "version", 0);
+		next?.version && installed !== next.version && log$3.warn(`${next.resource} ${installed || "?"} is installed; its adapter is written for ${next.version}`);
+	}
+	send(alert) {
+		let adapter = this.current;
+		if (!adapter) return !1;
+		let source = alert.source !== void 0 && isOnline(alert.source) ? alert.source : void 0, coords = alert.coords;
+		if (!coords && source !== void 0) {
+			let [x = 0, y = 0, z = 0] = GetEntityCoords(GetPlayerPed(String(source)));
+			coords = {
+				x,
+				y,
+				z
+			};
+		}
+		try {
+			return adapter.alert({
+				...alert,
+				source,
+				coords
+			}), !0;
+		} catch (error) {
+			return log$3.error(`${adapter.resource} alert failed`, error), !1;
+		}
+	}
+}();
+dispatch.setChoice(settings.dispatch), panel.onChange("settings", () => dispatch.setChoice(settings.dispatch));
+const candidates = new Set(DISPATCH_SYSTEMS.map((a) => a.resource));
+on("onServerResourceStart", (resource) => candidates.has(resource) && dispatch.select()), on("onResourceStop", (resource) => {
+	candidates.has(resource) && (dispatch.select(resource), setTimeout(() => dispatch.select(), 0));
+}), registerExport("SendDispatchAlert", (raw) => {
+	let alert = toDispatchAlert(raw);
+	return alert !== null && dispatch.send(alert);
+});
+// resource/server/dispatch/compat.ts
+const QB_POLICE_ALERT = "police:server:policeAlert", toText = (v) => typeof v == "string" && v.trim() ? v.trim().slice(0, 120) : null;
+function qbAlert(text, source) {
+	dispatch.active?.answersPoliceAlert || dispatch.send({
+		title: text,
+		source,
+		priority: "normal"
+	});
+}
+onClientEvent(QB_POLICE_ALERT, {
+	args: ([text]) => {
+		let t = toText(text);
+		return t ? [t] : null;
+	},
+	guards: [hasCharacter()],
+	rate: {
+		count: 1,
+		windowMs: 1e4
+	}
+}, (source, text) => qbAlert(text, source)), on(QB_POLICE_ALERT, (text, _camId, playerSource) => {
+	if (Number(globalThis.source) > 0) return;
+	let t = toText(text);
+	t && qbAlert(t, typeof playerSource == "number" && playerSource > 0 ? playerSource : void 0);
+});
+const CONSOLE_POINT = {
+	x: 195.2,
+	y: -933.8,
+	z: 30.7
+};
+addCommand("aicore_alert", {
+	help: Locale("COMMAND_AICORE_ALERT"),
+	restricted: !0,
+	params: [{
+		name: "priority",
+		type: "string",
+		help: Locale("COMMAND_P_PRIORITY"),
+		optional: !0
+	}]
+}, (source, args) => {
+	let sent = dispatch.send({
+		code: "10-99",
+		title: Locale("DISPATCH_TEST_TITLE"),
+		message: Locale("DISPATCH_TEST_MESSAGE"),
+		source: source > 0 ? source : void 0,
+		coords: source > 0 ? void 0 : CONSOLE_POINT,
+		icon: "flask",
+		priority: args.priority === "high" ? "high" : "normal"
+	});
+	log$3.info(sent ? `test alert sent through ${dispatch.active?.resource}` : "no alert system runs");
 });
 // resource/server/devCommands.ts
 const log = createLogger("ai-core:dev");

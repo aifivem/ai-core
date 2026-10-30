@@ -1,5 +1,5 @@
 name 'ai-core'
-author 'ai-core'
+author 'TGIANN'
 version '0.1.0'
 license 'GPL-3.0-only'
 description 'ai-core framework: players, characters, money, jobs, permissions, admin panel'

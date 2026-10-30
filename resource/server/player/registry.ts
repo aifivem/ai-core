@@ -44,3 +44,34 @@ export const players = new PlayerRegistry();
 
 /** Connected players without a loaded character (on the character screen), with their account. */
 export const selecting = new Map<number, User>();
+
+/**
+ * Characters whose DB rows are in use outside a loaded player: loading, saving on unload, an admin's offline edit.
+ * A load or an offline edit waits for none of them: it is refused while the character is held.
+ */
+class CharacterClaims {
+  private readonly held = new Map<number, number>();
+
+  has(charId: number): boolean {
+    return this.held.has(charId);
+  }
+
+  /** Runs `work` with the character held (always runs; nested holds count). */
+  async hold<T>(charId: number, work: () => Promise<T>): Promise<T> {
+    this.held.set(charId, (this.held.get(charId) ?? 0) + 1);
+    try {
+      return await work();
+    } finally {
+      const left = (this.held.get(charId) ?? 1) - 1;
+      if (left > 0) this.held.set(charId, left);
+      else this.held.delete(charId);
+    }
+  }
+
+  /** Runs `work` with the character held, or answers `busy` when someone holds it already. */
+  run<T>(charId: number, busy: T, work: () => Promise<T>): Promise<T> {
+    return this.has(charId) ? Promise.resolve(busy) : this.hold(charId, work);
+  }
+}
+
+export const claims = new CharacterClaims();

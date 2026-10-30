@@ -150,5 +150,6 @@
     "check": true,
     "ignore": []
   },
-  "setupDone": true
+  "setupDone": true,
+  "dispatch": "auto"
 }

@@ -25,7 +25,7 @@ import { log } from "../log";
 import { coreLog } from "../logs";
 import { enterSelectBucket, enterWorldBucket } from "./buckets";
 import { Player } from "./player";
-import { players, selecting } from "./registry";
+import { claims, players, selecting } from "./registry";
 import { characterScreen, slotsOf } from "./screen";
 import { identify, upsertUser } from "./users";
 
@@ -125,8 +125,15 @@ onClientCallback(
   },
 );
 
-/** Loads one of the account's characters and puts it into the world. */
-async function loadCharacter(
+/** Loads one of the account's characters and puts it into the world (refused while an admin edits it offline). */
+function loadCharacter(
+  source: number,
+  charId: number,
+): Promise<CharacterActionResult> {
+  return claims.run(charId, BUSY, () => loadNow(source, charId));
+}
+
+async function loadNow(
   source: number,
   charId: number,
 ): Promise<CharacterActionResult> {
@@ -170,11 +177,13 @@ export async function unloadCharacter(
   emit(CORE.playerUnloadedEvent, player.source, player.charId, reason);
   players.remove(player);
   player.release();
-  try {
-    await saveCharacters([player.saveData()]);
-  } catch (error) {
-    log.error(`saving #${player.charId} on unload failed`, error);
-  }
+  await claims.hold(player.charId, async () => {
+    try {
+      await saveCharacters([player.saveData()]);
+    } catch (error) {
+      log.error(`saving #${player.charId} on unload failed`, error);
+    }
+  });
 }
 
 /** Back to the character screen (logout without leaving): the client reopens the screen. */

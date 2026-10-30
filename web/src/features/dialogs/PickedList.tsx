@@ -36,8 +36,30 @@ function CountBox({
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => e.key === "Enter" && commit()}
-      className="h-[3vh] w-[7vh] rounded-full border border-white/8 bg-[#2222224D] text-center text-[1.3vh] font-bold tabular-nums outline-none focus:border-tgi-green-40"
+      className="h-[3vh] w-[6vh] min-w-0 rounded-full border border-white/8 bg-[#2222224D] text-center text-[1.3vh] font-bold tabular-nums outline-none focus:border-tgi-green-40"
     />
+  );
+}
+
+/** -10 / +10 next to the count. */
+function StepButton({
+  label,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="flex h-[3vh] w-[3.6vh] shrink-0 items-center justify-center rounded-full bg-white/8 text-[1.1vh] font-bold text-text-2 tabular-nums transition-[background-color,color,transform] duration-150 ease-out enabled:hover:bg-white/14 enabled:hover:text-text enabled:active:[transform:scale(0.92)] disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      {label}
+    </button>
   );
 }
 
@@ -48,12 +70,15 @@ export function PickedList({
   listWeight,
   texts,
   onCount,
+  onAdd,
 }: {
   rows: Row[];
   room: { weight: number; maxWeight: number } | null;
   listWeight: number;
   texts: { list: string; listEmpty: string; weight: string };
   onCount: (name: string, count: number) => void;
+  /** +10: added like a Ctrl click on the tile (stops at the weight limit and says so). */
+  onAdd: (row: Row, amount: number) => void;
 }) {
   const total = (room?.weight ?? 0) + listWeight;
   const limited = room !== null && room.maxWeight > 0;
@@ -90,10 +115,18 @@ export function PickedList({
             <span className="min-w-0 flex-1 truncate text-[1.3vh]">
               {r.item.label}
             </span>
-            <CountBox
-              count={r.count}
-              onCount={(n) => onCount(r.item.name, n)}
-            />
+            <div className="flex shrink-0 items-center gap-[0.4vh]">
+              <StepButton
+                label="-10"
+                disabled={r.count <= 1}
+                onClick={() => onCount(r.item.name, Math.max(1, r.count - 10))}
+              />
+              <CountBox
+                count={r.count}
+                onCount={(n) => onCount(r.item.name, n)}
+              />
+              <StepButton label="+10" onClick={() => onAdd(r, 10)} />
+            </div>
             <button
               type="button"
               aria-label="remove"

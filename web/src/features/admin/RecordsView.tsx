@@ -130,6 +130,7 @@ export function RecordsView({ panel, tab, selected, t }: Props) {
               >
                 <span className="flex min-w-0 flex-1 flex-col gap-[0.4vh]">
                   <span
+                    title={labelOf(key)}
                     className={cn(
                       "truncate text-[1.5vh] leading-[1.2] font-semibold",
                       active && "text-tgi-green",
@@ -168,7 +169,10 @@ export function RecordsView({ panel, tab, selected, t }: Props) {
         <div className="flex min-w-0 flex-1 flex-col border-l border-white/8 pl-[2vh]">
           <div className="flex shrink-0 items-center gap-[1.2vh] pb-[1.6vh]">
             <span className="flex min-w-0 flex-col gap-[0.4vh]">
-              <span className="truncate text-[2.1vh] leading-[1.2] font-semibold">
+              <span
+                title={labelOf(selected)}
+                className="truncate text-[2.1vh] leading-[1.2] font-semibold"
+              >
                 {labelOf(selected)}
               </span>
               <span className="truncate font-mono text-[1.25vh] leading-[1.2] text-text-3">

@@ -2,7 +2,11 @@ import type { ComponentProps } from "react";
 import { ScrollArea as ScrollAreaPrimitive } from "radix-ui";
 import { cn } from "../../lib/utils";
 
-/** Radix scroll area: a thin round `#333` thumb that shows while scrolling, content keeps its full width. */
+/**
+ * Radix scroll area: a thin round `#333` thumb that shows while scrolling. Radix wraps the content in a
+ * `display: table` box that grows with long text; it is made a block so content takes the area's width and
+ * `truncate` / wrapping work inside.
+ */
 export function ScrollArea({
   className,
   children,
@@ -16,7 +20,7 @@ export function ScrollArea({
     >
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className="size-full rounded-[inherit]"
+        className="size-full rounded-[inherit] [&>div]:!block"
       >
         {children}
       </ScrollAreaPrimitive.Viewport>

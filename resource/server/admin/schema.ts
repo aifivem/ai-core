@@ -49,11 +49,12 @@ const gradeRows = (salary: boolean): WidgetSpec[] => [
   { widget: "switch", path: "boss", label: "ADMIN_F_BOSS" },
 ];
 
-/** `accounts`: the account types at start, offered where an account is picked; `inventories` / `keySystems`: the adapters. */
+/** `accounts`: the account types at start, offered where an account is picked; `inventories` / `keySystems` / `alertSystems`: the adapters. */
 export function coreSchema(
   accounts: string[],
   inventories: string[] = [],
   keySystems: string[] = [],
+  alertSystems: string[] = [],
 ): PanelSchema {
   const accountOptions = accounts.map((value) => ({ value, label: value }));
   return {
@@ -102,6 +103,7 @@ export function coreSchema(
           saveIntervalMinutes: int(1, 60),
           inventory: { type: "enum", values: ["auto", ...inventories] },
           vehicleKeys: { type: "enum", values: ["auto", ...keySystems] },
+          dispatch: { type: "enum", values: ["auto", ...alertSystems] },
           interaction: { type: "enum", values: ["prompt", "target"] },
           refuseOnConflict: { type: "bool" },
           setupDone: { type: "bool" },
@@ -127,6 +129,7 @@ export function coreSchema(
           characterScene: DEFAULT_SCENE,
           inventory: "auto",
           vehicleKeys: "auto",
+          dispatch: "auto",
           interaction: "prompt",
           refuseOnConflict: true,
           setupDone: false,
@@ -348,6 +351,23 @@ export function coreSchema(
                 options: [
                   { value: "auto", label: "ADMIN_O_INVENTORY_AUTO" },
                   ...keySystems.map((value) => ({ value, label: value })),
+                ],
+              },
+            ],
+          },
+          {
+            icon: "triangle-exclamation",
+            title: "ADMIN_C_DISPATCH",
+            desc: "ADMIN_C_DISPATCH_DESC",
+            fields: [
+              {
+                widget: "select",
+                path: "dispatch",
+                label: "ADMIN_F_DISPATCH",
+                hint: "ADMIN_H_DISPATCH",
+                options: [
+                  { value: "auto", label: "ADMIN_O_INVENTORY_AUTO" },
+                  ...alertSystems.map((value) => ({ value, label: value })),
                 ],
               },
             ],

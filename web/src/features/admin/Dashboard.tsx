@@ -46,7 +46,10 @@ function ScriptCard({
           <FontAwesomeIcon icon={iconOf(panel.schema.icon)} aria-hidden />
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-[0.4vh]">
-          <span className="truncate text-[1.6vh] leading-[1.3] font-semibold">
+          <span
+            title={text(panel, core, panel.schema.title)}
+            className="truncate text-[1.6vh] leading-[1.3] font-semibold"
+          >
             {text(panel, core, panel.schema.title)}
           </span>
           <span className="truncate font-mono text-[1.15vh] text-text-3">
@@ -139,10 +142,16 @@ function ExternalCard({
         />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-[0.4vh]">
-        <span className="truncate text-[1.6vh] leading-[1.3] font-semibold">
+        <span
+          title={panel.label}
+          className="truncate text-[1.6vh] leading-[1.3] font-semibold"
+        >
           {panel.label}
         </span>
-        <span className="truncate text-[1.2vh] text-text-3">
+        <span
+          title={panel.description ?? panel.resource}
+          className="truncate text-[1.2vh] text-text-3"
+        >
           {panel.description ?? panel.resource}
         </span>
       </div>

@@ -25,10 +25,12 @@ const STAND_INS: Record<string, string[]> = {
   "ai-banking": ["qb-banking", "Renewed-Banking"],
   "ai-chat": ["chat"],
   "ai-inventory": ["ox_inventory", "qb-inventory"],
-  "ai-radialmenu": ["qb-radialmenu"],
+  "ai-policealert": ["tgiann-policealert"],
+  "ai-radialmenu": ["qb-radialmenu", "tgiann-radialmenu-target"],
   "ai-target": ["ox_target"],
   "ai-vehiclekeys": ["qbx_vehiclekeys"],
   "ai-vehicles": ["qbx_vehicles"],
+  "ai-voice": ["pma-voice"],
   "ai-weathersync": ["qb-weathersync"],
 };
 /** Third-party names ai-core and ai-mysql stand in for: the third-party copy is the one to delete. */

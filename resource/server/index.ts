@@ -1,5 +1,6 @@
 import "./admin/host";
 import "./admin/items";
+import "./admin/players";
 import { gangs, jobs, panel } from "./content";
 import { databaseReady } from "./database";
 import { resetDutyCounts } from "./jobs/dutyCount";
@@ -22,6 +23,8 @@ import "./versions";
 import "./setup";
 import "./world";
 import "./phone";
+import "./dispatch";
+import "./dispatch/compat";
 import "./devCommands";
 
 resetDutyCounts(jobs.keys());

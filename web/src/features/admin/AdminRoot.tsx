@@ -21,6 +21,7 @@ import { Editor } from "./Editor";
 import { GlobalSearch } from "./GlobalSearch";
 import { usePanelLang } from "./lang";
 import { RecordsView } from "./RecordsView";
+import { PlayersSection } from "./players/PlayersSection";
 import { Setup } from "./Setup";
 import { Sidebar } from "./Sidebar";
 import { TableView } from "./TableView";
@@ -83,7 +84,10 @@ export function AdminRoot() {
   const coreTexts = useAppSelector((state) => state.admin.texts);
   const external = useAppSelector((state) => state.admin.external);
   const { resource, tab: tabId, id: externalId } = useParams({ strict: false });
-  const { key } = useSearch({ strict: false });
+  const { key, char } = useSearch({ strict: false });
+  const players = useRouterState({
+    select: (s) => s.location.pathname === "/admin/players",
+  });
   const setup = useRouterState({
     select: (s) => s.location.pathname === "/admin/setup",
   });
@@ -117,21 +121,25 @@ export function AdminRoot() {
   const page = externalId
     ? external.find((e) => e.id === externalId)
     : undefined;
-  const dashboard = !tab && !page && !setup;
-  const title = setup
-    ? (coreTexts.ADMIN_SETUP ?? "")
-    : page
-      ? page.label
-      : tab
-        ? t(tab.label)
-        : (coreTexts.ADMIN_DASHBOARD ?? "");
-  const subtitle = setup
-    ? (coreTexts.ADMIN_SETUP_DESC ?? "")
-    : page
-      ? (page.description ?? page.resource)
-      : tab
-        ? t(tab.desc)
-        : (coreTexts.ADMIN_DASHBOARD_DESC ?? "");
+  const dashboard = !tab && !page && !setup && !players;
+  const title = players
+    ? (coreTexts.ADMIN_PLAYERS ?? "")
+    : setup
+      ? (coreTexts.ADMIN_SETUP ?? "")
+      : page
+        ? page.label
+        : tab
+          ? t(tab.label)
+          : (coreTexts.ADMIN_DASHBOARD ?? "");
+  const subtitle = players
+    ? (coreTexts.ADMIN_PLAYERS_DESC ?? "")
+    : setup
+      ? (coreTexts.ADMIN_SETUP_DESC ?? "")
+      : page
+        ? (page.description ?? page.resource)
+        : tab
+          ? t(tab.desc)
+          : (coreTexts.ADMIN_DASHBOARD_DESC ?? "");
 
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-black/40">
@@ -179,6 +187,7 @@ export function AdminRoot() {
           <div className="flex min-h-0 flex-1 flex-col p-[2.2vh] pr-[1.2vh]">
             {dashboard && <Dashboard />}
             {setup && <Setup />}
+            {players && <PlayersSection char={char} t={t} />}
             {page?.url && (
               <iframe
                 title={page.label}

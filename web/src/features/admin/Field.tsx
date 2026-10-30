@@ -1,5 +1,7 @@
 import type { WidgetSpec } from "@aicore-fivem/shared";
+import { useEditor } from "./context";
 import { FieldShell } from "./FieldShell";
+import { getAt } from "./path";
 import { NumberW, SelectW, SwitchW, TextW } from "./widgets/basic";
 import { BlipW } from "./widgets/BlipW";
 import { InfoW } from "./widgets/InfoW";
@@ -7,8 +9,13 @@ import { ListW } from "./widgets/ListW";
 import { PointW, TagsW } from "./widgets/more";
 import { ColorW, EntityW, ModelW } from "./widgets/pickers";
 
-/** One schema field: its shell (label, hint, save state) around the widget it names. */
+/** One schema field: its shell (label, hint, save state) around the widget it names; hidden while `showIf` fails. */
 export function Field({ spec }: { spec: WidgetSpec }) {
+  const { record } = useEditor();
+  if (spec.showIf) {
+    const value = getAt(record, spec.showIf.path);
+    if (!spec.showIf.values.some((v) => v === value)) return null;
+  }
   const shell = (control: React.ReactNode, inline = false) => (
     <FieldShell
       path={spec.path}

@@ -13,6 +13,8 @@ export const NuiMessage = {
   adminOpen: "adminOpen",
   /** data: AdminDelta, a record changed (by any admin or the script itself). */
   adminDelta: "adminDelta",
+  /** data: PlayersDelta (`adminPlayers.ts`), a change on the open Players screen. */
+  adminPlayers: "adminPlayers",
   /** data: { key, text, button }, a prompt appears (or its text changes) on the right. */
   promptShow: "promptShow",
   /** data: key */
@@ -52,6 +54,8 @@ export const NuiCallback = {
   adminApply: "adminApply",
   /** () -> true, the panel closed. */
   adminClose: "adminClose",
+  /** ({ action: PlayersAction, args }) -> the server callback's answer (snapshot, page or PlayersResult). */
+  adminPlayers: "adminPlayers",
   /** ({ from: "ped" | "camera", ground?: boolean }) -> { x, y, z, heading }, the admin's position for a point field. */
   adminPosition: "adminPosition",
   /** ({ x, y, z, heading? }) -> true, teleports the admin to a point. */

@@ -108,6 +108,7 @@ export function openPanel(
     return;
   // A server that never finished the setup guide opens on it.
   if (!setupDone(panels)) return goSetup();
+  if (router.state.location.pathname === "/admin/players") return;
   const panel = panels.find((p) => p.resource === params.resource);
   const tab = panel?.schema.tabs.find((t) => t.id === params.tab);
   if (!panel || !tab) goDashboard();
@@ -252,8 +253,16 @@ export async function myPosition(
     : null;
 }
 
-export function teleport(point: Point): void {
-  void fetchNui<boolean>(NuiCallback.adminTeleport, point, { mockData: true });
+/** Teleports the admin; `ground` puts the feet on the point (floor points, doors) instead of the body's centre. */
+export function teleport(
+  point: { x: number; y: number; z: number; heading?: number },
+  ground: boolean,
+): void {
+  void fetchNui<boolean>(
+    NuiCallback.adminTeleport,
+    { ...point, ground },
+    { mockData: true },
+  );
 }
 
 /** Picks a place with the free camera; the panel hides until the admin places or cancels. */

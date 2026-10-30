@@ -137,7 +137,28 @@ RegisterNuiCallback(
     ) {
       const ped = PlayerPedId();
       RequestCollisionAtCoord(data.x, data.y, data.z);
-      SetEntityCoordsNoOffset(ped, data.x, data.y, data.z, false, false, false);
+      // A floor point (door, ground spot) is where the feet go: SetEntityCoords stands the ped on it; the others are the body's centre.
+      if (data.ground === true)
+        SetEntityCoords(
+          ped,
+          data.x,
+          data.y,
+          data.z,
+          false,
+          false,
+          false,
+          false,
+        );
+      else
+        SetEntityCoordsNoOffset(
+          ped,
+          data.x,
+          data.y,
+          data.z,
+          false,
+          false,
+          false,
+        );
       if (typeof data.heading === "number") SetEntityHeading(ped, data.heading);
     }
     cb(true);

@@ -213,7 +213,7 @@ export function PointW({ spec, path }: { spec: Spec<"point">; path: string }) {
           variant="icon"
           disabled={!point}
           aria-label={t("ADMIN_TELEPORT")}
-          onClick={() => point && teleport(point)}
+          onClick={() => point && teleport(point, spec.ground === true)}
         >
           <FontAwesomeIcon icon={faLocationArrow} aria-hidden />
         </Button>

@@ -82,7 +82,8 @@ function Tile({
 
 /**
  * Admin tools' item picker (lib `itemPicker`): search and every item as a picture tile on the left, the list to take
- * on the right (click 1, Ctrl 10, Shift 100; counts editable), capped by the target's weight limit; Take sends it.
+ * on the right (click 1, Ctrl 10, Shift 100; counts editable and -10 / +10 per row), capped by the target's weight
+ * limit; Take sends it.
  */
 export function ItemPicker() {
   const [data, setData] = useState<ItemPickerMessage | null>(null);
@@ -247,6 +248,7 @@ export function ItemPicker() {
             listWeight={listWeight}
             texts={data.texts}
             onCount={setCount}
+            onAdd={(row, amount) => add(row.item, amount)}
           />
           <Button
             variant="primary"

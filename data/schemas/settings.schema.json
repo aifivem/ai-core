@@ -197,6 +197,14 @@
         "rd_vehiclekeys"
       ]
     },
+    "dispatch": {
+      "description": "Alert script: Automatic uses the first one that runs; ai-policealert's alert cards come last.",
+      "enum": [
+        "auto",
+        "tgiann-policealert",
+        "ai-policealert"
+      ]
+    },
     "interaction": {
       "description": "Interaction style: Prompt: a box on the right and the interaction key when close. Target: players hold the target key and pick the option on the point or NPC (needs a target script such as ai-target; without one the prompt is used).",
       "enum": [

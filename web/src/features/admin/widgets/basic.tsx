@@ -4,17 +4,17 @@ import {
   faMinus,
   faPlus,
   faTriangleExclamation,
-  faWandMagicSparkles,
 } from "@fortawesome/free-solid-svg-icons";
 import type { LookupOption, WidgetSpec } from "@aicore-fivem/shared";
 import { Input } from "../../../components/ui/input";
 import { Select } from "../../../components/ui/select";
 import { Switch } from "../../../components/ui/switch";
 import { useAppSelector } from "../../../store";
-import { placeNames, saveField, type Point } from "../actions";
+import { saveField } from "../actions";
 import { useEditor } from "../context";
 import { getAt } from "../path";
 import { LookupBox, useLookup } from "./lookup";
+import { SuggestBox } from "./suggest";
 
 type Spec<W extends WidgetSpec["widget"]> = Extract<WidgetSpec, { widget: W }>;
 
@@ -101,59 +101,6 @@ function LookupTextW({
   );
 }
 
-const isPointValue = (v: unknown): v is Point =>
-  typeof v === "object" &&
-  v !== null &&
-  ["x", "y", "z"].every(
-    (k) => typeof (v as Record<string, unknown>)[k] === "number",
-  );
-
-/** Name suggestions as buttons: street and zone names at the record's point (or at the admin), one click fills. */
-function Suggestions({
-  from,
-  onPick,
-}: {
-  from: string | undefined;
-  onPick: (name: string) => void;
-}) {
-  const { t, record } = useEditor();
-  const [names, setNames] = useState<string[] | null>(null);
-  const point = from ? getAt(record, from) : undefined;
-  const key = isPointValue(point) ? `${point.x},${point.y},${point.z}` : "me";
-  useEffect(() => setNames(null), [key]);
-  return (
-    <div className="flex flex-wrap items-center gap-[0.6vh]">
-      {names === null ? (
-        <button
-          type="button"
-          onClick={async () =>
-            setNames(await placeNames(isPointValue(point) ? point : null))
-          }
-          className="flex h-[2.6vh] items-center gap-[0.6vh] rounded-full bg-white/6 px-[1vh] text-[1.2vh] font-medium text-text-3 transition-colors duration-150 hover:bg-white/12 hover:text-text"
-        >
-          <FontAwesomeIcon
-            icon={faWandMagicSparkles}
-            className="text-[1vh]"
-            aria-hidden
-          />
-          {t("ADMIN_SUGGEST")}
-        </button>
-      ) : (
-        names.map((name) => (
-          <button
-            key={name}
-            type="button"
-            onClick={() => onPick(name)}
-            className="flex h-[2.6vh] items-center rounded-full bg-tgi-green-10 px-[1vh] text-[1.2vh] font-medium text-tgi-green transition-colors duration-150 hover:bg-tgi-green-20"
-          >
-            {name}
-          </button>
-        ))
-      )}
-    </div>
-  );
-}
-
 /** Typed text, saved when the box is left or Enter is pressed; a lookup spec picks from a list instead. */
 export function TextW({ spec, path }: { spec: Spec<"text">; path: string }) {
   if (spec.lookup)
@@ -216,16 +163,15 @@ function PlainTextW({ spec, path }: { spec: Spec<"text">; path: string }) {
   );
   if (!spec.suggest) return input;
   return (
-    <div className="flex flex-col gap-[0.8vh]">
+    <SuggestBox
+      from={spec.suggest.from}
+      onPick={(name) => {
+        setDraft(name);
+        if (name !== stored) save(name);
+      }}
+    >
       {input}
-      <Suggestions
-        from={spec.suggest.from}
-        onPick={(name) => {
-          setDraft(name);
-          if (name !== stored) save(name);
-        }}
-      />
-    </div>
+    </SuggestBox>
   );
 }
 

@@ -11,7 +11,9 @@ CREATE TABLE IF NOT EXISTS `ai_core_users` (
   `created_at` DATETIME NOT NULL DEFAULT current_timestamp(),
   `last_seen` DATETIME NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
-  UNIQUE KEY `fivem` (`fivem`)
+  UNIQUE KEY `fivem` (`fivem`),
+  KEY `license` (`license`),
+  KEY `discord` (`discord`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `ai_core_characters` (
@@ -33,7 +35,9 @@ CREATE TABLE IF NOT EXISTS `ai_core_characters` (
   `deleted_at` DATETIME DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `citizenid` (`citizenid`),
-  KEY `user_id` (`user_id`, `deleted_at`)
+  KEY `user_id` (`user_id`, `deleted_at`),
+  KEY `search_first` (`deleted_at`, `firstname`, `lastname`),
+  KEY `search_last` (`deleted_at`, `lastname`, `firstname`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `ai_core_accounts` (
