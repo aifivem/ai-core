@@ -1,3 +1,4 @@
+import { TickLoop } from "@aicore-fivem/lib/client";
 import type { SceneSpot } from "@aicore-fivem/shared";
 
 const MOVE_MS = 500;
@@ -25,7 +26,7 @@ export class SceneCamera {
   /** Cameras still interpolating away; destroyed after the move or on `destroy`. */
   private readonly retired = new Set<number>();
   private sway: ReturnType<typeof setTimeout> | null = null;
-  private dofTick: number | null = null;
+  private readonly dof = new TickLoop(() => SetUseHiDof());
 
   /** Frames `spot` at once (`instant`) or with a short glide from the current shot. */
   frame(spot: SceneSpot, fov: number, instant: boolean): void {
@@ -101,17 +102,13 @@ export class SceneCamera {
       SetCamNearDof(cam, spot.blurNear);
       SetCamFarDof(cam, spot.blurFar);
       SetCamDofStrength(cam, spot.blurStrength / 100);
-      this.dofTick ??= setTick(() => SetUseHiDof());
-    } else if (this.dofTick !== null) {
-      clearTick(this.dofTick);
-      this.dofTick = null;
     }
+    this.dof.set(spot.blur);
   }
 
   destroy(): void {
     this.stopSway();
-    if (this.dofTick !== null) clearTick(this.dofTick);
-    this.dofTick = null;
+    this.dof.set(false);
     if (this.camera === null) return;
     RenderScriptCams(false, false, 0, true, true);
     DestroyCam(this.camera, false);

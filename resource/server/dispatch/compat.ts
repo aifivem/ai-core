@@ -5,7 +5,7 @@ import {
 } from "@aicore-fivem/lib/server";
 import { Locale } from "common";
 import { log } from "../log";
-import { dispatch } from ".";
+import { dispatch, sendAlert } from ".";
 
 /**
  * QB's police alert event (qb-policejob / qbx_police contract), sent by many QB and Qbox scripts: clients send
@@ -18,7 +18,7 @@ const toText = (v: unknown): string | null =>
 
 function qbAlert(text: string, source: number | undefined): void {
   if (dispatch.active?.answersPoliceAlert) return;
-  dispatch.send({ title: text, source, priority: "normal" });
+  sendAlert({ title: text, source, priority: "normal" });
 }
 
 onClientEvent(
@@ -34,20 +34,17 @@ onClientEvent(
   (source, text) => qbAlert(text, source),
 );
 // Server scripts' local emits (the net handler above drops them); a client's net emit reaches here too and is skipped.
-on(
-  QB_POLICE_ALERT,
-  (text: unknown, _camId: unknown, playerSource: unknown) => {
-    if (Number(globalThis.source) > 0) return;
-    const t = toText(text);
-    if (t)
-      qbAlert(
-        t,
-        typeof playerSource === "number" && playerSource > 0
-          ? playerSource
-          : undefined,
-      );
-  },
-);
+on(QB_POLICE_ALERT, (text: unknown, _camId: unknown, playerSource: unknown) => {
+  if (Number(globalThis.source) > 0) return;
+  const t = toText(text);
+  if (t)
+    qbAlert(
+      t,
+      typeof playerSource === "number" && playerSource > 0
+        ? playerSource
+        : undefined,
+    );
+});
 
 /** Legion Square: where a console test alert lands. */
 const CONSOLE_POINT = { x: 195.2, y: -933.8, z: 30.7 };
@@ -67,7 +64,7 @@ addCommand(
     ],
   },
   (source, args) => {
-    const sent = dispatch.send({
+    const sent = sendAlert({
       code: "10-99",
       title: Locale("DISPATCH_TEST_TITLE"),
       message: Locale("DISPATCH_TEST_MESSAGE"),

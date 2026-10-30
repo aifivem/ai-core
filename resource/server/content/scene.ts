@@ -1,26 +1,11 @@
-import type { CharacterScene, SceneSpot } from "@aicore-fivem/shared";
-import { bool, int, num, record, str, vec4 } from "./parse";
+import {
+  isWeather,
+  type CharacterScene,
+  type SceneSpot,
+} from "@aicore-fivem/shared";
+import { bool, int, num, record, vec4 } from "./parse";
 
 /** The character screen scene (settings section `characterScene`): parsing and the default scene. */
-
-/** Weather types the scene may force (the game's names). */
-export const WEATHERS = [
-  "EXTRASUNNY",
-  "CLEAR",
-  "NEUTRAL",
-  "SMOG",
-  "FOGGY",
-  "OVERCAST",
-  "CLOUDS",
-  "CLEARING",
-  "RAIN",
-  "THUNDER",
-  "SNOW",
-  "BLIZZARD",
-  "SNOWLIGHT",
-  "XMAS",
-  "HALLOWEEN",
-];
 
 const spot = (
   x: number,
@@ -137,8 +122,8 @@ export function readScene(raw: unknown): CharacterScene {
       enabled: bool(time.enabled, DEFAULT_SCENE.time.enabled),
       hour: int(time.hour, DEFAULT_SCENE.time.hour, 0, 23),
       minute: int(time.minute, DEFAULT_SCENE.time.minute, 0, 59),
-      weather: WEATHERS.includes(str(time.weather, ""))
-        ? str(time.weather, "")
+      weather: isWeather(time.weather)
+        ? time.weather
         : DEFAULT_SCENE.time.weather,
     },
     spots: spots.length ? spots : DEFAULT_SCENE.spots,

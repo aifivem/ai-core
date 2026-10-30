@@ -1,5 +1,6 @@
 import type { DataSpec, TabSpec, WidgetSpec } from "@aicore-fivem/shared";
-import { DEFAULT_SCENE, WEATHERS } from "../content/scene";
+import { WEATHERS } from "@aicore-fivem/shared";
+import { DEFAULT_SCENE } from "../content/scene";
 
 /** Panel part of the character screen scene (settings section `characterScene`). */
 
@@ -25,7 +26,7 @@ export const sceneSection: DataSpec = {
         enabled: { type: "bool" },
         hour: int(0, 23),
         minute: int(0, 59),
-        weather: { type: "enum", values: WEATHERS },
+        weather: { type: "enum", values: [...WEATHERS] },
       },
     },
     spots: {

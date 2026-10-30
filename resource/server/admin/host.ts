@@ -13,6 +13,7 @@ import {
   type AdminPanelResourceExports,
   type AdminPanelSnapshot,
   type AdminResult,
+  type RecommendationDelta,
 } from "@aicore-fivem/shared";
 import { Locale } from "common";
 import { coreLog } from "../logs";
@@ -21,6 +22,7 @@ import { externalPanels } from "./external";
 import { readKeybinds, reportKeybinds } from "./keybinds";
 import { allLookups } from "./lookups";
 import { versions } from "../versions";
+import { recommendations } from "../recommendations";
 
 /**
  * The admin panel host: every ai-* resource with a panel registers here; ai-core checks the admin, opens the panel
@@ -53,6 +55,7 @@ class AdminHost {
       lookups: allLookups(),
       external: externalPanels.list(),
       updates: versions.list(),
+      recommendations: recommendations.list(),
     };
   }
 
@@ -77,6 +80,11 @@ class AdminHost {
       emitNet(ADMIN.deltaEvent, source, delta);
   }
 
+  recommendationChanged(delta: RecommendationDelta): void {
+    for (const source of this.watchers)
+      emitNet(ADMIN.recommendationEvent, source, delta);
+  }
+
   private call(resource: string): AdminPanelResourceExports | null {
     if (GetResourceState(resource) !== "started") return null;
     return globalThis.exports[resource] as unknown as AdminPanelResourceExports;
@@ -85,13 +93,14 @@ class AdminHost {
 
 function describe(patch: unknown): string {
   if (!isRecord(patch)) return "edit";
-  const target = [patch.file, patch.key, patch.section]
+  const target = [patch.file, patch.key, patch.section, patch.id]
     .filter((part) => typeof part === "string")
     .join(".");
   return `${String(patch.action)} ${target}`;
 }
 
 export const adminHost = new AdminHost();
+recommendations.onChange((delta) => adminHost.recommendationChanged(delta));
 
 registerExport("RegisterAdminPanel", (resource: unknown) => {
   if (typeof resource === "string") adminHost.register(resource);

@@ -2,6 +2,7 @@ import { registerExport } from "@aicore-fivem/lib/server";
 import { accountTypes, gangs as gangDefs, jobs as jobDefs } from "./content";
 import { dutyCount } from "./jobs/dutyCount";
 import { sharedAccounts } from "./money/book";
+import { transferMoney } from "./money/transfer";
 import { players } from "./player/registry";
 
 /**
@@ -169,4 +170,16 @@ registerExport(
           .get(ownerType, ownerId, account)
           ?.change(-amount, reasonOf(reason)).ok ?? false)
       : false,
+);
+
+/** One transfer between any two accounts (a player's, a job's, a gang's) in one DB transaction with both ledger rows. */
+registerExport(
+  "TransferMoney",
+  (
+    from: unknown,
+    to: unknown,
+    amount: unknown,
+    reason?: unknown,
+    fee?: unknown,
+  ) => transferMoney(from, to, amount, reasonOf(reason), fee ?? 0),
 );

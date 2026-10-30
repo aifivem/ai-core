@@ -1,8 +1,6 @@
-import {
-  callExport,
-  isResourceStarted,
-  registerExport,
-} from "@aicore-fivem/lib/client";
+import { callExport, registerExport } from "@aicore-fivem/lib/client";
+import { createLogger } from "@aicore-fivem/lib/shared";
+import { AdapterPicker } from "common/adapters";
 
 /**
  * Hands up and pointing of whatever emote script runs (first started in this order): other scripts (a police search)
@@ -25,18 +23,14 @@ const PROVIDERS: ReadonlyArray<{
   },
 ];
 
-const active = () => PROVIDERS.find((p) => isResourceStarted(p.resource));
-const ask = (name: "handsUp" | "pointing"): boolean => {
-  const provider = active();
-  if (!provider) return false;
-  try {
-    return callExport(provider.resource, provider[name]) === true;
-  } catch {
-    // An older version of that script without the export.
-    return false;
-  }
-};
+const providers = new AdapterPicker({
+  category: "gestures",
+  adapters: PROVIDERS,
+  log: createLogger("ai-core"),
+});
+const ask = (name: "handsUp" | "pointing"): boolean =>
+  providers.call(name, (p) => callExport(p.resource, p[name]) === true, false);
 
-registerExport("GetGestureProvider", () => active()?.resource ?? null);
+registerExport("GetGestureProvider", () => providers.active?.resource ?? null);
 registerExport("IsHandsUp", () => ask("handsUp"));
 registerExport("IsPointing", () => ask("pointing"));

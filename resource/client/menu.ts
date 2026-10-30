@@ -1,4 +1,4 @@
-import { registerExport, TickLoop } from "@aicore-fivem/lib/client";
+import { controls, registerExport } from "@aicore-fivem/lib/client";
 import { logSafe } from "@aicore-fivem/lib/shared";
 import {
   MENU_EVENTS,
@@ -28,8 +28,7 @@ function toMenu(v: unknown): MenuRequest | null {
                 ? logSafe(i.description, 160)
                 : undefined,
             disabled: i.disabled === true,
-            checked:
-              typeof i.checked === "boolean" ? i.checked : undefined,
+            checked: typeof i.checked === "boolean" ? i.checked : undefined,
           },
         ]
       : [],
@@ -84,16 +83,18 @@ function toInput(v: unknown): InputRequest | null {
  * Escape closes the dialogs: the game must not open the pause menu with the same key press once the focus is gone.
  */
 class PauseGuard {
-  private until = 0;
-  private readonly frame = new TickLoop(() => {
-    if (GetGameTimer() > this.until) return this.frame.set(false);
-    DisableControlAction(0, 199, true);
-    DisableControlAction(0, 200, true);
-  });
+  private timer: ReturnType<typeof setTimeout> | null = null;
 
+  /** Blocks the pause controls (199, 200) for the next 500 ms. */
   set(on: boolean): void {
-    if (on) this.until = GetGameTimer() + 500;
-    this.frame.set(on);
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+    if (!on) return controls.enable("pauseGuard");
+    controls.disable("pauseGuard", [199, 200]);
+    this.timer = setTimeout(() => {
+      this.timer = null;
+      controls.enable("pauseGuard");
+    }, 500);
   }
 }
 

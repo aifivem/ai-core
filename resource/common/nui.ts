@@ -13,6 +13,8 @@ export const NuiMessage = {
   adminOpen: "adminOpen",
   /** data: AdminDelta, a record changed (by any admin or the script itself). */
   adminDelta: "adminDelta",
+  /** data: RecommendationDelta, a script recommendation starts or stops showing on the dashboard. */
+  adminRecommendation: "adminRecommendation",
   /** data: PlayersDelta (`adminPlayers.ts`), a change on the open Players screen. */
   adminPlayers: "adminPlayers",
   /** data: { key, text, button }, a prompt appears (or its text changes) on the right. */
@@ -66,6 +68,8 @@ export const NuiCallback = {
   adminPickEntity: "adminPickEntity",
   /** (data: { x, y, z } | null) -> string[]: street and zone names at the place (or at the admin) for name suggestions. */
   adminPlaceNames: "adminPlaceNames",
+  /** (data: { points: {x,y,z}[], height } | null) -> true: draws a zone widget's polygon in the world (null stops). */
+  adminZoneDraw: "adminZoneDraw",
   /** (data: { command }) -> true: closes ai-core's panel and runs another script's panel command. */
   adminRunCommand: "adminRunCommand",
   /** ({ value }) -> true, the menu pick (item id) or input values; null when closed. */

@@ -7,21 +7,29 @@ import type {
 
 /** The Players screen's data: the online list and the open character, each one snapshot plus the server's deltas. */
 export interface PlayersState {
-  /** null until the snapshot arrived. */
+  /** null until the first rows arrived. */
   online: OnlineRow[] | null;
+  /** The `rev` last applied per server id (removals included): an older `rows` message never overwrites it. */
+  revs: Record<number, number>;
   view: CharacterView | null;
   /** The open character's state: loading its snapshot, shown, or gone (deleted / never existed). */
   status: "none" | "loading" | "shown" | "gone";
 }
 
-const initialState: PlayersState = { online: null, view: null, status: "none" };
+const initialState: PlayersState = {
+  online: null,
+  revs: {},
+  view: null,
+  status: "none",
+};
 
 const players = createSlice({
   name: "players",
   initialState,
   reducers: {
-    onlineLoaded(state, action: PayloadAction<OnlineRow[]>) {
-      state.online = action.payload;
+    listOpened(state) {
+      state.online = null;
+      state.revs = {};
     },
     viewLoading(state) {
       state.view = null;
@@ -41,15 +49,20 @@ const players = createSlice({
     delta(state, action: PayloadAction<PlayersDelta>) {
       const d = action.payload;
       if (d.kind === "rows") {
-        if (!state.online) return;
-        const gone = new Set(d.remove);
-        const put = new Map(d.put.map((row) => [row.source, row]));
-        const next = state.online
-          .filter((row) => !gone.has(row.source))
-          .map((row) => put.get(row.source) ?? row);
-        for (const row of d.put)
-          if (!state.online.some((r) => r.source === row.source))
-            next.push(row);
+        const newer = (source: number) => (state.revs[source] ?? -1) < d.rev;
+        const gone = new Set(d.remove.filter(newer));
+        const put = new Map(
+          d.put.filter((row) => newer(row.source)).map((r) => [r.source, r]),
+        );
+        for (const source of gone) state.revs[source] = d.rev;
+        for (const source of put.keys()) state.revs[source] = d.rev;
+        const next: OnlineRow[] = [];
+        for (const row of state.online ?? []) {
+          if (gone.has(row.source)) continue;
+          next.push(put.get(row.source) ?? row);
+          put.delete(row.source);
+        }
+        for (const row of put.values()) next.push(row);
         state.online = next;
         return;
       }
@@ -84,7 +97,7 @@ const players = createSlice({
 });
 
 export const {
-  onlineLoaded,
+  listOpened,
   viewLoading,
   viewLoaded,
   viewClosed,

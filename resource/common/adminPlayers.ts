@@ -115,8 +115,12 @@ export interface CharacterView {
 }
 
 export type PlayersDelta =
-  /** Online rows that changed or joined, and server ids that left (one batch per second). */
-  | { kind: "rows"; put: OnlineRow[]; remove: number[] }
+  /**
+   * Online rows that changed or joined and server ids that left (one batch per second), or a chunk of the online
+   * snapshot. Sent latent, so they can arrive out of order: a row or removal applies only when its `rev` is newer
+   * than the last one applied for that player.
+   */
+  | { kind: "rows"; rev: number; put: OnlineRow[]; remove: number[] }
   /** Fields of the watched character that changed. */
   | { kind: "char"; charId: number; patch: Partial<CharacterView> }
   | { kind: "money"; charId: number; account: string; balance: number }

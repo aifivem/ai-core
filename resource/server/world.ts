@@ -1,9 +1,7 @@
-import {
-  callExport,
-  isResourceStarted,
-  registerExport,
-} from "@aicore-fivem/lib/server";
+import { callExport, registerExport } from "@aicore-fivem/lib/server";
 import { isRecord } from "@aicore-fivem/lib/shared";
+import { AdapterPicker } from "common/adapters";
+import { log } from "./log";
 
 /**
  * Time and weather through one API, whatever weather script runs: qb-weathersync's exports are the common contract
@@ -12,14 +10,15 @@ import { isRecord } from "@aicore-fivem/lib/shared";
  */
 const SYSTEM = "qb-weathersync";
 
-function call(name: string, ...args: unknown[]): unknown {
-  if (!isResourceStarted(SYSTEM)) return undefined;
-  try {
-    return callExport(SYSTEM, name, ...args);
-  } catch {
-    return undefined;
-  }
-}
+const weather = new AdapterPicker({
+  category: "weather",
+  adapters: [{ resource: SYSTEM }],
+  log,
+  noneText: "no weather script runs: time and weather calls answer null",
+});
+
+const call = (name: string, ...args: unknown[]): unknown =>
+  weather.call(name, (a) => callExport(a.resource, name, ...args), undefined);
 
 registerExport("GetWeather", () => {
   const w = call("getWeatherState");
@@ -30,7 +29,7 @@ registerExport(
   (type: unknown) =>
     typeof type === "string" &&
     call("setWeather", type.toUpperCase()) !== false &&
-    isResourceStarted(SYSTEM),
+    weather.active !== null,
 );
 registerExport("GetTime", () => {
   const t = call("getTime");
@@ -47,15 +46,15 @@ registerExport(
       Math.floor(hour) % 24,
       typeof minute === "number" ? Math.floor(minute) % 60 : 0,
     ) !== false &&
-    isResourceStarted(SYSTEM),
+    weather.active !== null,
 );
 registerExport(
   "SetBlackout",
   (on: unknown) =>
-    call("setBlackout", on === true) !== false && isResourceStarted(SYSTEM),
+    call("setBlackout", on === true) !== false && weather.active !== null,
 );
 registerExport(
   "FreezeTime",
   (on: unknown) =>
-    call("setTimeFreeze", on === true) !== false && isResourceStarted(SYSTEM),
+    call("setTimeFreeze", on === true) !== false && weather.active !== null,
 );

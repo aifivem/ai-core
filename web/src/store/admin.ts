@@ -4,6 +4,8 @@ import type {
   AdminPanelSnapshot,
   ExternalPanel,
   Lookups,
+  Recommendation,
+  RecommendationDelta,
   UpdateInfo,
 } from "@aicore-fivem/shared";
 
@@ -26,6 +28,8 @@ export interface AdminState {
   external: ExternalPanel[];
   /** Scripts with a newer GitHub release (as of the panel's opening). */
   updates: UpdateInfo[];
+  /** Scripts ai-core recommends (open snapshot, then `adminRecommendation` deltas). */
+  recommendations: Recommendation[];
   /** A point is being picked with the free camera: the panel hides. */
   picking: boolean;
   focus: string | null;
@@ -49,6 +53,7 @@ const initialState: AdminState = {
   lookups: NO_LOOKUPS,
   external: [],
   updates: [],
+  recommendations: [],
   picking: false,
   focus: null,
 };
@@ -106,6 +111,14 @@ const admin = createSlice({
     changed(state, action: PayloadAction<AdminDelta>) {
       put(state.panels, action.payload);
     },
+    recommendationsOpened(state, action: PayloadAction<Recommendation[]>) {
+      state.recommendations = action.payload;
+    },
+    recommendationChanged(state, action: PayloadAction<RecommendationDelta>) {
+      const { id, value } = action.payload;
+      state.recommendations = state.recommendations.filter((r) => r.id !== id);
+      if (value) state.recommendations.push(value);
+    },
     fieldState(
       state,
       action: PayloadAction<{ id: string; state: FieldState | null }>,
@@ -117,6 +130,14 @@ const admin = createSlice({
   },
 });
 
-export const { opened, closed, changed, fieldState, focused, picking } =
-  admin.actions;
+export const {
+  opened,
+  closed,
+  changed,
+  fieldState,
+  focused,
+  picking,
+  recommendationsOpened,
+  recommendationChanged,
+} = admin.actions;
 export default admin.reducer;

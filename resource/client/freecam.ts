@@ -1,4 +1,4 @@
-import { cache } from "@aicore-fivem/lib/client";
+import { cache, TickLoop } from "@aicore-fivem/lib/client";
 
 /** A picked place: the floor (or the ped's root height above it) and a heading. */
 export interface PickedPoint {
@@ -77,7 +77,7 @@ function freeFly<T>(
     FreezeEntityPosition(cache.ped, true);
 
     const finish = (answer: T | null) => {
-      clearTick(tick);
+      loop.set(false);
       RenderScriptCams(false, false, 0, true, true);
       DestroyCam(cam, false);
       ClearFocus();
@@ -85,7 +85,7 @@ function freeFly<T>(
       resolve(answer);
     };
 
-    const tick = setTick(() => {
+    const loop = new TickLoop(() => {
       DisableAllControlActions(0);
       rot.yaw -= GetDisabledControlNormal(0, C.lookX) * 6;
       rot.pitch = Math.max(
@@ -142,6 +142,7 @@ function freeFly<T>(
         if (answer !== null) finish(answer);
       }
     });
+    loop.set(true);
   });
 }
 

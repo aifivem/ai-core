@@ -15,6 +15,12 @@ import { DISPATCH_SYSTEMS } from "../dispatch/registry";
 import { log } from "../log";
 import { bool, ID_PATTERN, int, record, str, vec4, type Vec4 } from "./parse";
 import { readScene } from "./scene";
+import {
+  readJobPrime,
+  readPrimeTime,
+  type PrimeHours,
+  type PrimeTimeSettings,
+} from "./primeTime";
 
 /** Panel content of ai-core (`data/*.json`), kept by the admin panel store and updated live on every panel edit. */
 
@@ -33,6 +39,7 @@ export interface Settings {
     account: string;
     fromJobAccount: boolean;
   };
+  primeTime: PrimeTimeSettings;
   saveIntervalMinutes: number;
   /** `auto` or the resource name of the inventory ai-core's inventory layer uses. */
   inventory: string;
@@ -53,8 +60,15 @@ export interface Settings {
 }
 
 export type AccountType = AccountTypeDefinition;
-export type Grade = GradeDefinition;
-export type JobDef = JobDefinition;
+/** `offPrimePayment`: paid outside prime time instead of salary x the off prime multiplier (0 = not set). */
+export interface Grade extends GradeDefinition {
+  offPrimePayment: number;
+}
+/** `prime`: the job's own prime hours, null = the default hours. */
+export interface JobDef extends JobDefinition {
+  grades: Grade[];
+  prime: PrimeHours | null;
+}
 export type GangDef = GangDefinition;
 
 function readUpdates(u: Record<string, unknown>): Settings["updates"] {
@@ -105,6 +119,7 @@ function readSettings(raw: unknown): Settings {
       account: str(pay.account, "bank", 32),
       fromJobAccount: bool(pay.fromJobAccount, false),
     },
+    primeTime: readPrimeTime(s.primeTime),
     saveIntervalMinutes: int(s.saveIntervalMinutes, 5, 1, 60),
     inventory: str(s.inventory, "auto", 32),
     vehicleKeys: str(s.vehicleKeys, "auto", 32),
@@ -133,9 +148,12 @@ function readGrades(raw: unknown): Grade[] {
       label: str(v.label, "Member"),
       salary: int(v.salary, 0, 0),
       boss: bool(v.boss, false),
+      offPrimePayment: int(v.offPrimePayment, 0, 0),
     };
   });
-  return grades.length ? grades : [{ label: "Member", salary: 0, boss: false }];
+  return grades.length
+    ? grades
+    : [{ label: "Member", salary: 0, boss: false, offPrimePayment: 0 }];
 }
 
 /** Entries of a `{ id: {...} }` file whose id is valid. */
@@ -165,6 +183,7 @@ const readJob = (v: Record<string, unknown>): JobDef => ({
   type: str(v.type, "none", 32),
   defaultDuty: bool(v.defaultDuty, false),
   grades: readGrades(v.grades),
+  prime: readJobPrime(v),
 });
 
 const readGang = (v: Record<string, unknown>): GangDef => ({
@@ -217,6 +236,7 @@ if (!jobs.has(settings.jobs.unemployed)) {
     type: "none",
     defaultDuty: true,
     grades: readGrades([]),
+    prime: null,
   });
 }
 if (accountTypes.size === 0)

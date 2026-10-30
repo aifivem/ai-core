@@ -12,6 +12,10 @@ import type {
 } from "@aicore-fivem/shared";
 import { SceneCamera } from "./sceneCamera";
 import { worldSync } from "./world";
+import { visibility } from "./hud";
+
+/** HUDs and the minimap stay hidden from the character screen until the spawn fade lifts. */
+export const SCREEN_HUD_REASON = "ai-core:characters";
 
 const log = createLogger("ai-core");
 const MODELS: Record<Sex, string> = {
@@ -76,7 +80,7 @@ export class SelectScene {
     } finally {
       ShutdownLoadingScreen();
       ShutdownLoadingScreenNui();
-      DisplayRadar(false);
+      visibility.set(SCREEN_HUD_REASON, true);
       DoScreenFadeIn(500);
     }
   }

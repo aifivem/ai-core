@@ -18,6 +18,7 @@ import { setupDone } from "./setupSteps";
 import { KIND_KEYS } from "./GlobalSearch";
 import { buildIndex, search } from "./searchIndex";
 import { iconOf } from "./icons";
+import { Recommendations } from "./Recommendations";
 
 const text = (
   panel: AdminPanelSnapshot,
@@ -242,6 +243,7 @@ export function Dashboard() {
             </button>
           )}
           {!q && updates.length > 0 && <Updates updates={updates} t={t} />}
+          {!q && <Recommendations t={t} />}
           {q && hits.length > 0 && (
             <section className="flex flex-col gap-[0.6vh]">
               {hits.map((hit, i) => (

@@ -32,6 +32,18 @@ var SourceLock = class {
 		this.hits.delete(source);
 	}
 };
+// ../../../packages/lib/src/shared/wait.ts
+function waitFor(check, timeoutMs = 1e4, intervalMs = 0) {
+	return new Promise((resolve, reject) => {
+		let started = Date.now(), poll = () => {
+			let value = check();
+			if (value !== void 0) return resolve(value);
+			if (timeoutMs !== !1 && Date.now() - started > timeoutMs) return reject(Error(`waitFor timed out after ${timeoutMs} ms`));
+			setTimeout(poll, intervalMs);
+		};
+		poll();
+	});
+}
 // ../../../packages/lib/src/shared/read.ts
 function num$1(value, fallback, min = -Infinity, max = Infinity) {
 	return typeof value == "number" && Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
@@ -57,12 +69,93 @@ function vec4(value, fallback) {
 		heading: num$1(v.heading, fallback.heading)
 	};
 }
+// ../../../packages/lib/src/shared/records.ts
+const isObject = (value) => typeof value == "object" && !!value && !Array.isArray(value);
+function readRecords(raw, readOne) {
+	let out = new Map();
+	if (!isObject(raw)) return out;
+	for (let key in raw) {
+		let value = raw[key];
+		if (!isObject(value)) continue;
+		let parsed = readOne(key, value);
+		parsed !== null && out.set(key, parsed);
+	}
+	return out;
+}
+var FileViews = class {
+	read;
+	updaters = new Map();
+	constructor(read) {
+		this.read = read;
+	}
+	view(file, parse) {
+		let box = { value: parse(this.read(file)) };
+		return this.on(file, () => box.value = parse(this.read(file))), box;
+	}
+	records(file, readOne) {
+		let live = new LiveRecords(readOne);
+		return live.reset(this.read(file)), this.on(file, (key, value) => live.update(key, value, this.read(file))), live.map;
+	}
+	changed(file, key, value) {
+		for (let update of this.updaters.get(file) ?? []) update(key, value);
+	}
+	on(file, update) {
+		let list = this.updaters.get(file);
+		list ? list.push(update) : this.updaters.set(file, [update]);
+	}
+}, LiveRecords = class {
+	readOne;
+	map = new Map();
+	constructor(readOne) {
+		this.readOne = readOne;
+	}
+	reset(raw) {
+		this.map.clear();
+		for (let [key, value] of readRecords(raw, this.readOne)) this.map.set(key, value);
+	}
+	update(key, value, whole) {
+		if (key === void 0) return this.reset(whole);
+		let parsed = isObject(value) ? this.readOne(key, value) : null;
+		parsed === null ? this.map.delete(key) : this.map.set(key, parsed);
+	}
+};
 // ../../../packages/lib/src/shared/index.ts
 function isRecord(value) {
 	return typeof value == "object" && !!value && !Array.isArray(value);
 }
 function logSafe(text, max) {
 	return text.replace(/\r?\n/g, " | ").replace(/[\u0000-\u001f\u007f]/g, "").replace(/\^\d/g, "").slice(0, max);
+}
+function previewJson(value, max) {
+	let out = "", walk = (v, depth) => {
+		if (out.length >= max) return;
+		if (typeof v == "string") {
+			out += JSON.stringify(v.length > max ? v.slice(0, max) : v);
+			return;
+		}
+		if (typeof v != "object" || !v) {
+			out += String(v);
+			return;
+		}
+		if (depth > 4) {
+			out += Array.isArray(v) ? "[...]" : "{...}";
+			return;
+		}
+		if (Array.isArray(v)) {
+			out += "[";
+			for (let i = 0; i < v.length && out.length < max; i++) i > 0 && (out += ","), walk(v[i], depth + 1);
+			out += "]";
+			return;
+		}
+		out += "{";
+		let first = !0;
+		for (let key in v) {
+			if (out.length >= max) break;
+			first || (out += ","), first = !1, out += `${JSON.stringify(key.slice(0, 50))}:`, walk(v[key], depth + 1);
+		}
+		out += "}";
+	};
+	return walk(value, 0), out.slice(0, max);
 }
 function formatText(template, args) {
 	return template.replace(/\{(\d+)\}/g, (match, index) => {
@@ -201,7 +294,7 @@ const KEY_PURPOSES = [
 function toKeyPurpose(value) {
 	return KEY_PURPOSES.find((p) => p === value) ?? "temporary";
 }
-const text$7 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, finite = (v) => typeof v == "number" && Number.isFinite(v), obj = (v) => typeof v == "object" && v && !Array.isArray(v) ? v : null;
+const text$7 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, finite$1 = (v) => typeof v == "number" && Number.isFinite(v), obj = (v) => typeof v == "object" && v && !Array.isArray(v) ? v : null;
 function toDispatchAlert(value) {
 	let v = obj(value), title = text$7(v?.title, 80);
 	if (!v || !title) return null;
@@ -210,19 +303,19 @@ function toDispatchAlert(value) {
 		code: text$7(v.code, 12),
 		title,
 		message: text$7(v.message, 160),
-		coords: c && finite(c.x) && finite(c.y) && finite(c.z) ? {
+		coords: c && finite$1(c.x) && finite$1(c.y) && finite$1(c.z) ? {
 			x: c.x,
 			y: c.y,
 			z: c.z
 		} : void 0,
 		jobs: jobs.length ? jobs : void 0,
-		source: finite(v.source) && Number.isInteger(v.source) && v.source > 0 ? v.source : void 0,
-		blip: b && finite(b.sprite) ? {
+		source: finite$1(v.source) && Number.isInteger(v.source) && v.source > 0 ? v.source : void 0,
+		blip: b && finite$1(b.sprite) ? {
 			sprite: Math.trunc(b.sprite),
-			color: finite(b.color) ? Math.trunc(b.color) : void 0,
-			scale: finite(b.scale) ? Math.min(3, Math.max(.1, b.scale)) : void 0
+			color: finite$1(b.color) ? Math.trunc(b.color) : void 0,
+			scale: finite$1(b.scale) ? Math.min(3, Math.max(.1, b.scale)) : void 0
 		} : void 0,
-		duration: finite(v.duration) ? Math.min(3600, Math.max(1, Math.round(v.duration))) : void 0,
+		duration: finite$1(v.duration) ? Math.min(3600, Math.max(1, Math.round(v.duration))) : void 0,
 		icon: text$7(v.icon, 40),
 		priority: v.priority === "high" ? "high" : "normal"
 	};
@@ -235,12 +328,30 @@ const ADMIN = {
 	closeEvent: "ai-core:admin:close",
 	showEvent: "ai-core:admin:show",
 	deltaEvent: "ai-core:admin:delta",
+	recommendationEvent: "ai-core:admin:recommendation",
 	worldEvent: (resource) => `${resource}:admin:world`,
 	worldChangesCallback: (resource) => `${resource}:admin:worldChanges`
-};
-// ../../../packages/lib/src/fivem/exports.ts
+}, WEATHERS = [
+	"EXTRASUNNY",
+	"CLEAR",
+	"NEUTRAL",
+	"SMOG",
+	"FOGGY",
+	"OVERCAST",
+	"CLOUDS",
+	"CLEARING",
+	"RAIN",
+	"THUNDER",
+	"SNOW",
+	"BLIZZARD",
+	"SNOWLIGHT",
+	"XMAS",
+	"HALLOWEEN"
+], WEATHER_SET = new Set(WEATHERS), isWeather = (value) => typeof value == "string" && WEATHER_SET.has(value), named = new Set();
 function registerExport(name, handler) {
-	globalThis.exports(name, handler);
+	named.add(name), globalThis.exports(name, handler);
+	let first = name.charAt(0), twin = (first === first.toUpperCase() ? first.toLowerCase() : first.toUpperCase()) + name.slice(1);
+	twin !== name && !named.has(twin) && globalThis.exports(twin, handler);
 }
 function resourceExport(resource) {
 	return globalThis.exports[resource];
@@ -278,7 +389,7 @@ function loadLocaleTexts(resource = GetCurrentResourceName()) {
 	return texts;
 }
 // ../../../packages/lib/src/fivem/callbackNames.ts
-const requestEvent = (name) => `aicore:cb:${name}`, responseEvent = (resource) => `aicore:cbr:${resource}`, core$10 = resourceExport(CORE.resource), log$8 = createLogger(GetCurrentResourceName()), isAdmin = (ace = ADMIN.ace) => (source) => !!IsPlayerAceAllowed(String(source), ace) || `not allowed (${ace})`, hasCharacter = () => (source) => core$10.GetCharacter(source) !== null || "no character loaded", gates = new Set();
+const requestEvent = (name) => `aicore:cb:${name}`, responseEvent = (resource) => `aicore:cbr:${resource}`, core$15 = resourceExport(CORE.resource), log$9 = createLogger(GetCurrentResourceName()), isAdmin = (ace = ADMIN.ace) => (source) => !!IsPlayerAceAllowed(String(source), ace) || `not allowed (${ace})`, hasCharacter = () => (source) => core$15.GetCharacter(source) !== null || "no character loaded", gates = new Set();
 on("playerDropped", () => {
 	let source = Number(globalThis.source);
 	for (let gate of gates) gate.release(source);
@@ -288,31 +399,42 @@ var ClientGate = class {
 	options;
 	limit;
 	lock;
+	refusals = new Map();
 	constructor(name, options, defaultRate) {
 		this.name = name, this.options = options, this.limit = new RateLimit(options.rate?.count ?? defaultRate, options.rate?.windowMs ?? 1e3), this.lock = options.lock ? new SourceLock() : null, gates.add(this);
 	}
 	check(source, raw) {
-		if (!(source > 0) || !GetPlayerName(String(source)) || !this.limit.take(source)) return null;
+		if (!(source > 0) || !GetPlayerName(String(source))) return null;
+		if (!this.limit.take(source)) return this.refuse(source, "rate limit"), null;
 		for (let guard of this.options.guards ?? []) {
 			let verdict = guard(source);
 			if (verdict !== !0) return typeof verdict == "string" && this.refuse(source, verdict), null;
 		}
 		if (!this.options.args) return [];
 		let args = this.options.args(raw);
-		return args === null && this.refuse(source, `invalid arguments ${logSafe(JSON.stringify(raw) ?? "", 200)}`), args;
+		return args === null && this.refuse(source, () => `invalid arguments ${logSafe(previewJson(raw, 200), 200)}`), args;
 	}
 	run(source, busy, task) {
 		return this.lock ? this.lock.run(source, busy, async () => task()) : Promise.resolve(task());
 	}
 	release(source) {
-		this.limit.release(source), this.lock?.release(source);
+		this.limit.release(source), this.lock?.release(source), this.refusals.delete(source);
 	}
 	refuse(source, reason) {
-		log$8.warn(`${this.name} refused for ${GetPlayerName(String(source))} (${source}): ${reason}`);
+		let now = GetGameTimer(), last = this.refusals.get(source);
+		if (last && now - last.at < 1e4) {
+			last.skipped++;
+			return;
+		}
+		let more = last?.skipped ? ` (+${last.skipped} more refused)` : "";
+		this.refusals.set(source, {
+			at: now,
+			skipped: 0
+		}), log$9.warn(`${this.name} refused for ${GetPlayerName(String(source))} (${source}): ${typeof reason == "string" ? reason : reason()}${more}`);
 	}
 };
 // ../../../packages/lib/src/server/callback.ts
-const log$7 = createLogger(GetCurrentResourceName()), resource$4 = GetCurrentResourceName(), REFUSED = Symbol("refused");
+const log$8 = createLogger(GetCurrentResourceName()), resource$4 = GetCurrentResourceName(), REFUSED = Symbol("refused");
 function onClientCallback(name, first, second) {
 	let [handler, options] = typeof first == "function" ? [first, second ?? {}] : [second, first], gate = new ClientGate(name, options, 20);
 	onNet(requestEvent(name), async (caller, id, ...raw) => {
@@ -324,7 +446,7 @@ function onClientCallback(name, first, second) {
 			let result = await gate.run(source, REFUSED, () => handler(source, ...args));
 			result === REFUSED ? emitNet(responseEvent(caller), source, id, !1, null) : emitNet(responseEvent(caller), source, id, !0, result ?? null);
 		} catch (error) {
-			log$7.error(`callback ${name} failed for ${source}`, error), emitNet(responseEvent(caller), source, id, !1, null);
+			log$8.error(`callback ${name} failed for ${source}`, error), emitNet(responseEvent(caller), source, id, !1, null);
 		}
 	});
 }
@@ -356,6 +478,12 @@ function toPatch(value) {
 			action: "delete",
 			key
 		} : null;
+		case "run": return typeof value.id == "string" && value.id.length <= 64 ? {
+			file: value.file,
+			action: "run",
+			key,
+			id: value.id
+		} : null;
 		case "import": {
 			if (!isRecord(value.records)) return null;
 			let records = {};
@@ -369,7 +497,7 @@ function toPatch(value) {
 		default: return null;
 	}
 }
-const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$9 = resourceExport(CORE.resource), ERR = {
+const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$14 = resourceExport(CORE.resource), ERR = {
 	type: "ADMIN_ERR_TYPE",
 	range: "ADMIN_ERR_RANGE",
 	length: "ADMIN_ERR_LENGTH",
@@ -383,7 +511,7 @@ const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(va
 		if (cached && Date.now() - cached.at < 2e3) return cached.values.size > 0 ? cached.values : null;
 		let list = [];
 		try {
-			list = core$9.GetLookupValues(source);
+			list = core$14.GetLookupValues(source);
 		} catch {}
 		let values = new Set(Array.isArray(list) ? list.filter((v) => typeof v == "string") : []);
 		return this.lists.set(source, {
@@ -471,6 +599,7 @@ function texts$1(resource) {
 }
 function collect(fields, prefix, lang, out) {
 	for (let field of fields) {
+		if (field.widget === "action") continue;
 		let path = prefix + field.path, label = lang[field.label] ?? field.label, hint = field.hint ? lang[field.hint] ?? field.hint : "";
 		out.has(path) || out.set(path, hint ? `${label}: ${hint}` : label), field.widget === "list" && collect(field.rows, `${path}[].`, lang, out);
 	}
@@ -585,7 +714,7 @@ function writeSchema(resource, name, text, log) {
 	(0, node_fs_promises.mkdir)(dir, { recursive: !0 }).then(() => (0, node_fs_promises.writeFile)(`${dir}/${name}.schema.json`, text, "utf8")).catch((error) => log.error(`writing ${resource}/${path} failed`, error));
 }
 // ../../../packages/lib/src/server/admin/panel.ts
-const core$8 = resourceExport(CORE.resource), DEFAULT_KEY = "^[a-z0-9_]{2,32}$";
+const core$13 = resourceExport(CORE.resource), DEFAULT_KEY = "^[a-z0-9_]{2,32}$";
 function imported(spec, value) {
 	let base = clone(spec.newRecord ?? {}), out = {};
 	for (let name of Object.keys(spec.sections)) {
@@ -600,13 +729,16 @@ var AdminPanel = class {
 	dataFiles = new Map();
 	handlers = new Map();
 	rules = new Map();
+	actions = new Map();
+	views = new FileViews((file) => this.get(file));
 	worldChanges = new Map();
 	resource = GetCurrentResourceName();
 	log = createLogger(this.resource);
+	editor = 0;
 	constructor(schema) {
 		this.schema = schema;
 		for (let [name, spec] of Object.entries(schema.files)) this.load(name, spec);
-		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges)), setImmediate(() => core$8.RegisterAdminPanel(this.resource));
+		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges)), setImmediate(() => core$13.RegisterAdminPanel(this.resource));
 	}
 	get(file) {
 		return this.data.get(file) ?? {};
@@ -616,6 +748,15 @@ var AdminPanel = class {
 	}
 	rule(file, rule) {
 		this.rules.set(file, rule);
+	}
+	onAction(id, handler) {
+		this.actions.set(id, handler);
+	}
+	view(file, read) {
+		return this.views.view(file, read);
+	}
+	records(file, readOne) {
+		return this.views.records(file, readOne);
 	}
 	snapshot() {
 		return {
@@ -627,19 +768,51 @@ var AdminPanel = class {
 	}
 	apply(admin, raw) {
 		let patch = toPatch(raw), spec = patch ? this.schema.files[patch.file] : void 0;
-		if (!patch || !spec || spec.memory) return {
+		if (!patch || !spec) return {
 			ok: !1,
 			error: ERR.type
 		};
-		let error = this.check(patch, spec);
-		return error ? (this.log.warn(`admin ${admin} edit refused (${error}): ${JSON.stringify(patch).slice(0, 300)}`), {
+		this.editor = admin;
+		try {
+			if (patch.action === "run") return this.run(admin, patch, spec);
+			if (spec.memory) return {
+				ok: !1,
+				error: ERR.type
+			};
+			let error = this.check(patch, spec);
+			return error ? (this.log.warn(`admin ${admin} edit refused (${error}): ${previewJson(patch, 300)}`), {
+				ok: !1,
+				error
+			}) : (this.store(patch, spec), { ok: !0 });
+		} finally {
+			this.editor = 0;
+		}
+	}
+	run(admin, patch, spec) {
+		let handler = this.actions.get(patch.id), data = this.get(patch.file), target = spec.kind === "records" ? data[patch.key ?? ""] : data;
+		if (!handler || !isRecord(target)) return {
 			ok: !1,
-			error
-		}) : (this.store(patch, spec), { ok: !0 });
+			error: ERR.type
+		};
+		try {
+			let error = handler(admin, clone(target), patch.key);
+			return error ? {
+				ok: !1,
+				error
+			} : { ok: !0 };
+		} catch (error) {
+			return this.log.error(`panel action ${patch.id} failed`, error), {
+				ok: !1,
+				error: ERR.type
+			};
+		}
 	}
 	commit(file, key, value) {
 		let data = this.data.get(file);
 		data && (key === void 0 ? isRecord(value) && this.data.set(file, clone(value)) : value === null ? delete data[key] : data[key] = clone(value), this.changed(file, key));
+	}
+	commitAfter(file, key, value) {
+		setImmediate(() => this.commit(file, key, value));
 	}
 	linked(spec, value) {
 		return spec.type === "text" && spec.records && typeof value == "string" && value !== "" && !(value in this.get(spec.records)) ? "ADMIN_ERR_LOOKUP" : null;
@@ -697,9 +870,9 @@ var AdminPanel = class {
 	}
 	changed(file, key) {
 		let spec = this.schema.files[file], data = this.get(file), value = key === void 0 ? data : data[key] ?? null;
-		this.dataFiles.get(file)?.write(data);
+		this.dataFiles.get(file)?.write(data), this.views.changed(file, key, value);
 		for (let handler of this.handlers.get(file) ?? []) handler(key, value);
-		if (core$8.AdminPanelChanged({
+		if (core$13.AdminPanelChanged({
 			resource: this.resource,
 			file,
 			key,
@@ -731,7 +904,7 @@ function notify(source, text, kind = "info", duration) {
 }
 resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/online.ts
-const core$6 = resourceExport(CORE.resource);
+const core$11 = resourceExport(CORE.resource);
 var OnlinePlayers = class {
 	players = new Map();
 	onDuty = new Map();
@@ -740,7 +913,7 @@ var OnlinePlayers = class {
 		if (this.started) return;
 		this.started = !0;
 		let load = (source, character) => {
-			this.put(source, character, (core$6.GetJobs(source) ?? []).map((m) => m.job), (core$6.GetGangs(source) ?? []).map((m) => m.gang)), this.setDuty(source, core$6.GetDutyJob(source));
+			this.put(source, character, (core$11.GetJobs(source) ?? []).map((m) => m.job), (core$11.GetGangs(source) ?? []).map((m) => m.gang)), this.setDuty(source, core$11.GetDutyJob(source));
 		};
 		on(CORE.playerLoadedEvent, load), on(CORE.playerUnloadedEvent, (source) => this.drop(source)), on(CORE.jobsChangedEvent, (source, jobs) => {
 			let player = this.players.get(source);
@@ -749,8 +922,8 @@ var OnlinePlayers = class {
 			let player = this.players.get(source);
 			player && (player.gangs = gangs.map((m) => m.gang));
 		}), on(CORE.dutyChangedEvent, (source, job) => this.setDuty(source, job));
-		for (let source of core$6.GetLoadedSources()) {
-			let character = core$6.GetCharacter(source);
+		for (let source of core$11.GetLoadedSources()) {
+			let character = core$11.GetCharacter(source);
 			character && load(source, character);
 		}
 	}
@@ -794,7 +967,7 @@ var OnlinePlayers = class {
 	}
 };
 const EMPTY$1 = new Set();
-new OnlinePlayers(), resourceExport(CORE.resource), resourceExport(CORE.resource);
+new OnlinePlayers(), resourceExport(CORE.resource), resourceExport(CORE.resource), createLogger(GetCurrentResourceName());
 // ../../../packages/lib/src/server/command.ts
 const resource$3 = GetCurrentResourceName(), log$6 = createLogger(resource$3);
 let texts = null;
@@ -15358,7 +15531,7 @@ var GlobalGroup$1 = class extends Mirror {
 		GlobalState.set(this.prefix + id, value ?? null, !0), this.put(id, value);
 	}
 };
-resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource);
+resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/index.ts
 function isOnline(source) {
 	return !!GetPlayerName(String(source));
@@ -15674,23 +15847,7 @@ registerExport("Log", (channel, message, options) => {
 	channels.delete(resource), resource === ResourceName && flushFivemanage();
 });
 // resource/server/content/scene.ts
-const WEATHERS = [
-	"EXTRASUNNY",
-	"CLEAR",
-	"NEUTRAL",
-	"SMOG",
-	"FOGGY",
-	"OVERCAST",
-	"CLOUDS",
-	"CLEARING",
-	"RAIN",
-	"THUNDER",
-	"SNOW",
-	"BLIZZARD",
-	"SNOWLIGHT",
-	"XMAS",
-	"HALLOWEEN"
-], spot = (x, y, z, heading, anim, clip, cam) => ({
+const spot = (x, y, z, heading, anim, clip, cam) => ({
 	ped: {
 		x,
 		y,
@@ -15779,13 +15936,125 @@ function readScene(raw) {
 			enabled: bool$1(time.enabled, DEFAULT_SCENE.time.enabled),
 			hour: int$2(time.hour, DEFAULT_SCENE.time.hour, 0, 23),
 			minute: int$2(time.minute, DEFAULT_SCENE.time.minute, 0, 59),
-			weather: WEATHERS.includes(str(time.weather, "")) ? str(time.weather, "") : DEFAULT_SCENE.time.weather
+			weather: isWeather(time.weather) ? time.weather : DEFAULT_SCENE.time.weather
 		},
 		spots: spots.length ? spots : DEFAULT_SCENE.spots
 	};
 }
-// resource/server/admin/sceneSchema.ts
-const num = (min, max) => ({
+// resource/server/jobs/primeTime/names.ts
+const PRIME_TIME_SYSTEM_NAMES = ["tgiann-policealert"], PRIME_SOURCES = [
+	"auto",
+	"ai-core",
+	...PRIME_TIME_SYSTEM_NAMES
+], DEFAULT_PRIME_TIME = {
+	enabled: !1,
+	source: "auto",
+	offPrimeMultiplier: .5,
+	start: 18,
+	finish: 1
+}, hour$1 = (value, fallback) => int$2(value, fallback, 0, 23);
+function readPrimeTime(raw) {
+	let v = record(raw), source = typeof v.source == "string" && PRIME_SOURCES.includes(v.source) ? v.source : "auto";
+	return {
+		enabled: bool$1(v.enabled, DEFAULT_PRIME_TIME.enabled),
+		source,
+		offPrimeMultiplier: num$1(v.offPrimeMultiplier, .5, 0, 1),
+		start: hour$1(v.start, DEFAULT_PRIME_TIME.start),
+		finish: hour$1(v.finish, DEFAULT_PRIME_TIME.finish)
+	};
+}
+function readJobPrime(v) {
+	return v.primeOwn === !0 ? {
+		start: hour$1(v.primeStart, DEFAULT_PRIME_TIME.start),
+		finish: hour$1(v.primeFinish, DEFAULT_PRIME_TIME.finish)
+	} : null;
+}
+// resource/server/admin/primeTimeSchema.ts
+const hourField = (path, label) => ({
+	widget: "number",
+	path,
+	label,
+	min: 0,
+	max: 23,
+	unit: "ADMIN_U_HOUR"
+}), primeTimeCard = {
+	icon: "clock",
+	title: "ADMIN_C_PRIME_TIME",
+	desc: "ADMIN_C_PRIME_TIME_DESC",
+	fields: [
+		{
+			widget: "switch",
+			path: "primeTime.enabled",
+			label: "ADMIN_F_PRIME_ENABLED",
+			hint: "ADMIN_H_PRIME_ENABLED"
+		},
+		{
+			widget: "number",
+			path: "primeTime.offPrimeMultiplier",
+			label: "ADMIN_F_OFF_PRIME_MULTIPLIER",
+			hint: "ADMIN_H_OFF_PRIME_MULTIPLIER",
+			min: 0,
+			max: 1,
+			step: .05,
+			unit: "ADMIN_U_TIMES"
+		},
+		{
+			widget: "select",
+			path: "primeTime.source",
+			label: "ADMIN_F_PRIME_SOURCE",
+			hint: "ADMIN_H_PRIME_SOURCE",
+			options: [
+				{
+					value: "auto",
+					label: "ADMIN_O_INVENTORY_AUTO"
+				},
+				{
+					value: "ai-core",
+					label: "ADMIN_O_PRIME_CORE"
+				},
+				...PRIME_TIME_SYSTEM_NAMES.map((resource) => ({
+					value: resource,
+					label: resource
+				}))
+			]
+		},
+		{
+			widget: "info",
+			path: "primeTimeActive",
+			label: "ADMIN_F_PRIME_ACTIVE",
+			hint: "ADMIN_H_PRIME_ACTIVE",
+			values: {
+				"ai-core": "ADMIN_O_PRIME_ACTIVE_CORE",
+				none: "ADMIN_O_PRIME_ACTIVE_NONE"
+			}
+		},
+		hourField("primeTime.start", "ADMIN_F_PRIME_START"),
+		hourField("primeTime.finish", "ADMIN_F_PRIME_FINISH")
+	]
+}, ownHours = {
+	path: "primeOwn",
+	values: [!0]
+}, jobPrimeCard = {
+	icon: "clock",
+	title: "ADMIN_C_PRIME_TIME",
+	desc: "ADMIN_C_JOB_PRIME_DESC",
+	fields: [
+		{
+			widget: "switch",
+			path: "primeOwn",
+			label: "ADMIN_F_PRIME_OWN",
+			hint: "ADMIN_H_PRIME_OWN"
+		},
+		{
+			...hourField("primeStart", "ADMIN_F_PRIME_START"),
+			showIf: ownHours
+		},
+		{
+			...hourField("primeFinish", "ADMIN_F_PRIME_FINISH"),
+			showIf: ownHours
+		}
+	]
+}, num = (min, max) => ({
 	type: "number",
 	min,
 	max
@@ -15806,7 +16075,7 @@ const num = (min, max) => ({
 				minute: int$1(0, 59),
 				weather: {
 					type: "enum",
-					values: WEATHERS
+					values: [...WEATHERS]
 				}
 			}
 		},
@@ -16021,6 +16290,25 @@ const num = (min, max) => ({
 			])]
 		}
 	]
+}, RECOMMENDATIONS_SECTION = {
+	type: "object",
+	fields: { dismissed: {
+		type: "names",
+		max: 64,
+		itemMax: 64,
+		pattern: "^[a-z0-9_-]{2,64}$"
+	} }
+}, DEFAULT_RECOMMENDATIONS = { dismissed: [] }, recommendationsCard = {
+	icon: "lightbulb",
+	title: "ADMIN_C_RECOMMENDATIONS",
+	desc: "ADMIN_C_RECOMMENDATIONS_DESC",
+	fields: [{
+		widget: "tags",
+		path: "recommendations.dismissed",
+		label: "ADMIN_F_RECOMMENDATIONS_DISMISSED",
+		hint: "ADMIN_H_RECOMMENDATIONS_DISMISSED",
+		placeholder: "ADMIN_PH_RECOMMENDATIONS_DISMISSED"
+	}]
 }, ID$1 = "^[a-z0-9_]{2,32}$", text$6 = (max, min = 1) => ({
 	type: "text",
 	min,
@@ -16039,12 +16327,19 @@ const num = (min, max) => ({
 		fields: {
 			label: text$6(48),
 			salary: int(0, 1e6),
+			offPrimePayment: {
+				...int(0, 1e6),
+				optional: !0
+			},
 			boss: {
 				type: "bool",
 				optional: !0
 			}
 		}
 	}
+}, hour = int(0, 23), optionalHour = {
+	...hour,
+	optional: !0
 }, gradeRows = (salary) => [
 	{
 		widget: "text",
@@ -16056,6 +16351,13 @@ const num = (min, max) => ({
 		widget: "number",
 		path: "salary",
 		label: "ADMIN_F_SALARY",
+		min: 0,
+		step: 5,
+		unit: "$"
+	}, {
+		widget: "number",
+		path: "offPrimePayment",
+		label: "ADMIN_F_OFF_PRIME_PAYMENT",
 		min: 0,
 		step: 5,
 		unit: "$"
@@ -16132,6 +16434,28 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 							fromJobAccount: bool
 						}
 					},
+					primeTime: {
+						type: "object",
+						fields: {
+							enabled: bool,
+							source: {
+								type: "enum",
+								values: [...PRIME_SOURCES]
+							},
+							offPrimeMultiplier: {
+								type: "number",
+								min: 0,
+								max: 1
+							},
+							start: hour,
+							finish: hour
+						}
+					},
+					primeTimeActive: {
+						type: "enum",
+						values: ["none", ...PRIME_SOURCES.filter((s) => s !== "auto")],
+						optional: !0
+					},
 					saveIntervalMinutes: int(1, 60),
 					inventory: {
 						type: "enum",
@@ -16163,6 +16487,7 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 							}
 						}
 					},
+					recommendations: RECOMMENDATIONS_SECTION,
 					spawn: {
 						type: "object",
 						fields: { default: { type: "vec4" } }
@@ -16171,6 +16496,7 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 				},
 				defaults: {
 					characterScene: DEFAULT_SCENE,
+					primeTime: DEFAULT_PRIME_TIME,
 					inventory: "auto",
 					vehicleKeys: "auto",
 					dispatch: "auto",
@@ -16180,7 +16506,8 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 					updates: {
 						check: !0,
 						ignore: []
-					}
+					},
+					recommendations: DEFAULT_RECOMMENDATIONS
 				}
 			},
 			jobs: {
@@ -16194,7 +16521,10 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 					grades: [{
 						label: "Member",
 						salary: 0
-					}]
+					}],
+					primeOwn: !1,
+					primeStart: DEFAULT_PRIME_TIME.start,
+					primeFinish: DEFAULT_PRIME_TIME.finish
 				},
 				sections: {
 					label: text$6(48),
@@ -16204,7 +16534,13 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 						pattern: ID$1
 					},
 					defaultDuty: bool,
-					grades
+					grades,
+					primeOwn: {
+						type: "bool",
+						optional: !0
+					},
+					primeStart: optionalHour,
+					primeFinish: optionalHour
 				}
 			},
 			gangs: {
@@ -16512,6 +16848,7 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 							placeholder: "ADMIN_PH_UPDATES_IGNORE"
 						}]
 					},
+					recommendationsCard,
 					{
 						icon: "shield",
 						title: "ADMIN_C_CONFLICTS",
@@ -16625,7 +16962,8 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 								hint: "ADMIN_H_FROM_JOB_ACCOUNT"
 							}
 						]
-					}
+					},
+					primeTimeCard
 				]
 			},
 			{
@@ -16637,48 +16975,53 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 				listSub: "type",
 				createLabel: "ADMIN_NEW_JOB",
 				deleteLabel: "ADMIN_DELETE_JOB",
-				cards: [{
-					icon: "id-card",
-					title: "ADMIN_C_JOB",
-					fields: [
-						{
-							widget: "text",
-							path: "label",
-							label: "ADMIN_F_NAME",
-							placeholder: "ADMIN_PH_JOB"
-						},
-						{
-							widget: "text",
-							path: "type",
-							label: "ADMIN_F_JOB_TYPE",
-							hint: "ADMIN_H_JOB_TYPE",
-							placeholder: "ADMIN_PH_JOB_TYPE"
-						},
-						{
-							widget: "switch",
-							path: "defaultDuty",
-							label: "ADMIN_F_DEFAULT_DUTY",
-							hint: "ADMIN_H_DEFAULT_DUTY"
-						}
-					]
-				}, {
-					icon: "ranking-star",
-					title: "ADMIN_C_GRADES",
-					desc: "ADMIN_C_GRADES_DESC",
-					fields: [{
-						widget: "list",
-						path: "grades",
-						label: "",
-						rows: gradeRows(!0),
-						newRow: {
-							label: "Grade",
-							salary: 0
-						},
-						addLabel: "ADMIN_ADD_GRADE",
-						rowLabel: "ADMIN_ROW_GRADE",
-						max: 30
-					}]
-				}]
+				cards: [
+					{
+						icon: "id-card",
+						title: "ADMIN_C_JOB",
+						fields: [
+							{
+								widget: "text",
+								path: "label",
+								label: "ADMIN_F_NAME",
+								placeholder: "ADMIN_PH_JOB"
+							},
+							{
+								widget: "text",
+								path: "type",
+								label: "ADMIN_F_JOB_TYPE",
+								hint: "ADMIN_H_JOB_TYPE",
+								placeholder: "ADMIN_PH_JOB_TYPE"
+							},
+							{
+								widget: "switch",
+								path: "defaultDuty",
+								label: "ADMIN_F_DEFAULT_DUTY",
+								hint: "ADMIN_H_DEFAULT_DUTY"
+							}
+						]
+					},
+					{
+						icon: "ranking-star",
+						title: "ADMIN_C_GRADES",
+						desc: "ADMIN_C_GRADES_DESC",
+						fields: [{
+							widget: "list",
+							path: "grades",
+							label: "",
+							rows: gradeRows(!0),
+							newRow: {
+								label: "Grade",
+								salary: 0,
+								offPrimePayment: 0
+							},
+							addLabel: "ADMIN_ADD_GRADE",
+							rowLabel: "ADMIN_ROW_GRADE",
+							max: 30
+						}]
+					},
+					jobPrimeCard
+				]
 			},
 			{
 				id: "gangs",
@@ -16990,37 +17333,37 @@ function definitions(raw, imageOf) {
 	return out;
 }
 // resource/server/inventory/adapters/ai-inventory.ts
-const RESOURCE$4 = "ai-inventory", inv = () => resourceExport(RESOURCE$4), imageOf = (_name, image) => image ? `nui://${RESOURCE$4}/dist/web/images/${image}` : void 0, aiInventory = {
-	resource: RESOURCE$4,
+const RESOURCE$5 = "ai-inventory", inv = resourceExport(RESOURCE$5), imageOf = (_name, image) => image ? `nui://${RESOURCE$5}/dist/web/images/${image}` : void 0, aiInventory = {
+	resource: RESOURCE$5,
 	version: "0.1.0",
-	addItem: (ref, item, count, metadata, slot) => inv().AddItem(ref, item, count, metadata, slot) === !0,
-	removeItem: (ref, item, count, metadata, slot) => inv().RemoveItem(ref, item, count, metadata, slot) === !0,
-	getItemCount: (ref, item, metadata) => Number(inv().GetItemCount(ref, item, metadata)) || 0,
-	canCarryItem: (ref, item, count, metadata) => inv().CanCarryItem(ref, item, count, metadata) === !0,
+	addItem: (ref, item, count, metadata, slot) => inv.AddItem(ref, item, count, metadata, slot) === !0,
+	removeItem: (ref, item, count, metadata, slot) => inv.RemoveItem(ref, item, count, metadata, slot) === !0,
+	getItemCount: (ref, item, metadata) => Number(inv.GetItemCount(ref, item, metadata)) || 0,
+	canCarryItem: (ref, item, count, metadata) => inv.CanCarryItem(ref, item, count, metadata) === !0,
 	getItems: (ref) => {
-		let list = inv().GetItems(ref);
+		let list = inv.GetItems(ref);
 		return Array.isArray(list) ? list.filter(isRecord).flatMap((row) => stack(row, (name) => name) ?? []) : [];
 	},
-	clearInventory: (ref) => inv().ClearInventory(ref),
-	registerStash: (stash) => inv().RegisterStash(stash.name, stash.label, stash.slots, stash.maxWeight, stash.jobs),
-	openInventory: (source, ref) => inv().OpenInventory(source, ref) === !0,
-	getItemDefinition: (name) => definition(inv().Items(name), name, imageOf),
-	getItemDefinitions: () => definitions(inv().Items(), imageOf),
+	clearInventory: (ref) => inv.ClearInventory(ref),
+	registerStash: (stash) => inv.RegisterStash(stash.name, stash.label, stash.slots, stash.maxWeight, stash.jobs),
+	openInventory: (source, ref) => inv.OpenInventory(source, ref) === !0,
+	getItemDefinition: (name) => definition(inv.Items(name), name, imageOf),
+	getItemDefinitions: () => definitions(inv.Items(), imageOf),
 	getWeight: (source) => {
-		let w = inv().GetWeight(source);
+		let w = inv.GetWeight(source);
 		return isRecord(w) && typeof w.weight == "number" && typeof w.maxWeight == "number" ? {
 			weight: w.weight,
 			maxWeight: w.maxWeight
 		} : null;
 	},
-	registerUsableItem: (name, handler) => inv().RegisterUsableItem(name, handler)
+	registerUsableItem: (name, handler) => inv.RegisterUsableItem(name, handler)
 };
 on("ai-inventory:usedItem", (source, name, _slot, _metadata, status) => {
 	emit(CORE.itemUsedEvent, source, name, isRecord(status) ? status : null);
 });
 // resource/server/inventory/adapters/ox_inventory.ts
-const oxImage = (name, image) => `nui://ox_inventory/web/images/${image || `${name}.png`}`, RESOURCE$3 = "ox_inventory", call$3 = (name, ...args) => callExport(RESOURCE$3, name, ...args), oxInventory = {
-	resource: RESOURCE$3,
+const oxImage = (name, image) => `nui://ox_inventory/web/images/${image || `${name}.png`}`, RESOURCE$4 = "ox_inventory", call$3 = (name, ...args) => callExport(RESOURCE$4, name, ...args), oxInventory = {
+	resource: RESOURCE$4,
 	version: "2.48.1",
 	addItem: (ref, item, count, metadata, slot) => isTrue(call$3("AddItem", ref, item, count, metadata, slot)),
 	removeItem: (ref, item, count, metadata, slot) => isTrue(call$3("RemoveItem", ref, item, count, metadata, slot)),
@@ -17039,7 +17382,7 @@ const oxImage = (name, image) => `nui://ox_inventory/web/images/${image || `${na
 			maxWeight: inv.maxWeight
 		} : null;
 	}
-}, RESOURCE$2 = "qb-inventory", call$2 = (name, ...args) => callExport(RESOURCE$2, name, ...args);
+}, RESOURCE$3 = "qb-inventory", call$2 = (name, ...args) => callExport(RESOURCE$3, name, ...args);
 function itemsOf$1(ref) {
 	if (typeof ref == "string") {
 		let inventory = call$2("GetInventory", ref);
@@ -17049,7 +17392,7 @@ function itemsOf$1(ref) {
 	return isRecord(player) && isRecord(player.PlayerData) ? player.PlayerData.items : void 0;
 }
 const stacksOf = (ref) => rows(itemsOf$1(ref)).flatMap((row) => stack(row, (name) => name) ?? []), qbInventory = {
-	resource: RESOURCE$2,
+	resource: RESOURCE$3,
 	version: "2.2.3",
 	addItem: (ref, item, count, metadata, slot) => isTrue(call$2("AddItem", ref, item, count, slot, metadata)),
 	removeItem: (ref, item, count, _metadata, slot) => isTrue(call$2("RemoveItem", ref, item, count, slot)),
@@ -17065,7 +17408,7 @@ const stacksOf = (ref) => rows(itemsOf$1(ref)).flatMap((row) => stack(row, (name
 	openInventory: (source, ref) => (call$2(typeof ref == "number" ? "OpenInventoryById" : "OpenInventory", source, ref), !0),
 	getItemDefinition: () => null,
 	getItemDefinitions: () => ({})
-}, RESOURCE$1 = "tgiann-inventory", call$1 = (name, ...args) => callExport(RESOURCE$1, name, ...args);
+}, RESOURCE$2 = "tgiann-inventory", call$1 = (name, ...args) => callExport(RESOURCE$2, name, ...args);
 function item(name) {
 	try {
 		return call$1("Items", name);
@@ -17076,7 +17419,7 @@ function item(name) {
 const itemsOf = (ref) => call$1(typeof ref == "number" ? "GetPlayerItems" : "GetInventoryItems", ref), INVENTORIES = [
 	aiInventory,
 	{
-		resource: RESOURCE$1,
+		resource: RESOURCE$2,
 		version: "2.4.1",
 		addItem: (ref, name, count, metadata, slot) => isTrue(call$1("AddItem", ref, name, count, slot, metadata)),
 		removeItem: (ref, name, count, metadata, slot) => isTrue(call$1("RemoveItem", ref, name, count, slot, metadata)),
@@ -17097,11 +17440,11 @@ const itemsOf = (ref) => call$1(typeof ref == "number" ? "GetPlayerItems" : "Get
 	},
 	oxInventory,
 	qbInventory
-], keys = () => resourceExport("ai-vehiclekeys"), aiVehicleKeys = {
+], keys = resourceExport("ai-vehiclekeys"), aiVehicleKeys = {
 	resource: "ai-vehiclekeys",
-	give: (source, t) => keys().GiveKeys(source, t.plate),
-	remove: (source, t) => keys().RemoveKeys(source, t.plate),
-	has: (source, t) => keys().HasKeys(source, t.plate)
+	give: (source, t) => keys.GiveKeys(source, t.plate),
+	remove: (source, t) => keys.RemoveKeys(source, t.plate),
+	has: (source, t) => keys.HasKeys(source, t.plate)
 }, cdGarage = {
 	resource: "cd_garage",
 	give: (source, t) => emitNet("cd_garage:AddKeys", source, t.plate),
@@ -17184,8 +17527,8 @@ const itemsOf = (ref) => call$1(typeof ref == "number" ? "GetPlayerItems" : "Get
 ], alerts = resourceExport("ai-policealert"), aiPoliceAlert = {
 	resource: "ai-policealert",
 	alert: (alert) => alerts.DispatchAlert(alert)
-}, RESOURCE = "tgiann-policealert", DISPATCH_SYSTEMS = [{
-	resource: RESOURCE,
+}, RESOURCE$1 = "tgiann-policealert", DISPATCH_SYSTEMS = [{
+	resource: RESOURCE$1,
 	version: "2.10.0",
 	answersPoliceAlert: !0,
 	alert: (a) => {
@@ -17202,12 +17545,12 @@ const itemsOf = (ref) => call$1(typeof ref == "number" ? "GetPlayerItems" : "Get
 			bgAnimate: a.priority === "high",
 			blip: a.blip?.sprite
 		};
-		a.source === void 0 ? callExport(RESOURCE, "SendCustomAlert", {
+		a.source === void 0 ? callExport(RESOURCE$1, "SendCustomAlert", {
 			...common,
 			duration: a.duration ?? 5,
 			sound: { active: !0 },
 			information: { custom }
-		}, jobs) : callExport(RESOURCE, "Alert", a.source, {
+		}, jobs) : callExport(RESOURCE$1, "Alert", a.source, {
 			...common,
 			jobs,
 			custom
@@ -17252,6 +17595,7 @@ function readSettings(raw) {
 			account: str(pay.account, "bank", 32),
 			fromJobAccount: bool$1(pay.fromJobAccount, !1)
 		},
+		primeTime: readPrimeTime(s.primeTime),
 		saveIntervalMinutes: int$2(s.saveIntervalMinutes, 5, 1, 60),
 		inventory: str(s.inventory, "auto", 32),
 		vehicleKeys: str(s.vehicleKeys, "auto", 32),
@@ -17275,13 +17619,15 @@ function readGrades(raw) {
 		return {
 			label: str(v.label, "Member"),
 			salary: int$2(v.salary, 0, 0),
-			boss: bool$1(v.boss, !1)
+			boss: bool$1(v.boss, !1),
+			offPrimePayment: int$2(v.offPrimePayment, 0, 0)
 		};
 	});
 	return grades.length ? grades : [{
 		label: "Member",
 		salary: 0,
-		boss: !1
+		boss: !1,
+		offPrimePayment: 0
 	}];
 }
 function entries(raw, read) {
@@ -17297,7 +17643,8 @@ const readAccount = (v) => ({
 	label: str(v.label, "Job"),
 	type: str(v.type, "none", 32),
 	defaultDuty: bool$1(v.defaultDuty, !1),
-	grades: readGrades(v.grades)
+	grades: readGrades(v.grades),
+	prime: readJobPrime(v)
 }), readGang = (v) => ({
 	label: str(v.label, "Gang"),
 	grades: readGrades(v.grades)
@@ -17314,7 +17661,8 @@ follow("accounts", accountTypes, readAccount), follow("jobs", jobs, readJob), fo
 	label: "Civilian",
 	type: "none",
 	defaultDuty: !0,
-	grades: readGrades([])
+	grades: readGrades([]),
+	prime: null
 }), accountTypes.size === 0 && accountTypes.set("cash", {
 	label: "Cash",
 	start: 0,
@@ -17592,6 +17940,74 @@ panel.rule(FILE, (_key, next) => {
 	let key = typeof next.key == "string" ? next.key.toUpperCase() : "";
 	return key === "" ? null : next.mapper === "keyboard" ? KEYBOARD.has(key) ? null : "ADMIN_ERR_KEY" : next.mapper === "MOUSE_BUTTON" ? MOUSE.has(key) ? null : "ADMIN_ERR_KEY" : null;
 });
+// resource/common/adapters.ts
+function provides(resource) {
+	return Array.from({ length: GetNumResourceMetadata(resource, "provide") }, (_, i) => GetResourceMetadata(resource, "provide", i));
+}
+function guarded(adapter, what, fn, fallback, log) {
+	if (!adapter) return fallback;
+	try {
+		return fn(adapter);
+	} catch (error) {
+		return log.error(`${adapter.resource} ${what} failed`, error), fallback;
+	}
+}
+var AdapterPicker = class {
+	options;
+	current = null;
+	choice;
+	down = new Set();
+	names;
+	handlers = [];
+	constructor(options) {
+		this.options = options, this.choice = options.choice ?? "auto", this.names = new Set(options.adapters.map((a) => a.resource)), options.onSwitch && this.handlers.push(options.onSwitch);
+		let started = IsDuplicityVersion() ? "onServerResourceStart" : "onClientResourceStart";
+		on(started, (resource) => this.started(resource)), on("onResourceStop", (resource) => this.stopped(resource)), this.select();
+	}
+	get active() {
+		return this.current;
+	}
+	setChoice(choice) {
+		choice !== this.choice && (this.choice = choice, this.select());
+	}
+	onSwitch(handler) {
+		this.handlers.push(handler);
+	}
+	runs(resource) {
+		return !this.down.has(resource) && isResourceStarted(resource);
+	}
+	call(what, fn, fallback) {
+		return guarded(this.current, what, fn, fallback, this.options.log);
+	}
+	started(resource) {
+		let names = [resource, ...provides(resource)];
+		for (let name of names) this.down.delete(name);
+		names.some((name) => this.names.has(name)) && this.select(names);
+	}
+	stopped(resource) {
+		let names = [resource, ...provides(resource)];
+		if (names.some((name) => this.names.has(name))) {
+			for (let name of names) this.down.add(name);
+			this.select();
+		}
+	}
+	select(restarted) {
+		let { adapters, category, log } = this.options, auto = this.choice === "auto" || !adapters.some((a) => a.resource === this.choice), next = adapters.find((a) => (auto || a.resource === this.choice) && this.runs(a.resource)) ?? null, previous = this.current, again = next !== null && next === previous && !!restarted?.includes(next.resource);
+		if (next !== previous || again) {
+			this.current = next, next !== previous && this.report(next, auto);
+			for (let handler of this.handlers) guarded(next ?? previous, `${category} switch`, () => handler(next, previous, again), void 0, log);
+		}
+	}
+	report(next, auto) {
+		let { category, log, noneText } = this.options;
+		if (!next) {
+			log.info(auto ? noneText ?? `no ${category} runs` : `the ${category} picked in the panel (${this.choice}) does not run`);
+			return;
+		}
+		let installed = GetResourceMetadata(next.resource, "version", 0) || "?";
+		log.info(`${category}: ${next.resource} ${installed}`), next.version && installed !== next.version && log.warn(`${next.resource} ${installed} is installed; its adapter is written for ${next.version}`);
+	}
+};
 // resource/server/inventory/layer.ts
 function toUsedItem(name, raw) {
 	let v = isRecord(raw) ? raw : {}, meta = isRecord(v.metadata) ? v.metadata : isRecord(v.info) ? v.info : {}, count = typeof v.count == "number" ? v.count : typeof v.amount == "number" ? v.amount : 0;
@@ -17603,38 +18019,27 @@ function toUsedItem(name, raw) {
 	};
 }
 var InventoryLayer = class {
-	adapters;
-	host;
-	current = null;
-	choice = "auto";
+	log;
 	usable = new Map();
 	stashes = new Map();
-	constructor(adapters, host) {
-		this.adapters = adapters, this.host = host;
+	picker;
+	constructor(adapters, choice, log, announce) {
+		this.log = log, this.picker = new AdapterPicker({
+			category: "inventory",
+			adapters,
+			log: this.log,
+			choice,
+			noneText: "no inventory runs yet: item calls fail until one starts",
+			onSwitch: (next) => {
+				announce(next?.resource ?? null), next && this.handOver();
+			}
+		});
 	}
 	setChoice(choice) {
-		this.choice = choice, this.select();
-	}
-	select(stopping) {
-		let runs = (a) => a.resource !== stopping && this.host.isStarted(a.resource), auto = this.choice === "auto" || !this.adapters.some((a) => a.resource === this.choice), next = (auto ? this.adapters.find(runs) : this.adapters.find((a) => a.resource === this.choice && runs(a))) ?? null;
-		if (next === this.current) return;
-		if (this.current = next, this.host.announce(next?.resource ?? null), !next) {
-			this.host.log.info(auto ? "no inventory runs yet: item calls fail until one starts" : `the inventory picked in the panel (${this.choice}) does not run yet`);
-			return;
-		}
-		let installed = this.host.version(next.resource);
-		this.host.log.info(`inventory: ${next.resource} ${installed}`), installed !== next.version && this.host.log.warn(`${next.resource} ${installed} is installed; its adapter is written for ${next.version}`);
-		for (let stash of this.stashes.values()) this.call("RegisterStash", (a) => a.registerStash(stash), void 0);
-		if (next.registerUsableItem) for (let name of this.usable.keys()) this.call("RegisterUsableItem", (a) => a.registerUsableItem?.(name, this.dispatcher(name)), void 0);
+		this.picker.setChoice(choice);
 	}
 	call(what, fn, fallback) {
-		let adapter = this.current;
-		if (!adapter) return fallback;
-		try {
-			return fn(adapter);
-		} catch (error) {
-			return this.host.log.error(`${adapter.resource} ${what} failed`, error), fallback;
-		}
+		return this.picker.call(what, fn, fallback);
 	}
 	registerStash(stash) {
 		this.stashes.set(stash.name, stash), this.call("RegisterStash", (a) => a.registerStash(stash), void 0);
@@ -17651,27 +18056,22 @@ var InventoryLayer = class {
 		try {
 			return handler(source, toUsedItem(name, item));
 		} catch (error) {
-			return this.host.log.error(`usable item ${name} failed`, error), !1;
+			return this.log.error(`usable item ${name} failed`, error), !1;
 		}
+	}
+	handOver() {
+		for (let stash of this.stashes.values()) this.call("RegisterStash", (a) => a.registerStash(stash), void 0);
+		for (let name of this.usable.keys()) this.call("RegisterUsableItem", (a) => a.registerUsableItem?.(name, this.dispatcher(name)), void 0);
 	}
 	dispatcher(name) {
 		return (source, item) => this.useItem(source, name, item);
 	}
 };
 // resource/server/inventory/index.ts
-const activeInventory = new GlobalKey("ai:inventory", stateString), inventory = new InventoryLayer(INVENTORIES, {
-	isStarted: isResourceStarted,
-	version: (resource) => GetResourceMetadata(resource, "version", 0) || "?",
-	announce: (resource) => {
-		activeInventory.set(resource ?? void 0), emit(CORE.inventoryChangedEvent, resource);
-	},
-	log: log$3
+const activeInventory = new GlobalKey("ai:inventory", stateString), inventory = new InventoryLayer(INVENTORIES, settings.inventory, log$3, (resource) => {
+	activeInventory.set(resource ?? void 0), emit(CORE.inventoryChangedEvent, resource);
 });
-inventory.setChoice(settings.inventory), panel.onChange("settings", () => inventory.setChoice(settings.inventory));
-const candidates$2 = new Set(INVENTORIES.map((adapter) => adapter.resource));
-on("onServerResourceStart", (resource) => candidates$2.has(resource) && inventory.select()), on("onResourceStop", (resource) => {
-	candidates$2.has(resource) && (inventory.select(resource), setTimeout(() => inventory.select(), 0));
-});
+panel.onChange("settings", () => inventory.setChoice(settings.inventory));
 const ref = (v) => typeof v == "number" || typeof v == "string" && v !== "" ? v : null, name = (v) => typeof v == "string" && v !== "" ? v : null, amount = (v) => v == null ? 1 : typeof v == "number" && Number.isFinite(v) && v >= 1 ? Math.floor(v) : null, meta = (v) => isRecord(v) ? v : void 0, slot = (v) => typeof v == "number" && Number.isInteger(v) && v > 0 ? v : void 0;
 registerExport("AddItem", (inv, item, count, metadata, at) => {
 	let [r, i, n] = [
@@ -17882,6 +18282,124 @@ const gameThread = () => new Promise((resolve) => setImmediate(resolve)), versio
 	}
 }();
 setTimeout(() => versions.checkAll(), 15e3), setInterval(() => versions.checkAll(), CHECK_EVERY_MS), on("onServerResourceStart", (resource) => setTimeout(() => void versions.check(resource), 5e3)), panel.onChange("settings", () => versions.checkAll()), registerExport("GetUpdates", () => versions.list());
+// resource/server/phone/adapters/lb-phone.ts
+const phone$1 = (name, ...args) => callExport("lb-phone", name, ...args), text$1 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, lbPhone = {
+	resource: "lb-phone",
+	number: (source) => text$1(phone$1("GetEquippedPhoneNumber", source)),
+	sourceOf: (number) => {
+		let s = phone$1("GetSourceFromNumber", number);
+		return typeof s == "number" ? s : null;
+	},
+	hasPhone: (source) => phone$1("HasPhoneItem", source) === !0,
+	mail: (to, m) => phone$1("SendMail", {
+		to,
+		sender: m.sender,
+		subject: m.subject,
+		message: m.message
+	}) !== !1,
+	message: (from, to, body) => phone$1("SendMessage", from, to, body) !== !1,
+	notify: (source, n) => phone$1("SendNotification", source, {
+		app: n.app,
+		title: n.title,
+		content: n.message
+	}) != null
+}, phone = (name, ...args) => callExport("tgiann-phone", name, ...args), text = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, phones = new AdapterPicker({
+	category: "phone",
+	adapters: [{
+		resource: "tgiann-phone",
+		number: (source) => text(phone("GetPhoneNumber", source)),
+		sourceOf: (number) => {
+			let s = phone("GetSourceByNumber", number);
+			return typeof s == "number" ? s : null;
+		},
+		hasPhone: (source) => phone("HasPhone", source) === !0,
+		mail: (to, m) => phone("SendMail", {
+			to,
+			from: m.sender,
+			subject: m.subject,
+			message: m.message
+		}) !== !1,
+		message: (from, to, body) => phone("SendSms", from, to, { body }) !== !1,
+		notify: (source, n) => phone("SendNotification", source, {
+			app: n.app,
+			title: n.title,
+			content: n.message
+		}) != null
+	}, lbPhone],
+	log: log$3
+}), toMail = (v) => isRecord(v) && typeof v.subject == "string" && typeof v.message == "string" ? {
+	sender: typeof v.sender == "string" ? v.sender : "",
+	subject: v.subject.slice(0, 120),
+	message: v.message.slice(0, 4e3)
+} : null, toNotification = (v) => isRecord(v) && typeof v.title == "string" ? {
+	title: v.title.slice(0, 80),
+	message: typeof v.message == "string" ? v.message.slice(0, 500) : "",
+	app: typeof v.app == "string" ? v.app : void 0
+} : null, numberOf = (to) => typeof to == "number" ? phones.call("number", (a) => a.number(to), null) : typeof to == "string" && to ? to : null;
+registerExport("GetPhoneNumber", (source) => typeof source == "number" ? phones.call("number", (a) => a.number(source), null) : null), registerExport("GetSourceByPhone", (number) => typeof number == "string" ? phones.call("sourceOf", (a) => a.sourceOf(number), null) : null), registerExport("HasPhone", (source) => typeof source == "number" && phones.call("hasPhone", (a) => a.hasPhone(source), !1)), registerExport("SendPhoneMail", (to, mail) => {
+	let number = numberOf(to), m = toMail(mail);
+	return number !== null && m !== null && phones.call("mail", (a) => a.mail(number, m), !1);
+}), registerExport("SendPhoneMessage", (from, to, text) => {
+	let number = numberOf(to);
+	return typeof from == "string" && typeof text == "string" && number !== null && phones.call("message", (a) => a.message(from, number, text.slice(0, 1e3)), !1);
+}), registerExport("PhoneNotify", (source, notification) => {
+	let n = toNotification(notification);
+	return typeof source == "number" && n !== null && phones.call("notify", (a) => a.notify(source, n), !1);
+});
+// resource/server/recommendations/index.ts
+const RECOMMENDATIONS = [{
+	id: "tgiann-phone",
+	title: "ADMIN_REC_TGIANN_PHONE",
+	desc: "ADMIN_REC_TGIANN_PHONE_DESC",
+	url: "https://www.tgiann.com/package/fivem-phone",
+	free: !0,
+	shows: () => phones.active === null
+}, {
+	id: "tgiann-esc-map",
+	title: "ADMIN_REC_TGIANN_ESC_MAP",
+	desc: "ADMIN_REC_TGIANN_ESC_MAP_DESC",
+	url: "https://www.tgiann.com/package/fivem-custom-esc-map-blip-system",
+	free: !0,
+	shows: (runs) => !runs("tgiann-esc-map")
+}];
+function readDismissed(settings) {
+	let section = isRecord(settings) ? settings.recommendations : null, list = isRecord(section) ? section.dismissed : null;
+	return new Set(Array.isArray(list) ? list.filter((id) => typeof id == "string") : []);
+}
+const recommendations = new class {
+	shown = new Map();
+	down = new Set();
+	listeners = [];
+	list() {
+		return [...this.shown.values()];
+	}
+	onChange(listener) {
+		this.listeners.push(listener);
+	}
+	started(resource) {
+		this.down.delete(resource), this.refresh();
+	}
+	stopped(resource) {
+		this.down.add(resource), this.refresh();
+	}
+	refresh() {
+		let dismissed = readDismissed(panel.get("settings")), runs = (resource) => !this.down.has(resource) && isResourceStarted(resource);
+		for (let { shows, ...recommendation } of RECOMMENDATIONS) {
+			let show = !dismissed.has(recommendation.id) && shows(runs);
+			if (show === this.shown.has(recommendation.id)) continue;
+			show ? this.shown.set(recommendation.id, recommendation) : this.shown.delete(recommendation.id);
+			let delta = {
+				id: recommendation.id,
+				value: show ? recommendation : null
+			};
+			for (let listener of this.listeners) listener(delta);
+		}
+	}
+	print() {
+		for (let { title, desc, url } of this.shown.values()) log$3.info(Locale("ADMIN_REC_CONSOLE", Locale(title), Locale(desc), url));
+	}
+}();
+recommendations.refresh(), on("onServerResourceStart", (resource) => recommendations.started(resource)), on("onResourceStop", (resource) => recommendations.stopped(resource)), phones.onSwitch(() => recommendations.refresh()), panel.onChange("settings", () => recommendations.refresh()), setTimeout(() => recommendations.print(), 15e3);
 // resource/server/admin/host.ts
 var AdminHost = class {
 	resources = new Set();
@@ -17903,7 +18421,8 @@ var AdminHost = class {
 			panels,
 			lookups: allLookups(),
 			external: externalPanels.list(),
-			updates: versions.list()
+			updates: versions.list(),
+			recommendations: recommendations.list()
 		};
 	}
 	close(source) {
@@ -17927,6 +18446,9 @@ var AdminHost = class {
 	changed(delta) {
 		for (let source of this.watchers) emitNet(ADMIN.deltaEvent, source, delta);
 	}
+	recommendationChanged(delta) {
+		for (let source of this.watchers) emitNet(ADMIN.recommendationEvent, source, delta);
+	}
 	call(resource) {
 		return GetResourceState(resource) === "started" ? globalThis.exports[resource] : null;
 	}
@@ -17936,13 +18458,14 @@ function describe(patch) {
 	let target = [
 		patch.file,
 		patch.key,
-		patch.section
+		patch.section,
+		patch.id
 	].filter((part) => typeof part == "string").join(".");
 	return `${String(patch.action)} ${target}`;
 }
 const adminHost = new AdminHost();
 // resource/server/admin/items.ts
-registerExport("RegisterAdminPanel", (resource) => {
+recommendations.onChange((delta) => adminHost.recommendationChanged(delta)), registerExport("RegisterAdminPanel", (resource) => {
 	typeof resource == "string" && adminHost.register(resource);
 }), registerExport("AdminPanelChanged", (delta) => adminHost.changed(delta)), onClientCallback(ADMIN.openCallback, {
 	guards: [isAdmin()],
@@ -18311,6 +18834,9 @@ function onlineRow(player) {
 		duty: player.jobs.onDuty() !== null
 	};
 }
+function sendList(admin, delta) {
+	TriggerLatentClientEvent(ADMIN_PLAYERS.deltaEvent, admin, 25e4, delta);
+}
 const playerWatchers = new class {
 	list = new Set();
 	byChar = new Map();
@@ -18318,8 +18844,22 @@ const playerWatchers = new class {
 	dirty = new Set();
 	gone = new Set();
 	timer = null;
+	rev = 0;
 	watchList(admin) {
 		this.list.add(admin);
+		let rev = ++this.rev, put = [], sent = !1;
+		for (let player of players.all()) put.push(onlineRow(player)), put.length < 500 || (sendList(admin, {
+			kind: "rows",
+			rev,
+			put,
+			remove: []
+		}), put = [], sent = !0);
+		(!sent || put.length > 0) && sendList(admin, {
+			kind: "rows",
+			rev,
+			put,
+			remove: []
+		});
 	}
 	watchChar(admin, charId) {
 		this.unwatchChar(admin), this.charOf.set(admin, charId);
@@ -18394,16 +18934,20 @@ const playerWatchers = new class {
 		this.timer = null;
 		let put = [];
 		for (let source of this.dirty) {
+			if (put.length >= 500) break;
+			this.dirty.delete(source);
 			let player = players.get(source);
 			player ? put.push(onlineRow(player)) : this.gone.add(source);
 		}
 		let delta = {
 			kind: "rows",
+			rev: ++this.rev,
 			put,
 			remove: [...this.gone]
 		};
-		this.dirty.clear(), this.gone.clear();
-		for (let admin of this.list) emitNet(ADMIN_PLAYERS.deltaEvent, admin, delta);
+		this.gone.clear();
+		for (let admin of this.list) sendList(admin, delta);
+		this.dirty.size > 0 && this.schedule();
 	}
 }(), OK = { ok: !0 }, fail = (error) => ({
 	ok: !1,
@@ -18816,6 +19360,19 @@ action("job", memberArgs, async (source, charId, job, grade) => {
 		value
 	}), result;
 });
+// resource/server/medical/adapters/ai-death.ts
+const death = resourceExport("ai-death"), medical = new AdapterPicker({
+	category: "medical",
+	adapters: [{
+		resource: "ai-death",
+		revive: (source) => death.Revive(source) === !0,
+		heal: (source) => death.Heal(source),
+		isDead: (source) => death.IsDead(source) === !0
+	}],
+	log: log$3,
+	noneText: "no death script runs: revive and heal do nothing"
+}), online = (v) => typeof v == "number" && isOnline(v);
+registerExport("GetMedicalSystem", () => medical.active?.resource ?? null), registerExport("RevivePlayer", (source) => online(source) && medical.call("revive", (a) => a.revive(source), !1)), registerExport("HealPlayer", (source) => online(source) && medical.call("heal", (a) => (a.heal(source), !0), !1)), registerExport("IsPlayerDead", (source) => online(source) && medical.call("isDead", (a) => a.isDead(source), !1));
 // resource/server/admin/players/world.ts
 function pedPosition(source) {
 	let ped = GetPlayerPed(String(source)), [x = 0, y = 0, z = 0] = GetEntityCoords(ped);
@@ -18845,9 +19402,11 @@ action("goto", charOnly, async (source, charId) => {
 	let id = parse.charId(charId), why = parse.text(reason ?? "", 0, 120);
 	return id === null || why === null ? null : [id, why];
 }, async (source, charId, reason) => await onCharacter(charId, (player) => player.source === source ? fail("ADMIN_PLAYERS_ERR_SELF") : (logEdit(source, charId, "kicked the player", { reason }, "warn"), DropPlayer(String(player.source), reason ? Locale("ADMIN_PLAYERS_KICKED_REASON", reason) : Locale("ADMIN_PLAYERS_KICKED")), OK), null)), action("revive", charOnly, async (source, charId) => {
-	let death = optionalExport("ai-death");
-	if (!death) return fail("ADMIN_PLAYERS_ERR_NO_DEATH");
-	let result = await onCharacter(charId, (player) => (death.Revive(player.source) !== !0 && death.Heal(player.source), notify(player.source, Locale("ADMIN_PLAYERS_NOTIFY_REVIVED"), "success"), OK), null);
+	if (!medical.active) return fail("ADMIN_PLAYERS_ERR_NO_DEATH");
+	let result = await onCharacter(charId, (player) => {
+		let target = player.source;
+		return medical.call("revive", (a) => a.revive(target), !1) || medical.call("heal", (a) => a.heal(target), void 0), notify(target, Locale("ADMIN_PLAYERS_NOTIFY_REVIVED"), "success"), OK;
+	}, null);
 	return result.ok && logEdit(source, charId, "revived the player"), result;
 }), action("item", ([charId, item, count, mode]) => {
 	let id = parse.charId(charId), name = parse.name(item), n = parse.int(count, 1, 1e4), m = mode === "give" || mode === "remove" ? mode : null;
@@ -18879,7 +19438,7 @@ action("goto", charOnly, async (source, charId) => {
 	if (players.byCharacter(charId)) return fail("ADMIN_PLAYERS_ERR_ONLINE");
 	let result = await claims.run(charId, BUSY$1, async () => players.byCharacter(charId) ? BUSY$1 : await softDelete(charId) ? OK : GONE);
 	return result.ok && (logEdit(source, charId, "deleted the character", {}, "warn"), playerWatchers.deleted(charId)), result;
-}), action("online", () => [], (source) => (playerWatchers.watchList(source), [...players.all()].map(onlineRow))), action("search", ([query, cursor]) => {
+}), action("online", () => [], (source) => (playerWatchers.watchList(source), { ok: !0 })), action("search", ([query, cursor]) => {
 	let q = typeof query == "string" ? parseSearch(query) : null, c = cursor == null ? null : parse.charId(cursor);
 	return q && (cursor == null || c !== null) ? [q, c] : null;
 }, async (_source, query, cursor) => (await searchReady, search(query, cursor, (charId) => players.byCharacter(charId)?.source ?? null))), action("open", ([charId]) => {
@@ -19242,12 +19801,68 @@ gate.add("ai-core:fivem", "ai-core", (source) => identify(source) ? null : Local
 	let names = (Array.isArray(remove) ? remove : [remove]).filter((n) => typeof n == "string" && n !== ""), caller = GetInvokingResource(), owner = typeof keep == "string" && keep ? keep : caller;
 	owner && names.length > 0 && conflicts.declare(owner, names, caller ?? owner);
 }), registerExport("GetConflicts", () => conflicts.list().map((c) => ({ ...c })));
+// resource/server/buckets/pool.ts
+const buckets = new class {
+	next = 1e3;
+	free = [];
+	leases = new Map();
+	byOwner = new Map();
+	acquire(owner, tag) {
+		let id = this.free.pop() ?? this.next++;
+		this.leases.set(id, {
+			owner,
+			tag
+		});
+		let set = this.byOwner.get(owner);
+		return set || this.byOwner.set(owner, set = new Set()), set.add(id), id;
+	}
+	release(owner, id) {
+		if (this.leases.get(id)?.owner !== owner) return !1;
+		this.leases.delete(id);
+		let set = this.byOwner.get(owner);
+		return set?.delete(id), set?.size === 0 && this.byOwner.delete(owner), this.free.push(id), !0;
+	}
+	releaseOwner(owner) {
+		let ids = [...this.byOwner.get(owner) ?? []];
+		for (let id of ids) this.release(owner, id);
+		return ids;
+	}
+	tagOf(id) {
+		return this.leases.get(id)?.tag;
+	}
+	get size() {
+		return this.leases.size;
+	}
+}();
+function acquireBucket(owner, tag) {
+	let id = buckets.acquire(owner, tag);
+	return SetRoutingBucketPopulationEnabled(id, !1), SetRoutingBucketEntityLockdownMode(id, "strict"), id;
+}
+const tagOf = (v) => typeof v == "string" && v ? v.slice(0, 64) : "unnamed", caller = () => GetInvokingResource() || CORE.resource;
+registerExport("AcquireBucket", (tag) => acquireBucket(caller(), tagOf(tag))), registerExport("ReleaseBucket", (id) => typeof id == "number" && buckets.release(caller(), id)), on("onResourceStop", (resource) => {
+	if (resource === CORE.resource) return;
+	let ids = buckets.releaseOwner(resource);
+	ids.length > 0 && log$3.info(`${resource} stopped: ${ids.length} routing buckets free again`);
+});
+const select = new class {
+	held = new Map();
+	enter(source) {
+		let id = this.held.get(source);
+		id === void 0 && (id = acquireBucket(CORE.resource, "character-screen"), this.held.set(source, id)), SetPlayerRoutingBucket(String(source), id);
+	}
+	leave(source) {
+		let id = this.held.get(source);
+		id !== void 0 && (this.held.delete(source), buckets.release(CORE.resource, id));
+	}
+}();
 function enterSelectBucket(source) {
-	let bucket = 5e4 + source;
-	SetRoutingBucketPopulationEnabled(bucket, !1), SetRoutingBucketEntityLockdownMode(bucket, "strict"), SetPlayerRoutingBucket(String(source), bucket);
+	select.enter(source);
 }
 function enterWorldBucket(source) {
-	SetPlayerRoutingBucket(String(source), 0);
+	SetPlayerRoutingBucket(String(source), 0), select.leave(source);
+}
+function leaveSelectBucket(source) {
+	select.leave(source);
 }
 // resource/server/jobs/principals.ts
 const principal = (kind, name, grade) => grade === void 0 ? `ai.${kind}.${name}` : `ai.${kind}.${name}.${grade}`;
@@ -19675,7 +20290,7 @@ function switchCharacter(source) {
 }
 registerExport("SwitchCharacter", switchCharacter), on("playerDropped", () => {
 	let source = Number(globalThis.source);
-	lock.release(source), selecting.delete(source);
+	lock.release(source), selecting.delete(source), leaveSelectBucket(source);
 	let player = players.get(source);
 	player && unloadCharacter(player, "dropped");
 });
@@ -19690,6 +20305,25 @@ new GlobalKey("ai:pedDeath", stateBoolean).set(supported), supported ? on("onPed
 	let source = sourceOfPed(ped);
 	source !== null && emit(CORE.playerDiedEvent, source, sourceOfPed(attacker), weaponHash);
 }) : log$3.info(`FXServer ${build} has no onPedDeath (${PED_EVENTS_MIN_BUILD}+): death resources watch health on the client`);
+// resource/server/player/offlinePosition.ts
+const finite = (v) => typeof v == "number" && Number.isFinite(v);
+function toPosition(v) {
+	if (!isRecord(v)) return null;
+	let { x, y, z, heading } = v;
+	return finite(x) && finite(y) && finite(z) ? {
+		x,
+		y,
+		z,
+		heading: finite(heading) ? heading : 0
+	} : null;
+}
+async function setOfflinePosition(charId, p) {
+	await waitFor(() => !claims.has(charId) || void 0, 3e4), await claims.run(charId, !1, async () => (players.byCharacter(charId) || !await characterExists(charId) || await offline.position(charId, p), !0)) || log$3.warn(`offline position of #${charId} skipped: character busy`);
+}
+registerExport("SetOfflinePosition", (charId, position) => {
+	let p = toPosition(position);
+	return typeof charId != "number" || !Number.isInteger(charId) || !p || players.byCharacter(charId) ? !1 : (setOfflinePosition(charId, p).catch((error) => log$3.error(`offline position of #${charId} failed`, error)), !0);
+});
 // resource/server/persistence.ts
 async function saveAll() {
 	await saveCharacters([...players.all()].map((player) => player.saveData()));
@@ -19703,12 +20337,75 @@ function saveNow(why) {
 setInterval(() => saveNow("interval"), settings.saveIntervalMinutes * 6e4), on("txAdmin:events:serverShuttingDown", () => saveNow("shutdown")), on("onResourceStop", (resource) => {
 	resource === GetCurrentResourceName() && saveNow("resource stop");
 });
+// resource/server/jobs/primeTime/adapters/tgiann-policealert.ts
+const RESOURCE = "tgiann-policealert", PRIME_TIME_SYSTEMS = [{
+	resource: RESOURCE,
+	version: "2.9.0",
+	isPrimeTime: (job) => callExport(RESOURCE, "IsPrimeTime", job) === !0
+}];
+// resource/server/jobs/primeTime/index.ts
+function inPrimeHours(hour, { start, finish }) {
+	return start === finish ? !0 : start < finish ? hour >= start && hour < finish : hour >= start || hour < finish;
+}
+const primeTime = new class {
+	up = new Set(PRIME_TIME_SYSTEMS.filter((a) => isResourceStarted(a.resource)).map((a) => a.resource));
+	warned = new Set();
+	constructor() {
+		let names = new Set(PRIME_TIME_SYSTEMS.map((a) => a.resource));
+		on("onServerResourceStart", (resource) => {
+			names.has(resource) && (this.up.add(resource), this.publish());
+		}), on("onResourceStop", (resource) => {
+			this.up.delete(resource) && this.publish();
+		}), panel.onChange("settings", () => this.publish()), setImmediate(() => this.publish());
+	}
+	source() {
+		let choice = settings.primeTime.source;
+		if (choice === "ai-core") return "ai-core";
+		if (choice === "auto") return PRIME_TIME_SYSTEMS.find((a) => this.up.has(a.resource)) ?? "ai-core";
+		let picked = PRIME_TIME_SYSTEMS.find((a) => a.resource === choice);
+		return picked && this.up.has(picked.resource) ? picked : "none";
+	}
+	isPrimeTime(job) {
+		let source = this.source();
+		if (source === "none") return !0;
+		if (source !== "ai-core") try {
+			return source.isPrimeTime(job);
+		} catch (error) {
+			log$3.error(`${source.resource} IsPrimeTime failed, using ai-core's hours`, error);
+		}
+		let hours = job && jobs.get(job)?.prime || settings.primeTime;
+		return inPrimeHours(new Date().getHours(), hours);
+	}
+	publish() {
+		let source = this.source(), active = typeof source == "string" ? source : source.resource;
+		typeof source != "string" && this.checkVersion(source);
+		let current = panel.get("settings");
+		current.primeTimeActive !== active && (panel.commit("settings", void 0, {
+			...current,
+			primeTimeActive: active
+		}), log$3.info(`prime time hours from: ${active}`));
+	}
+	checkVersion(adapter) {
+		let installed = GetResourceMetadata(adapter.resource, "version", 0);
+		adapter.version && installed !== adapter.version && (this.warned.has(adapter.resource) || (this.warned.add(adapter.resource), log$3.warn(`prime time: ${adapter.resource} ${installed} runs, the adapter is written for ${adapter.version}`)));
+	}
+}();
+registerExport("IsPrimeTime", (job) => primeTime.isPrimeTime(typeof job == "string" && job ? job : void 0));
 // resource/server/jobs/paycheck.ts
+function salaryOf(job, grade, offPrime) {
+	let def = jobs.get(job)?.grades[grade];
+	return def ? offPrime ? def.offPrimePayment > 0 ? def.offPrimePayment : Math.floor(def.salary * settings.primeTime.offPrimeMultiplier) : def.salary : 0;
+}
 async function payAll() {
+	let offPrime = new Map();
 	for (let player of players.all()) {
 		let job = player.jobs.onDuty();
 		if (!job) continue;
-		let grade = player.jobs.grade(job), salary = grade === null ? 0 : jobs.get(job)?.grades[grade]?.salary ?? 0;
+		let grade = player.jobs.grade(job);
+		if (grade === null) continue;
+		let off = offPrime.get(job);
+		off === void 0 && (off = settings.primeTime.enabled && !primeTime.isPrimeTime(job), offPrime.set(job, off));
+		let salary = salaryOf(job, grade, off);
 		if (!(salary <= 0)) {
 			if (settings.paycheck.fromJobAccount) {
 				let funds = (await sharedAccounts.load("job", job)).get(settings.paycheck.account);
@@ -19721,38 +20418,48 @@ async function payAll() {
 settings.paycheck.intervalMinutes > 0 && setInterval(() => {
 	payAll().catch((error) => log$3.error("paycheck failed", error));
 }, settings.paycheck.intervalMinutes * 6e4);
+// resource/server/money/transfer.ts
+function sideOf(ref) {
+	if (!isRecord(ref) || typeof ref.account != "string") return null;
+	let account = ref.account;
+	if (typeof ref.source == "number") {
+		let wallet = players.get(ref.source)?.wallet;
+		return wallet?.has(account) ? {
+			key: `character:${ref.source}:${account}`,
+			change: (delta, reason) => wallet.change(account, delta, reason).ok
+		} : null;
+	}
+	if ((ref.owner === "job" || ref.owner === "gang") && typeof ref.id == "string") {
+		let shared = sharedAccounts.get(ref.owner, ref.id, account);
+		return shared ? {
+			key: `${ref.owner}:${ref.id}:${account}`,
+			change: (delta, reason) => shared.change(delta, reason).ok
+		} : null;
+	}
+	return null;
+}
+const whole = (v, min) => typeof v == "number" && Number.isSafeInteger(v) && v >= min;
+function transferMoney(from, to, amount, reason, fee = 0) {
+	if (!whole(amount, 1) || !whole(fee, 0)) return !1;
+	let a = sideOf(from), b = sideOf(to);
+	return !a || !b || a.key === b.key || !a.change(-(amount + fee), reason) ? !1 : b.change(amount, reason) ? !0 : (a.change(amount + fee, `${reason}:refund`), !1);
+}
 // resource/server/exports.ts
 const positive = (amount) => typeof amount == "number" && Number.isSafeInteger(amount) && amount > 0, reasonOf = (reason) => typeof reason == "string" && reason ? reason : GetInvokingResource() || "unknown";
 registerExport("GetPlayerData", (src) => players.get(src)?.snapshot() ?? null), registerExport("GetCharacter", (src) => players.get(src)?.info() ?? null), registerExport("GetSourceByCharId", (charId) => players.byCharacter(charId)?.source ?? null), registerExport("GetSourceByCitizenId", (citizenid) => players.byCitizen(citizenid)?.source ?? null), registerExport("GetLoadedSources", () => [...players.all()].map((player) => player.source)), registerExport("GetFivemId", (src) => players.get(src)?.user.fivem ?? null), registerExport("GetMoney", (src, account) => players.get(src)?.wallet.get(account) ?? null), registerExport("AddMoney", (src, account, amount, reason) => positive(amount) ? players.get(src)?.wallet.change(account, amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("RemoveMoney", (src, account, amount, reason) => positive(amount) ? players.get(src)?.wallet.change(account, -amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("SetMoney", (src, account, amount, reason) => players.get(src)?.wallet.set(account, amount, reasonOf(reason)).ok ?? !1), registerExport("GetJobs", (src) => players.get(src)?.jobs.all() ?? null), registerExport("GetCurrentJob", (src) => players.get(src)?.jobs.current() ?? null), registerExport("GetDutyJob", (src) => players.get(src)?.jobs.onDuty() ?? null), registerExport("SetDuty", (src, job) => players.get(src)?.jobs.setDuty(job).ok ?? !1), registerExport("SetJob", (src, job, grade) => players.get(src)?.jobs.set(job, grade).ok ?? !1), registerExport("RemoveJob", (src, job) => players.get(src)?.jobs.remove(job).ok ?? !1), registerExport("GetOnDutyCount", (job) => dutyCount(job)), registerExport("GetGangs", (src) => players.get(src)?.gangs.all() ?? null), registerExport("GetActiveGang", (src) => players.get(src)?.gangs.activeGang() ?? null), registerExport("SetGang", (src, gang, grade) => players.get(src)?.gangs.set(gang, grade).ok ?? !1), registerExport("RemoveGang", (src, gang) => players.get(src)?.gangs.remove(gang).ok ?? !1), registerExport("SetActiveGang", (src, gang) => players.get(src)?.gangs.setActive(gang).ok ?? !1), registerExport("GetMeta", (src, key) => players.get(src)?.getMeta(key) ?? null), registerExport("SetMeta", (src, key, value) => {
 	let player = players.get(src);
 	return !player || typeof key != "string" ? !1 : (player.setMeta(key, value), !0);
-}), registerExport("GetJobDefinitions", () => Object.fromEntries(jobs)), registerExport("GetGangDefinitions", () => Object.fromEntries(gangs)), registerExport("GetAccountTypes", () => Object.fromEntries(accountTypes)), registerExport("GetSharedMoney", (ownerType, ownerId, account) => sharedAccounts.get(ownerType, ownerId, account)?.balance ?? null), registerExport("AddSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("RemoveSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(-amount, reasonOf(reason)).ok ?? !1 : !1);
+}), registerExport("GetJobDefinitions", () => Object.fromEntries(jobs)), registerExport("GetGangDefinitions", () => Object.fromEntries(gangs)), registerExport("GetAccountTypes", () => Object.fromEntries(accountTypes)), registerExport("GetSharedMoney", (ownerType, ownerId, account) => sharedAccounts.get(ownerType, ownerId, account)?.balance ?? null), registerExport("AddSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("RemoveSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(-amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("TransferMoney", (from, to, amount, reason, fee) => transferMoney(from, to, amount, reasonOf(reason), fee ?? 0));
 // resource/server/vehicleKeys/index.ts
-const activeKeys = new GlobalKey("ai:vehicleKeys", stateString), layer = new class {
-	current = null;
-	choice = "auto";
-	setChoice(choice) {
-		this.choice = choice, this.select();
-	}
-	select(stopping) {
-		let runs = (a) => a.resource !== stopping && isResourceStarted(a.resource), next = (this.choice === "auto" || !KEY_SYSTEMS.some((a) => a.resource === this.choice) ? KEY_SYSTEMS.find(runs) : KEY_SYSTEMS.find((a) => a.resource === this.choice && runs(a))) ?? null;
-		next !== this.current && (this.current = next, activeKeys.set(next?.resource), log$3.info(next ? `vehicle keys: ${next.resource}` : "no vehicle key system runs: every player counts as holding every key"));
-	}
-	run(what, fn, fallback) {
-		let adapter = this.current;
-		if (!adapter) return fallback;
-		try {
-			return fn(adapter);
-		} catch (error) {
-			return log$3.error(`${adapter.resource} ${what} failed`, error), fallback;
-		}
-	}
-}();
-layer.setChoice(settings.vehicleKeys), panel.onChange("settings", () => layer.setChoice(settings.vehicleKeys));
-const candidates$1 = new Set(KEY_SYSTEMS.map((a) => a.resource));
-on("onServerResourceStart", (resource) => candidates$1.has(resource) && layer.select()), on("onResourceStop", (resource) => {
-	candidates$1.has(resource) && (layer.select(resource), setTimeout(() => layer.select(), 0));
+const activeKeys = new GlobalKey("ai:vehicleKeys", stateString), layer = new AdapterPicker({
+	category: "vehicle keys",
+	adapters: KEY_SYSTEMS,
+	log: log$3,
+	choice: settings.vehicleKeys,
+	noneText: "no vehicle key system runs: every player counts as holding every key",
+	onSwitch: (next) => activeKeys.set(next?.resource)
 });
+panel.onChange("settings", () => layer.setChoice(settings.vehicleKeys));
 function target(vehicle) {
 	return typeof vehicle == "string" ? vehicle.trim() ? {
 		vehicle: null,
@@ -19766,13 +20473,13 @@ function target(vehicle) {
 }
 registerExport("GiveVehicleKeys", (source, vehicle, purpose) => {
 	let t = target(vehicle);
-	typeof source == "number" && t && layer.run("give", (a) => a.give(source, t, toKeyPurpose(purpose)), void 0);
+	typeof source == "number" && t && layer.call("give", (a) => a.give(source, t, toKeyPurpose(purpose)), void 0);
 }), registerExport("RemoveVehicleKeys", (source, vehicle) => {
 	let t = target(vehicle);
-	typeof source == "number" && t && layer.run("remove", (a) => a.remove(source, t), void 0);
+	typeof source == "number" && t && layer.call("remove", (a) => a.remove(source, t), void 0);
 }), registerExport("HasVehicleKeys", (source, vehicle) => {
 	let t = target(vehicle);
-	return typeof source != "number" || !t ? !1 : layer.run("has", (a) => !a.has || a.has(source, t), !0);
+	return typeof source != "number" || !t ? !1 : layer.call("has", (a) => !a.has || a.has(source, t), !0);
 });
 // resource/server/interaction.ts
 const style = new GlobalKey(CORE.interactionStateKey, stateString), publish = () => style.set(settings.interaction);
@@ -19830,145 +20537,55 @@ scopes.start(), registerExport("GetPlayersInScope", (source) => typeof source ==
 	emitNet("ai-core:client:setupWelcome", source, welcome);
 });
 // resource/server/world.ts
-const SYSTEM = "qb-weathersync";
-function call(name, ...args) {
-	if (isResourceStarted(SYSTEM)) try {
-		return callExport(SYSTEM, name, ...args);
-	} catch {
-		return;
-	}
-}
+const weather = new AdapterPicker({
+	category: "weather",
+	adapters: [{ resource: "qb-weathersync" }],
+	log: log$3,
+	noneText: "no weather script runs: time and weather calls answer null"
+}), call = (name, ...args) => weather.call(name, (a) => callExport(a.resource, name, ...args), void 0);
 registerExport("GetWeather", () => {
 	let w = call("getWeatherState");
 	return typeof w == "string" ? w : null;
-}), registerExport("SetWeather", (type) => typeof type == "string" && call("setWeather", type.toUpperCase()) !== !1 && isResourceStarted(SYSTEM)), registerExport("GetTime", () => {
+}), registerExport("SetWeather", (type) => typeof type == "string" && call("setWeather", type.toUpperCase()) !== !1 && weather.active !== null), registerExport("GetTime", () => {
 	let t = call("getTime");
 	return isRecord(t) && typeof t.hour == "number" ? {
 		hour: t.hour,
 		minute: typeof t.minute == "number" ? t.minute : 0
 	} : null;
-}), registerExport("SetTime", (hour, minute) => typeof hour == "number" && call("setTime", Math.floor(hour) % 24, typeof minute == "number" ? Math.floor(minute) % 60 : 0) !== !1 && isResourceStarted(SYSTEM)), registerExport("SetBlackout", (on) => call("setBlackout", on === !0) !== !1 && isResourceStarted(SYSTEM)), registerExport("FreezeTime", (on) => call("setTimeFreeze", on === !0) !== !1 && isResourceStarted(SYSTEM));
-// resource/server/phone/adapters/lb-phone.ts
-const phone$1 = (name, ...args) => callExport("lb-phone", name, ...args), text$1 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, lbPhone = {
-	resource: "lb-phone",
-	number: (source) => text$1(phone$1("GetEquippedPhoneNumber", source)),
-	sourceOf: (number) => {
-		let s = phone$1("GetSourceFromNumber", number);
-		return typeof s == "number" ? s : null;
-	},
-	hasPhone: (source) => phone$1("HasPhoneItem", source) === !0,
-	mail: (to, m) => phone$1("SendMail", {
-		to,
-		sender: m.sender,
-		subject: m.subject,
-		message: m.message
-	}) !== !1,
-	message: (from, to, body) => phone$1("SendMessage", from, to, body) !== !1,
-	notify: (source, n) => phone$1("SendNotification", source, {
-		app: n.app,
-		title: n.title,
-		content: n.message
-	}) != null
-}, phone = (name, ...args) => callExport("tgiann-phone", name, ...args), text = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, PHONES = [{
-	resource: "tgiann-phone",
-	number: (source) => text(phone("GetPhoneNumber", source)),
-	sourceOf: (number) => {
-		let s = phone("GetSourceByNumber", number);
-		return typeof s == "number" ? s : null;
-	},
-	hasPhone: (source) => phone("HasPhone", source) === !0,
-	mail: (to, m) => phone("SendMail", {
-		to,
-		from: m.sender,
-		subject: m.subject,
-		message: m.message
-	}) !== !1,
-	message: (from, to, body) => phone("SendSms", from, to, { body }) !== !1,
-	notify: (source, n) => phone("SendNotification", source, {
-		app: n.app,
-		title: n.title,
-		content: n.message
-	}) != null
-}, lbPhone];
-function run(what, fn, fallback) {
-	let adapter = PHONES.find((a) => isResourceStarted(a.resource));
-	if (!adapter) return fallback;
-	try {
-		return fn(adapter);
-	} catch (error) {
-		return log$3.error(`${adapter.resource} ${what} failed`, error), fallback;
-	}
-}
-const toMail = (v) => isRecord(v) && typeof v.subject == "string" && typeof v.message == "string" ? {
-	sender: typeof v.sender == "string" ? v.sender : "",
-	subject: v.subject.slice(0, 120),
-	message: v.message.slice(0, 4e3)
-} : null, toNotification = (v) => isRecord(v) && typeof v.title == "string" ? {
-	title: v.title.slice(0, 80),
-	message: typeof v.message == "string" ? v.message.slice(0, 500) : "",
-	app: typeof v.app == "string" ? v.app : void 0
-} : null, numberOf = (to) => typeof to == "number" ? run("number", (a) => a.number(to), null) : typeof to == "string" && to ? to : null;
-registerExport("GetPhoneNumber", (source) => typeof source == "number" ? run("number", (a) => a.number(source), null) : null), registerExport("GetSourceByPhone", (number) => typeof number == "string" ? run("sourceOf", (a) => a.sourceOf(number), null) : null), registerExport("HasPhone", (source) => typeof source == "number" && run("hasPhone", (a) => a.hasPhone(source), !1)), registerExport("SendPhoneMail", (to, mail) => {
-	let number = numberOf(to), m = toMail(mail);
-	return number !== null && m !== null && run("mail", (a) => a.mail(number, m), !1);
-}), registerExport("SendPhoneMessage", (from, to, text) => {
-	let number = numberOf(to);
-	return typeof from == "string" && typeof text == "string" && number !== null && run("message", (a) => a.message(from, number, text.slice(0, 1e3)), !1);
-}), registerExport("PhoneNotify", (source, notification) => {
-	let n = toNotification(notification);
-	return typeof source == "number" && n !== null && run("notify", (a) => a.notify(source, n), !1);
+}), registerExport("SetTime", (hour, minute) => typeof hour == "number" && call("setTime", Math.floor(hour) % 24, typeof minute == "number" ? Math.floor(minute) % 60 : 0) !== !1 && weather.active !== null), registerExport("SetBlackout", (on) => call("setBlackout", on === !0) !== !1 && weather.active !== null), registerExport("FreezeTime", (on) => call("setTimeFreeze", on === !0) !== !1 && weather.active !== null);
+// resource/server/dispatch/index.ts
+const dispatch = new AdapterPicker({
+	category: "dispatch",
+	adapters: DISPATCH_SYSTEMS,
+	log: log$3,
+	choice: settings.dispatch,
+	noneText: "no alert system runs: police alerts go nowhere"
 });
-const dispatch = new class {
-	current = null;
-	choice = "auto";
-	get active() {
-		return this.current;
+panel.onChange("settings", () => dispatch.setChoice(settings.dispatch));
+function sendAlert(alert) {
+	let source = alert.source !== void 0 && isOnline(alert.source) ? alert.source : void 0, coords = alert.coords;
+	if (!coords && source !== void 0) {
+		let [x = 0, y = 0, z = 0] = GetEntityCoords(GetPlayerPed(String(source)));
+		coords = {
+			x,
+			y,
+			z
+		};
 	}
-	setChoice(choice) {
-		this.choice = choice, this.select();
-	}
-	select(stopping) {
-		let runs = (a) => a.resource !== stopping && isResourceStarted(a.resource), next = (this.choice === "auto" || !DISPATCH_SYSTEMS.some((a) => a.resource === this.choice) ? DISPATCH_SYSTEMS.find(runs) : DISPATCH_SYSTEMS.find((a) => a.resource === this.choice && runs(a))) ?? null;
-		if (next === this.current) return;
-		this.current = next, log$3.info(next ? `dispatch: ${next.resource}` : "no alert system runs: police alerts go nowhere");
-		let installed = next?.version && GetResourceMetadata(next.resource, "version", 0);
-		next?.version && installed !== next.version && log$3.warn(`${next.resource} ${installed || "?"} is installed; its adapter is written for ${next.version}`);
-	}
-	send(alert) {
-		let adapter = this.current;
-		if (!adapter) return !1;
-		let source = alert.source !== void 0 && isOnline(alert.source) ? alert.source : void 0, coords = alert.coords;
-		if (!coords && source !== void 0) {
-			let [x = 0, y = 0, z = 0] = GetEntityCoords(GetPlayerPed(String(source)));
-			coords = {
-				x,
-				y,
-				z
-			};
-		}
-		try {
-			return adapter.alert({
-				...alert,
-				source,
-				coords
-			}), !0;
-		} catch (error) {
-			return log$3.error(`${adapter.resource} alert failed`, error), !1;
-		}
-	}
-}();
-dispatch.setChoice(settings.dispatch), panel.onChange("settings", () => dispatch.setChoice(settings.dispatch));
-const candidates = new Set(DISPATCH_SYSTEMS.map((a) => a.resource));
-on("onServerResourceStart", (resource) => candidates.has(resource) && dispatch.select()), on("onResourceStop", (resource) => {
-	candidates.has(resource) && (dispatch.select(resource), setTimeout(() => dispatch.select(), 0));
-}), registerExport("SendDispatchAlert", (raw) => {
+	return dispatch.call("alert", (a) => (a.alert({
+		...alert,
+		source,
+		coords
+	}), !0), !1);
+}
+registerExport("SendDispatchAlert", (raw) => {
 	let alert = toDispatchAlert(raw);
-	return alert !== null && dispatch.send(alert);
+	return alert !== null && sendAlert(alert);
 });
 // resource/server/dispatch/compat.ts
 const QB_POLICE_ALERT = "police:server:policeAlert", toText = (v) => typeof v == "string" && v.trim() ? v.trim().slice(0, 120) : null;
 function qbAlert(text, source) {
-	dispatch.active?.answersPoliceAlert || dispatch.send({
+	dispatch.active?.answersPoliceAlert || sendAlert({
 		title: text,
 		source,
 		priority: "normal"
@@ -20004,7 +20621,7 @@ addCommand("aicore_alert", {
 		optional: !0
 	}]
 }, (source, args) => {
-	let sent = dispatch.send({
+	let sent = sendAlert({
 		code: "10-99",
 		title: Locale("DISPATCH_TEST_TITLE"),
 		message: Locale("DISPATCH_TEST_MESSAGE"),

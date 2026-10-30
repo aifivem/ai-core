@@ -24,6 +24,18 @@ export function onlineRow(player: Player): OnlineRow {
 
 /** List rows are collected and sent once per this window (a restart loads thousands of characters in a minute). */
 const LIST_FLUSH_MS = 1000;
+/** Rows per list event (~60 KB); a flush with more sends the rest in the next windows. */
+const ROWS_PER_EVENT = 500;
+/** Latent send rate per admin: 2,048 rows (~240 KB) arrive in about a second without holding up other traffic. */
+const LIST_BPS = 250_000;
+
+/**
+ * List traffic (snapshot and row deltas) goes latent (multi-KB). Latent events can arrive out of order, so each
+ * carries a revision and the NUI keeps a row only when it is newer than what it has for that player.
+ */
+function sendList(admin: number, delta: PlayersDelta): void {
+  TriggerLatentClientEvent(ADMIN_PLAYERS.deltaEvent, admin, LIST_BPS, delta);
+}
 
 /**
  * Admins with the Players screen open: the list watchers get the online rows that changed, a character's watchers
@@ -37,9 +49,24 @@ class PlayerWatchers {
   private readonly dirty = new Set<number>();
   private readonly gone = new Set<number>();
   private timer: ReturnType<typeof setTimeout> | null = null;
+  /** Revision of list messages: a later message wins per player, whatever order they arrive in. */
+  private rev = 0;
 
+  /** Subscribes an admin to the online list and sends it as `rows` chunks of one revision (at least one chunk). */
   watchList(admin: number): void {
     this.list.add(admin);
+    const rev = ++this.rev;
+    let put: OnlineRow[] = [];
+    let sent = false;
+    for (const player of players.all()) {
+      put.push(onlineRow(player));
+      if (put.length < ROWS_PER_EVENT) continue;
+      sendList(admin, { kind: "rows", rev, put, remove: [] });
+      put = [];
+      sent = true;
+    }
+    if (!sent || put.length > 0)
+      sendList(admin, { kind: "rows", rev, put, remove: [] });
   }
 
   /** An admin watches one character at a time; opening another replaces it. */
@@ -124,15 +151,21 @@ class PlayerWatchers {
     this.timer = null;
     const put: OnlineRow[] = [];
     for (const source of this.dirty) {
+      if (put.length >= ROWS_PER_EVENT) break;
+      this.dirty.delete(source);
       const player = players.get(source);
       if (player) put.push(onlineRow(player));
       else this.gone.add(source);
     }
-    const delta: PlayersDelta = { kind: "rows", put, remove: [...this.gone] };
-    this.dirty.clear();
+    const delta: PlayersDelta = {
+      kind: "rows",
+      rev: ++this.rev,
+      put,
+      remove: [...this.gone],
+    };
     this.gone.clear();
-    for (const admin of this.list)
-      emitNet(ADMIN_PLAYERS.deltaEvent, admin, delta);
+    for (const admin of this.list) sendList(admin, delta);
+    if (this.dirty.size > 0) this.schedule();
   }
 }
 

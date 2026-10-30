@@ -23,7 +23,11 @@ import { settings } from "../content";
 import { databaseReady } from "../database";
 import { log } from "../log";
 import { coreLog } from "../logs";
-import { enterSelectBucket, enterWorldBucket } from "./buckets";
+import {
+  enterSelectBucket,
+  enterWorldBucket,
+  leaveSelectBucket,
+} from "./buckets";
 import { Player } from "./player";
 import { claims, players, selecting } from "./registry";
 import { characterScreen, slotsOf } from "./screen";
@@ -204,6 +208,7 @@ on("playerDropped", () => {
   const source = Number(globalThis.source);
   lock.release(source);
   selecting.delete(source);
+  leaveSelectBucket(source);
   const player = players.get(source);
   if (player) void unloadCharacter(player, "dropped");
 });

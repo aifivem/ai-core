@@ -208,6 +208,22 @@ export function mockAdminOpen():
         url: "https://github.com/TGIANN/ai-fuel/releases/tag/v0.1.3",
       },
     ],
+    recommendations: [
+      {
+        id: "tgiann-phone",
+        title: "ADMIN_REC_TGIANN_PHONE",
+        desc: "ADMIN_REC_TGIANN_PHONE_DESC",
+        url: "https://www.tgiann.com/package/fivem-phone",
+        free: false,
+      },
+      {
+        id: "tgiann-esc-map",
+        title: "ADMIN_REC_TGIANN_ESC_MAP",
+        desc: "ADMIN_REC_TGIANN_ESC_MAP_DESC",
+        url: "https://www.tgiann.com/package/fivem-custom-esc-map-blip-system",
+        free: true,
+      },
+    ],
     external: [
       {
         id: "panel:craft",

@@ -1,6 +1,5 @@
 import {
   GlobalKey,
-  isResourceStarted,
   registerExport,
   stateString,
 } from "@aicore-fivem/lib/server";
@@ -23,30 +22,16 @@ import { INVENTORIES } from "./registry";
 
 const activeInventory = new GlobalKey(INVENTORY_STATE_KEY, stateString);
 
-export const inventory = new InventoryLayer(INVENTORIES, {
-  isStarted: isResourceStarted,
-  version: (resource) => GetResourceMetadata(resource, "version", 0) || "?",
-  announce: (resource) => {
+export const inventory = new InventoryLayer(
+  INVENTORIES,
+  settings.inventory,
+  log,
+  (resource) => {
     activeInventory.set(resource ?? undefined);
     emit(CORE.inventoryChangedEvent, resource);
   },
-  log,
-});
-
-inventory.setChoice(settings.inventory);
-panel.onChange("settings", () => inventory.setChoice(settings.inventory));
-
-const candidates = new Set(INVENTORIES.map((adapter) => adapter.resource));
-on(
-  "onServerResourceStart",
-  (resource: string) => candidates.has(resource) && inventory.select(),
 );
-on("onResourceStop", (resource: string) => {
-  if (!candidates.has(resource)) return;
-  inventory.select(resource);
-  // Names the stopping resource `provide`s may still read started during its stop event.
-  setTimeout(() => inventory.select(), 0);
-});
+panel.onChange("settings", () => inventory.setChoice(settings.inventory));
 
 const ref = (v: unknown): InventoryRef | null =>
   typeof v === "number" || (typeof v === "string" && v !== "") ? v : null;

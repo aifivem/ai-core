@@ -1,8 +1,10 @@
 import {
+  cache,
   hud,
   Keybind,
   loadLocaleTexts,
   onServerEvent,
+  player,
   triggerServerCallback,
 } from "@aicore-fivem/lib/client";
 import { isRecord, record } from "@aicore-fivem/lib/shared";
@@ -90,6 +92,14 @@ onServerEvent(ADMIN.deltaEvent, { args: ([delta]) => [delta] }, (delta) => {
   if (panel.isOpen)
     SendNUIMessage({ action: NuiMessage.adminDelta, data: delta });
 });
+onServerEvent(
+  ADMIN.recommendationEvent,
+  { args: ([delta]) => [delta] },
+  (delta) => {
+    if (panel.isOpen)
+      SendNUIMessage({ action: NuiMessage.adminRecommendation, data: delta });
+  },
+);
 
 RegisterNuiCallback(NuiCallback.adminApply, (data: unknown, cb: NuiReply) => {
   if (!isRecord(data)) return cb({ ok: false, error: "ADMIN_ERR_TYPE" });
@@ -109,7 +119,7 @@ RegisterNuiCallback(
   (data: unknown, cb: NuiReply) => {
     const camera = isRecord(data) && data.from === "camera";
     const ground = isRecord(data) && data.ground === true;
-    const ped = PlayerPedId();
+    const ped = cache.ped;
     const [x = 0, y = 0, root = 0] = camera
       ? GetFinalRenderedCamCoord()
       : GetEntityCoords(ped, false);
@@ -134,33 +144,15 @@ RegisterNuiCallback(
       typeof data.x === "number" &&
       typeof data.y === "number" &&
       typeof data.z === "number"
-    ) {
-      const ped = PlayerPedId();
-      RequestCollisionAtCoord(data.x, data.y, data.z);
-      // A floor point (door, ground spot) is where the feet go: SetEntityCoords stands the ped on it; the others are the body's centre.
-      if (data.ground === true)
-        SetEntityCoords(
-          ped,
-          data.x,
-          data.y,
-          data.z,
-          false,
-          false,
-          false,
-          false,
-        );
-      else
-        SetEntityCoordsNoOffset(
-          ped,
-          data.x,
-          data.y,
-          data.z,
-          false,
-          false,
-          false,
-        );
-      if (typeof data.heading === "number") SetEntityHeading(ped, data.heading);
-    }
+    )
+      // A floor point (door, ground spot) is where the feet go; the others are the body's centre.
+      void player.teleport(
+        { x: data.x, y: data.y, z: data.z },
+        {
+          ground: data.ground === true,
+          heading: typeof data.heading === "number" ? data.heading : undefined,
+        },
+      );
     cb(true);
   },
 );
@@ -202,7 +194,7 @@ RegisterNuiCallback(
         : null;
     const [x = 0, y = 0, z = 0] = at
       ? [at.x as number, at.y as number, at.z as number]
-      : GetEntityCoords(PlayerPedId(), false);
+      : GetEntityCoords(cache.ped, false);
     cb(placeNames(x, y, z));
   },
 );

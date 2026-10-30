@@ -4,6 +4,7 @@ import {
   stateString,
 } from "@aicore-fivem/lib/client";
 import { createLogger, waitFor } from "@aicore-fivem/lib/shared";
+import { AdapterFollower } from "common/adapters";
 import {
   VEHICLE_KEYS_CLIENT_EVENT,
   VEHICLE_KEYS_STATE_KEY,
@@ -27,8 +28,6 @@ import { pCarkeys } from "./adapters/p_carkeys";
 import { qsVehicleKeys } from "./adapters/qs-vehiclekeys";
 import { rdVehicleKeys } from "./adapters/rd_vehiclekeys";
 
-const log = createLogger("ai-core");
-
 /** Key systems with only a client API, one adapter file each (server list: `server/vehicleKeys/registry.ts`). */
 const ADAPTERS: readonly VehicleKeysClientAdapter[] = [
   zeroRVehicleKeys,
@@ -48,42 +47,35 @@ const ADAPTERS: readonly VehicleKeysClientAdapter[] = [
 ];
 
 /** The client half of the vehicle key layer: follows the key system the server picked (GlobalState). */
-class ClientKeys {
-  private current: VehicleKeysClientAdapter | null = null;
+const keys = new AdapterFollower(
+  ADAPTERS,
+  new GlobalKey(VEHICLE_KEYS_STATE_KEY, stateString),
+  createLogger("ai-core"),
+);
 
-  pick(resource: unknown): void {
-    this.current = ADAPTERS.find((a) => a.resource === resource) ?? null;
-  }
-
-  async apply(
-    action: "give" | "remove",
-    netId: number,
-    plate: string,
-    purpose: KeyPurpose,
-  ): Promise<void> {
-    const adapter = this.current;
-    if (!adapter) return;
-    const vehicle = await waitFor(
-      () =>
-        NetworkDoesEntityExistWithNetworkId(netId)
-          ? NetToVeh(netId)
-          : undefined,
-      5000,
-    ).catch(() => 0);
-    if (!vehicle) return;
-    try {
-      if (action === "give") adapter.give(vehicle, plate, purpose);
-      else adapter.remove(vehicle, plate);
-    } catch (error) {
-      log.error(`${adapter.resource} ${action} key failed`, error);
-    }
-  }
+/** Applies a key change once the networked vehicle exists here. */
+async function apply(
+  action: "give" | "remove",
+  netId: number,
+  plate: string,
+  purpose: KeyPurpose,
+): Promise<void> {
+  if (!keys.active) return;
+  const vehicle = await waitFor(
+    () =>
+      NetworkDoesEntityExistWithNetworkId(netId) ? NetToVeh(netId) : undefined,
+    5000,
+  ).catch(() => 0);
+  if (!vehicle) return;
+  keys.call(
+    `${action} key`,
+    (a) =>
+      action === "give"
+        ? a.give(vehicle, plate, purpose)
+        : a.remove(vehicle, plate),
+    undefined,
+  );
 }
-
-const keys = new ClientKeys();
-const active = new GlobalKey(VEHICLE_KEYS_STATE_KEY, stateString);
-keys.pick(active.get());
-active.onChange((_id, value) => keys.pick(value));
 
 onServerEvent(
   VEHICLE_KEYS_CLIENT_EVENT,
@@ -95,5 +87,5 @@ onServerEvent(
         ? ([action, netId, plate, toKeyPurpose(purpose)] as const)
         : null,
   },
-  (action, netId, plate, purpose) => keys.apply(action, netId, plate, purpose),
+  (action, netId, plate, purpose) => apply(action, netId, plate, purpose),
 );

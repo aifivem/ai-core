@@ -15,7 +15,7 @@ import { store } from "../../../store";
 import {
   cleared,
   delta,
-  onlineLoaded,
+  listOpened,
   viewClosed,
   viewLoaded,
   viewLoading,
@@ -52,11 +52,18 @@ export function goPlayers(char?: number): void {
   });
 }
 
-/** The screen opened: the online list's snapshot (the server sends its changes from now on). */
+/**
+ * The screen opened: subscribes to the online list. The game sends the snapshot and later changes as latent `rows`
+ * messages (`onPlayersDelta`); the browser preview answers the rows at once.
+ */
 export async function openPlayers(): Promise<void> {
-  const rows = await call("online", []);
+  store.dispatch(listOpened());
+  const answer = await call("online", []);
   // ai-core's server builds these rows; only the outer shape is checked.
-  if (Array.isArray(rows)) store.dispatch(onlineLoaded(rows as OnlineRow[]));
+  if (Array.isArray(answer))
+    store.dispatch(
+      delta({ kind: "rows", rev: 1, put: answer as OnlineRow[], remove: [] }),
+    );
 }
 
 export function closePlayers(): void {

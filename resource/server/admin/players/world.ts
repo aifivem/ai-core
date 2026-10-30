@@ -1,7 +1,8 @@
-import { notify, optionalExport } from "@aicore-fivem/lib/server";
+import { notify } from "@aicore-fivem/lib/server";
 import { ADMIN_PLAYERS, type Position } from "common/adminPlayers";
 import { Locale } from "common";
 import { inventory } from "../../inventory";
+import { medical } from "../../medical";
 import { claims, players } from "../../player/registry";
 import { action, BUSY, GONE, logEdit, onCharacter, parse } from "./gate";
 import { fail, offline, OK } from "./offline";
@@ -82,15 +83,16 @@ action(
   },
 );
 
-// ai-death's exports when it runs: a downed player gets up, anyone else is healed.
+// Through ai-core's medical layer: a downed player gets up, anyone else is healed.
 action("revive", charOnly, async (source, charId) => {
-  const death = optionalExport("ai-death");
-  if (!death) return fail("ADMIN_PLAYERS_ERR_NO_DEATH");
+  if (!medical.active) return fail("ADMIN_PLAYERS_ERR_NO_DEATH");
   const result = await onCharacter(
     charId,
     (player) => {
-      if (death.Revive(player.source) !== true) death.Heal(player.source);
-      notify(player.source, Locale("ADMIN_PLAYERS_NOTIFY_REVIVED"), "success");
+      const target = player.source;
+      if (!medical.call("revive", (a) => a.revive(target), false))
+        medical.call("heal", (a) => a.heal(target), undefined);
+      notify(target, Locale("ADMIN_PLAYERS_NOTIFY_REVIVED"), "success");
       return OK;
     },
     null,

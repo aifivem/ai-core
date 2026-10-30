@@ -22,6 +22,10 @@ import { GlobalSearch } from "./GlobalSearch";
 import { usePanelLang } from "./lang";
 import { RecordsView } from "./RecordsView";
 import { PlayersSection } from "./players/PlayersSection";
+import {
+  onRecommendationDelta,
+  openRecommendations,
+} from "./recommendationActions";
 import { Setup } from "./Setup";
 import { Sidebar } from "./Sidebar";
 import { TableView } from "./TableView";
@@ -66,6 +70,7 @@ function onOpen(value: unknown): void {
     Array.isArray(external) ? (external as ExternalPanel[]) : [],
     Array.isArray(updates) ? (updates as UpdateInfo[]) : [],
   );
+  openRecommendations(value);
 }
 
 function onDelta(value: unknown): void {
@@ -98,6 +103,7 @@ export function AdminRoot() {
 
   useNuiEvent(NuiMessage.adminOpen, onOpen, OPEN_OPTIONS);
   useNuiEvent(NuiMessage.adminDelta, onDelta);
+  useNuiEvent(NuiMessage.adminRecommendation, onRecommendationDelta);
 
   useEffect(() => {
     if (!open) return;

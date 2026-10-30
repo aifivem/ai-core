@@ -12,6 +12,7 @@ import "./clientErrors";
 import "./connection";
 import "./player/session";
 import "./player/deaths";
+import "./player/offlinePosition";
 import "./persistence";
 import "./jobs/paycheck";
 import "./exports";
@@ -25,6 +26,8 @@ import "./world";
 import "./phone";
 import "./dispatch";
 import "./dispatch/compat";
+import "./medical";
+import "./buckets";
 import "./devCommands";
 
 resetDutyCounts(jobs.keys());

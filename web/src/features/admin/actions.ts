@@ -202,6 +202,42 @@ export async function saveField(
   }
 }
 
+/** An `action` widget's button: the script's handler runs on the server; the result shows under the button. */
+export async function runAction(
+  resource: string,
+  file: string,
+  key: string | undefined,
+  id: string,
+): Promise<AdminResult> {
+  const field = fieldId(resource, file, key, id);
+  store.dispatch(fieldState({ id: field, state: { status: "saving" } }));
+  const result = await send(resource, { file, action: "run", key, id });
+  if (result.ok) {
+    store.dispatch(fieldState({ id: field, state: { status: "saved" } }));
+    setTimeout(
+      () => store.dispatch(fieldState({ id: field, state: null })),
+      2500,
+    );
+  } else
+    store.dispatch(
+      fieldState({
+        id: field,
+        state: { status: "error", error: result.error },
+      }),
+    );
+  return result;
+}
+
+/** Draws a zone widget's corners in the world (null stops drawing). */
+export function drawZone(
+  zone: {
+    points: Array<{ x: number; y: number; z: number }>;
+    height: number;
+  } | null,
+): void {
+  void fetchNui<boolean>(NuiCallback.adminZoneDraw, zone, { mockData: true });
+}
+
 export async function createRecord(
   resource: string,
   file: string,

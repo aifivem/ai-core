@@ -8,4 +8,6 @@ export const qbInventory: InventoryClientAdapter = {
   openInventory: () => ExecuteCommand("inventory"),
   hasItem: (item, count) =>
     callExport(RESOURCE, "HasItem", item, count) === true,
+  // No client export for the held weapon item.
+  currentWeapon: () => null,
 };

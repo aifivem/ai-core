@@ -12,7 +12,13 @@ import {
 } from "@aicore-fivem/shared";
 import { NuiCallback, NuiMessage } from "common/nui";
 import { ResourceName } from "common";
-import { SelectScene, setPlayerModel, waitForGround } from "./scene";
+import {
+  SCREEN_HUD_REASON,
+  SelectScene,
+  setPlayerModel,
+  waitForGround,
+} from "./scene";
+import { visibility } from "./hud";
 import { announceLoaded } from "./playerState";
 
 const log = createLogger("ai-core");
@@ -189,7 +195,7 @@ onServerEvent(
       FreezeEntityPosition(ped, false);
       SetEntityInvincible(ped, false);
       SetEntityVisible(ped, true, false);
-      DisplayRadar(true);
+      visibility.set(SCREEN_HUD_REASON, false);
       DoScreenFadeIn(500);
       screen = null;
       portraits = {};

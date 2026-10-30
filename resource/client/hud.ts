@@ -1,9 +1,7 @@
-import {
-  callExport,
-  isResourceStarted,
-  registerExport,
-} from "@aicore-fivem/lib/client";
+import { callExport, registerExport } from "@aicore-fivem/lib/client";
+import { createLogger } from "@aicore-fivem/lib/shared";
 import { CORE } from "@aicore-fivem/shared";
+import { AdapterPicker } from "common/adapters";
 
 /** HUD resources ai-core drives besides those listening to `CORE.clientHudVisibleEvent` (ai-hud does). */
 const ADAPTERS: ReadonlyArray<{
@@ -24,6 +22,14 @@ const ADAPTERS: ReadonlyArray<{
     settings: () => callExport("ai-hud", "OpenSettings"),
   },
 ];
+
+/** The running HUD ai-core drives (first in list order). */
+const huds = new AdapterPicker({
+  category: "HUD",
+  adapters: ADAPTERS,
+  log: createLogger("ai-core"),
+  noneText: "no adapted HUD runs: ai-core shows and hides the minimap",
+});
 
 /**
  * Why HUDs are hidden now: `<resource>:<reason>` of every full-screen UI that is open (lib `hud.hide` / `show`).
@@ -52,14 +58,9 @@ class HudVisibility {
 
   private announce(): void {
     emit(CORE.clientHudVisibleEvent, this.visible);
-    let radarOwner = false;
-    for (const a of ADAPTERS)
-      if (isResourceStarted(a.resource)) {
-        a.set(this.visible);
-        radarOwner = true;
-      }
     // Without a HUD that drives the minimap itself, the minimap follows too.
-    if (!radarOwner) DisplayRadar(this.visible);
+    if (!huds.call("visibility", (a) => (a.set(this.visible), true), false))
+      DisplayRadar(this.visible);
   }
 }
 
@@ -77,13 +78,8 @@ registerExport(
 );
 registerExport("IsHudVisible", () => visibility.visible);
 // Every HUD has its own settings screen: the radial menu (and any script) opens the running one's through here.
-registerExport("OpenHudSettings", () => {
-  const adapter = ADAPTERS.find((a) => isResourceStarted(a.resource));
-  if (!adapter) return false;
-  adapter.settings();
-  return true;
-});
-registerExport("HasHudSettings", () =>
-  ADAPTERS.some((a) => isResourceStarted(a.resource)),
+registerExport("OpenHudSettings", () =>
+  huds.call("settings", (a) => (a.settings(), true), false),
 );
+registerExport("HasHudSettings", () => huds.active !== null);
 on("onClientResourceStop", (resource: string) => visibility.drop(resource));

@@ -1,6 +1,13 @@
 import type { DataSpec, PanelSchema, WidgetSpec } from "@aicore-fivem/shared";
 import { DEFAULT_SCENE } from "../content/scene";
+import { DEFAULT_PRIME_TIME, PRIME_SOURCES } from "../content/primeTime";
+import { jobPrimeCard, primeTimeCard } from "./primeTimeSchema";
 import { sceneSection, sceneTab } from "./sceneSchema";
+import {
+  DEFAULT_RECOMMENDATIONS,
+  RECOMMENDATIONS_SECTION,
+  recommendationsCard,
+} from "../recommendations/schema";
 
 /** ai-core's own panel: server settings, spawn points, character screen scene, job rules, jobs, gangs and money accounts (`data/*.json`). */
 
@@ -22,10 +29,13 @@ const grades: DataSpec = {
     fields: {
       label: text(48),
       salary: int(0, 1_000_000),
+      offPrimePayment: { ...int(0, 1_000_000), optional: true },
       boss: { type: "bool", optional: true },
     },
   },
 };
+const hour = int(0, 23);
+const optionalHour: DataSpec = { ...hour, optional: true };
 
 const gradeRows = (salary: boolean): WidgetSpec[] => [
   {
@@ -40,6 +50,14 @@ const gradeRows = (salary: boolean): WidgetSpec[] => [
           widget: "number",
           path: "salary",
           label: "ADMIN_F_SALARY",
+          min: 0,
+          step: 5,
+          unit: "$",
+        } satisfies WidgetSpec,
+        {
+          widget: "number",
+          path: "offPrimePayment",
+          label: "ADMIN_F_OFF_PRIME_PAYMENT",
           min: 0,
           step: 5,
           unit: "$",
@@ -100,6 +118,22 @@ export function coreSchema(
               fromJobAccount: bool,
             },
           },
+          primeTime: {
+            type: "object",
+            fields: {
+              enabled: bool,
+              source: { type: "enum", values: [...PRIME_SOURCES] },
+              offPrimeMultiplier: { type: "number", min: 0, max: 1 },
+              start: hour,
+              finish: hour,
+            },
+          },
+          // Written by ai-core (jobs/primeTime), shown read only.
+          primeTimeActive: {
+            type: "enum",
+            values: ["none", ...PRIME_SOURCES.filter((s) => s !== "auto")],
+            optional: true,
+          },
           saveIntervalMinutes: int(1, 60),
           inventory: { type: "enum", values: ["auto", ...inventories] },
           vehicleKeys: { type: "enum", values: ["auto", ...keySystems] },
@@ -119,6 +153,7 @@ export function coreSchema(
               },
             },
           },
+          recommendations: RECOMMENDATIONS_SECTION,
           spawn: {
             type: "object",
             fields: { default: { type: "vec4" } },
@@ -127,6 +162,7 @@ export function coreSchema(
         },
         defaults: {
           characterScene: DEFAULT_SCENE,
+          primeTime: DEFAULT_PRIME_TIME,
           inventory: "auto",
           vehicleKeys: "auto",
           dispatch: "auto",
@@ -134,6 +170,7 @@ export function coreSchema(
           refuseOnConflict: true,
           setupDone: false,
           updates: { check: true, ignore: [] },
+          recommendations: DEFAULT_RECOMMENDATIONS,
         },
       },
       jobs: {
@@ -145,12 +182,18 @@ export function coreSchema(
           type: "none",
           defaultDuty: false,
           grades: [{ label: "Member", salary: 0 }],
+          primeOwn: false,
+          primeStart: DEFAULT_PRIME_TIME.start,
+          primeFinish: DEFAULT_PRIME_TIME.finish,
         },
         sections: {
           label: text(48),
           type: { type: "text", max: 32, pattern: ID },
           defaultDuty: bool,
           grades,
+          primeOwn: { type: "bool", optional: true },
+          primeStart: optionalHour,
+          primeFinish: optionalHour,
         },
       },
       gangs: {
@@ -410,6 +453,7 @@ export function coreSchema(
               },
             ],
           },
+          recommendationsCard,
           {
             icon: "shield",
             title: "ADMIN_C_CONFLICTS",
@@ -534,6 +578,7 @@ export function coreSchema(
               },
             ],
           },
+          primeTimeCard,
         ],
       },
       {
@@ -581,13 +626,14 @@ export function coreSchema(
                 path: "grades",
                 label: "",
                 rows: gradeRows(true),
-                newRow: { label: "Grade", salary: 0 },
+                newRow: { label: "Grade", salary: 0, offPrimePayment: 0 },
                 addLabel: "ADMIN_ADD_GRADE",
                 rowLabel: "ADMIN_ROW_GRADE",
                 max: 30,
               },
             ],
           },
+          jobPrimeCard,
         ],
       },
       {

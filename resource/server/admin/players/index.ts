@@ -4,14 +4,14 @@ import {
   type GangMembership,
   type JobMembership,
 } from "@aicore-fivem/shared";
-import type { OnlineRow, SearchPage } from "common/adminPlayers";
+import type { SearchPage } from "common/adminPlayers";
 import { log } from "../../log";
 import { players } from "../../player/registry";
 import { action, parse } from "./gate";
 import { searchReady } from "./indexes";
 import { parseSearch, search } from "./search";
 import { loadView } from "./view";
-import { onlineRow, playerWatchers } from "./watchers";
+import { playerWatchers } from "./watchers";
 import "./edit";
 import "./world";
 
@@ -20,12 +20,13 @@ import "./world";
  * snapshot, and the deltas while the screen is open. Edits: `edit.ts` (character data), `world.ts` (the player).
  */
 
+// The list itself follows as latent `rows` chunks (2,048 rows are ~240 KB).
 action(
   "online",
   () => [],
-  (source): OnlineRow[] => {
+  (source) => {
     playerWatchers.watchList(source);
-    return [...players.all()].map(onlineRow);
+    return { ok: true };
   },
 );
 

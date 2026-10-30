@@ -2,12 +2,14 @@ import type { WidgetSpec } from "@aicore-fivem/shared";
 import { useEditor } from "./context";
 import { FieldShell } from "./FieldShell";
 import { getAt } from "./path";
+import { ActionW } from "./widgets/ActionW";
 import { NumberW, SelectW, SwitchW, TextW } from "./widgets/basic";
 import { BlipW } from "./widgets/BlipW";
 import { InfoW } from "./widgets/InfoW";
 import { ListW } from "./widgets/ListW";
 import { PointW, TagsW } from "./widgets/more";
 import { ColorW, EntityW, ModelW } from "./widgets/pickers";
+import { ZoneW } from "./widgets/ZoneW";
 
 /** One schema field: its shell (label, hint, save state) around the widget it names; hidden while `showIf` fails. */
 export function Field({ spec }: { spec: WidgetSpec }) {
@@ -51,6 +53,10 @@ export function Field({ spec }: { spec: WidgetSpec }) {
       return shell(<EntityW spec={spec} path={spec.path} />);
     case "info":
       return shell(<InfoW spec={spec} path={spec.path} />, true);
+    case "action":
+      return shell(<ActionW spec={spec} />, true);
+    case "zone":
+      return shell(<ZoneW spec={spec} path={spec.path} />);
     default: {
       const _exhaustive: never = spec;
       return _exhaustive;
