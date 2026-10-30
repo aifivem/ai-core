@@ -30,6 +30,7 @@ The framework resource: accounts (FiveM id), characters and the character screen
 - NUI contract: `resource/common/nui.ts`; the open message carries `{ screen, texts, portraits }` (lang table from `loadLocaleTexts`).
 - `ai-core:clientError` (client → server): client script errors, logged on channel `clientErrors` (level error) as `[client error] <resource>: ...` with the player.
 - Exports `Log(channel, message, { level, source, target, metadata })` and `LogChannels({ [channel]: { dataset, active } })`; types in `@aicore-fivem/shared` `logs.ts`.
+- Bridge (`bridge/`, `docs/compat/bridge.md`): the server part mirrors loaded players from ai-core's local events (`bridge/core/server.lua`) and sends the client part one snapshot (`ai-core:bridge:snapshot`) then patches (`ai-core:bridge:patch`: money, job, gang); the client fires QB / ESX client events locally. Provides `es_extended`, `qb-core`, `qbx_core`.
 - Tables: `ai_core_users`, `ai_core_characters` (soft delete `deleted_at`), `ai_core_accounts` (`owner_type` character/job/gang, `owner_id` as text), `ai_core_transactions`, `ai_core_character_jobs`, `ai_core_character_gangs`.
 
 ## Pitfalls
@@ -39,6 +40,8 @@ The framework resource: accounts (FiveM id), characters and the character screen
 - `RegisterCommand` replies of the dev commands go to the server console (`print`), not to ai-chat; the system chat is off (`resources_useSystemChat false`) because ai-chat provides `chat`.
 
 ## Entry points
+
+- Framework bridge: shared mirror `bridge/core/server.lua` and `client.lua`, one folder per framework (`bridge/qb`, `bridge/qbx`, `bridge/esx`).
 
 - Connection, character screen callbacks, load/unload/switch: `resource/server/player/session.ts`; card data `player/screen.ts`.
 - Loaded player: `player/player.ts` (with `wallet.ts`, `../jobs/jobSet.ts`, `../jobs/gangSet.ts`).

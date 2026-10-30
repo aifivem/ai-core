@@ -36,5 +36,25 @@
     "oxlint": "^1.66.0",
     "tsdown": "^0.22.0",
     "typescript": "^6.0.3"
-  }
+  },
+  "fxServerScripts": [
+    "bridge/core/server.lua",
+    "bridge/qb/server.lua",
+    "bridge/qbx/server.lua",
+    "bridge/esx/server.lua"
+  ],
+  "fxClientScripts": [
+    "bridge/core/client.lua",
+    "bridge/qb/client.lua",
+    "bridge/qbx/client.lua",
+    "bridge/esx/client.lua"
+  ],
+  "fxProvide": [
+    "es_extended",
+    "qb-core",
+    "qbx_core"
+  ],
+  "fxFiles": [
+    "modules/playerdata.lua"
+  ]
 }

@@ -7,8 +7,20 @@ fx_version 'cerulean'
 game 'gta5'
 node_version '22'
 
-client_script 'dist/client.js'
-server_script 'dist/server.js'
+client_scripts {
+	'dist/client.js',
+	'bridge/core/client.lua',
+	'bridge/qb/client.lua',
+	'bridge/qbx/client.lua',
+	'bridge/esx/client.lua',
+}
+server_scripts {
+	'dist/server.js',
+	'bridge/core/server.lua',
+	'bridge/qb/server.lua',
+	'bridge/qbx/server.lua',
+	'bridge/esx/server.lua',
+}
 ui_page 'dist/web/index.html'
 
 dependencies {
@@ -23,4 +35,8 @@ files {
 	'dist/web/assets/*.woff',
 	'dist/web/assets/*.woff2',
 	'dist/web/backgrounds/*.jpg',
+	'modules/playerdata.lua',
 }
+provide 'es_extended'
+provide 'qb-core'
+provide 'qbx_core'
