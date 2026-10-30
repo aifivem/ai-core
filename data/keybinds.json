@@ -219,10 +219,10 @@
   "smallresources_ragdoll": {
     "resource": "ai-smallresources",
     "description": "Fall over (hold)",
-    "defaultKey": "",
+    "defaultKey": "M",
     "mapper": "keyboard",
     "key": "",
-    "hintWhen": "",
+    "hintWhen": "foot",
     "hint": ""
   },
   "siren_lights": {
