@@ -5,13 +5,17 @@ import { cn } from "../../../lib/utils";
 import { useAppSelector } from "../../../store";
 
 const MAX_SHOWN = 40;
+const NONE: LookupOption[] = [];
 
-/** The options of a lookup list, filtered by what is typed (label or value). */
+/** The options of a lookup list (or a list given directly), filtered by what is typed (label or value). */
 export function useLookup(
-  source: LookupSource,
+  source: LookupSource | LookupOption[],
   query: string,
 ): { options: LookupOption[]; all: LookupOption[] } {
-  const all = useAppSelector((state) => state.admin.lookups[source]);
+  const fromStore = useAppSelector((state) =>
+    typeof source === "string" ? state.admin.lookups[source] : NONE,
+  );
+  const all = typeof source === "string" ? fromStore : source;
   const options = useMemo(() => {
     const q = query.trim().toLocaleLowerCase();
     const found = q
@@ -41,7 +45,7 @@ export function LookupBox({
 }: {
   /** Enter with nothing listed: take the typed text as it is (addon model names). */
   onEnterText?: (text: string) => void;
-  source: LookupSource;
+  source: LookupSource | LookupOption[];
   query: string;
   onQuery: (query: string) => void;
   onPick: (option: LookupOption) => void;

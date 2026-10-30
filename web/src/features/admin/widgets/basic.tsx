@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faMinus,
@@ -6,10 +6,11 @@ import {
   faTriangleExclamation,
   faWandMagicSparkles,
 } from "@fortawesome/free-solid-svg-icons";
-import type { WidgetSpec } from "@aicore-fivem/shared";
+import type { LookupOption, WidgetSpec } from "@aicore-fivem/shared";
 import { Input } from "../../../components/ui/input";
 import { Select } from "../../../components/ui/select";
 import { Switch } from "../../../components/ui/switch";
+import { useAppSelector } from "../../../store";
 import { placeNames, saveField, type Point } from "../actions";
 import { useEditor } from "../context";
 import { getAt } from "../path";
@@ -46,7 +47,7 @@ function LookupTextW({
 }: {
   spec: Spec<"text">;
   path: string;
-  source: NonNullable<Spec<"text">["lookup"]>;
+  source: NonNullable<Spec<"text">["lookup"]> | LookupOption[];
 }) {
   const { t } = useEditor();
   const [value, save] = useField(path);
@@ -157,7 +158,43 @@ function Suggestions({
 export function TextW({ spec, path }: { spec: Spec<"text">; path: string }) {
   if (spec.lookup)
     return <LookupTextW spec={spec} path={path} source={spec.lookup} />;
+  if (spec.records)
+    return <RecordsTextW spec={spec} path={path} file={spec.records} />;
   return <PlainTextW spec={spec} path={path} />;
+}
+
+/** Records of another file of the same panel as lookup options (label from the file's `labelPath`), "None" first. */
+function RecordsTextW({
+  spec,
+  path,
+  file,
+}: {
+  spec: Spec<"text">;
+  path: string;
+  file: string;
+}) {
+  const { resource, t } = useEditor();
+  const panel = useAppSelector((s) =>
+    s.admin.panels.find((p) => p.resource === resource),
+  );
+  const options = useMemo((): LookupOption[] => {
+    const labelPath = panel?.schema.files[file]?.labelPath;
+    const records = panel?.data[file];
+    const list = Object.entries(
+      typeof records === "object" && records !== null ? records : {},
+    ).map(([key, record]) => {
+      const label =
+        labelPath && typeof record === "object" && record !== null
+          ? Reflect.get(record, labelPath)
+          : undefined;
+      return {
+        value: key,
+        label: typeof label === "string" && label ? label : key,
+      };
+    });
+    return [{ value: "", label: t("ADMIN_NONE") }, ...list];
+  }, [panel, file, t]);
+  return <LookupTextW spec={spec} path={path} source={options} />;
 }
 
 function PlainTextW({ spec, path }: { spec: Spec<"text">; path: string }) {

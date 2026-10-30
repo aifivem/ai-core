@@ -1,5 +1,6 @@
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
+  faGem,
   faElevator,
   faAnchor,
   faChair,
@@ -134,6 +135,7 @@ const ICONS: Record<string, IconDefinition> = {
   chair: faChair,
   check: faCheck,
   xmark: faXmark,
+  gem: faGem,
 };
 
 export const iconOf = (name: string): IconDefinition =>
