@@ -1183,7 +1183,7 @@ function poolOptions(connectionLimit) {
 }
 
 // ../../../packages/mysql/src/args.ts
-const IDENT = /[A-Za-z0-9_]/;
+const IDENT$1 = /[A-Za-z0-9_]/;
 /** Replaces `@name` / `:name` outside quotes with `?` and returns the values in order (missing ones as NULL). */
 function convertNamed(query, params) {
 	const values = [];
@@ -1203,9 +1203,9 @@ function convertNamed(query, params) {
 			out += char;
 			continue;
 		}
-		if ((char === "@" || char === ":") && IDENT.test(query[i + 1] ?? "") && query[i - 1] !== ":" && query[i + 1] !== "=") {
+		if ((char === "@" || char === ":") && IDENT$1.test(query[i + 1] ?? "") && query[i - 1] !== ":" && query[i + 1] !== "=") {
 			let end = i + 1;
-			while (end < query.length && IDENT.test(query[end])) end++;
+			while (end < query.length && IDENT$1.test(query[end])) end++;
 			const name = query.slice(i + 1, end);
 			const value = params[name] ?? params[`@${name}`] ?? params[`:${name}`];
 			values.push(value === void 0 ? null : value);
@@ -25476,6 +25476,70 @@ async function runStartTransaction(work) {
 	}
 }
 
+// ../../../packages/mysql/src/typed.ts
+/** Identifiers come from the generated types, but are checked at runtime too: never SQL from a value. */
+const IDENT = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
+function ident(name) {
+	if (!IDENT.test(name)) throw new Error(`invalid identifier "${name}"`);
+	return `\`${name}\``;
+}
+/** `a = ? AND b IS NULL ...` from an equality object; empty means no filter. */
+function whereSql(where) {
+	const parts = [];
+	const values = [];
+	for (const [column, value] of Object.entries(where ?? {})) {
+		if (value === void 0) continue;
+		if (value === null) parts.push(`${ident(column)} IS NULL`);
+		else {
+			parts.push(`${ident(column)} = ?`);
+			values.push(value);
+		}
+	}
+	return [parts.length > 0 ? ` WHERE ${parts.join(" AND ")}` : "", values];
+}
+/**
+* Typed table access on the resource's generated `tables.ts` (`aicore-db-types` writes it from `sql/main.sql`):
+* table and column names, filter values, inserted rows and results are checked against the real tables at compile
+* time. Equality filters only; anything else (joins, ranges, sums) stays a raw `mysql.query<Pick<Tables["t"], ...>[]>`.
+*/
+function typedDb(db) {
+	return {
+		/** Rows of a table with the picked columns, filtered by column equality. */
+		async select(table, columns, where, options = {}) {
+			if (columns.length === 0) throw new Error("select needs at least one column");
+			const [filter, values] = whereSql(where);
+			const order = options.orderBy ? ` ORDER BY ${ident(options.orderBy.column)}${options.orderBy.desc ? " DESC" : ""}` : "";
+			const limit = options.limit !== void 0 ? ` LIMIT ${Math.max(0, Math.floor(options.limit))}` : "";
+			return await db.query(`SELECT ${columns.map(ident).join(", ")} FROM ${ident(table)}${filter}${order}${limit}`, values) ?? [];
+		},
+		/** The first matching row, or null. */
+		async first(table, columns, where) {
+			const [filter, values] = whereSql(where);
+			return (await db.query(`SELECT ${columns.map(ident).join(", ")} FROM ${ident(table)}${filter} LIMIT 1`, values))?.[0] ?? null;
+		},
+		/** Inserts one row; the new AUTO_INCREMENT id (or null). */
+		insert(table, row) {
+			const entries = Object.entries(row).filter(([, v]) => v !== void 0);
+			if (entries.length === 0) throw new Error("insert needs at least one column");
+			return db.insert(`INSERT INTO ${ident(table)} (${entries.map(([c]) => ident(c)).join(", ")}) VALUES (${entries.map(() => "?").join(", ")})`, entries.map(([, v]) => v));
+		},
+		/** Sets columns on the matching rows; the number of changed rows. A filter is required (no table-wide update). */
+		async update(table, set, where) {
+			const changes = Object.entries(set).filter(([, v]) => v !== void 0);
+			const [filter, values] = whereSql(where);
+			if (changes.length === 0) throw new Error("update needs at least one column to set");
+			if (!filter) throw new Error(`update of ${table} needs a filter`);
+			return await db.update(`UPDATE ${ident(table)} SET ${changes.map(([c]) => `${ident(c)} = ?`).join(", ")}${filter}`, [...changes.map(([, v]) => v), ...values]) ?? 0;
+		},
+		/** Deletes the matching rows; the number deleted. A filter is required (no table-wide delete). */
+		async remove(table, where) {
+			const [filter, values] = whereSql(where);
+			if (!filter) throw new Error(`delete from ${table} needs a filter`);
+			return await db.update(`DELETE FROM ${ident(table)}${filter}`, values) ?? 0;
+		}
+	};
+}
+
 // ../../../packages/mysql/src/index.ts
 const resource = GetCurrentResourceName();
 /** Rejects with the oxmysql-style message (query included) and lets error listeners know. */
@@ -25517,6 +25581,11 @@ const mysql = {
 	setPoolSize,
 	close: closePool
 };
+/**
+* Typed table access on the resource's generated `resource/server/tables.ts`:
+* `const db = tables<Tables, TableInserts>(); await db.select("ai_core_users", ["id"], { fivem })`.
+*/
+const tables = () => typedDb(mysql);
 
 // ../../../packages/lib/src/server/database.ts
 const log$4 = createLogger("aicore-lib");
@@ -28155,6 +28224,10 @@ onClientEvent(CORE.clientErrorEvent, {
 	});
 });
 
+// resource/server/db.ts
+/** ai-core's tables, typed from sql/main.sql (`tables.ts` is generated by the build). */
+const db = tables();
+
 // resource/server/player/users.ts
 function identifier(source, type) {
 	const value = GetPlayerIdentifierByType(String(source), type);
@@ -28180,7 +28253,7 @@ async function upsertUser(identity) {
 		identity.discord,
 		identity.name
 	]);
-	const row = await mysql.single("SELECT id, char_slots FROM ai_core_users WHERE fivem = ?", [identity.fivem]);
+	const row = await db.first("ai_core_users", ["id", "char_slots"], { fivem: identity.fivem });
 	if (!row) throw new Error(`user row missing after upsert (fivem:${identity.fivem})`);
 	return {
 		id: row.id,
@@ -28534,19 +28607,23 @@ function removeMembership(source, kind, name, grade) {
 // resource/server/jobs/repo.ts
 /** SQL of job and gang memberships. Writes are single-row upserts/deletes queued by the owner. */
 async function loadJobs(charId) {
-	return (await mysql.query("SELECT job, grade FROM ai_core_character_jobs WHERE char_id = ?", [charId]) ?? []).map((row) => ({
+	return (await db.select("ai_core_character_jobs", ["job", "grade"], { char_id: charId })).map((row) => ({
 		job: row.job,
 		grade: row.grade
 	}));
 }
 async function loadGangs(charId) {
-	const list = await mysql.query("SELECT gang, grade, active FROM ai_core_character_gangs WHERE char_id = ?", [charId]) ?? [];
+	const list = await db.select("ai_core_character_gangs", [
+		"gang",
+		"grade",
+		"active"
+	], { char_id: charId });
 	return {
 		gangs: list.map((row) => ({
 			gang: row.gang,
 			grade: row.grade
 		})),
-		active: list.find((row) => row.active === true || row.active === 1)?.gang ?? null
+		active: list.find((row) => row.active)?.gang ?? null
 	};
 }
 function saveJob(charId, job, grade) {
@@ -28557,7 +28634,10 @@ function saveJob(charId, job, grade) {
 	]);
 }
 function deleteJob(charId, job) {
-	return mysql.query("DELETE FROM ai_core_character_jobs WHERE char_id = ? AND job = ?", [charId, job]);
+	return db.remove("ai_core_character_jobs", {
+		char_id: charId,
+		job
+	});
 }
 function saveGang(charId, gang, grade) {
 	return mysql.query("INSERT INTO ai_core_character_gangs (char_id, gang, grade) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE grade = VALUES(grade)", [
@@ -28567,7 +28647,10 @@ function saveGang(charId, gang, grade) {
 	]);
 }
 function deleteGang(charId, gang) {
-	return mysql.query("DELETE FROM ai_core_character_gangs WHERE char_id = ? AND gang = ?", [charId, gang]);
+	return db.remove("ai_core_character_gangs", {
+		char_id: charId,
+		gang
+	});
 }
 /** Marks one gang active (or none) for a character in one statement. */
 function saveActiveGang(charId, gang) {

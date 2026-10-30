@@ -1,25 +1,19 @@
 import type { GangMembership, JobMembership } from "@aicore-fivem/shared";
 import { mysql } from "@aicore-fivem/mysql";
+import { db } from "../db";
 
 /** SQL of job and gang memberships. Writes are single-row upserts/deletes queued by the owner. */
 
 export async function loadJobs(charId: number): Promise<JobMembership[]> {
-  const rows = await mysql.query<{ job: string; grade: number }[]>(
-    "SELECT job, grade FROM ai_core_character_jobs WHERE char_id = ?",
-    [charId],
-  );
-  return (rows ?? []).map((row) => ({ job: row.job, grade: row.grade }));
+  const rows = await db.select("ai_core_character_jobs", ["job", "grade"], { char_id: charId });
+  return rows.map((row) => ({ job: row.job, grade: row.grade }));
 }
 
 export async function loadGangs(charId: number): Promise<{ gangs: GangMembership[]; active: string | null }> {
-  const rows = await mysql.query<{ gang: string; grade: number; active: number | boolean }[]>(
-    "SELECT gang, grade, active FROM ai_core_character_gangs WHERE char_id = ?",
-    [charId],
-  );
-  const list = rows ?? [];
+  const list = await db.select("ai_core_character_gangs", ["gang", "grade", "active"], { char_id: charId });
   return {
     gangs: list.map((row) => ({ gang: row.gang, grade: row.grade })),
-    active: list.find((row) => row.active === true || row.active === 1)?.gang ?? null,
+    active: list.find((row) => row.active)?.gang ?? null,
   };
 }
 
@@ -31,7 +25,7 @@ export function saveJob(charId: number, job: string, grade: number): Promise<unk
 }
 
 export function deleteJob(charId: number, job: string): Promise<unknown> {
-  return mysql.query("DELETE FROM ai_core_character_jobs WHERE char_id = ? AND job = ?", [charId, job]);
+  return db.remove("ai_core_character_jobs", { char_id: charId, job });
 }
 
 export function saveGang(charId: number, gang: string, grade: number): Promise<unknown> {
@@ -42,7 +36,7 @@ export function saveGang(charId: number, gang: string, grade: number): Promise<u
 }
 
 export function deleteGang(charId: number, gang: string): Promise<unknown> {
-  return mysql.query("DELETE FROM ai_core_character_gangs WHERE char_id = ? AND gang = ?", [charId, gang]);
+  return db.remove("ai_core_character_gangs", { char_id: charId, gang });
 }
 
 /** Marks one gang active (or none) for a character in one statement. */

@@ -1,4 +1,5 @@
 import { mysql } from "@aicore-fivem/mysql";
+import { db } from "../db";
 
 /** The account behind a connection: the FiveM id is the key (owner decision), other identifiers ride along. */
 export interface Identity {
@@ -39,10 +40,7 @@ export async function upsertUser(identity: Identity): Promise<User> {
      ON DUPLICATE KEY UPDATE license = VALUES(license), discord = VALUES(discord), name = VALUES(name), last_seen = NOW()`,
     [identity.fivem, identity.license, identity.discord, identity.name],
   );
-  const row = await mysql.single<{ id: number; char_slots: number | null }>(
-    "SELECT id, char_slots FROM ai_core_users WHERE fivem = ?",
-    [identity.fivem],
-  );
+  const row = await db.first("ai_core_users", ["id", "char_slots"], { fivem: identity.fivem });
   if (!row) throw new Error(`user row missing after upsert (fivem:${identity.fivem})`);
   return { id: row.id, fivem: identity.fivem, license: identity.license, charSlots: row.char_slots };
 }
