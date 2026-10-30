@@ -65,6 +65,9 @@ function toInput(v: unknown): InputRequest | null {
         type: "text",
         maxLength: typeof f.maxLength === "number" ? f.maxLength : 120,
         placeholder,
+        multiline: f.multiline === true,
+        value: typeof f.value === "string" ? f.value : undefined,
+        readOnly: f.readOnly === true,
       },
     ];
   });

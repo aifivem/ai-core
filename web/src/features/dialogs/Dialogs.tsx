@@ -98,7 +98,13 @@ function MenuPanel({ menu, holding }: { menu: MenuRequest; holding: boolean }) {
 }
 
 function InputPanel({ input }: { input: InputRequest }) {
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      input.fields.flatMap((f) =>
+        f.type === "text" && f.value !== undefined ? [[f.name, f.value]] : [],
+      ),
+    ),
+  );
   const parsed = Object.fromEntries(
     input.fields.map((f) => [
       f.name,
@@ -112,7 +118,7 @@ function InputPanel({ input }: { input: InputRequest }) {
       ? Number.isFinite(parsed[f.name]) &&
         values[f.name] !== undefined &&
         values[f.name] !== ""
-      : String(parsed[f.name] ?? "") !== "",
+      : f.readOnly === true || String(parsed[f.name] ?? "") !== "",
   );
   return (
     <Dialog
@@ -132,18 +138,33 @@ function InputPanel({ input }: { input: InputRequest }) {
             <span className="px-[0.4vh] text-[1.2vh] font-semibold text-text-3 uppercase">
               {f.label}
             </span>
-            <Input
-              autoFocus={i === 0}
-              type={f.type}
-              min={f.type === "number" ? f.min : undefined}
-              max={f.type === "number" ? f.max : undefined}
-              maxLength={f.type === "text" ? f.maxLength : undefined}
-              placeholder={f.placeholder}
-              value={values[f.name] ?? ""}
-              onChange={(e) =>
-                setValues((v) => ({ ...v, [f.name]: e.target.value }))
-              }
-            />
+            {f.type === "text" && f.multiline ? (
+              <textarea
+                autoFocus={i === 0 && !f.readOnly}
+                readOnly={f.readOnly}
+                maxLength={f.maxLength}
+                placeholder={f.placeholder}
+                value={values[f.name] ?? ""}
+                onChange={(e) =>
+                  setValues((v) => ({ ...v, [f.name]: e.target.value }))
+                }
+                className="h-[18vh] w-full resize-none rounded-[1.2vh] border border-white/8 bg-[#2222224D] px-[1.4vh] py-[1vh] text-[1.35vh] leading-[1.45] text-text [color-scheme:dark] transition-[border-color] duration-150 outline-none placeholder:text-text-4 hover:border-white/14 read-only:hover:border-white/8 focus:border-tgi-green-40"
+              />
+            ) : (
+              <Input
+                autoFocus={i === 0 && !(f.type === "text" && f.readOnly)}
+                type={f.type}
+                readOnly={f.type === "text" ? f.readOnly : undefined}
+                min={f.type === "number" ? f.min : undefined}
+                max={f.type === "number" ? f.max : undefined}
+                maxLength={f.type === "text" ? f.maxLength : undefined}
+                placeholder={f.placeholder}
+                value={values[f.name] ?? ""}
+                onChange={(e) =>
+                  setValues((v) => ({ ...v, [f.name]: e.target.value }))
+                }
+              />
+            )}
           </label>
         ))}
         <Button type="submit" variant="primary" disabled={!valid}>
