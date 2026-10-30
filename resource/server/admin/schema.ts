@@ -91,7 +91,11 @@ export function coreSchema(
           },
           characters: {
             type: "object",
-            fields: { slots: spec.int(1, 10), canDelete: bool, minAge: spec.int(0, 99) },
+            fields: {
+              slots: spec.int(1, 10),
+              canDelete: bool,
+              minAge: spec.int(0, 99),
+            },
           },
           jobs: {
             type: "object",
@@ -153,7 +157,22 @@ export function coreSchema(
           recommendations: RECOMMENDATIONS_SECTION,
           spawn: {
             type: "object",
-            fields: { default: { type: "vec4" } },
+            fields: {
+              default: { type: "vec4" },
+              choose: { type: "bool", optional: true },
+              points: {
+                type: "list",
+                max: 20,
+                optional: true,
+                of: {
+                  type: "object",
+                  fields: {
+                    label: { type: "text", min: 1, max: 48 },
+                    coords: { type: "vec4" },
+                  },
+                },
+              },
+            },
           },
           characterScene: sceneSection,
         },
@@ -507,6 +526,42 @@ export function coreSchema(
                 path: "spawn.default",
                 label: "ADMIN_F_SPAWN_POINT",
                 heading: true,
+              },
+            ],
+          },
+          {
+            icon: "map-location-dot",
+            title: "ADMIN_C_SPAWN_CHOICE",
+            desc: "ADMIN_C_SPAWN_CHOICE_DESC",
+            fields: [
+              {
+                widget: "switch",
+                path: "spawn.choose",
+                label: "ADMIN_F_SPAWN_CHOOSE",
+                hint: "ADMIN_H_SPAWN_CHOOSE",
+              },
+              {
+                widget: "list",
+                path: "spawn.points",
+                label: "ADMIN_F_SPAWN_POINTS",
+                addLabel: "ADMIN_ADD_SPAWN_POINT",
+                max: 20,
+                newRow: { label: "", coords: { x: 0, y: 0, z: 0, heading: 0 } },
+                rows: [
+                  {
+                    widget: "text",
+                    path: "label",
+                    label: "ADMIN_F_SPAWN_LABEL",
+                    placeholder: "ADMIN_P_SPAWN_LABEL",
+                  },
+                  {
+                    widget: "point",
+                    path: "coords",
+                    label: "ADMIN_F_SPAWN_POINT",
+                    heading: true,
+                    ground: true,
+                  },
+                ],
               },
             ],
           },

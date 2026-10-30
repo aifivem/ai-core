@@ -70,10 +70,52 @@ function vec4(value, fallback) {
 	};
 }
 // ../../../packages/lib/src/shared/strict.ts
+function readFinite(value) {
+	return typeof value == "number" && Number.isFinite(value) ? value : null;
+}
 function readInt(value, min, max) {
 	return Number.isInteger(value) && value >= min && value <= max ? value : null;
 }
-const readId = (value) => readInt(value, 1, 2147483647), isObject = (value) => typeof value == "object" && !!value && !Array.isArray(value);
+const readId = (value) => readInt(value, 1, 2147483647), oneArg = (read) => ([value]) => {
+	let parsed = read(value);
+	return parsed === null ? null : [parsed];
+};
+function parts(value) {
+	if (Array.isArray(value)) return value;
+	if (typeof value != "object" || !value) return null;
+	let v = value;
+	return [
+		v.x,
+		v.y,
+		v.z,
+		v.heading ?? v.w
+	];
+}
+function readVec3(value) {
+	let p = parts(value);
+	if (!p) return null;
+	let [x, y, z] = [
+		readFinite(p[0]),
+		readFinite(p[1]),
+		readFinite(p[2])
+	];
+	return x !== null && y !== null && z !== null ? {
+		x,
+		y,
+		z
+	} : null;
+}
+function readVec4(value) {
+	let point = readVec3(value);
+	if (!point) return null;
+	let raw = parts(value)?.[3], heading = raw == null ? 0 : readFinite(raw);
+	return heading === null ? null : {
+		...point,
+		heading
+	};
+}
+// ../../../packages/lib/src/shared/records.ts
+const isObject = (value) => typeof value == "object" && !!value && !Array.isArray(value);
 function readRecords(raw, readOne) {
 	let out = new Map();
 	if (!isObject(raw)) return out;
@@ -274,6 +316,8 @@ const CORE = {
 	selectCharacterCallback: "ai-core:selectCharacter",
 	clientNotifyEvent: "ai-core:client:notify",
 	spawnEvent: "ai-core:client:spawn",
+	chooseSpawnEvent: "ai-core:client:chooseSpawn",
+	spawnChoiceCallback: "ai-core:spawnChoice",
 	openCharactersEvent: "ai-core:client:openCharacters"
 }, PED_EVENTS_MIN_BUILD = 38039, NAME$1 = /^[A-Za-zÀ-ɏ][A-Za-zÀ-ɏ' -]{1,19}$/, DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 function toName(value) {
@@ -1072,6 +1116,23 @@ var OnlinePlayers = class {
 };
 const EMPTY$1 = new Set();
 new OnlinePlayers(), resourceExport(CORE.resource), resourceExport(CORE.resource), createLogger(GetCurrentResourceName());
+const dropped = new Set();
+let listening = !1;
+function onDropped(fn) {
+	listening || (listening = !0, on("playerDropped", () => {
+		let source = Number(globalThis.source);
+		for (let handler of dropped) handler(source);
+	})), dropped.add(fn);
+}
+var PlayerMap = class extends Map {
+	constructor(options = {}) {
+		super(), onDropped((source) => {
+			if (!this.has(source)) return;
+			let value = this.get(source);
+			this.delete(source), options.onDrop?.(source, value);
+		});
+	}
+};
 // ../../../packages/lib/src/server/command.ts
 const resource$3 = GetCurrentResourceName(), log$7 = createLogger(resource$3);
 let texts = null;
@@ -16715,7 +16776,29 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 					recommendations: RECOMMENDATIONS_SECTION,
 					spawn: {
 						type: "object",
-						fields: { default: { type: "vec4" } }
+						fields: {
+							default: { type: "vec4" },
+							choose: {
+								type: "bool",
+								optional: !0
+							},
+							points: {
+								type: "list",
+								max: 20,
+								optional: !0,
+								of: {
+									type: "object",
+									fields: {
+										label: {
+											type: "text",
+											min: 1,
+											max: 48
+										},
+										coords: { type: "vec4" }
+									}
+								}
+							}
+						}
 					},
 					characterScene: sceneSection
 				},
@@ -17126,6 +17209,43 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 						path: "spawn.default",
 						label: "ADMIN_F_SPAWN_POINT",
 						heading: !0
+					}]
+				}, {
+					icon: "map-location-dot",
+					title: "ADMIN_C_SPAWN_CHOICE",
+					desc: "ADMIN_C_SPAWN_CHOICE_DESC",
+					fields: [{
+						widget: "switch",
+						path: "spawn.choose",
+						label: "ADMIN_F_SPAWN_CHOOSE",
+						hint: "ADMIN_H_SPAWN_CHOOSE"
+					}, {
+						widget: "list",
+						path: "spawn.points",
+						label: "ADMIN_F_SPAWN_POINTS",
+						addLabel: "ADMIN_ADD_SPAWN_POINT",
+						max: 20,
+						newRow: {
+							label: "",
+							coords: {
+								x: 0,
+								y: 0,
+								z: 0,
+								heading: 0
+							}
+						},
+						rows: [{
+							widget: "text",
+							path: "label",
+							label: "ADMIN_F_SPAWN_LABEL",
+							placeholder: "ADMIN_P_SPAWN_LABEL"
+						}, {
+							widget: "point",
+							path: "coords",
+							label: "ADMIN_F_SPAWN_POINT",
+							heading: !0,
+							ground: !0
+						}]
 					}]
 				}]
 			},
@@ -17872,12 +17992,22 @@ function readSettings(raw) {
 		refuseOnConflict: bool$1(s.refuseOnConflict, !0),
 		updates: readUpdates(record(s.updates)),
 		setupDone: bool$1(s.setupDone, !1),
-		spawn: { default: vec4(spawn.default, {
-			x: -1035.71,
-			y: -2731.87,
-			z: 13.76,
-			heading: 330
-		}) },
+		spawn: {
+			default: vec4(spawn.default, {
+				x: -1035.71,
+				y: -2731.87,
+				z: 13.76,
+				heading: 330
+			}),
+			choose: bool$1(spawn.choose, !1),
+			points: Array.isArray(spawn.points) ? spawn.points.flatMap((raw) => {
+				let p = record(raw), coords = readVec4(p.coords), label = str(p.label, "", 48);
+				return coords && label ? [{
+					label,
+					coords
+				}] : [];
+			}) : []
+		},
 		characterScene: readScene(s.characterScene)
 	};
 }
@@ -20536,6 +20666,11 @@ onClientCallback(CORE.createCharacterCallback, { args: ([raw]) => [raw] }, async
 			metadata: { charId: id }
 		}), loadCharacter(source, id);
 	}) : BUSY;
+});
+const choosing = new PlayerMap();
+onClientCallback(CORE.spawnChoiceCallback, { args: oneArg((v) => readInt(v, 0, 63)) }, (source, id) => {
+	let options = choosing.get(source), spawn = options?.[id];
+	return !options || !spawn ? BUSY : (choosing.delete(source), emitNet(CORE.spawnEvent, source, spawn), { ok: !0 });
 }), onClientCallback(CORE.selectCharacterCallback, { args: charIdArg }, async (source, charId) => selecting.has(source) ? lock.run(source, BUSY, () => loadCharacter(source, charId)) : BUSY), onClientCallback(CORE.deleteCharacterCallback, { args: charIdArg }, async (source, charId) => {
 	let user = selecting.get(source);
 	return user ? settings.characters.canDelete ? players.byCharacter(charId) ? {
@@ -20572,12 +20707,35 @@ async function loadNow(source, charId) {
 		let player = await Player$1.load(source, user, row);
 		if (!GetPlayerName(String(source)) || !selecting.has(source)) return player.release(), BUSY;
 		selecting.delete(source), players.add(player), enterWorldBucket(source), player.sendSnapshot();
-		let spawn = {
-			...player.spawnPosition(),
+		let base = {
 			model: row.sex === "female" ? "mp_f_freemode_01" : "mp_m_freemode_01",
 			armour: player.armour()
-		};
-		return emitNet(CORE.spawnEvent, source, spawn), emit(CORE.playerLoadedEvent, source, player.info()), log$3.info(`loaded #${player.charId} ${player.fullName} (src ${source})`), { ok: !0 };
+		}, points = settings.spawn.choose ? settings.spawn.points : [];
+		if (points.length === 0) emitNet(CORE.spawnEvent, source, {
+			...player.spawnPosition(),
+			...base
+		});
+		else {
+			let options = [], labels = [];
+			row.position && (labels.push({
+				id: options.length,
+				label: "",
+				last: !0
+			}), options.push({
+				...row.position,
+				...base
+			}));
+			for (let p of points) labels.push({
+				id: options.length,
+				label: p.label,
+				last: !1
+			}), options.push({
+				...p.coords,
+				...base
+			});
+			choosing.set(source, options), emitNet(CORE.chooseSpawnEvent, source, labels);
+		}
+		return emit(CORE.playerLoadedEvent, source, player.info()), log$3.info(`loaded #${player.charId} ${player.fullName} (src ${source})`), { ok: !0 };
 	} catch (error) {
 		return log$3.error(`loading character ${charId} for ${source} failed`, error), BUSY;
 	}

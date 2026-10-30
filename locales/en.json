@@ -105,7 +105,7 @@
   "ADMIN_TAB_GENERAL": "General",
   "ADMIN_TAB_GENERAL_DESC": "The server name players see, character slots and how often the game saves.",
   "ADMIN_TAB_SPAWN": "Spawn points",
-  "ADMIN_TAB_SPAWN_DESC": "Where new characters appear.",
+  "ADMIN_TAB_SPAWN_DESC": "Where new characters appear, and where players may choose to appear after picking a character.",
   "ADMIN_TAB_SCENE": "Character screen",
   "ADMIN_TAB_SCENE_DESC": "The place in the world behind the character screen, where each player's characters stand.",
   "ADMIN_TAB_RULES": "Job and gang rules",
@@ -586,5 +586,15 @@
   "ADMIN_PLAYERS_ERR_INVENTORY": "The inventory could not be opened.",
   "BRIDGE_CONFIRM": "Confirm",
   "BRIDGE_INPUT_NOT_ALLOWED": "That input is not allowed.",
-  "KEYBIND_CANCEL_PROGRESS": "Cancel the running action"
+  "KEYBIND_CANCEL_PROGRESS": "Cancel the running action",
+  "ADMIN_C_SPAWN_CHOICE": "Choose where to appear",
+  "ADMIN_C_SPAWN_CHOICE_DESC": "After picking a character the player chooses the last location or one of these points.",
+  "ADMIN_F_SPAWN_CHOOSE": "Let players choose",
+  "ADMIN_H_SPAWN_CHOOSE": "On: a list of places shows after picking a character (needs at least one point below). Off: the character appears where it left.",
+  "ADMIN_F_SPAWN_POINTS": "Places to choose from",
+  "ADMIN_ADD_SPAWN_POINT": "Add place",
+  "ADMIN_F_SPAWN_LABEL": "Name",
+  "ADMIN_P_SPAWN_LABEL": "Legion Square",
+  "SPAWN_CHOOSE_TITLE": "Where do you want to appear?",
+  "SPAWN_LAST_LOCATION": "Last location"
 }

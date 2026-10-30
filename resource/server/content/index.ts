@@ -23,6 +23,7 @@ import {
   type PrimeHours,
   type PrimeTimeSettings,
 } from "./primeTime";
+import { readVec4 } from "@aicore-fivem/lib/shared";
 
 /** Panel content of ai-core (`data/*.json`), kept by the admin panel store and updated live on every panel edit. */
 
@@ -59,7 +60,12 @@ export interface Settings {
   updates: { check: boolean; ignore: string[] };
   /** The admin finished the setup guide; until then every player sees how to start it after spawning. */
   setupDone: boolean;
-  spawn: { default: Vec4 };
+  /** `choose`: after picking a character the player picks the last location or one of `points`. */
+  spawn: {
+    default: Vec4;
+    choose: boolean;
+    points: Array<{ label: string; coords: Vec4 }>;
+  };
   characterScene: CharacterScene;
 }
 
@@ -140,6 +146,15 @@ function readSettings(raw: unknown): Settings {
         z: 13.76,
         heading: 330,
       }),
+      choose: bool(spawn.choose, false),
+      points: Array.isArray(spawn.points)
+        ? spawn.points.flatMap((raw) => {
+            const p = record(raw);
+            const coords = readVec4(p.coords);
+            const label = str(p.label, "", 48);
+            return coords && label ? [{ label, coords }] : [];
+          })
+        : [],
     },
     characterScene: readScene(s.characterScene),
   };

@@ -1,5 +1,6 @@
 import {
   onClientCallback,
+  PlayerMap,
   registerExport,
   SourceLock,
 } from "@aicore-fivem/lib/server";
@@ -32,6 +33,7 @@ import { Player } from "./player";
 import { claims, players, selecting } from "./registry";
 import { characterScreen, slotsOf } from "./screen";
 import { identify, upsertUser } from "./users";
+import { oneArg, readInt } from "@aicore-fivem/lib/shared";
 
 const lock = new SourceLock();
 const BUSY: CharacterActionResult = { ok: false, error: "CHAR_ERR_BUSY" };
@@ -97,6 +99,22 @@ onClientCallback(
   },
 );
 
+/** Spawn options waiting for the player's pick (`settings.spawn.choose`). */
+const choosing = new PlayerMap<SpawnPoint[]>();
+
+onClientCallback(
+  CORE.spawnChoiceCallback,
+  { args: oneArg((v) => readInt(v, 0, 63)) },
+  (source, id): CharacterActionResult => {
+    const options = choosing.get(source);
+    const spawn = options?.[id];
+    if (!options || !spawn) return BUSY;
+    choosing.delete(source);
+    emitNet(CORE.spawnEvent, source, spawn);
+    return { ok: true };
+  },
+);
+
 onClientCallback(
   CORE.selectCharacterCallback,
   { args: charIdArg },
@@ -158,13 +176,28 @@ async function loadNow(
     players.add(player);
     enterWorldBucket(source);
     player.sendSnapshot();
-    const position = player.spawnPosition();
-    const spawn: SpawnPoint = {
-      ...position,
+    const base = {
       model: row.sex === "female" ? "mp_f_freemode_01" : "mp_m_freemode_01",
       armour: player.armour(),
     };
-    emitNet(CORE.spawnEvent, source, spawn);
+    const points = settings.spawn.choose ? settings.spawn.points : [];
+    if (points.length === 0)
+      emitNet(CORE.spawnEvent, source, { ...player.spawnPosition(), ...base });
+    else {
+      // The last location (a stored character) first, then the panel's points; the spawn waits for the pick.
+      const options: SpawnPoint[] = [];
+      const labels: Array<{ id: number; label: string; last: boolean }> = [];
+      if (row.position) {
+        labels.push({ id: options.length, label: "", last: true });
+        options.push({ ...row.position, ...base });
+      }
+      for (const p of points) {
+        labels.push({ id: options.length, label: p.label, last: false });
+        options.push({ ...p.coords, ...base });
+      }
+      choosing.set(source, options);
+      emitNet(CORE.chooseSpawnEvent, source, labels);
+    }
     emit(CORE.playerLoadedEvent, source, player.info());
     log.info(`loaded #${player.charId} ${player.fullName} (src ${source})`);
     return { ok: true };

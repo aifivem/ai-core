@@ -23,6 +23,7 @@ import "./appearance";
 import "./radial";
 import "./world";
 import "./setup";
+import "./spawnChoice";
 import { openCharacters } from "./characters";
 import { announceUnloaded } from "./playerState";
 

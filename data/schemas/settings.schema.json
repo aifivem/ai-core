@@ -346,6 +346,54 @@
               "type": "number"
             }
           }
+        },
+        "choose": {
+          "description": "Let players choose: On: a list of places shows after picking a character (needs at least one point below). Off: the character appears where it left.",
+          "type": "boolean"
+        },
+        "points": {
+          "description": "Places to choose from",
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "description": "Name",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 48
+              },
+              "coords": {
+                "description": "Spawn point",
+                "type": "object",
+                "required": [
+                  "x",
+                  "y",
+                  "z",
+                  "heading"
+                ],
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "z": {
+                    "type": "number"
+                  },
+                  "heading": {
+                    "type": "number"
+                  }
+                }
+              }
+            },
+            "required": [
+              "label",
+              "coords"
+            ]
+          }
         }
       },
       "required": [
