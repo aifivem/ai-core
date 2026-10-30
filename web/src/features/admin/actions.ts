@@ -1,10 +1,10 @@
 import { fetchNui } from "fivem-nui-react";
-import type { AdminPanelSnapshot, AdminPatch, AdminResult } from "@aicore-fivem/shared";
+import type { AdminPanelSnapshot, AdminPatch, AdminResult, ExternalPanel, Lookups } from "@aicore-fivem/shared";
 import { NuiCallback } from "../../../../resource/common/nui";
 import { mockAdminApply } from "../../dev/adminMock";
 import { router } from "../../router";
 import { store } from "../../store";
-import { changed, closed, fieldState, opened } from "../../store/admin";
+import { changed, closed, fieldState, opened, picking } from "../../store/admin";
 import { getAt, sectionWrite } from "./path";
 
 /** Every navigation and NUI call of the admin panel; components never call the router or fetchNui themselves. */
@@ -26,14 +26,29 @@ export function goTo(resource: string, tab: string, key?: string): void {
   void router.navigate({ to: "/admin/$resource/$tab", params: { resource, tab }, search: key ? { key } : {} });
 }
 
-/** Opens on the place the admin left (same script and tab when they still exist), else on the first tab. */
-export function openPanel(panels: AdminPanelSnapshot[], texts: Record<string, string>): void {
-  store.dispatch(opened({ panels, texts }));
+export function goDashboard(): void {
+  void router.navigate({ to: "/admin" });
+}
+
+/** Opens on the place the admin left (same script and tab when they still exist), else on the dashboard. */
+export function openPanel(panels: AdminPanelSnapshot[], texts: Record<string, string>, lookups: Lookups, external: ExternalPanel[]): void {
+  store.dispatch(opened({ panels, texts, lookups, external }));
   const params: Record<string, unknown> = router.state.matches.at(-1)?.params ?? {};
-  const panel = panels.find((p) => p.resource === params.resource) ?? panels[0];
-  if (!panel) return;
-  const tab = panel.schema.tabs.find((t) => t.id === params.tab) ?? panel.schema.tabs[0];
-  if (tab && (panel.resource !== params.resource || tab.id !== params.tab)) goTo(panel.resource, tab.id);
+  if (typeof params.id === "string" && external.some((e) => e.id === params.id)) return;
+  const panel = panels.find((p) => p.resource === params.resource);
+  const tab = panel?.schema.tabs.find((t) => t.id === params.tab);
+  if (!panel || !tab) goDashboard();
+}
+
+/** Another script's panel: its command (ai-core's panel closes) or its page inside the panel. */
+export function openExternal(panel: ExternalPanel): void {
+  if (panel.url) {
+    void router.navigate({ to: "/admin/external/$id", params: { id: panel.id } });
+    return;
+  }
+  if (!panel.command) return;
+  store.dispatch(closed());
+  void fetchNui<boolean>(NuiCallback.adminRunCommand, { command: panel.command }, { mockData: true });
 }
 
 export function closePanel(): void {
@@ -94,4 +109,22 @@ export async function myPosition(from: "ped" | "camera", ground = false): Promis
 
 export function teleport(point: Point): void {
   void fetchNui<boolean>(NuiCallback.adminTeleport, point, { mockData: true });
+}
+
+/** Picks a place with the free camera; the panel hides until the admin places or cancels. */
+export async function pickPoint(root: boolean): Promise<Point | null> {
+  store.dispatch(picking(true));
+  const answer = await fetchNui<unknown>(NuiCallback.adminPickPoint, { root }, { mockData: { x: 228.41, y: -795.3, z: 30.62, heading: 90 }, mockDelay: 800 }).catch(() => null);
+  store.dispatch(picking(false));
+  if (typeof answer !== "object" || answer === null) return null;
+  const p = answer as Record<string, unknown>;
+  return typeof p.x === "number" && typeof p.y === "number" && typeof p.z === "number" && typeof p.heading === "number"
+    ? { x: p.x, y: p.y, z: p.z, heading: p.heading }
+    : null;
+}
+
+/** Street and zone names at a place (or at the admin) for a name field's suggestions. */
+export async function placeNames(at: Point | null): Promise<string[]> {
+  const answer = await fetchNui<unknown>(NuiCallback.adminPlaceNames, at, { mockData: ["Alta St", "Pillbox Hill", "Alta St, Pillbox Hill"] }).catch(() => []);
+  return Array.isArray(answer) ? answer.filter((v): v is string => typeof v === "string").slice(0, 6) : [];
 }

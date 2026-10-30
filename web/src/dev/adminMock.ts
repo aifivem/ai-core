@@ -1,4 +1,4 @@
-import type { AdminPanelSnapshot, AdminPatch, AdminResult } from "@aicore-fivem/shared";
+import type { AdminOpenData, AdminPanelSnapshot, AdminPatch, AdminResult, LookupOption } from "@aicore-fivem/shared";
 import { coreSchema } from "../../../resource/server/admin/schema";
 import accounts from "../../../data/accounts.json";
 import gangs from "../../../data/gangs.json";
@@ -46,7 +46,17 @@ const commands = Object.fromEntries([
   cmd("tx", "monitor", "", "/tx", "?", "plain"),
 ]);
 
-export function mockAdminOpen(): { panels: AdminPanelSnapshot[]; texts: Record<string, string> } | undefined {
+const options = (records: Record<string, { label?: string }>): LookupOption[] => Object.entries(records).map(([value, r]) => ({ value, label: r.label ?? value }));
+const ITEMS: LookupOption[] = [
+  { value: "bread", label: "Bread" },
+  { value: "water", label: "Water" },
+  { value: "lockpick", label: "Lockpick" },
+  { value: "repairkit", label: "Repair kit" },
+  { value: "rolex", label: "Rolex" },
+  { value: "weed_bud", label: "Weed bud" },
+];
+
+export function mockAdminOpen(): (AdminOpenData & { texts: Record<string, string> }) | undefined {
   if (!adminPreview) return undefined;
   const panel: AdminPanelSnapshot = {
     resource: "ai-core",
@@ -54,7 +64,12 @@ export function mockAdminOpen(): { panels: AdminPanelSnapshot[]; texts: Record<s
     texts: en,
     data: { settings, jobs, gangs, accounts, keybinds, commands },
   };
-  return { panels: [panel], texts: en };
+  return {
+    panels: [panel],
+    texts: en,
+    lookups: { item: ITEMS, job: options(jobs), gang: options(gangs), account: options(accounts) },
+    external: [{ id: "panel:craft", resource: "tgiann-blueprint-craft", label: "Blueprint crafting", icon: "puzzle-piece", description: "Recipes, benches and blueprints", command: "craftadmin" }],
+  };
 }
 
 export function mockAdminApply(patch: AdminPatch): AdminResult {

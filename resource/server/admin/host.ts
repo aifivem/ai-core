@@ -1,10 +1,12 @@
 import { addCommand, isAdmin, onClientCallback, onClientEvent, registerExport } from "@aicore-fivem/lib/server";
 import { isRecord } from "@aicore-fivem/lib/shared";
-import { ADMIN, type AdminDelta, type AdminPanelResourceExports, type AdminPanelSnapshot, type AdminResult } from "@aicore-fivem/shared";
+import { ADMIN, type AdminDelta, type AdminOpenData, type AdminPanelResourceExports, type AdminPanelSnapshot, type AdminResult } from "@aicore-fivem/shared";
 import { Locale } from "common";
 import { coreLog } from "../logs";
 import { commandRegistry } from "./commands";
+import { externalPanels } from "./external";
 import { readKeybinds, reportKeybinds } from "./keybinds";
+import { allLookups } from "./lookups";
 
 /**
  * The admin panel host: every ai-* resource with a panel registers here; ai-core checks the admin, opens the panel
@@ -24,14 +26,15 @@ class AdminHost {
     this.resources.delete(resource);
   }
 
-  open(source: number): AdminPanelSnapshot[] {
+  /** Every script's snapshot, the lookup lists (items, jobs, gangs, accounts) and the other scripts' panels. */
+  open(source: number): AdminOpenData {
     this.watchers.add(source);
     const panels: AdminPanelSnapshot[] = [];
     for (const resource of this.resources) {
       const panel = this.call(resource);
       if (panel) panels.push(panel.AdminPanelSnapshot());
     }
-    return panels;
+    return { panels, lookups: allLookups(), external: externalPanels.list() };
   }
 
   close(source: number): void {

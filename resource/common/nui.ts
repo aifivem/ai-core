@@ -47,6 +47,12 @@ export const NuiCallback = {
   adminPosition: "adminPosition",
   /** ({ x, y, z, heading? }) -> true, teleports the admin to a point. */
   adminTeleport: "adminTeleport",
+  /** (data: { root: boolean }) -> point | null: picks a place with the free camera (the panel hides meanwhile). */
+  adminPickPoint: "adminPickPoint",
+  /** (data: { x, y, z } | null) -> string[]: street and zone names at the place (or at the admin) for name suggestions. */
+  adminPlaceNames: "adminPlaceNames",
+  /** (data: { command }) -> true: closes ai-core's panel and runs another script's panel command. */
+  adminRunCommand: "adminRunCommand",
   /** ({ value }) -> true, the menu pick (item id) or input values; null when closed. */
   dialogAnswer: "dialogAnswer",
   /** ({ id }) -> true, the pointer or focus moved onto a menu item. */

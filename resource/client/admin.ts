@@ -3,6 +3,7 @@ import { isRecord } from "@aicore-fivem/lib/shared";
 import { ADMIN } from "@aicore-fivem/shared";
 import { Locale } from "common";
 import { NuiCallback, NuiMessage } from "common/nui";
+import { pickPoint, placeNames } from "./freecam";
 import { keybinds } from "./keybinds";
 import { isLoaded } from "./playerState";
 
@@ -18,13 +19,13 @@ class AdminPanelClient {
     if (this.open || this.opening || !isLoaded()) return;
     this.opening = true;
     // The keybinds live on clients: the admin's own list fills the panel's Keybinds tab.
-    const panels = await triggerServerCallback(ADMIN.openCallback, [keybinds.list()]).catch(() => null);
+    const answer = await triggerServerCallback(ADMIN.openCallback, [keybinds.list()]).catch(() => null);
     this.opening = false;
-    // Not an admin: nothing happens, not even a message.
-    if (!Array.isArray(panels)) return;
+    // Not an admin: nothing happens, not even a message. ai-core's own server built the answer; the NUI checks its parts.
+    if (!isRecord(answer) || !Array.isArray(answer.panels)) return;
     this.open = true;
     SetNuiFocus(true, true);
-    SendNUIMessage({ action: NuiMessage.adminOpen, data: { panels, texts: loadLocaleTexts() } });
+    SendNUIMessage({ action: NuiMessage.adminOpen, data: { ...answer, texts: loadLocaleTexts() } });
   }
 
   hide(): void {
@@ -77,4 +78,28 @@ RegisterNuiCallback(NuiCallback.adminTeleport, (data: unknown, cb: NuiReply) => 
     if (typeof data.heading === "number") SetEntityHeading(ped, data.heading);
   }
   cb(true);
+});
+
+// Free camera pick: the NUI hides the panel and gives the focus back to the game until a place is picked or cancelled.
+RegisterNuiCallback(NuiCallback.adminPickPoint, (data: unknown, cb: NuiReply) => {
+  if (!panel.isOpen) return cb(null);
+  SetNuiFocus(false, false);
+  void pickPoint(isRecord(data) && data.root === true).then((point) => {
+    if (panel.isOpen) SetNuiFocus(true, true);
+    cb(point);
+  });
+});
+
+RegisterNuiCallback(NuiCallback.adminPlaceNames, (data: unknown, cb: NuiReply) => {
+  const at = isRecord(data) && typeof data.x === "number" && typeof data.y === "number" && typeof data.z === "number" ? data : null;
+  const [x = 0, y = 0, z = 0] = at ? [at.x as number, at.y as number, at.z as number] : GetEntityCoords(PlayerPedId(), false);
+  cb(placeNames(x, y, z));
+});
+
+// Another script's own panel: ai-core's closes first so the other NUI can take the focus.
+RegisterNuiCallback(NuiCallback.adminRunCommand, (data: unknown, cb: NuiReply) => {
+  cb(true);
+  if (!isRecord(data) || typeof data.command !== "string" || !/^[A-Za-z0-9_:.-]{1,64}$/.test(data.command)) return;
+  panel.hide();
+  ExecuteCommand(data.command);
 });

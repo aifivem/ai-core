@@ -501,8 +501,28 @@ const ERR = {
 	range: "ADMIN_ERR_RANGE",
 	length: "ADMIN_ERR_LENGTH",
 	pattern: "ADMIN_ERR_PATTERN",
-	required: "ADMIN_ERR_REQUIRED"
+	required: "ADMIN_ERR_REQUIRED",
+	lookup: "ADMIN_ERR_LOOKUP"
 };
+/** Values of a lookup list from ai-core (items, jobs, gangs, accounts), cached for 2 s; null = not known (accepted). */
+var LookupCache = class {
+	lists = /* @__PURE__ */ new Map();
+	values(source) {
+		const cached = this.lists.get(source);
+		if (cached && Date.now() - cached.at < 2e3) return cached.values.size > 0 ? cached.values : null;
+		let list = [];
+		try {
+			list = resourceExport(CORE.resource).GetLookupValues(source);
+		} catch {}
+		const values = new Set(Array.isArray(list) ? list.filter((v) => typeof v === "string") : []);
+		this.lists.set(source, {
+			at: Date.now(),
+			values
+		});
+		return values.size > 0 ? values : null;
+	}
+};
+const lookups = new LookupCache();
 const isVec = (value, keys) => isRecord(value) && keys.every((k) => typeof value[k] === "number" && Number.isFinite(value[k]));
 /** Checks a value against its spec; the first problem found, or null. */
 function validate(spec, value, path) {
@@ -519,6 +539,7 @@ function validate(spec, value, path) {
 			if (typeof value !== "string") return fail(ERR.type);
 			if (value.length < (spec.min ?? 1) || value.length > (spec.max ?? 120)) return fail(ERR.length);
 			if (spec.pattern && !new RegExp(spec.pattern).test(value)) return fail(ERR.pattern);
+			if (spec.lookup && value !== "" && lookups.values(spec.lookup)?.has(value) === false) return fail(ERR.lookup);
 			return null;
 		case "number":
 			if (typeof value !== "number" || !Number.isFinite(value)) return fail(ERR.type);
@@ -534,6 +555,7 @@ function validate(spec, value, path) {
 			for (const name of value) {
 				if (typeof name !== "string" || name.length > (spec.itemMax ?? 64) || seen.has(name)) return fail(ERR.type);
 				if (!pattern.test(name)) return fail(ERR.pattern);
+				if (spec.lookup && lookups.values(spec.lookup)?.has(name) === false) return fail(ERR.lookup);
 				seen.add(name);
 			}
 			return null;
@@ -26428,8 +26450,8 @@ const sceneTab = {
 
 // resource/server/admin/schema.ts
 /** ai-core's own panel: server settings, spawn points, character screen scene, job rules, jobs, gangs and money accounts (`data/*.json`). */
-const ID = "^[a-z0-9_]{2,32}$";
-const text$3 = (max, min = 1) => ({
+const ID$1 = "^[a-z0-9_]{2,32}$";
+const text$4 = (max, min = 1) => ({
 	type: "text",
 	min,
 	max
@@ -26448,7 +26470,7 @@ const grades = {
 	of: {
 		type: "object",
 		fields: {
-			label: text$3(48),
+			label: text$4(48),
 			salary: int(0, 1e6),
 			boss: {
 				type: "bool",
@@ -26495,10 +26517,10 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 					branding: {
 						type: "object",
 						fields: {
-							name: text$3(32),
-							subtitle: text$3(32),
-							tagline: text$3(48, 0),
-							taglineSub: text$3(64, 0),
+							name: text$4(32),
+							subtitle: text$4(32),
+							tagline: text$4(48, 0),
+							taglineSub: text$4(64, 0),
 							background: {
 								type: "enum",
 								values: ["skyline", "wet-drive"]
@@ -26521,7 +26543,7 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 							unemployed: {
 								type: "text",
 								max: 32,
-								pattern: ID
+								pattern: ID$1
 							},
 							restoreDuty: bool
 						}
@@ -26540,7 +26562,7 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 							account: {
 								type: "text",
 								max: 32,
-								pattern: ID
+								pattern: ID$1
 							},
 							fromJobAccount: bool
 						}
@@ -26582,11 +26604,11 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 					}]
 				},
 				sections: {
-					label: text$3(48),
+					label: text$4(48),
 					type: {
 						type: "text",
 						max: 32,
-						pattern: ID
+						pattern: ID$1
 					},
 					defaultDuty: bool,
 					grades
@@ -26601,7 +26623,7 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 					salary: 0
 				}] },
 				sections: {
-					label: text$3(48),
+					label: text$4(48),
 					grades
 				}
 			},
@@ -26615,7 +26637,7 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 					allowNegative: false
 				},
 				sections: {
-					label: text$3(48),
+					label: text$4(48),
 					start: int(0, 1e8),
 					allowNegative: bool
 				}
@@ -26625,10 +26647,10 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 				sync: "all",
 				labelPath: "description",
 				sections: {
-					resource: text$3(64),
-					description: text$3(120, 0),
-					defaultKey: text$3(32, 0),
-					mapper: text$3(32),
+					resource: text$4(64),
+					description: text$4(120, 0),
+					defaultKey: text$4(32, 0),
+					mapper: text$4(32),
 					key: {
 						type: "text",
 						min: 0,
@@ -26642,6 +26664,54 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 				sync: "admin",
 				memory: true,
 				sections: {}
+			},
+			externalPanels: {
+				kind: "records",
+				sync: "admin",
+				labelPath: "label",
+				newRecord: {
+					label: "",
+					resource: "",
+					command: "",
+					url: "",
+					icon: "puzzle-piece",
+					description: ""
+				},
+				sections: {
+					label: {
+						type: "text",
+						min: 1,
+						max: 48
+					},
+					resource: {
+						type: "text",
+						min: 0,
+						max: 64,
+						pattern: "^[A-Za-z0-9_.-]*$"
+					},
+					command: {
+						type: "text",
+						min: 0,
+						max: 64,
+						pattern: "^/?[A-Za-z0-9_:.-]*$"
+					},
+					url: {
+						type: "text",
+						min: 0,
+						max: 300,
+						pattern: "^(https://.*)?$"
+					},
+					icon: {
+						type: "text",
+						min: 0,
+						max: 32
+					},
+					description: {
+						type: "text",
+						min: 0,
+						max: 160
+					}
+				}
 			}
 		},
 		tabs: [
@@ -27010,6 +27080,55 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 				}]
 			},
 			{
+				id: "external",
+				file: "externalPanels",
+				icon: "puzzle-piece",
+				label: "ADMIN_TAB_EXTERNAL",
+				desc: "ADMIN_TAB_EXTERNAL_DESC",
+				createLabel: "ADMIN_NEW_EXTERNAL",
+				deleteLabel: "ADMIN_DELETE_EXTERNAL",
+				cards: [{
+					icon: "puzzle-piece",
+					title: "ADMIN_C_EXTERNAL",
+					desc: "ADMIN_C_EXTERNAL_DESC",
+					fields: [
+						{
+							widget: "text",
+							path: "label",
+							label: "ADMIN_F_EXT_LABEL",
+							placeholder: "ADMIN_PH_EXT_LABEL"
+						},
+						{
+							widget: "text",
+							path: "resource",
+							label: "ADMIN_F_EXT_RESOURCE",
+							hint: "ADMIN_H_EXT_RESOURCE",
+							placeholder: "ADMIN_PH_EXT_RESOURCE"
+						},
+						{
+							widget: "text",
+							path: "command",
+							label: "ADMIN_F_EXT_COMMAND",
+							hint: "ADMIN_H_EXT_COMMAND",
+							placeholder: "ADMIN_PH_EXT_COMMAND"
+						},
+						{
+							widget: "text",
+							path: "url",
+							label: "ADMIN_F_EXT_URL",
+							hint: "ADMIN_H_EXT_URL",
+							placeholder: "ADMIN_PH_EXT_URL"
+						},
+						{
+							widget: "text",
+							path: "description",
+							label: "ADMIN_F_EXT_DESCRIPTION",
+							placeholder: "ADMIN_PH_EXT_DESCRIPTION"
+						}
+					]
+				}]
+			},
+			{
 				id: "keybinds",
 				file: "keybinds",
 				icon: "keyboard",
@@ -27122,7 +27241,7 @@ const number = (value, fallback = 0) => {
 	const v = first(value);
 	return typeof v === "number" && Number.isFinite(v) ? v : fallback;
 };
-const text$2 = (value, fallback) => typeof value === "string" ? value : fallback;
+const text$3 = (value, fallback) => typeof value === "string" ? value : fallback;
 const metadata = (value) => isRecord(value) ? { ...value } : {};
 /** Rows of a Lua item table: an array, or a map keyed by slot when the slots have gaps. */
 function rows(value) {
@@ -27151,7 +27270,7 @@ function stack(row, labelOf) {
 function definition(raw, name) {
 	if (!isRecord(raw)) return null;
 	return {
-		name: text$2(raw.name, name),
+		name: text$3(raw.name, name),
 		label: label(raw.label, name),
 		weight: number(raw.weight),
 		unique: raw.unique === true || raw.stack === false,
@@ -27569,14 +27688,14 @@ const PARAM_TYPES = /* @__PURE__ */ new Set([
 	"string",
 	"longString"
 ]);
-const text$1 = (value, max) => typeof value === "string" ? value.slice(0, max) : "";
+const text$2 = (value, max) => typeof value === "string" ? value.slice(0, max) : "";
 const names = (value) => Array.isArray(value) ? value.filter((n) => typeof n === "string" && /^[\w.:-]{1,64}$/.test(n)).map((n) => n.toLowerCase()) : [];
 function readParam(value) {
 	if (!isRecord(value) || typeof value.name !== "string" || typeof value.type !== "string" || !PARAM_TYPES.has(value.type)) return null;
 	return {
-		name: text$1(value.name, 32),
+		name: text$2(value.name, 32),
 		type: value.type,
-		help: text$1(value.help, 120),
+		help: text$2(value.help, 120),
 		optional: value.optional === true
 	};
 }
@@ -27588,7 +27707,7 @@ function readInfo(value) {
 	const aces = Array.isArray(value.aces) ? value.aces.filter((a) => typeof a === "string" && /^[\w.:-]{1,64}$/.test(a)) : null;
 	return {
 		names: list,
-		help: text$1(value.help, 200),
+		help: text$2(value.help, 200),
 		params,
 		aces
 	};
@@ -27711,6 +27830,85 @@ registerExport("RegisterCommands", (resource, list) => {
 on("onResourceStop", (resource) => commandRegistry.drop(resource));
 on("onServerResourceStart", () => commandRegistry.refreshSoon());
 
+// resource/server/admin/external.ts
+const ID = /^[a-z0-9_.-]{2,48}$/i;
+const text$1 = (v, max) => typeof v === "string" && v.trim() ? v.trim().slice(0, max) : void 0;
+/** An NUI page of a resource (or any https page the owner trusts); never another scheme. */
+const pageUrl = (v) => typeof v === "string" && v.startsWith("https://") ? v.slice(0, 300) : void 0;
+function toPanel(id, v, resource) {
+	const command = text$1(v.command, 64)?.replace(/^\//, "");
+	const url = pageUrl(v.url);
+	const label = text$1(v.label, 48);
+	if (!label || !command && !url) return null;
+	return {
+		id,
+		resource,
+		label,
+		icon: text$1(v.icon, 32),
+		description: text$1(v.description, 160),
+		command,
+		url
+	};
+}
+/**
+* Other scripts' own settings screens on ai-core's dashboard, from three places: the owner's list in the panel
+* (`externalPanels`), `ai_admin_label` + `ai_admin_command` / `ai_admin_url` lines in a resource's fxmanifest
+* (works for escrowed scripts), and the `RegisterExternalPanel` export (dropped when that resource stops).
+*/
+var ExternalPanels = class {
+	declared = /* @__PURE__ */ new Map();
+	declare(panelSpec) {
+		this.declared.set(panelSpec.id, panelSpec);
+	}
+	dropFrom(resource) {
+		for (const [id, p] of this.declared) if (p.resource === resource) this.declared.delete(id);
+	}
+	fromManifests() {
+		const out = [];
+		for (let i = 0; i < GetNumResources(); i++) {
+			const resource = GetResourceByFindIndex(i);
+			if (!resource || GetResourceState(resource) !== "started") continue;
+			const label = GetResourceMetadata(resource, "ai_admin_label", 0);
+			if (!label) continue;
+			const found = toPanel(`manifest:${resource}`, {
+				label,
+				command: GetResourceMetadata(resource, "ai_admin_command", 0),
+				url: GetResourceMetadata(resource, "ai_admin_url", 0),
+				icon: GetResourceMetadata(resource, "ai_admin_icon", 0),
+				description: GetResourceMetadata(resource, "ai_admin_description", 0)
+			}, resource);
+			if (found) out.push(found);
+		}
+		return out;
+	}
+	fromPanel() {
+		const records = panel.get("externalPanels");
+		if (!isRecord(records)) return [];
+		return Object.entries(records).flatMap(([id, v]) => {
+			if (!isRecord(v)) return [];
+			const resource = text$1(v.resource, 64) ?? "";
+			if (resource && GetResourceState(resource) !== "started") return [];
+			const found = toPanel(`panel:${id}`, v, resource);
+			return found ? [found] : [];
+		});
+	}
+	list() {
+		return [
+			...this.fromPanel(),
+			...this.fromManifests(),
+			...this.declared.values()
+		];
+	}
+};
+const externalPanels = new ExternalPanels();
+registerExport("RegisterExternalPanel", (spec) => {
+	const resource = GetInvokingResource();
+	if (!resource || !isRecord(spec)) return;
+	const found = toPanel(`export:${resource}:${typeof spec.id === "string" && ID.test(spec.id) ? spec.id : resource}`, spec, resource);
+	if (found) externalPanels.declare(found);
+});
+on("onResourceStop", (resource) => externalPanels.dropFrom(resource));
+
 // resource/server/admin/keybinds.ts
 /**
 * The panel's Keybinds tab: `data/keybinds.json` (`sync: "all"`, key = keybind name) holds each keybind's description
@@ -27832,6 +28030,237 @@ panel.rule(FILE, (_key, next) => {
 	return null;
 });
 
+// resource/server/inventory/layer.ts
+/** The handler's item from any inventory's shape (`count` / `amount`, `metadata` / `info`). */
+function toUsedItem(name, raw) {
+	const v = isRecord(raw) ? raw : {};
+	const meta = isRecord(v.metadata) ? v.metadata : isRecord(v.info) ? v.info : {};
+	const count = typeof v.count === "number" ? v.count : typeof v.amount === "number" ? v.amount : 0;
+	return {
+		name,
+		slot: Number(v.slot) || 0,
+		count,
+		metadata: { ...meta }
+	};
+}
+/**
+* ai-core's inventory layer: picks the active inventory (the panel's choice, or the first running one in priority
+* order) and keeps the usable items and stashes scripts register, so an inventory that becomes active later (or
+* restarts) gets them all again.
+*/
+var InventoryLayer = class {
+	adapters;
+	host;
+	current = null;
+	choice = "auto";
+	usable = /* @__PURE__ */ new Map();
+	stashes = /* @__PURE__ */ new Map();
+	constructor(adapters, host) {
+		this.adapters = adapters;
+		this.host = host;
+	}
+	/** `auto`, or the resource name of one adapter. */
+	setChoice(choice) {
+		this.choice = choice;
+		this.select();
+	}
+	/** Picks the inventory again; `stopping` is a resource on its way down whose state may still read started. */
+	select(stopping) {
+		const runs = (a) => a.resource !== stopping && this.host.isStarted(a.resource);
+		const auto = this.choice === "auto" || !this.adapters.some((a) => a.resource === this.choice);
+		const next = (auto ? this.adapters.find(runs) : this.adapters.find((a) => a.resource === this.choice && runs(a))) ?? null;
+		if (next === this.current) return;
+		this.current = next;
+		this.host.announce(next?.resource ?? null);
+		if (!next) {
+			this.host.log.info(auto ? "no inventory runs yet: item calls fail until one starts" : `the inventory picked in the panel (${this.choice}) does not run yet`);
+			return;
+		}
+		const installed = this.host.version(next.resource);
+		this.host.log.info(`inventory: ${next.resource} ${installed}`);
+		if (installed !== next.version) this.host.log.warn(`${next.resource} ${installed} is installed; its adapter is written for ${next.version}`);
+		for (const stash of this.stashes.values()) this.call("RegisterStash", (a) => a.registerStash(stash), void 0);
+		if (next.registerUsableItem) for (const name of this.usable.keys()) this.call("RegisterUsableItem", (a) => a.registerUsableItem?.(name, this.dispatcher(name)), void 0);
+	}
+	/** Runs `fn` on the active adapter; `fallback` while none runs or when the inventory's export throws. */
+	call(what, fn, fallback) {
+		const adapter = this.current;
+		if (!adapter) return fallback;
+		try {
+			return fn(adapter);
+		} catch (error) {
+			this.host.log.error(`${adapter.resource} ${what} failed`, error);
+			return fallback;
+		}
+	}
+	registerStash(stash) {
+		this.stashes.set(stash.name, stash);
+		this.call("RegisterStash", (a) => a.registerStash(stash), void 0);
+	}
+	registerUsableItem(name, handler) {
+		this.usable.set(name, handler);
+		this.call("RegisterUsableItem", (a) => a.registerUsableItem?.(name, this.dispatcher(name)), void 0);
+	}
+	isUsable(name) {
+		return this.usable.has(name);
+	}
+	/** Runs an item's handler; false (keep the item) when none is registered or it throws (its resource stopped). */
+	useItem(source, name, item) {
+		const handler = this.usable.get(name);
+		if (!handler) return false;
+		try {
+			return handler(source, toUsedItem(name, item));
+		} catch (error) {
+			this.host.log.error(`usable item ${name} failed`, error);
+			return false;
+		}
+	}
+	dispatcher(name) {
+		return (source, item) => this.useItem(source, name, item);
+	}
+};
+
+// resource/server/inventory/index.ts
+/**
+* ai-core's inventory exports: every script (lib `inventory`) and the bridge call these, the active inventory
+* answers through its adapter (`registry.ts`). The choice follows the panel setting and inventory starts / stops.
+*/
+const inventory = new InventoryLayer(INVENTORIES, {
+	isStarted: isResourceStarted,
+	version: (resource) => GetResourceMetadata(resource, "version", 0) || "?",
+	announce: (resource) => {
+		GlobalState.set(INVENTORY_STATE_KEY, resource, true);
+		emit(CORE.inventoryChangedEvent, resource);
+	},
+	log: log$3
+});
+inventory.setChoice(settings.inventory);
+panel.onChange("settings", () => inventory.setChoice(settings.inventory));
+const candidates$1 = new Set(INVENTORIES.map((adapter) => adapter.resource));
+on("onServerResourceStart", (resource) => candidates$1.has(resource) && inventory.select());
+on("onResourceStop", (resource) => {
+	if (!candidates$1.has(resource)) return;
+	inventory.select(resource);
+	setTimeout(() => inventory.select(), 0);
+});
+const ref = (v) => typeof v === "number" || typeof v === "string" && v !== "" ? v : null;
+const name = (v) => typeof v === "string" && v !== "" ? v : null;
+/** A whole positive amount; 1 when left out. */
+const amount = (v) => v == null ? 1 : typeof v === "number" && Number.isFinite(v) && v >= 1 ? Math.floor(v) : null;
+const meta = (v) => isRecord(v) ? v : void 0;
+const slot = (v) => typeof v === "number" && Number.isInteger(v) && v > 0 ? v : void 0;
+registerExport("AddItem", (inv, item, count, metadata, at) => {
+	const [r, i, n] = [
+		ref(inv),
+		name(item),
+		amount(count)
+	];
+	return r !== null && i !== null && n !== null && inventory.call("AddItem", (a) => a.addItem(r, i, n, meta(metadata), slot(at)), false);
+});
+registerExport("RemoveItem", (inv, item, count, metadata, at) => {
+	const [r, i, n] = [
+		ref(inv),
+		name(item),
+		amount(count)
+	];
+	return r !== null && i !== null && n !== null && inventory.call("RemoveItem", (a) => a.removeItem(r, i, n, meta(metadata), slot(at)), false);
+});
+const count = (inv, item, metadata) => {
+	const [r, i] = [ref(inv), name(item)];
+	return r !== null && i !== null ? inventory.call("GetItemCount", (a) => a.getItemCount(r, i, meta(metadata)), 0) : 0;
+};
+registerExport("GetItemCount", count);
+registerExport("HasItem", (inv, item, need) => {
+	const n = amount(need);
+	return n !== null && count(inv, item) >= n;
+});
+registerExport("CanCarryItem", (inv, item, count, metadata) => {
+	const [r, i, n] = [
+		ref(inv),
+		name(item),
+		amount(count)
+	];
+	return r !== null && i !== null && n !== null && inventory.call("CanCarryItem", (a) => a.canCarryItem(r, i, n, meta(metadata)), false);
+});
+registerExport("GetItems", (inv) => {
+	const r = ref(inv);
+	return r === null ? [] : inventory.call("GetItems", (a) => a.getItems(r), []);
+});
+registerExport("ClearInventory", (inv) => {
+	const r = ref(inv);
+	if (r !== null) inventory.call("ClearInventory", (a) => a.clearInventory(r), void 0);
+});
+registerExport("RegisterStash", (id, label, slots, maxWeight, jobs) => {
+	const n = name(id);
+	if (n === null) return;
+	inventory.registerStash({
+		name: n,
+		label: typeof label === "string" ? label : n,
+		slots: typeof slots === "number" && slots > 0 ? Math.floor(slots) : 50,
+		maxWeight: typeof maxWeight === "number" && maxWeight > 0 ? maxWeight : 1e5,
+		jobs: Array.isArray(jobs) ? jobs.filter((j) => typeof j === "string") : []
+	});
+});
+registerExport("OpenInventory", (source, inv) => {
+	const r = ref(inv);
+	return typeof source === "number" && r !== null && inventory.call("OpenInventory", (a) => a.openInventory(source, r), false);
+});
+registerExport("RegisterUsableItem", (item, handler) => {
+	const n = name(item);
+	if (n !== null && typeof handler === "function") inventory.registerUsableItem(n, handler);
+});
+registerExport("GetItemDefinition", (item) => {
+	const n = name(item);
+	return n === null ? null : inventory.call("GetItemDefinition", (a) => a.getItemDefinition(n), null);
+});
+registerExport("GetItemDefinitions", () => inventory.call("GetItemDefinitions", (a) => a.getItemDefinitions(), {}));
+registerExport("UseItem", (source, item, data) => {
+	const n = name(item);
+	return typeof source === "number" && n !== null ? inventory.useItem(source, n, data) : false;
+});
+registerExport("IsUsableItem", (item) => typeof item === "string" && inventory.isUsable(item));
+
+// resource/server/admin/lookups.ts
+const SOURCES = [
+	"item",
+	"job",
+	"gang",
+	"account"
+];
+const sorted = (options) => options.sort((a, b) => a.label.localeCompare(b.label));
+/** The choices of one lookup list, read from what exists now (the active inventory's items, ai-core's content). */
+function lookupOptions(source) {
+	switch (source) {
+		case "item": return sorted(Object.entries(inventory.call("GetItemDefinitions", (a) => a.getItemDefinitions(), {})).map(([value, d]) => ({
+			value,
+			label: d.label || value
+		})));
+		case "job": return sorted([...jobs].map(([value, d]) => ({
+			value,
+			label: d.label
+		})));
+		case "gang": return sorted([...gangs].map(([value, d]) => ({
+			value,
+			label: d.label
+		})));
+		case "account": return sorted([...accountTypes].map(([value, d]) => ({
+			value,
+			label: d.label
+		})));
+		default: return source;
+	}
+}
+/** Every list, for the panel's open payload. */
+function allLookups() {
+	return {
+		item: lookupOptions("item"),
+		job: lookupOptions("job"),
+		gang: lookupOptions("gang"),
+		account: lookupOptions("account")
+	};
+}
+registerExport("GetLookupValues", (source) => SOURCES.includes(source) ? lookupOptions(source).map((o) => o.value) : []);
+
 // resource/server/admin/host.ts
 /**
 * The admin panel host: every ai-* resource with a panel registers here; ai-core checks the admin, opens the panel
@@ -27848,6 +28277,7 @@ var AdminHost = class {
 	unregister(resource) {
 		this.resources.delete(resource);
 	}
+	/** Every script's snapshot, the lookup lists (items, jobs, gangs, accounts) and the other scripts' panels. */
 	open(source) {
 		this.watchers.add(source);
 		const panels = [];
@@ -27855,7 +28285,11 @@ var AdminHost = class {
 			const panel = this.call(resource);
 			if (panel) panels.push(panel.AdminPanelSnapshot());
 		}
-		return panels;
+		return {
+			panels,
+			lookups: allLookups(),
+			external: externalPanels.list()
+		};
 	}
 	close(source) {
 		this.watchers.delete(source);
@@ -29333,196 +29767,6 @@ registerExport("GetAccountTypes", () => Object.fromEntries(accountTypes));
 registerExport("GetSharedMoney", (ownerType, ownerId, account) => sharedAccounts.get(ownerType, ownerId, account)?.balance ?? null);
 registerExport("AddSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(amount, reasonOf(reason)).ok ?? false : false);
 registerExport("RemoveSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(-amount, reasonOf(reason)).ok ?? false : false);
-
-// resource/server/inventory/layer.ts
-/** The handler's item from any inventory's shape (`count` / `amount`, `metadata` / `info`). */
-function toUsedItem(name, raw) {
-	const v = isRecord(raw) ? raw : {};
-	const meta = isRecord(v.metadata) ? v.metadata : isRecord(v.info) ? v.info : {};
-	const count = typeof v.count === "number" ? v.count : typeof v.amount === "number" ? v.amount : 0;
-	return {
-		name,
-		slot: Number(v.slot) || 0,
-		count,
-		metadata: { ...meta }
-	};
-}
-/**
-* ai-core's inventory layer: picks the active inventory (the panel's choice, or the first running one in priority
-* order) and keeps the usable items and stashes scripts register, so an inventory that becomes active later (or
-* restarts) gets them all again.
-*/
-var InventoryLayer = class {
-	adapters;
-	host;
-	current = null;
-	choice = "auto";
-	usable = /* @__PURE__ */ new Map();
-	stashes = /* @__PURE__ */ new Map();
-	constructor(adapters, host) {
-		this.adapters = adapters;
-		this.host = host;
-	}
-	/** `auto`, or the resource name of one adapter. */
-	setChoice(choice) {
-		this.choice = choice;
-		this.select();
-	}
-	/** Picks the inventory again; `stopping` is a resource on its way down whose state may still read started. */
-	select(stopping) {
-		const runs = (a) => a.resource !== stopping && this.host.isStarted(a.resource);
-		const auto = this.choice === "auto" || !this.adapters.some((a) => a.resource === this.choice);
-		const next = (auto ? this.adapters.find(runs) : this.adapters.find((a) => a.resource === this.choice && runs(a))) ?? null;
-		if (next === this.current) return;
-		this.current = next;
-		this.host.announce(next?.resource ?? null);
-		if (!next) {
-			this.host.log.info(auto ? "no inventory runs yet: item calls fail until one starts" : `the inventory picked in the panel (${this.choice}) does not run yet`);
-			return;
-		}
-		const installed = this.host.version(next.resource);
-		this.host.log.info(`inventory: ${next.resource} ${installed}`);
-		if (installed !== next.version) this.host.log.warn(`${next.resource} ${installed} is installed; its adapter is written for ${next.version}`);
-		for (const stash of this.stashes.values()) this.call("RegisterStash", (a) => a.registerStash(stash), void 0);
-		if (next.registerUsableItem) for (const name of this.usable.keys()) this.call("RegisterUsableItem", (a) => a.registerUsableItem?.(name, this.dispatcher(name)), void 0);
-	}
-	/** Runs `fn` on the active adapter; `fallback` while none runs or when the inventory's export throws. */
-	call(what, fn, fallback) {
-		const adapter = this.current;
-		if (!adapter) return fallback;
-		try {
-			return fn(adapter);
-		} catch (error) {
-			this.host.log.error(`${adapter.resource} ${what} failed`, error);
-			return fallback;
-		}
-	}
-	registerStash(stash) {
-		this.stashes.set(stash.name, stash);
-		this.call("RegisterStash", (a) => a.registerStash(stash), void 0);
-	}
-	registerUsableItem(name, handler) {
-		this.usable.set(name, handler);
-		this.call("RegisterUsableItem", (a) => a.registerUsableItem?.(name, this.dispatcher(name)), void 0);
-	}
-	isUsable(name) {
-		return this.usable.has(name);
-	}
-	/** Runs an item's handler; false (keep the item) when none is registered or it throws (its resource stopped). */
-	useItem(source, name, item) {
-		const handler = this.usable.get(name);
-		if (!handler) return false;
-		try {
-			return handler(source, toUsedItem(name, item));
-		} catch (error) {
-			this.host.log.error(`usable item ${name} failed`, error);
-			return false;
-		}
-	}
-	dispatcher(name) {
-		return (source, item) => this.useItem(source, name, item);
-	}
-};
-
-// resource/server/inventory/index.ts
-/**
-* ai-core's inventory exports: every script (lib `inventory`) and the bridge call these, the active inventory
-* answers through its adapter (`registry.ts`). The choice follows the panel setting and inventory starts / stops.
-*/
-const inventory = new InventoryLayer(INVENTORIES, {
-	isStarted: isResourceStarted,
-	version: (resource) => GetResourceMetadata(resource, "version", 0) || "?",
-	announce: (resource) => {
-		GlobalState.set(INVENTORY_STATE_KEY, resource, true);
-		emit(CORE.inventoryChangedEvent, resource);
-	},
-	log: log$3
-});
-inventory.setChoice(settings.inventory);
-panel.onChange("settings", () => inventory.setChoice(settings.inventory));
-const candidates$1 = new Set(INVENTORIES.map((adapter) => adapter.resource));
-on("onServerResourceStart", (resource) => candidates$1.has(resource) && inventory.select());
-on("onResourceStop", (resource) => {
-	if (!candidates$1.has(resource)) return;
-	inventory.select(resource);
-	setTimeout(() => inventory.select(), 0);
-});
-const ref = (v) => typeof v === "number" || typeof v === "string" && v !== "" ? v : null;
-const name = (v) => typeof v === "string" && v !== "" ? v : null;
-/** A whole positive amount; 1 when left out. */
-const amount = (v) => v == null ? 1 : typeof v === "number" && Number.isFinite(v) && v >= 1 ? Math.floor(v) : null;
-const meta = (v) => isRecord(v) ? v : void 0;
-const slot = (v) => typeof v === "number" && Number.isInteger(v) && v > 0 ? v : void 0;
-registerExport("AddItem", (inv, item, count, metadata, at) => {
-	const [r, i, n] = [
-		ref(inv),
-		name(item),
-		amount(count)
-	];
-	return r !== null && i !== null && n !== null && inventory.call("AddItem", (a) => a.addItem(r, i, n, meta(metadata), slot(at)), false);
-});
-registerExport("RemoveItem", (inv, item, count, metadata, at) => {
-	const [r, i, n] = [
-		ref(inv),
-		name(item),
-		amount(count)
-	];
-	return r !== null && i !== null && n !== null && inventory.call("RemoveItem", (a) => a.removeItem(r, i, n, meta(metadata), slot(at)), false);
-});
-const count = (inv, item, metadata) => {
-	const [r, i] = [ref(inv), name(item)];
-	return r !== null && i !== null ? inventory.call("GetItemCount", (a) => a.getItemCount(r, i, meta(metadata)), 0) : 0;
-};
-registerExport("GetItemCount", count);
-registerExport("HasItem", (inv, item, need) => {
-	const n = amount(need);
-	return n !== null && count(inv, item) >= n;
-});
-registerExport("CanCarryItem", (inv, item, count, metadata) => {
-	const [r, i, n] = [
-		ref(inv),
-		name(item),
-		amount(count)
-	];
-	return r !== null && i !== null && n !== null && inventory.call("CanCarryItem", (a) => a.canCarryItem(r, i, n, meta(metadata)), false);
-});
-registerExport("GetItems", (inv) => {
-	const r = ref(inv);
-	return r === null ? [] : inventory.call("GetItems", (a) => a.getItems(r), []);
-});
-registerExport("ClearInventory", (inv) => {
-	const r = ref(inv);
-	if (r !== null) inventory.call("ClearInventory", (a) => a.clearInventory(r), void 0);
-});
-registerExport("RegisterStash", (id, label, slots, maxWeight, jobs) => {
-	const n = name(id);
-	if (n === null) return;
-	inventory.registerStash({
-		name: n,
-		label: typeof label === "string" ? label : n,
-		slots: typeof slots === "number" && slots > 0 ? Math.floor(slots) : 50,
-		maxWeight: typeof maxWeight === "number" && maxWeight > 0 ? maxWeight : 1e5,
-		jobs: Array.isArray(jobs) ? jobs.filter((j) => typeof j === "string") : []
-	});
-});
-registerExport("OpenInventory", (source, inv) => {
-	const r = ref(inv);
-	return typeof source === "number" && r !== null && inventory.call("OpenInventory", (a) => a.openInventory(source, r), false);
-});
-registerExport("RegisterUsableItem", (item, handler) => {
-	const n = name(item);
-	if (n !== null && typeof handler === "function") inventory.registerUsableItem(n, handler);
-});
-registerExport("GetItemDefinition", (item) => {
-	const n = name(item);
-	return n === null ? null : inventory.call("GetItemDefinition", (a) => a.getItemDefinition(n), null);
-});
-registerExport("GetItemDefinitions", () => inventory.call("GetItemDefinitions", (a) => a.getItemDefinitions(), {}));
-registerExport("UseItem", (source, item, data) => {
-	const n = name(item);
-	return typeof source === "number" && n !== null ? inventory.useItem(source, n, data) : false;
-});
-registerExport("IsUsableItem", (item) => typeof item === "string" && inventory.isUsable(item));
 
 // resource/server/vehicleKeys/index.ts
 /**

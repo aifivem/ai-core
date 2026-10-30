@@ -1,5 +1,5 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
-import type { AdminDelta, AdminPanelSnapshot } from "@aicore-fivem/shared";
+import type { AdminDelta, AdminPanelSnapshot, ExternalPanel, Lookups } from "@aicore-fivem/shared";
 
 /** A field's save state, shown next to its label. */
 export type FieldState = { status: "saving" } | { status: "saved" } | { status: "error"; error: string };
@@ -11,9 +11,16 @@ export interface AdminState {
   /** ai-core's own texts: the panel's generic words (buttons, errors). */
   texts: Record<string, string>;
   fields: Record<string, FieldState>;
+  /** Existing items, jobs, gangs and accounts for lookup fields (as of the panel's opening). */
+  lookups: Lookups;
+  /** Other scripts' own panels on the dashboard. */
+  external: ExternalPanel[];
+  /** A point is being picked with the free camera: the panel hides. */
+  picking: boolean;
 }
 
-const initialState: AdminState = { open: false, panels: [], texts: {}, fields: {} };
+const NO_LOOKUPS: Lookups = { item: [], job: [], gang: [], account: [] };
+const initialState: AdminState = { open: false, panels: [], texts: {}, fields: {}, lookups: NO_LOOKUPS, external: [], picking: false };
 
 type Data = Record<string, unknown>;
 
@@ -34,11 +41,17 @@ const admin = createSlice({
   name: "admin",
   initialState,
   reducers: {
-    opened(state, action: PayloadAction<{ panels: AdminPanelSnapshot[]; texts: Record<string, string> }>) {
+    opened(state, action: PayloadAction<{ panels: AdminPanelSnapshot[]; texts: Record<string, string>; lookups: Lookups; external: ExternalPanel[] }>) {
       state.open = true;
       state.panels = action.payload.panels;
       state.texts = action.payload.texts;
+      state.lookups = action.payload.lookups;
+      state.external = action.payload.external;
       state.fields = {};
+      state.picking = false;
+    },
+    picking(state, action: PayloadAction<boolean>) {
+      state.picking = action.payload;
     },
     closed(state) {
       state.open = false;
@@ -54,5 +67,5 @@ const admin = createSlice({
   },
 });
 
-export const { opened, closed, changed, fieldState } = admin.actions;
+export const { opened, closed, changed, fieldState, picking } = admin.actions;
 export default admin.reducer;

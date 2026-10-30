@@ -21,6 +21,8 @@ const rootRoute = createRootRoute({
   ),
 });
 const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: () => null });
+const dashboardRoute = createRoute({ getParentRoute: () => rootRoute, path: "/admin", component: () => null });
+const externalRoute = createRoute({ getParentRoute: () => rootRoute, path: "/admin/external/$id", component: () => null });
 const adminRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/$resource/$tab",
@@ -31,7 +33,7 @@ const adminRoute = createRoute({
 const start = window.location.hash.startsWith("#/") ? window.location.hash.slice(1) : "/";
 
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([indexRoute, adminRoute]),
+  routeTree: rootRoute.addChildren([indexRoute, dashboardRoute, externalRoute, adminRoute]),
   history: createMemoryHistory({ initialEntries: [start] }),
 });
 

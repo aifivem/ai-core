@@ -1,13 +1,14 @@
 import { useEffect, useState, type KeyboardEvent } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMinus, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faMinus, faPlus, faTriangleExclamation, faWandMagicSparkles } from "@fortawesome/free-solid-svg-icons";
 import type { WidgetSpec } from "@aicore-fivem/shared";
 import { Input } from "../../../components/ui/input";
 import { Select } from "../../../components/ui/select";
 import { Switch } from "../../../components/ui/switch";
-import { saveField } from "../actions";
+import { placeNames, saveField, type Point } from "../actions";
 import { useEditor } from "../context";
 import { getAt } from "../path";
+import { LookupBox, useLookup } from "./lookup";
 
 type Spec<W extends WidgetSpec["widget"]> = Extract<WidgetSpec, { widget: W }>;
 
@@ -29,15 +30,107 @@ function keys(revert: () => void) {
   };
 }
 
-/** Typed text, saved when the box is left or Enter is pressed. */
+/** A value picked from a lookup list (item, job, gang, account); a stored value the game does not know is flagged. */
+function LookupTextW({ spec, path, source }: { spec: Spec<"text">; path: string; source: NonNullable<Spec<"text">["lookup"]> }) {
+  const { t } = useEditor();
+  const [value, save] = useField(path);
+  const stored = typeof value === "string" ? value : "";
+  const { all } = useLookup(source, "");
+  const current = all.find((o) => o.value === stored);
+  const [query, setQuery] = useState(current?.label ?? stored);
+  useEffect(() => setQuery(current?.label ?? stored), [stored, current?.label]);
+  const unknown = stored !== "" && all.length > 0 && !current;
+  return (
+    <div className="flex items-center gap-[0.8vh]">
+      <LookupBox
+        source={source}
+        query={query}
+        onQuery={setQuery}
+        onPick={(option) => {
+          setQuery(option.label);
+          if (option.value !== stored) save(option.value);
+        }}
+        empty={t("ADMIN_LOOKUP_EMPTY")}
+        anchor={(input) => (
+          <Input
+            value={input.value}
+            aria-label={t(spec.label)}
+            placeholder={spec.placeholder ? t(spec.placeholder) : undefined}
+            onChange={(event) => input.onChange(event.target.value)}
+            onFocus={(event) => {
+              event.target.select();
+              input.onFocus();
+            }}
+            onBlur={() => {
+              input.onBlur();
+              setQuery(current?.label ?? stored);
+            }}
+            onKeyDown={input.onKeyDown}
+          />
+        )}
+      />
+      {current && <span className="shrink-0 font-mono text-[1.15vh] text-text-3">{current.value}</span>}
+      {unknown && (
+        <span className="flex shrink-0 items-center gap-[0.5vh] rounded-[0.4vh] bg-danger-bg px-[0.7vh] py-[0.3vh] text-[1.1vh] font-semibold text-danger">
+          <FontAwesomeIcon icon={faTriangleExclamation} aria-hidden />
+          {t("ADMIN_LOOKUP_UNKNOWN")}
+        </span>
+      )}
+    </div>
+  );
+}
+
+const isPointValue = (v: unknown): v is Point =>
+  typeof v === "object" && v !== null && ["x", "y", "z"].every((k) => typeof (v as Record<string, unknown>)[k] === "number");
+
+/** Name suggestions as buttons: street and zone names at the record's point (or at the admin), one click fills. */
+function Suggestions({ from, onPick }: { from: string | undefined; onPick: (name: string) => void }) {
+  const { t, record } = useEditor();
+  const [names, setNames] = useState<string[] | null>(null);
+  const point = from ? getAt(record, from) : undefined;
+  const key = isPointValue(point) ? `${point.x},${point.y},${point.z}` : "me";
+  useEffect(() => setNames(null), [key]);
+  return (
+    <div className="flex flex-wrap items-center gap-[0.6vh]">
+      {names === null ? (
+        <button
+          type="button"
+          onClick={async () => setNames(await placeNames(isPointValue(point) ? point : null))}
+          className="flex h-[2.6vh] items-center gap-[0.6vh] rounded-full bg-white/6 px-[1vh] text-[1.2vh] font-medium text-text-3 transition-colors duration-150 hover:bg-white/12 hover:text-text"
+        >
+          <FontAwesomeIcon icon={faWandMagicSparkles} className="text-[1vh]" aria-hidden />
+          {t("ADMIN_SUGGEST")}
+        </button>
+      ) : (
+        names.map((name) => (
+          <button
+            key={name}
+            type="button"
+            onClick={() => onPick(name)}
+            className="flex h-[2.6vh] items-center rounded-full bg-tgi-green-10 px-[1vh] text-[1.2vh] font-medium text-tgi-green transition-colors duration-150 hover:bg-tgi-green-20"
+          >
+            {name}
+          </button>
+        ))
+      )}
+    </div>
+  );
+}
+
+/** Typed text, saved when the box is left or Enter is pressed; a lookup spec picks from a list instead. */
 export function TextW({ spec, path }: { spec: Spec<"text">; path: string }) {
+  if (spec.lookup) return <LookupTextW spec={spec} path={path} source={spec.lookup} />;
+  return <PlainTextW spec={spec} path={path} />;
+}
+
+function PlainTextW({ spec, path }: { spec: Spec<"text">; path: string }) {
   const { t } = useEditor();
   const [value, save] = useField(path);
   const stored = typeof value === "string" ? value : "";
   const [draft, setDraft] = useState(stored);
   useEffect(() => setDraft(stored), [stored]);
   const commit = () => draft.trim() !== stored && save(draft.trim());
-  return (
+  const input = (
     <Input
       value={draft}
       aria-label={t(spec.label)}
@@ -46,6 +139,19 @@ export function TextW({ spec, path }: { spec: Spec<"text">; path: string }) {
       onBlur={commit}
       onKeyDown={keys(() => setDraft(stored))}
     />
+  );
+  if (!spec.suggest) return input;
+  return (
+    <div className="flex flex-col gap-[0.8vh]">
+      {input}
+      <Suggestions
+        from={spec.suggest.from}
+        onPick={(name) => {
+          setDraft(name);
+          if (name !== stored) save(name);
+        }}
+      />
+    </div>
   );
 }
 

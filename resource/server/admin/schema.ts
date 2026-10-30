@@ -83,6 +83,20 @@ export function coreSchema(accounts: string[], inventories: string[] = [], keySy
         sections: { resource: text(64), description: text(120, 0), defaultKey: text(32, 0), mapper: text(32), key: { type: "text", min: 0, max: 32, pattern: "^[A-Za-z0-9_]*$" } },
       },
       commands: { kind: "records", sync: "admin", memory: true, sections: {} },
+      externalPanels: {
+        kind: "records",
+        sync: "admin",
+        labelPath: "label",
+        newRecord: { label: "", resource: "", command: "", url: "", icon: "puzzle-piece", description: "" },
+        sections: {
+          label: { type: "text", min: 1, max: 48 },
+          resource: { type: "text", min: 0, max: 64, pattern: "^[A-Za-z0-9_.-]*$" },
+          command: { type: "text", min: 0, max: 64, pattern: "^/?[A-Za-z0-9_:.-]*$" },
+          url: { type: "text", min: 0, max: 300, pattern: "^(https://.*)?$" },
+          icon: { type: "text", min: 0, max: 32 },
+          description: { type: "text", min: 0, max: 160 },
+        },
+      },
     },
     tabs: [
       {
@@ -280,6 +294,29 @@ export function coreSchema(accounts: string[], inventories: string[] = [], keySy
               { widget: "text", path: "label", label: "ADMIN_F_NAME", placeholder: "ADMIN_PH_ACCOUNT" },
               { widget: "number", path: "start", label: "ADMIN_F_START", hint: "ADMIN_H_START", min: 0, step: 100, unit: "$" },
               { widget: "switch", path: "allowNegative", label: "ADMIN_F_NEGATIVE", hint: "ADMIN_H_NEGATIVE" },
+            ],
+          },
+        ],
+      },
+      {
+        id: "external",
+        file: "externalPanels",
+        icon: "puzzle-piece",
+        label: "ADMIN_TAB_EXTERNAL",
+        desc: "ADMIN_TAB_EXTERNAL_DESC",
+        createLabel: "ADMIN_NEW_EXTERNAL",
+        deleteLabel: "ADMIN_DELETE_EXTERNAL",
+        cards: [
+          {
+            icon: "puzzle-piece",
+            title: "ADMIN_C_EXTERNAL",
+            desc: "ADMIN_C_EXTERNAL_DESC",
+            fields: [
+              { widget: "text", path: "label", label: "ADMIN_F_EXT_LABEL", placeholder: "ADMIN_PH_EXT_LABEL" },
+              { widget: "text", path: "resource", label: "ADMIN_F_EXT_RESOURCE", hint: "ADMIN_H_EXT_RESOURCE", placeholder: "ADMIN_PH_EXT_RESOURCE" },
+              { widget: "text", path: "command", label: "ADMIN_F_EXT_COMMAND", hint: "ADMIN_H_EXT_COMMAND", placeholder: "ADMIN_PH_EXT_COMMAND" },
+              { widget: "text", path: "url", label: "ADMIN_F_EXT_URL", hint: "ADMIN_H_EXT_URL", placeholder: "ADMIN_PH_EXT_URL" },
+              { widget: "text", path: "description", label: "ADMIN_F_EXT_DESCRIPTION", placeholder: "ADMIN_PH_EXT_DESCRIPTION" },
             ],
           },
         ],

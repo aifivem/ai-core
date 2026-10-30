@@ -1,18 +1,76 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCrosshairs, faLocationArrow, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faCrosshairs, faLocationArrow, faVideo, faXmark } from "@fortawesome/free-solid-svg-icons";
 import type { WidgetSpec } from "@aicore-fivem/shared";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Tooltip } from "../../../components/ui/tooltip";
-import { myPosition, teleport, type Point } from "../actions";
+import { myPosition, pickPoint, teleport, type Point } from "../actions";
 import { useEditor } from "../context";
 import { useField } from "./basic";
+import { LookupBox, useLookup } from "./lookup";
 
 type Spec<W extends WidgetSpec["widget"]> = Extract<WidgetSpec, { widget: W }>;
 
+/** Names picked from a lookup list (jobs, items...): only listed values can be added; chips show their labels. */
+function LookupTagsW({ spec, path, source }: { spec: Spec<"tags">; path: string; source: NonNullable<Spec<"tags">["lookup"]> }) {
+  const { t } = useEditor();
+  const [value, save] = useField(path);
+  const tags = Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+  const [query, setQuery] = useState("");
+  const { all } = useLookup(source, "");
+  const label = (name: string) => all.find((o) => o.value === name)?.label ?? name;
+  return (
+    <LookupBox
+      source={source}
+      query={query}
+      onQuery={setQuery}
+      onPick={(option) => {
+        setQuery("");
+        if (!tags.includes(option.value)) save([...tags, option.value]);
+      }}
+      empty={t("ADMIN_LOOKUP_EMPTY")}
+      anchor={(input) => (
+        <div className="flex min-h-[3.6vh] flex-wrap items-center gap-[0.6vh] rounded-[1.8vh] border border-white/8 bg-[#2222224D] p-[0.4vh] transition-[border-color] duration-150 focus-within:border-tgi-green-40">
+          {tags.map((tag) => (
+            <span key={tag} className="flex h-[2.6vh] items-center gap-[0.4vh] rounded-full bg-white/8 pl-[1vh] pr-[0.3vh] text-[1.3vh]">
+              {label(tag)}
+              <button
+                type="button"
+                aria-label={`${t("ADMIN_REMOVE")} ${label(tag)}`}
+                className="flex size-[2vh] items-center justify-center rounded-full text-[1vh] text-text-3 transition-[background-color,color] duration-150 hover:bg-white/15 hover:text-text"
+                onClick={() => save(tags.filter((x) => x !== tag))}
+              >
+                <FontAwesomeIcon icon={faXmark} />
+              </button>
+            </span>
+          ))}
+          <input
+            value={input.value}
+            aria-label={t(spec.label)}
+            placeholder={spec.placeholder ? t(spec.placeholder) : undefined}
+            className="h-[2.6vh] min-w-[12vh] flex-1 bg-transparent px-[0.8vh] text-[1.35vh] outline-none placeholder:text-text-4"
+            onChange={(event) => input.onChange(event.target.value)}
+            onFocus={input.onFocus}
+            onBlur={input.onBlur}
+            onKeyDown={(event) => {
+              if (event.key === "Backspace" && input.value === "" && tags.length) save(tags.slice(0, -1));
+              input.onKeyDown(event);
+            }}
+          />
+        </div>
+      )}
+    />
+  );
+}
+
 /** Free names typed one by one: Enter or comma adds, the x removes, Backspace on an empty box drops the last. */
 export function TagsW({ spec, path }: { spec: Spec<"tags">; path: string }) {
+  if (spec.lookup) return <LookupTagsW spec={spec} path={path} source={spec.lookup} />;
+  return <FreeTagsW spec={spec} path={path} />;
+}
+
+function FreeTagsW({ spec, path }: { spec: Spec<"tags">; path: string }) {
   const { t } = useEditor();
   const [value, save] = useField(path);
   const tags = Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
@@ -80,6 +138,20 @@ export function PointW({ spec, path }: { spec: Spec<"point">; path: string }) {
         <FontAwesomeIcon icon={faCrosshairs} data-icon="inline-start" aria-hidden />
         {t(spec.from === "camera" ? "ADMIN_USE_CAMERA" : "ADMIN_USE_POSITION")}
       </Button>
+      {spec.from !== "camera" && (
+        <Tooltip content={t("ADMIN_PICK_FREECAM")}>
+          <Button
+            variant="icon"
+            aria-label={t("ADMIN_PICK_FREECAM")}
+            onClick={async () => {
+              const picked = await pickPoint(spec.ground !== true);
+              if (picked) save(spec.heading ? picked : { x: picked.x, y: picked.y, z: picked.z });
+            }}
+          >
+            <FontAwesomeIcon icon={faVideo} aria-hidden />
+          </Button>
+        </Tooltip>
+      )}
       <Tooltip content={t("ADMIN_TELEPORT")}>
         <Button variant="icon" disabled={!point} aria-label={t("ADMIN_TELEPORT")} onClick={() => point && teleport(point)}>
           <FontAwesomeIcon icon={faLocationArrow} aria-hidden />
