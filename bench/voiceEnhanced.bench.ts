@@ -27,6 +27,16 @@ g.GetPlayerRoutingBucket = () => 0;
 g.setInterval = () => 1;
 g.clearInterval = () => undefined;
 g.GetCurrentResourceName = () => "ai-voice";
+// The lib's gate reads FiveM's `exports` and registers event handlers at import.
+g.exports = new Proxy({}, { get: () => new Proxy({}, { get: () => () => null }) });
+g.on = () => undefined;
+g.onNet = () => undefined;
+g.AddEventHandler = () => undefined;
+g.IsDuplicityVersion = () => true;
+g.GetGameTimer = () => Date.now();
+g.AddStateBagChangeHandler = () => 0;
+g.setTick = () => 1;
+g.clearTick = () => undefined;
 
 const { EnhancedRouter } = await import(
   "../../ai-voice/resource/server/enhanced"

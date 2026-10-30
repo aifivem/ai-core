@@ -133,6 +133,12 @@ registerExport("SetMeta", (src: number, key: string, value: unknown) => {
 
 registerExport("GetJobDefinitions", () => Object.fromEntries(jobDefs));
 registerExport("GetGangDefinitions", () => Object.fromEntries(gangDefs));
+registerExport("GetJobDefinition", (job: unknown) =>
+  typeof job === "string" ? (jobDefs.get(job) ?? null) : null,
+);
+registerExport("GetGangDefinition", (gang: unknown) =>
+  typeof gang === "string" ? (gangDefs.get(gang) ?? null) : null,
+);
 registerExport("GetAccountTypes", () => Object.fromEntries(accountTypes));
 
 /** Job and gang accounts (society money); loaded at start, so these stay synchronous. */

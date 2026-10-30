@@ -15577,8 +15577,9 @@ var ScheduledJob = class {
 	get front() {
 		return this.dues[this.head] ?? 0;
 	}
+	compactAt = 64;
 	push(job, due) {
-		this.count > this.mask && this.grow();
+		this.count >= this.compactAt && this.compact(), this.count > this.mask && this.grow();
 		let i = this.head + this.count & this.mask;
 		this.jobs[i] = job, this.gens[i] = job.gen, this.dues[i] = due, this.count++;
 	}
@@ -15591,6 +15592,17 @@ var ScheduledJob = class {
 			let next = due + this.interval;
 			next <= now && (next = now + this.interval), this.push(job, next), job.call();
 		}
+	}
+	compact() {
+		let kept = 0;
+		for (let n = 0; n < this.count; n++) {
+			let i = this.head + n & this.mask, job = this.jobs[i];
+			if (!job || job.gen !== this.gens[i]) continue;
+			let k = this.head + kept & this.mask;
+			this.jobs[k] = job, this.gens[k] = this.gens[i] ?? 0, this.dues[k] = this.dues[i] ?? 0, kept++;
+		}
+		for (let n = kept; n < this.count; n++) this.jobs[this.head + n & this.mask] = void 0;
+		this.count = kept, this.compactAt = Math.max(64, kept * 2);
 	}
 	grow() {
 		let size = (this.mask + 1) * 2, jobs = Array(size), gens = Array(size).fill(0), dues = Array(size).fill(0);
@@ -20690,7 +20702,7 @@ function salaryOf(job, grade, offPrime) {
 	return def ? offPrime ? def.offPrimePayment > 0 ? def.offPrimePayment : Math.floor(def.salary * settings.primeTime.offPrimeMultiplier) : def.salary : 0;
 }
 async function payAll() {
-	let offPrime = new Map();
+	let offPrime = new Map(), due = [];
 	for (let player of players.all()) {
 		let job = player.jobs.onDuty();
 		if (!job) continue;
@@ -20699,18 +20711,29 @@ async function payAll() {
 		let off = offPrime.get(job);
 		off === void 0 && (off = settings.primeTime.enabled && !primeTime.isPrimeTime(job), offPrime.set(job, off));
 		let salary = salaryOf(job, grade, off);
-		if (!(salary <= 0)) {
-			if (settings.paycheck.fromJobAccount) {
-				let funds = (await sharedAccounts.load("job", job)).get(settings.paycheck.account);
-				if (!funds || !funds.change(-salary, "PAYCHECK_PAID", player.citizenid).ok) continue;
-			}
-			player.wallet.change(settings.paycheck.account, salary, "PAYCHECK", job);
+		salary > 0 && due.push({
+			player,
+			job,
+			salary
+		});
+	}
+	let funds = new Map();
+	if (settings.paycheck.fromJobAccount) for (let job of new Set(due.map((d) => d.job))) funds.set(job, await sharedAccounts.load("job", job));
+	for (let { player, job, salary } of due) if (players.get(player.source) === player && player.jobs.onDuty() === job) {
+		if (settings.paycheck.fromJobAccount) {
+			let account = funds.get(job)?.get(settings.paycheck.account);
+			if (!account || !account.change(-salary, "PAYCHECK_PAID", player.citizenid).ok) continue;
 		}
+		player.wallet.change(settings.paycheck.account, salary, "PAYCHECK", job);
 	}
 }
-settings.paycheck.intervalMinutes > 0 && every(settings.paycheck.intervalMinutes * 6e4, () => {
-	payAll().catch((error) => log$3.error("paycheck failed", error));
-}, { name: "paycheck" });
+let job = null, interval = 0;
+function schedule() {
+	settings.paycheck.intervalMinutes !== interval && (interval = settings.paycheck.intervalMinutes, job?.stop(), job = interval > 0 ? every(interval * 6e4, () => {
+		payAll().catch((error) => log$3.error("paycheck failed", error));
+	}, { name: "paycheck" }) : null);
+}
+schedule(), panel.onChange("settings", schedule);
 // resource/server/money/transfer.ts
 function sideOf(ref) {
 	if (!isRecord(ref) || typeof ref.account != "string") return null;
@@ -20742,7 +20765,7 @@ const positive = (amount) => typeof amount == "number" && Number.isSafeInteger(a
 registerExport("GetPlayerData", (src) => players.get(src)?.snapshot() ?? null), registerExport("GetCharacter", (src) => players.get(src)?.info() ?? null), registerExport("GetSourceByCharId", (charId) => players.byCharacter(charId)?.source ?? null), registerExport("GetSourceByCitizenId", (citizenid) => players.byCitizen(citizenid)?.source ?? null), registerExport("GetLoadedSources", () => [...players.all()].map((player) => player.source)), registerExport("GetFivemId", (src) => players.get(src)?.user.fivem ?? null), registerExport("GetMoney", (src, account) => players.get(src)?.wallet.get(account) ?? null), registerExport("AddMoney", (src, account, amount, reason) => positive(amount) ? players.get(src)?.wallet.change(account, amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("RemoveMoney", (src, account, amount, reason) => positive(amount) ? players.get(src)?.wallet.change(account, -amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("SetMoney", (src, account, amount, reason) => players.get(src)?.wallet.set(account, amount, reasonOf(reason)).ok ?? !1), registerExport("GetJobs", (src) => players.get(src)?.jobs.all() ?? null), registerExport("GetCurrentJob", (src) => players.get(src)?.jobs.current() ?? null), registerExport("GetDutyJob", (src) => players.get(src)?.jobs.onDuty() ?? null), registerExport("SetDuty", (src, job) => players.get(src)?.jobs.setDuty(job).ok ?? !1), registerExport("SetJob", (src, job, grade) => players.get(src)?.jobs.set(job, grade).ok ?? !1), registerExport("RemoveJob", (src, job) => players.get(src)?.jobs.remove(job).ok ?? !1), registerExport("GetOnDutyCount", (job) => dutyCount(job)), registerExport("GetGangs", (src) => players.get(src)?.gangs.all() ?? null), registerExport("GetActiveGang", (src) => players.get(src)?.gangs.activeGang() ?? null), registerExport("SetGang", (src, gang, grade) => players.get(src)?.gangs.set(gang, grade).ok ?? !1), registerExport("RemoveGang", (src, gang) => players.get(src)?.gangs.remove(gang).ok ?? !1), registerExport("SetActiveGang", (src, gang) => players.get(src)?.gangs.setActive(gang).ok ?? !1), registerExport("GetMeta", (src, key) => players.get(src)?.getMeta(key) ?? null), registerExport("SetMeta", (src, key, value) => {
 	let player = players.get(src);
 	return !player || typeof key != "string" ? !1 : (player.setMeta(key, value), !0);
-}), registerExport("GetJobDefinitions", () => Object.fromEntries(jobs)), registerExport("GetGangDefinitions", () => Object.fromEntries(gangs)), registerExport("GetAccountTypes", () => Object.fromEntries(accountTypes)), registerExport("GetSharedMoney", (ownerType, ownerId, account) => sharedAccounts.get(ownerType, ownerId, account)?.balance ?? null), registerExport("AddSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("RemoveSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(-amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("TransferMoney", (from, to, amount, reason, fee) => transferMoney(from, to, amount, reasonOf(reason), fee ?? 0));
+}), registerExport("GetJobDefinitions", () => Object.fromEntries(jobs)), registerExport("GetGangDefinitions", () => Object.fromEntries(gangs)), registerExport("GetJobDefinition", (job) => typeof job == "string" ? jobs.get(job) ?? null : null), registerExport("GetGangDefinition", (gang) => typeof gang == "string" ? gangs.get(gang) ?? null : null), registerExport("GetAccountTypes", () => Object.fromEntries(accountTypes)), registerExport("GetSharedMoney", (ownerType, ownerId, account) => sharedAccounts.get(ownerType, ownerId, account)?.balance ?? null), registerExport("AddSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("RemoveSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(-amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("TransferMoney", (from, to, amount, reason, fee) => transferMoney(from, to, amount, reasonOf(reason), fee ?? 0));
 // resource/server/vehicleKeys/index.ts
 const activeKeys = new GlobalKey("ai:vehicleKeys", stateString), layer$1 = new AdapterPicker({
 	category: "vehicle keys",

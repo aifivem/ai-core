@@ -1,8 +1,9 @@
-import { every } from "@aicore-fivem/lib/server";
-import { jobs as jobDefs, settings } from "../content";
+import { every, type Job } from "@aicore-fivem/lib/server";
+import { jobs as jobDefs, panel, settings } from "../content";
 import { log } from "../log";
 import { sharedAccounts } from "../money/book";
 import { players } from "../player/registry";
+import type { Player } from "../player/player";
 import { primeTime } from "./primeTime";
 
 /**
@@ -24,6 +25,7 @@ function salaryOf(job: string, grade: number, offPrime: boolean): number {
 async function payAll(): Promise<void> {
   // One prime time answer per job and run (an alert script's export is asked once per job, not per player).
   const offPrime = new Map<string, boolean>();
+  const due: Array<{ player: Player; job: string; salary: number }> = [];
   for (const player of players.all()) {
     const job = player.jobs.onDuty();
     if (!job) continue;
@@ -35,15 +37,25 @@ async function payAll(): Promise<void> {
       offPrime.set(job, off);
     }
     const salary = salaryOf(job, grade, off);
-    if (salary <= 0) continue;
-
+    if (salary > 0) due.push({ player, job, salary });
+  }
+  // Job accounts load before anyone is paid; then every payment runs synchronously, for players still loaded and on
+  // duty in the same job (nobody is paid after leaving during the wait).
+  const funds = new Map<
+    string,
+    Awaited<ReturnType<typeof sharedAccounts.load>>
+  >();
+  if (settings.paycheck.fromJobAccount)
+    for (const job of new Set(due.map((d) => d.job)))
+      funds.set(job, await sharedAccounts.load("job", job));
+  for (const { player, job, salary } of due) {
+    if (players.get(player.source) !== player) continue;
+    if (player.jobs.onDuty() !== job) continue;
     if (settings.paycheck.fromJobAccount) {
-      const funds = (await sharedAccounts.load("job", job)).get(
-        settings.paycheck.account,
-      );
+      const account = funds.get(job)?.get(settings.paycheck.account);
       if (
-        !funds ||
-        !funds.change(-salary, "PAYCHECK_PAID", player.citizenid).ok
+        !account ||
+        !account.change(-salary, "PAYCHECK_PAID", player.citizenid).ok
       )
         continue;
     }
@@ -51,12 +63,26 @@ async function payAll(): Promise<void> {
   }
 }
 
-if (settings.paycheck.intervalMinutes > 0) {
-  every(
-    settings.paycheck.intervalMinutes * 60_000,
-    () => {
-      payAll().catch((error: unknown) => log.error("paycheck failed", error));
-    },
-    { name: "paycheck" },
-  );
+let job: Job | null = null;
+let interval = 0;
+
+/** (Re)starts the paycheck job when the panel's interval changes (0 = no paychecks). */
+function schedule(): void {
+  if (settings.paycheck.intervalMinutes === interval) return;
+  interval = settings.paycheck.intervalMinutes;
+  job?.stop();
+  job =
+    interval > 0
+      ? every(
+          interval * 60_000,
+          () => {
+            payAll().catch((error: unknown) =>
+              log.error("paycheck failed", error),
+            );
+          },
+          { name: "paycheck" },
+        )
+      : null;
 }
+schedule();
+panel.onChange("settings", schedule);

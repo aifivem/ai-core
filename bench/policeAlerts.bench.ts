@@ -47,7 +47,12 @@ plugin({
   setup(build) {
     build.module("common/alerts", () => ({ exports: common, loader: "object" }));
     build.module("@aicore-fivem/lib/server", () => ({
-      exports: { online: onlineMirror, registerExport: () => undefined },
+      exports: {
+        online: onlineMirror,
+        registerExport: () => undefined,
+        // A Map without the drop listener (no players drop in the bench).
+        PlayerMap: class<V> extends Map<number, V> {},
+      },
       loader: "object",
     }));
   },
