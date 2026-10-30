@@ -145,5 +145,12 @@
     "defaultKey": "",
     "mapper": "keyboard",
     "key": ""
+  },
+  "vehiclekeys_lock": {
+    "resource": "ai-vehiclekeys",
+    "description": "Lock or unlock the vehicle",
+    "defaultKey": "L",
+    "mapper": "keyboard",
+    "key": ""
   }
 }

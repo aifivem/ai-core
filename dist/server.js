@@ -28473,9 +28473,11 @@ on("onResourceStop", (resource) => {
 registerExport("AddConnectionCheck", (id, check) => {
 	if (typeof id === "string" && id && typeof check === "function") gate.add(id, GetInvokingResource() ?? "?", check);
 });
-registerExport("RegisterReplacement", (keep, remove) => {
+registerExport("RegisterReplacement", (remove, keep) => {
 	const names = (Array.isArray(remove) ? remove : [remove]).filter((n) => typeof n === "string" && n !== "");
-	if (typeof keep === "string" && keep && names.length > 0) conflicts.declare(keep, names, GetInvokingResource() ?? keep);
+	const caller = GetInvokingResource();
+	const owner = typeof keep === "string" && keep ? keep : caller;
+	if (owner && names.length > 0) conflicts.declare(owner, names, caller ?? owner);
 });
 registerExport("GetConflicts", () => conflicts.list().map((c) => ({ ...c })));
 

@@ -83,8 +83,11 @@ registerExport("AddConnectionCheck", (id: unknown, check: unknown) => {
   // A function from another resource arrives as a callable reference.
   if (typeof id === "string" && id && typeof check === "function") gate.add(id, GetInvokingResource() ?? "?", check as Check);
 });
-registerExport("RegisterReplacement", (keep: unknown, remove: unknown) => {
+// RegisterReplacement(remove, keep?): `keep` defaults to the calling resource.
+registerExport("RegisterReplacement", (remove: unknown, keep?: unknown) => {
   const names = (Array.isArray(remove) ? remove : [remove]).filter((n): n is string => typeof n === "string" && n !== "");
-  if (typeof keep === "string" && keep && names.length > 0) conflicts.declare(keep, names, GetInvokingResource() ?? keep);
+  const caller = GetInvokingResource();
+  const owner = typeof keep === "string" && keep ? keep : caller;
+  if (owner && names.length > 0) conflicts.declare(owner, names, caller ?? owner);
 });
 registerExport("GetConflicts", () => conflicts.list().map((c) => ({ ...c })));
