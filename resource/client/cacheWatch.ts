@@ -1,4 +1,9 @@
-import { cache, readPlayerState, readWeapon } from "@aicore-fivem/lib/client";
+import {
+  cache,
+  every,
+  readPlayerState,
+  readWeapon,
+} from "@aicore-fivem/lib/client";
 import { CORE, type PlayerCache } from "@aicore-fivem/shared";
 
 /** How often the ped, weapon and (in a vehicle) seat are read. */
@@ -44,7 +49,7 @@ class CacheWatch {
 }
 
 const watch = new CacheWatch();
-setInterval(() => watch.check(), INTERVAL);
+every(INTERVAL, () => watch.check(), { name: "cacheWatch" });
 on("gameEventTriggered", (name: string, args: number[]) => {
   if (name === "CEventNetworkPlayerEnteredVehicle" && args[0] === PlayerId())
     watch.read(PlayerPedId());

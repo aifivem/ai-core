@@ -36,12 +36,22 @@ export async function storedBalances(
 
 export async function updateInfo(
   charId: number,
-  info: Pick<CharacterInfo, "firstname" | "lastname" | "birthdate" | "sex">,
+  info: Pick<
+    CharacterInfo,
+    "firstname" | "lastname" | "birthdate" | "sex" | "nationality"
+  >,
 ): Promise<void> {
   // Raw: the typed row has DATE as epoch ms, the column takes `YYYY-MM-DD`.
   await mysql.update(
-    "UPDATE ai_core_characters SET firstname = ?, lastname = ?, birthdate = ?, sex = ? WHERE id = ?",
-    [info.firstname, info.lastname, info.birthdate, info.sex, charId],
+    "UPDATE ai_core_characters SET firstname = ?, lastname = ?, birthdate = ?, sex = ?, nationality = ? WHERE id = ?",
+    [
+      info.firstname,
+      info.lastname,
+      info.birthdate,
+      info.sex,
+      info.nationality,
+      charId,
+    ],
   );
 }
 

@@ -24,6 +24,7 @@ interface RawRow {
   lastname: string;
   birthdate: number | string;
   sex: string;
+  nationality: string;
   pos_x: number | null;
   pos_y: number | null;
   pos_z: number | null;
@@ -33,7 +34,7 @@ interface RawRow {
 }
 
 const COLUMNS =
-  "id, user_id, citizenid, slot, firstname, lastname, birthdate, sex, pos_x, pos_y, pos_z, pos_h, metadata, last_played";
+  "id, user_id, citizenid, slot, firstname, lastname, birthdate, sex, nationality, pos_x, pos_y, pos_z, pos_h, metadata, last_played";
 
 /** The engine returns DATE as epoch ms (server local time, as oxmysql does); the screen shows YYYY-MM-DD. */
 function toDate(value: number | string): string {
@@ -63,6 +64,7 @@ function toRow(raw: RawRow): CharacterRow {
     lastname: raw.lastname,
     birthdate: toDate(raw.birthdate),
     sex,
+    nationality: raw.nationality,
     position: hasPosition
       ? {
           x: raw.pos_x ?? 0,
@@ -120,7 +122,7 @@ export async function insertCharacter(
       16,
     );
   const id = await mysql.insert(
-    "INSERT INTO ai_core_characters (user_id, citizenid, slot, firstname, lastname, birthdate, sex) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO ai_core_characters (user_id, citizenid, slot, firstname, lastname, birthdate, sex, nationality) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     [
       userId,
       placeholder,
@@ -129,6 +131,7 @@ export async function insertCharacter(
       input.lastname,
       input.birthdate,
       input.sex,
+      input.nationality,
     ],
   );
   if (!id) throw new Error("could not create the character");

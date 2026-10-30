@@ -1,3 +1,4 @@
+import { spec } from "@aicore-fivem/lib/shared";
 import type { DataSpec, PanelSchema, WidgetSpec } from "@aicore-fivem/shared";
 import { DEFAULT_SCENE } from "../content/scene";
 import { DEFAULT_PRIME_TIME, PRIME_SOURCES } from "../content/primeTime";
@@ -13,12 +14,6 @@ import {
 
 const ID = "^[a-z0-9_]{2,32}$";
 const text = (max: number, min = 1): DataSpec => ({ type: "text", min, max });
-const int = (min: number, max: number): DataSpec => ({
-  type: "number",
-  min,
-  max,
-  integer: true,
-});
 const bool: DataSpec = { type: "bool" };
 const grades: DataSpec = {
   type: "list",
@@ -28,13 +23,13 @@ const grades: DataSpec = {
     type: "object",
     fields: {
       label: text(48),
-      salary: int(0, 1_000_000),
-      offPrimePayment: { ...int(0, 1_000_000), optional: true },
+      salary: spec.int(0, 1_000_000),
+      offPrimePayment: { ...spec.int(0, 1_000_000), optional: true },
       boss: { type: "bool", optional: true },
     },
   },
 };
-const hour = int(0, 23);
+const hour = spec.int(0, 23);
 const optionalHour: DataSpec = { ...hour, optional: true };
 
 const gradeRows = (salary: boolean): WidgetSpec[] => [
@@ -96,25 +91,25 @@ export function coreSchema(
           },
           characters: {
             type: "object",
-            fields: { slots: int(1, 10), canDelete: bool, minAge: int(0, 99) },
+            fields: { slots: spec.int(1, 10), canDelete: bool, minAge: spec.int(0, 99) },
           },
           jobs: {
             type: "object",
             fields: {
               multiJob: bool,
-              maxJobs: int(1, 20),
+              maxJobs: spec.int(1, 20),
               unemployed: { type: "text", max: 32, pattern: ID },
               restoreDuty: bool,
             },
           },
           gangs: {
             type: "object",
-            fields: { multiGang: bool, maxGangs: int(1, 20) },
+            fields: { multiGang: bool, maxGangs: spec.int(1, 20) },
           },
           paycheck: {
             type: "object",
             fields: {
-              intervalMinutes: int(0, 1440),
+              intervalMinutes: spec.int(0, 1440),
               account: { type: "text", max: 32, pattern: ID },
               fromJobAccount: bool,
             },
@@ -135,7 +130,7 @@ export function coreSchema(
             values: ["none", ...PRIME_SOURCES.filter((s) => s !== "auto")],
             optional: true,
           },
-          saveIntervalMinutes: int(1, 60),
+          saveIntervalMinutes: spec.int(1, 60),
           inventory: { type: "enum", values: ["auto", ...inventories] },
           vehicleKeys: { type: "enum", values: ["auto", ...keySystems] },
           dispatch: { type: "enum", values: ["auto", ...alertSystems] },
@@ -214,7 +209,7 @@ export function coreSchema(
         newRecord: { start: 0, allowNegative: false },
         sections: {
           label: text(48),
-          start: int(0, 100_000_000),
+          start: spec.int(0, 100_000_000),
           allowNegative: bool,
         },
       },

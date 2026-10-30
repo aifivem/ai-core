@@ -1,4 +1,9 @@
-import { cache, onCache, registerExport } from "@aicore-fivem/lib/client";
+import {
+  cache,
+  every,
+  onCache,
+  registerExport,
+} from "@aicore-fivem/lib/client";
 import { isRecord } from "@aicore-fivem/lib/shared";
 import {
   KEY_HINTS,
@@ -100,7 +105,7 @@ const hints = new KeyHints();
 keybinds.onChange(() => hints.update());
 onCache("vehicle", () => hints.update());
 // A player can rebind a key in GTA's settings at any time: a cheap re-read now and then catches it.
-setInterval(() => hints.update(), 5000);
+every(5000, () => hints.update(), { name: "keyHints" });
 on("onClientResourceStop", (resource: string) => hints.drop(resource));
 
 registerExport("ShowKeyHint", (id: unknown, hint: unknown) => {

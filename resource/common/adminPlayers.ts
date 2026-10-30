@@ -11,6 +11,8 @@ export const ADMIN_PLAYERS = {
   deltaEvent: "ai-core:client:adminPlayers",
   /** Server -> client: ({ x, y, z, heading? }) teleport (goto for the admin, bring for the target). */
   teleportEvent: "ai-core:client:adminTeleport",
+  /** Server -> target client: () the ped dies (health 0); only ai-core's server sends it. */
+  killEvent: "ai-core:client:adminKill",
   /** Client -> server callback name of one action. */
   callback: (action: PlayersAction): string => `ai-core:adminPlayers:${action}`,
 } as const;
@@ -34,6 +36,7 @@ export const PLAYERS_ACTIONS = [
   "bring",
   "kick",
   "revive",
+  "kill",
   "item",
   "inventory",
   "delete",
@@ -94,6 +97,7 @@ export interface CharacterView {
   lastname: string;
   birthdate: string;
   sex: Sex;
+  nationality: string;
   user: {
     id: number;
     fivem: string;

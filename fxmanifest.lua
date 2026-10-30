@@ -11,9 +11,14 @@ node_version '22'
 client_scripts {
 	'dist/client.js',
 	'bridge/core/client.lua',
+	'bridge/core/ui.lua',
 	'bridge/qb/client.lua',
+	'bridge/qb/ui.lua',
 	'bridge/qbx/client.lua',
 	'bridge/esx/client.lua',
+	'bridge/esx/shared.lua',
+	'bridge/esx/game.lua',
+	'bridge/esx/ui.lua',
 }
 server_scripts {
 	'dist/server.js',
@@ -21,6 +26,7 @@ server_scripts {
 	'bridge/qb/server.lua',
 	'bridge/qbx/server.lua',
 	'bridge/esx/server.lua',
+	'bridge/esx/shared.lua',
 }
 ui_page 'dist/web/index.html'
 
@@ -30,8 +36,8 @@ dependencies {
 
 files {
 	'locales/*.json',
-	'dist/web/assets/*.css',
 	'dist/web/assets/*.js',
+	'dist/web/assets/*.css',
 	'dist/web/assets/*.woff',
 	'dist/web/assets/*.woff2',
 	'dist/web/backgrounds/*.jpg',
@@ -45,3 +51,13 @@ files {
 provide 'es_extended'
 provide 'qb-core'
 provide 'qbx_core'
+provide 'esx_context'
+provide 'esx_textui'
+provide 'esx_notify'
+provide 'esx_progressbar'
+provide 'esx_menu_default'
+provide 'esx_menu_dialog'
+provide 'esx_menu_list'
+provide 'qb-menu'
+provide 'qb-input'
+provide 'progressbar'

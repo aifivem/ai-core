@@ -126,6 +126,10 @@ local function build(source)
         return vector and coords or { x = coords.x, y = coords.y, z = coords.z }
     end
     function self.showNotification(text, kind, length) Bridge.notify(source, text, kind, length) end
+    function self.showHelpNotification(msg, thisFrame, beep, duration) TriggerClientEvent('esx:showHelpNotification', source, msg, thisFrame, beep, duration) end
+    function self.showAdvancedNotification(sender, subject, msg, textureDict, iconType, flash, saveToBrief, hudColorIndex)
+        TriggerClientEvent('esx:showAdvancedNotification', source, sender, subject, msg, textureDict, iconType, flash, saveToBrief, hudColorIndex)
+    end
     function self.triggerEvent(name, ...) TriggerClientEvent(name, source, ...) end
     function self.kick(reason) DropPlayer(tostring(source), reason or '') end
     function self.set(key, value) self.variables[key] = value end
@@ -147,6 +151,8 @@ end
 local callbacks = {}
 
 ---@class ESXServer
+---@field Math table ESX.Math (bridge/esx/shared.lua)
+---@field Table table ESX.Table (bridge/esx/shared.lua)
 ESX = { Players = xPlayers, Jobs = {} }
 
 ESX.GetPlayerFromId = getPlayerFromId
@@ -275,6 +281,7 @@ Bridge.provideExport('es_extended', 'getSharedObject', function() return ESX end
 -- ESX's server events from ai-core's changes (same names and arguments as ESX).
 Bridge.on('loaded', function(source)
     local x = build(source)
+    ---@diagnostic disable-next-line: fivem/event-wrong-side -- ESX server scripts listen to it on the server too
     TriggerEvent('esx:playerLoaded', source, x, false)
 end)
 
@@ -289,6 +296,7 @@ Bridge.on('job', function(source, job)
     local last = x and x.job or nil
     local next = esxJob(job)
     if x then x.job = next end
+    ---@diagnostic disable-next-line: fivem/event-wrong-side -- ESX server scripts listen to it on the server too
     TriggerEvent('esx:setJob', source, next, last)
 end)
 

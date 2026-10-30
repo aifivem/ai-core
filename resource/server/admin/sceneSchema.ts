@@ -1,31 +1,20 @@
+import { spec } from "@aicore-fivem/lib/shared";
 import type { DataSpec, TabSpec, WidgetSpec } from "@aicore-fivem/shared";
 import { WEATHERS } from "@aicore-fivem/shared";
 import { DEFAULT_SCENE } from "../content/scene";
 
 /** Panel part of the character screen scene (settings section `characterScene`). */
 
-const num = (min: number, max: number): DataSpec => ({
-  type: "number",
-  min,
-  max,
-});
-const int = (min: number, max: number): DataSpec => ({
-  type: "number",
-  min,
-  max,
-  integer: true,
-});
-
 export const sceneSection: DataSpec = {
   type: "object",
   fields: {
-    fov: int(20, 90),
+    fov: spec.int(20, 90),
     time: {
       type: "object",
       fields: {
         enabled: { type: "bool" },
-        hour: int(0, 23),
-        minute: int(0, 59),
+        hour: spec.int(0, 23),
+        minute: spec.int(0, 59),
         weather: { type: "enum", values: [...WEATHERS] },
       },
     },
@@ -39,15 +28,15 @@ export const sceneSection: DataSpec = {
           ped: { type: "vec4" },
           anim: { type: "text", min: 0, max: 64 },
           clip: { type: "text", min: 0, max: 64 },
-          camDistance: num(0.3, 15),
-          camHeight: num(-2, 2),
-          camAngle: num(-180, 180),
-          targetHeight: num(-2, 3),
-          sway: num(0, 45),
+          camDistance: spec.num(0.3, 15),
+          camHeight: spec.num(-2, 2),
+          camAngle: spec.num(-180, 180),
+          targetHeight: spec.num(-2, 3),
+          sway: spec.num(0, 45),
           blur: { type: "bool" },
-          blurNear: num(0, 50),
-          blurFar: num(0, 100),
-          blurStrength: num(0, 100),
+          blurNear: spec.num(0, 50),
+          blurFar: spec.num(0, 100),
+          blurStrength: spec.num(0, 100),
         },
       },
     },

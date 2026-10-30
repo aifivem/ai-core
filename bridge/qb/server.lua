@@ -98,7 +98,7 @@ local function build(source)
         license = Bridge.license(source),
         name = GetPlayerName(tostring(source)),
         money = mirror.money,
-        charinfo = { firstname = c.firstname, lastname = c.lastname, birthdate = c.birthdate, gender = c.sex == 'female' and 1 or 0, nationality = '', phone = '', account = '' },
+        charinfo = { firstname = c.firstname, lastname = c.lastname, birthdate = c.birthdate, gender = c.sex == 'female' and 1 or 0, nationality = c.nationality or '', phone = '', account = '' },
         job = qbJob(Bridge.jobOf(mirror)),
         gang = qbGang(Bridge.gangOf(mirror)),
         metadata = metadataOf(source),

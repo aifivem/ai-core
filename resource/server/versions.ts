@@ -1,4 +1,4 @@
-import { registerExport } from "@aicore-fivem/lib/server";
+import { every, registerExport } from "@aicore-fivem/lib/server";
 import { isRecord } from "@aicore-fivem/lib/shared";
 import type { UpdateInfo } from "@aicore-fivem/shared";
 import { panel, settings } from "./content";
@@ -167,7 +167,7 @@ class VersionCheck {
 
 export const versions = new VersionCheck();
 setTimeout(() => versions.checkAll(), 15_000);
-setInterval(() => versions.checkAll(), CHECK_EVERY_MS);
+every(CHECK_EVERY_MS, () => versions.checkAll(), { name: "versions" });
 on("onServerResourceStart", (resource: string) =>
   setTimeout(() => void versions.check(resource), 5_000),
 );

@@ -3,6 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBuildingColumns,
   faCakeCandles,
+  faFlag,
   faMoneyBill,
   faVenusMars,
   type IconDefinition,
@@ -91,6 +92,13 @@ export function CharacterDetails({
               label={t("CHAR_SEX")}
               value={t(card.sex === "male" ? "CHAR_MALE" : "CHAR_FEMALE")}
             />
+            {card.nationality && (
+              <StatRow
+                icon={faFlag}
+                label={t("CHAR_NATIONALITY")}
+                value={card.nationality}
+              />
+            )}
           </div>
         </motion.div>
       )}

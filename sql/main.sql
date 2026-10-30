@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS `ai_core_characters` (
   `lastname` VARCHAR(32) NOT NULL,
   `birthdate` DATE NOT NULL,
   `sex` VARCHAR(8) NOT NULL,
+  `nationality` VARCHAR(32) NOT NULL DEFAULT '',
   `pos_x` FLOAT DEFAULT NULL,
   `pos_y` FLOAT DEFAULT NULL,
   `pos_z` FLOAT DEFAULT NULL,

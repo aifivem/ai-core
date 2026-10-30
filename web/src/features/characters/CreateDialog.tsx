@@ -5,6 +5,7 @@ import {
   faArrowLeft,
   faCakeCandles,
   faCheck,
+  faFlag,
   faMars,
   faUser,
   faVenus,
@@ -62,6 +63,7 @@ export function CreateDialog({ slot }: { slot: number }) {
   const [lastname, setLastname] = useState("");
   const [birthdate, setBirthdate] = useState("2000-01-01");
   const [sex, setSex] = useState<Sex>("male");
+  const [nationality, setNationality] = useState("");
 
   const submit = (): void => {
     const input = toCreateCharacter({
@@ -70,6 +72,7 @@ export function CreateDialog({ slot }: { slot: number }) {
       lastname,
       birthdate,
       sex,
+      nationality,
     });
     if ("error" in input) return update({ error: input.error });
     void create(input);
@@ -138,6 +141,19 @@ export function CreateDialog({ slot }: { slot: number }) {
               value={birthdate}
               aria-label={t("CHAR_BIRTHDATE")}
               onChange={(e) => setBirthdate(e.target.value)}
+            />
+          </PillField>
+          <PillField
+            icon={<FontAwesomeIcon icon={faFlag} />}
+            invalid={error === "CHAR_ERR_NATIONALITY"}
+          >
+            <input
+              className={INPUT}
+              value={nationality}
+              maxLength={32}
+              placeholder={t("CHAR_NATIONALITY")}
+              aria-label={t("CHAR_NATIONALITY")}
+              onChange={(e) => setNationality(e.target.value)}
             />
           </PillField>
           <div

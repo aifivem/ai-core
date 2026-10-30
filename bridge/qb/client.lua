@@ -40,7 +40,7 @@ local function rebuild()
         license = s.license,
         name = s.name,
         money = s.money,
-        charinfo = { firstname = c.firstname, lastname = c.lastname, birthdate = c.birthdate, gender = c.sex == 'female' and 1 or 0, nationality = '', phone = '', account = '' },
+        charinfo = { firstname = c.firstname, lastname = c.lastname, birthdate = c.birthdate, gender = c.sex == 'female' and 1 or 0, nationality = c.nationality or '', phone = '', account = '' },
         job = qbJob(s.job),
         gang = qbGang(s.gang),
         metadata = {},
@@ -58,10 +58,15 @@ function QBCore.Functions.GetPlayerData(cb)
     return PlayerData
 end
 
+--- `TriggerCallback(name, cb, ...)` answers `cb`; without a callback first it waits and returns the answer.
 ---@param name string
----@param cb function
-function QBCore.Functions.TriggerCallback(name, cb, ...)
-    BridgeClient.qbCallback(name, cb, ...)
+---@return any
+function QBCore.Functions.TriggerCallback(name, ...)
+    local cb = ...
+    if BridgeUI.isCallable(cb) then return BridgeClient.qbCallback(name, cb, select(2, ...)) end
+    local p = promise.new()
+    BridgeClient.qbCallback(name, function(...) p:resolve({ ... }) end, ...)
+    return table.unpack(Citizen.Await(p))
 end
 
 ---@param text string|table

@@ -42,18 +42,34 @@
     "bridge/core/server.lua",
     "bridge/qb/server.lua",
     "bridge/qbx/server.lua",
-    "bridge/esx/server.lua"
+    "bridge/esx/server.lua",
+    "bridge/esx/shared.lua"
   ],
   "fxClientScripts": [
     "bridge/core/client.lua",
+    "bridge/core/ui.lua",
     "bridge/qb/client.lua",
+    "bridge/qb/ui.lua",
     "bridge/qbx/client.lua",
-    "bridge/esx/client.lua"
+    "bridge/esx/client.lua",
+    "bridge/esx/shared.lua",
+    "bridge/esx/game.lua",
+    "bridge/esx/ui.lua"
   ],
   "fxProvide": [
     "es_extended",
     "qb-core",
-    "qbx_core"
+    "qbx_core",
+    "esx_context",
+    "esx_textui",
+    "esx_notify",
+    "esx_progressbar",
+    "esx_menu_default",
+    "esx_menu_dialog",
+    "esx_menu_list",
+    "qb-menu",
+    "qb-input",
+    "progressbar"
   ],
   "fxFiles": [
     "data/keybinds.json",

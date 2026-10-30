@@ -7,13 +7,14 @@ import { Select } from "../../../components/ui/select";
 import { runAction } from "./actions";
 import { Note, PCard, Row, Rows, useAction, type T } from "./parts";
 
-/** Name, birth date and sex as one form (saved together, checked like the character creation form). */
+/** Name, birth date, sex and nationality as one form (saved together, checked like the character creation form). */
 export function InfoCard({ view, t }: { view: CharacterView; t: T }) {
   const [form, setForm] = useState({
     firstname: view.firstname,
     lastname: view.lastname,
     birthdate: view.birthdate,
     sex: view.sex as string,
+    nationality: view.nationality,
   });
   // A change from elsewhere (another admin, a delta) replaces the form.
   useEffect(
@@ -23,20 +24,30 @@ export function InfoCard({ view, t }: { view: CharacterView; t: T }) {
         lastname: view.lastname,
         birthdate: view.birthdate,
         sex: view.sex,
+        nationality: view.nationality,
       }),
-    [view.firstname, view.lastname, view.birthdate, view.sex],
+    [view.firstname, view.lastname, view.birthdate, view.sex, view.nationality],
   );
   const { busy, note, run } = useAction();
   const changed =
     form.firstname !== view.firstname ||
     form.lastname !== view.lastname ||
     form.birthdate !== view.birthdate ||
-    form.sex !== view.sex;
-  const field = (key: "firstname" | "lastname" | "birthdate") => (
+    form.sex !== view.sex ||
+    form.nationality !== view.nationality;
+  const field = (
+    key: "firstname" | "lastname" | "birthdate" | "nationality",
+  ) => (
     <Input
       value={form[key]}
       aria-label={t(`ADMIN_PLAYERS_F_${key.toUpperCase()}`)}
-      placeholder={key === "birthdate" ? "1994-06-12" : undefined}
+      placeholder={
+        key === "birthdate"
+          ? "1994-06-12"
+          : key === "nationality"
+            ? t("ADMIN_PLAYERS_PH_NATIONALITY")
+            : undefined
+      }
       className="w-[24vh]"
       onChange={(e) => setForm({ ...form, [key]: e.target.value })}
     />
@@ -51,6 +62,9 @@ export function InfoCard({ view, t }: { view: CharacterView; t: T }) {
         <Row label={t("ADMIN_PLAYERS_F_FIRSTNAME")}>{field("firstname")}</Row>
         <Row label={t("ADMIN_PLAYERS_F_LASTNAME")}>{field("lastname")}</Row>
         <Row label={t("ADMIN_PLAYERS_F_BIRTHDATE")}>{field("birthdate")}</Row>
+        <Row label={t("ADMIN_PLAYERS_F_NATIONALITY")}>
+          {field("nationality")}
+        </Row>
         <Row label={t("ADMIN_PLAYERS_F_SEX")}>
           <div className="w-[24vh]" title={t("ADMIN_PLAYERS_H_SEX")}>
             <Select

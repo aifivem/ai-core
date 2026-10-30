@@ -1,4 +1,9 @@
-import { toBirthdate, toName, toSex } from "@aicore-fivem/shared";
+import {
+  toBirthdate,
+  toName,
+  toNationality,
+  toSex,
+} from "@aicore-fivem/shared";
 import type { MoneyMode } from "common/adminPlayers";
 import { settings } from "../../content";
 import { action, actorOf, logEdit, onCharacter, parse } from "./gate";
@@ -23,16 +28,18 @@ action(
         lastname: toName(input.lastname),
         birthdate: toBirthdate(input.birthdate),
         sex: toSex(input.sex),
+        nationality: toNationality(input.nationality),
       },
     ] as const;
   },
   async (source, charId, input) => {
-    const { firstname, lastname, birthdate, sex } = input;
+    const { firstname, lastname, birthdate, sex, nationality } = input;
     if (!firstname) return fail("CHAR_ERR_FIRSTNAME");
     if (!lastname) return fail("CHAR_ERR_LASTNAME");
     if (!birthdate) return fail("CHAR_ERR_BIRTHDATE");
     if (!sex) return fail("CHAR_ERR_SEX");
-    const info = { firstname, lastname, birthdate, sex };
+    if (!nationality) return fail("CHAR_ERR_NATIONALITY");
+    const info = { firstname, lastname, birthdate, sex, nationality };
     const result = await onCharacter(
       charId,
       async (player) => {

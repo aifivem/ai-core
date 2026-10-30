@@ -20,6 +20,7 @@ local core = exports['ai-core']
 ---@field lastname string
 ---@field birthdate string
 ---@field sex 'male'|'female'
+---@field nationality string
 
 ---@class AiGrade
 ---@field label string

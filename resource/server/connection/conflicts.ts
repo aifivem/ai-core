@@ -36,7 +36,21 @@ const STAND_INS: Record<string, string[]> = {
 };
 /** Third-party names ai-core and ai-mysql stand in for: the third-party copy is the one to delete. */
 const NEVER_NEXT_TO: Record<string, string[]> = {
-  "ai-core": ["es_extended", "qb-core", "qbx_core"],
+  "ai-core": [
+    "es_extended",
+    "qb-core",
+    "qbx_core",
+    "esx_context",
+    "esx_textui",
+    "esx_notify",
+    "esx_progressbar",
+    "esx_menu_default",
+    "esx_menu_dialog",
+    "esx_menu_list",
+    "qb-menu",
+    "qb-input",
+    "progressbar",
+  ],
   "ai-mysql": ["oxmysql", "mysql-async", "ghmattimysql"],
 };
 

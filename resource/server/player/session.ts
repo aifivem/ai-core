@@ -162,6 +162,7 @@ async function loadNow(
     const spawn: SpawnPoint = {
       ...position,
       model: row.sex === "female" ? "mp_f_freemode_01" : "mp_m_freemode_01",
+      armour: player.armour(),
     };
     emitNet(CORE.spawnEvent, source, spawn);
     emit(CORE.playerLoadedEvent, source, player.info());

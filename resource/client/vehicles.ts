@@ -3,12 +3,12 @@ import {
   onServerCallback,
   setVehicleProps,
   setVehicleSetup,
+  waitForEntity,
 } from "@aicore-fivem/lib/client";
 import {
   toVehicleProps,
   toVehicleSetup,
   vehicleTypeOfClass,
-  waitFor,
 } from "@aicore-fivem/lib/shared";
 import { CORE, VEHICLE_BAGS } from "@aicore-fivem/shared";
 
@@ -26,17 +26,9 @@ onServerCallback(CORE.vehicleTypeCallback, (model) => {
  * applies them and the network copies the result to everyone. The bag can come before the entity streams in.
  */
 function applyOnOwner(netId: number, apply: (vehicle: number) => void): void {
-  void waitFor(
-    () =>
-      NetworkDoesEntityExistWithNetworkId(netId)
-        ? NetworkGetEntityFromNetworkId(netId)
-        : undefined,
-    5000,
-  )
-    .then((vehicle) => {
-      if (NetworkGetEntityOwner(vehicle) === PlayerId()) apply(vehicle);
-    })
-    .catch(() => undefined);
+  void waitForEntity(netId, 5000).then((vehicle) => {
+    if (vehicle && NetworkGetEntityOwner(vehicle) === PlayerId()) apply(vehicle);
+  });
 }
 new EntityState(
   VEHICLE_BAGS.props,

@@ -1,3 +1,4 @@
+import { every } from "@aicore-fivem/lib/server";
 import { saveCharacters } from "./characters/repo";
 import { settings } from "./content";
 import { log } from "./log";
@@ -24,7 +25,9 @@ function saveNow(why: string): void {
     .catch((error: unknown) => log.error(`save failed (${why})`, error));
 }
 
-setInterval(() => saveNow("interval"), settings.saveIntervalMinutes * 60_000);
+every(settings.saveIntervalMinutes * 60_000, () => saveNow("interval"), {
+  name: "save",
+});
 
 on("txAdmin:events:serverShuttingDown", () => saveNow("shutdown"));
 

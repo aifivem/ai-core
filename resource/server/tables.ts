@@ -21,6 +21,7 @@ export type Tables = {
     lastname: string;
     birthdate: number;
     sex: string;
+    nationality: string;
     pos_x: number | null;
     pos_y: number | null;
     pos_z: number | null;
@@ -80,6 +81,7 @@ export type TableInserts = {
     lastname: string;
     birthdate: number;
     sex: string;
+    nationality?: string;
     pos_x?: number | null;
     pos_y?: number | null;
     pos_z?: number | null;

@@ -110,7 +110,7 @@
   },
   "scoreboard_open": {
     "resource": "ai-scoreboard",
-    "description": "Show the scoreboard (hold)",
+    "description": "Show the scoreboard",
     "defaultKey": "HOME",
     "mapper": "keyboard",
     "key": "",
@@ -277,6 +277,60 @@
     "mapper": "keyboard",
     "key": "",
     "hintWhen": "vehicle",
+    "hint": ""
+  },
+  "voice_cycle": {
+    "resource": "ai-voice",
+    "description": "Change voice range",
+    "defaultKey": "F11",
+    "mapper": "keyboard",
+    "key": "",
+    "hintWhen": "",
+    "hint": ""
+  },
+  "voice_radio": {
+    "resource": "ai-voice",
+    "description": "Talk on the radio",
+    "defaultKey": "LMENU",
+    "mapper": "keyboard",
+    "key": "",
+    "hintWhen": "",
+    "hint": ""
+  },
+  "police_alert_waypoint": {
+    "resource": "ai-policealert",
+    "description": "Set a waypoint to the last police alert",
+    "defaultKey": "J",
+    "mapper": "keyboard",
+    "key": "",
+    "hintWhen": "",
+    "hint": ""
+  },
+  "exitsleeping_drop": {
+    "resource": "ai-exitsleeping",
+    "description": "Put down the sleeping player you carry",
+    "defaultKey": "X",
+    "mapper": "keyboard",
+    "key": "",
+    "hintWhen": "",
+    "hint": ""
+  },
+  "smallresources_zoom_in": {
+    "resource": "ai-smallresources",
+    "description": "Binoculars: zoom in",
+    "defaultKey": "IOM_WHEEL_UP",
+    "mapper": "MOUSE_WHEEL",
+    "key": "",
+    "hintWhen": "",
+    "hint": ""
+  },
+  "smallresources_zoom_out": {
+    "resource": "ai-smallresources",
+    "description": "Binoculars: zoom out",
+    "defaultKey": "IOM_WHEEL_DOWN",
+    "mapper": "MOUSE_WHEEL",
+    "key": "",
+    "hintWhen": "",
     "hint": ""
   }
 }

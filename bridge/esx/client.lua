@@ -18,8 +18,11 @@ end
 ---@field dateofbirth string
 ---@field sex string
 ---@field metadata table
+---@field ped integer
 
 ---@class ESXClient
+---@field Math table ESX.Math (bridge/esx/shared.lua)
+---@field Table table ESX.Table (bridge/esx/shared.lua)
 ESX = { PlayerData = {}, PlayerLoaded = false, Game = {} }
 
 local function accounts()
@@ -45,6 +48,7 @@ local function rebuild()
         dateofbirth = c.birthdate,
         sex = c.sex == 'female' and 'f' or 'm',
         metadata = {},
+        ped = PlayerPedId(),
     }
     ESX.PlayerLoaded = true
 end
@@ -108,6 +112,11 @@ end)
 BridgeClient.on('money', function(account, balance)
     ESX.PlayerData.accounts = accounts()
     TriggerEvent('esx:setAccountMoney', { name = esxAccount(account), money = balance, label = account })
+end)
+
+-- ESX keeps the ped in PlayerData; ai-core's cache watcher tells when it changes (model swap, respawn).
+AddEventHandler('ai-core:client:cache', function(key, value)
+    if key == 'ped' and ESX.PlayerLoaded then ESX.SetPlayerData('ped', value) end
 end)
 
 BridgeClient.on('job', function(job, last)

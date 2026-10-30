@@ -26,6 +26,7 @@ import {
 } from "./scene";
 import { visibility } from "./hud";
 import { announceLoaded } from "./playerState";
+import { spawnArmour } from "./armour";
 
 const log = createLogger("ai-core");
 const scene = new SelectScene();
@@ -169,14 +170,23 @@ RegisterNuiCallback(NuiCallback.remove, (data: unknown, cb: NuiReply) => {
 });
 
 /** The server loaded a character: out of the screen and into the world at its spawn. */
-/** The spawn point the server sends: finite coordinates and a model name. */
+/** The spawn point the server sends: finite coordinates, a model name and the armour (0-100). */
 function toSpawn(value: unknown): [SpawnPoint] | null {
   if (!isRecord(value) || typeof value.model !== "string") return null;
-  const { x, y, z, heading } = value;
+  const { x, y, z, heading, armour } = value;
   const finite = (n: unknown): n is number =>
     typeof n === "number" && Number.isFinite(n);
   return finite(x) && finite(y) && finite(z) && finite(heading)
-    ? [{ x, y, z, heading, model: value.model }]
+    ? [
+        {
+          x,
+          y,
+          z,
+          heading,
+          model: value.model,
+          armour: finite(armour) ? Math.min(100, Math.max(0, armour)) : 0,
+        },
+      ]
     : null;
 }
 
@@ -218,6 +228,7 @@ onServerEvent(
       FreezeEntityPosition(ped, false);
       SetEntityInvincible(ped, false);
       SetEntityVisible(ped, true, false);
+      spawnArmour.apply(ped, spawn.armour);
       visibility.set(SCREEN_HUD_REASON, false);
       DoScreenFadeIn(500);
       screen = null;

@@ -10,6 +10,7 @@ import "./cacheWatch";
 import "./prompts";
 import "./notify";
 import "./menu";
+import "./dialogClose";
 import "./itemPicker";
 import "./keyboard";
 import "./inventory";

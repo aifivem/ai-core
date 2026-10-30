@@ -1,4 +1,4 @@
-import { cache, TickLoop } from "@aicore-fivem/lib/client";
+import { cache, raycast, TickLoop } from "@aicore-fivem/lib/client";
 
 /** A picked place: the floor (or the ped's root height above it) and a heading. */
 export interface PickedPoint {
@@ -119,22 +119,17 @@ function freeFly<T>(
       if (IsDisabledControlJustPressed(0, C.wheelDown))
         aim.heading = (aim.heading + 345) % 360;
 
-      const probe = StartExpensiveSynchronousShapeTestLosProbe(
-        pos.x,
-        pos.y,
-        pos.z,
-        pos.x + fx * RANGE,
-        pos.y + fy * RANGE,
-        pos.z + fz * RANGE,
-        flags,
-        cache.ped,
-        4,
+      const hit = raycast(
+        pos,
+        {
+          x: pos.x + fx * RANGE,
+          y: pos.y + fy * RANGE,
+          z: pos.z + fz * RANGE,
+        },
+        { flags, options: 4 },
       );
-      const [, didHit, end, , entity] = GetShapeTestResult(probe);
-      aim.hit = didHit
-        ? { x: end[0] ?? 0, y: end[1] ?? 0, z: end[2] ?? 0 }
-        : null;
-      aim.entity = didHit ? entity : 0;
+      aim.hit = hit?.coords ?? null;
+      aim.entity = hit?.entity ?? 0;
       frame(aim);
       if (IsDisabledControlJustPressed(0, C.cancel)) finish(null);
       else if (IsDisabledControlJustPressed(0, C.confirm)) {

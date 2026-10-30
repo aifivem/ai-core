@@ -1,5 +1,5 @@
 import { controls, registerExport } from "@aicore-fivem/lib/client";
-import { logSafe } from "@aicore-fivem/lib/shared";
+import { isRecord, logSafe } from "@aicore-fivem/lib/shared";
 import {
   MENU_EVENTS,
   type InputField,
@@ -10,14 +10,11 @@ import {
 import { ResourceName } from "common";
 import { NuiCallback, NuiMessage } from "common/nui";
 
-const isObj = (v: unknown): v is Record<string, unknown> =>
-  typeof v === "object" && v !== null && !Array.isArray(v);
-
 function toMenu(v: unknown): MenuRequest | null {
-  if (!isObj(v) || typeof v.title !== "string" || !Array.isArray(v.items))
+  if (!isRecord(v) || typeof v.title !== "string" || !Array.isArray(v.items))
     return null;
   const items: MenuItem[] = v.items.flatMap((i) =>
-    isObj(i) && typeof i.id === "string" && typeof i.label === "string"
+    isRecord(i) && typeof i.id === "string" && typeof i.label === "string"
       ? [
           {
             id: i.id,
@@ -41,10 +38,10 @@ function toMenu(v: unknown): MenuRequest | null {
 }
 
 function toInput(v: unknown): InputRequest | null {
-  if (!isObj(v) || typeof v.title !== "string" || !Array.isArray(v.fields))
+  if (!isRecord(v) || typeof v.title !== "string" || !Array.isArray(v.fields))
     return null;
   const fields: InputField[] = v.fields.flatMap((f): InputField[] => {
-    if (!isObj(f) || typeof f.name !== "string" || typeof f.label !== "string")
+    if (!isRecord(f) || typeof f.name !== "string" || typeof f.label !== "string")
       return [];
     const placeholder =
       typeof f.placeholder === "string" ? f.placeholder : undefined;
@@ -184,21 +181,21 @@ registerExport("OpenInput", (id: unknown, request: unknown) => {
 RegisterNuiCallback(
   NuiCallback.dialogAnswer,
   (data: unknown, cb: (r: unknown) => void) => {
-    dialogs.answer(isObj(data) ? data.value : null);
+    dialogs.answer(isRecord(data) ? data.value : null);
     cb(true);
   },
 );
 RegisterNuiCallback(
   NuiCallback.dialogHover,
   (data: unknown, cb: (r: unknown) => void) => {
-    dialogs.hover(isObj(data) ? data.id : null);
+    dialogs.hover(isRecord(data) ? data.id : null);
     cb(true);
   },
 );
 RegisterNuiCallback(
   NuiCallback.dialogToggle,
   (data: unknown, cb: (r: unknown) => void) => {
-    if (isObj(data)) dialogs.toggle(data.id, data.checked);
+    if (isRecord(data)) dialogs.toggle(data.id, data.checked);
     cb(true);
   },
 );

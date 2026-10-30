@@ -1,3 +1,4 @@
+import { every } from "@aicore-fivem/lib/server";
 import { jobs as jobDefs, settings } from "../content";
 import { log } from "../log";
 import { sharedAccounts } from "../money/book";
@@ -51,7 +52,11 @@ async function payAll(): Promise<void> {
 }
 
 if (settings.paycheck.intervalMinutes > 0) {
-  setInterval(() => {
-    payAll().catch((error: unknown) => log.error("paycheck failed", error));
-  }, settings.paycheck.intervalMinutes * 60_000);
+  every(
+    settings.paycheck.intervalMinutes * 60_000,
+    () => {
+      payAll().catch((error: unknown) => log.error("paycheck failed", error));
+    },
+    { name: "paycheck" },
+  );
 }

@@ -6,6 +6,7 @@ import {
   faLocationDot,
   faPersonWalkingArrowRight,
   faRightFromBracket,
+  faSkull,
   faTrash,
   faUserShield,
   faCubes,
@@ -134,16 +135,17 @@ export function ItemsCard({ view, t }: { view: CharacterView; t: T }) {
   );
 }
 
-/** Revive and kick (online), delete (offline), each risky one behind a confirm dialog. */
+/** Revive, kill and kick (online), delete (offline), each risky one behind a confirm dialog. */
 export function ActionsCard({ view, t }: { view: CharacterView; t: T }) {
   const { busy, note, run } = useAction();
-  const [dialog, setDialog] = useState<"kick" | "delete" | null>(null);
+  const [dialog, setDialog] = useState<"kill" | "kick" | "delete" | null>(null);
   const [reason, setReason] = useState("");
   const online = view.source !== null;
   const name = `${view.firstname} ${view.lastname}`;
   const confirm = async () => {
     const kind = dialog;
     setDialog(null);
+    if (kind === "kill") await run(() => runAction("kill", [view.charId]));
     if (kind === "kick")
       await run(() => runAction("kick", [view.charId, reason.trim()]));
     if (
@@ -166,6 +168,14 @@ export function ActionsCard({ view, t }: { view: CharacterView; t: T }) {
         >
           <FontAwesomeIcon icon={faHandHoldingMedical} aria-hidden />
           {t("ADMIN_PLAYERS_REVIVE")}
+        </Button>
+        <Button
+          variant="danger"
+          disabled={!online}
+          onClick={() => setDialog("kill")}
+        >
+          <FontAwesomeIcon icon={faSkull} aria-hidden />
+          {t("ADMIN_PLAYERS_KILL")}
         </Button>
         <Button
           variant="danger"
@@ -193,13 +203,19 @@ export function ActionsCard({ view, t }: { view: CharacterView; t: T }) {
         open={dialog !== null}
         onOpenChange={(open) => !open && setDialog(null)}
         title={t(
-          dialog === "kick"
-            ? "ADMIN_PLAYERS_KICK_TITLE"
-            : "ADMIN_PLAYERS_DELETE_TITLE",
+          dialog === "kill"
+            ? "ADMIN_PLAYERS_KILL_TITLE"
+            : dialog === "kick"
+              ? "ADMIN_PLAYERS_KICK_TITLE"
+              : "ADMIN_PLAYERS_DELETE_TITLE",
           name,
         )}
         description={
-          dialog === "delete" ? t("ADMIN_PLAYERS_DELETE_DESC") : undefined
+          dialog === "delete"
+            ? t("ADMIN_PLAYERS_DELETE_DESC")
+            : dialog === "kill"
+              ? t("ADMIN_PLAYERS_KILL_DESC")
+              : undefined
         }
       >
         {dialog === "kick" && (
@@ -218,7 +234,11 @@ export function ActionsCard({ view, t }: { view: CharacterView; t: T }) {
           </Button>
           <Button variant="destructive" onClick={() => void confirm()}>
             {t(
-              dialog === "kick" ? "ADMIN_PLAYERS_KICK" : "ADMIN_PLAYERS_DELETE",
+              dialog === "kill"
+                ? "ADMIN_PLAYERS_KILL"
+                : dialog === "kick"
+                  ? "ADMIN_PLAYERS_KICK"
+                  : "ADMIN_PLAYERS_DELETE",
             )}
           </Button>
         </div>

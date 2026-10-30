@@ -61,9 +61,26 @@ export class Player {
   }
 
   info(): CharacterInfo {
-    const { id, citizenid, slot, firstname, lastname, birthdate, sex } =
-      this.row;
-    return { id, citizenid, slot, firstname, lastname, birthdate, sex };
+    const {
+      id,
+      citizenid,
+      slot,
+      firstname,
+      lastname,
+      birthdate,
+      sex,
+      nationality,
+    } = this.row;
+    return {
+      id,
+      citizenid,
+      slot,
+      firstname,
+      lastname,
+      birthdate,
+      sex,
+      nationality,
+    };
   }
 
   get fullName(): string {
@@ -91,13 +108,17 @@ export class Player {
     return { ...this.row.metadata };
   }
 
-  /** Name and birth date from the admin panel (the caller writes the row); scripts that copied them see the change after the next load. */
+  /** Name, birth date and nationality from the admin panel (the caller writes the row); scripts that copied them see the change after the next load. */
   setInfo(
-    info: Pick<CharacterInfo, "firstname" | "lastname" | "birthdate">,
+    info: Pick<
+      CharacterInfo,
+      "firstname" | "lastname" | "birthdate" | "nationality"
+    >,
   ): void {
     this.row.firstname = info.firstname;
     this.row.lastname = info.lastname;
     this.row.birthdate = info.birthdate;
+    this.row.nationality = info.nationality;
     sendPlayerData(this.source, "character", this.info());
     playerWatchers.char(this.row.id, info);
   }
@@ -123,12 +144,22 @@ export class Player {
     }
   }
 
-  /** What the periodic flush writes: the ped's position (server copy) and the metadata bag. */
+  /** Saved body armour (metadata `armor`, QB's key), 0-100; set again on the ped at spawn. */
+  armour(): number {
+    const value = this.row.metadata.armor;
+    return typeof value === "number" && Number.isFinite(value)
+      ? Math.min(100, Math.max(0, Math.round(value)))
+      : 0;
+  }
+
+  /** What the periodic flush writes: the ped's position and armour (server copies) and the metadata bag. */
   saveData(): CharacterSave {
     const ped = GetPlayerPed(String(this.source));
     if (ped && DoesEntityExist(ped)) {
       const [x = 0, y = 0, z = 0] = GetEntityCoords(ped);
       this.row.position = { x, y, z, heading: GetEntityHeading(ped) };
+      const armour = GetPedArmour(ped);
+      if (armour !== this.row.metadata.armor) this.setMeta("armor", armour);
     }
     const lastDuty = this.jobs.last();
     if (lastDuty !== this.row.metadata.lastDutyJob)

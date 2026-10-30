@@ -174,7 +174,10 @@ export const offline = {
 
   async info(
     charId: number,
-    info: Pick<CharacterInfo, "firstname" | "lastname" | "birthdate" | "sex">,
+    info: Pick<
+      CharacterInfo,
+      "firstname" | "lastname" | "birthdate" | "sex" | "nationality"
+    >,
   ): Promise<PlayersResult> {
     await updateInfo(charId, info);
     playerWatchers.char(charId, info);

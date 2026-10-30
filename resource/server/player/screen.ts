@@ -49,6 +49,7 @@ export async function characterScreen(user: User): Promise<CharacterScreen> {
       lastname: row.lastname,
       birthdate: row.birthdate,
       sex: row.sex,
+      nationality: row.nationality,
       online: players.byCharacter(row.id) !== undefined,
       job,
       cash: Number(extra?.cash ?? 0),

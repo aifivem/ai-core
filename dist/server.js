@@ -45,11 +45,11 @@ function waitFor(check, timeoutMs = 1e4, intervalMs = 0) {
 	});
 }
 // ../../../packages/lib/src/shared/read.ts
-function num$1(value, fallback, min = -Infinity, max = Infinity) {
+function num(value, fallback, min = -Infinity, max = Infinity) {
 	return typeof value == "number" && Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
 }
-function int$2(value, fallback, min = -Infinity, max = Infinity) {
-	return Math.round(num$1(value, fallback, min, max));
+function int(value, fallback, min = -Infinity, max = Infinity) {
+	return Math.round(num(value, fallback, min, max));
 }
 function bool$1(value, fallback) {
 	return typeof value == "boolean" ? value : fallback;
@@ -63,10 +63,10 @@ function record(value) {
 function vec4(value, fallback) {
 	let v = record(value);
 	return {
-		x: num$1(v.x, fallback.x),
-		y: num$1(v.y, fallback.y),
-		z: num$1(v.z, fallback.z),
-		heading: num$1(v.heading, fallback.heading)
+		x: num(v.x, fallback.x),
+		y: num(v.y, fallback.y),
+		z: num(v.z, fallback.z),
+		heading: num(v.heading, fallback.heading)
 	};
 }
 // ../../../packages/lib/src/shared/strict.ts
@@ -122,6 +122,29 @@ var FileViews = class {
 		parsed === null ? this.map.delete(key) : this.map.set(key, parsed);
 	}
 };
+// ../../../packages/lib/src/shared/lang.ts
+function formatText(template, args) {
+	return template.replace(/\{(\d+)\}/g, (match, index) => {
+		let value = args[Number(index)];
+		return value === void 0 ? match : String(value);
+	});
+}
+// ../../../packages/lib/src/shared/spec.ts
+const spec = {
+	int: (min, max, optional = !1) => ({
+		type: "number",
+		min,
+		max,
+		integer: !0,
+		...optional ? { optional } : {}
+	}),
+	num: (min, max, optional = !1) => ({
+		type: "number",
+		min,
+		max,
+		...optional ? { optional } : {}
+	})
+};
 // ../../../packages/lib/src/shared/index.ts
 function isRecord(value) {
 	return typeof value == "object" && !!value && !Array.isArray(value);
@@ -159,12 +182,6 @@ function previewJson(value, max) {
 		out += "}";
 	};
 	return walk(value, 0), out.slice(0, max);
-}
-function formatText(template, args) {
-	return template.replace(/\{(\d+)\}/g, (match, index) => {
-		let value = args[Number(index)];
-		return value === void 0 ? match : String(value);
-	});
 }
 function createLogger(resource) {
 	let prefix = `[${resource}]`;
@@ -275,16 +292,23 @@ function toBirthdate(value, minAge = 18, now = new Date()) {
 function toSex(value) {
 	return value === "male" || value === "female" ? value : null;
 }
+const NATIONALITY = /^[A-Za-zÀ-ɏ][A-Za-zÀ-ɏ' -]{1,31}$/;
+function toNationality(value) {
+	if (typeof value != "string") return null;
+	let text = value.trim().replace(/\s+/g, " ");
+	return NATIONALITY.test(text) ? text : null;
+}
 function toCreateCharacter(value) {
 	if (typeof value != "object" || !value) return { error: "CHAR_ERR_INVALID" };
-	let input = value, slot = typeof input.slot == "number" && Number.isInteger(input.slot) && input.slot >= 1 ? input.slot : null, firstname = toName(input.firstname), lastname = toName(input.lastname), birthdate = toBirthdate(input.birthdate), sex = toSex(input.sex);
-	return slot === null ? { error: "CHAR_ERR_INVALID" } : firstname ? lastname ? birthdate ? sex ? {
+	let input = value, slot = typeof input.slot == "number" && Number.isInteger(input.slot) && input.slot >= 1 ? input.slot : null, firstname = toName(input.firstname), lastname = toName(input.lastname), birthdate = toBirthdate(input.birthdate), sex = toSex(input.sex), nationality = toNationality(input.nationality);
+	return slot === null ? { error: "CHAR_ERR_INVALID" } : firstname ? lastname ? birthdate ? sex ? nationality ? {
 		slot,
 		firstname,
 		lastname,
 		birthdate,
-		sex
-	} : { error: "CHAR_ERR_SEX" } : { error: "CHAR_ERR_BIRTHDATE" } : { error: "CHAR_ERR_LASTNAME" } : { error: "CHAR_ERR_FIRSTNAME" };
+		sex,
+		nationality
+	} : { error: "CHAR_ERR_NATIONALITY" } : { error: "CHAR_ERR_SEX" } : { error: "CHAR_ERR_BIRTHDATE" } : { error: "CHAR_ERR_LASTNAME" } : { error: "CHAR_ERR_FIRSTNAME" };
 }
 // ../../../packages/shared/src/vehicleKeys.ts
 const KEY_PURPOSES = [
@@ -402,7 +426,7 @@ function loadLocaleTexts(resource = GetCurrentResourceName()) {
 	return texts;
 }
 // ../../../packages/lib/src/fivem/callbackNames.ts
-const requestEvent = (name) => `aicore:cb:${name}`, responseEvent = (resource) => `aicore:cbr:${resource}`, core$16 = resourceExport(CORE.resource), log$9 = createLogger(GetCurrentResourceName()), isAdmin = (ace = ADMIN.ace) => (source) => !!IsPlayerAceAllowed(String(source), ace) || `not allowed (${ace})`, hasCharacter = () => (source) => core$16.GetCharacter(source) !== null || "no character loaded", gates = new Set();
+const requestEvent = (name) => `aicore:cb:${name}`, responseEvent = (resource) => `aicore:cbr:${resource}`, core$16 = resourceExport(CORE.resource), log$10 = createLogger(GetCurrentResourceName()), isAdmin = (ace = ADMIN.ace) => (source) => !!IsPlayerAceAllowed(String(source), ace) || `not allowed (${ace})`, hasCharacter = () => (source) => core$16.GetCharacter(source) !== null || "no character loaded", gates = new Set();
 on("playerDropped", () => {
 	let source = Number(globalThis.source);
 	for (let gate of gates) gate.release(source);
@@ -443,11 +467,11 @@ var ClientGate = class {
 		this.refusals.set(source, {
 			at: now,
 			skipped: 0
-		}), log$9.warn(`${this.name} refused for ${GetPlayerName(String(source))} (${source}): ${typeof reason == "string" ? reason : reason()}${more}`);
+		}), log$10.warn(`${this.name} refused for ${GetPlayerName(String(source))} (${source}): ${typeof reason == "string" ? reason : reason()}${more}`);
 	}
 };
 // ../../../packages/lib/src/server/callback.ts
-const log$8 = createLogger(GetCurrentResourceName()), resource$4 = GetCurrentResourceName(), REFUSED = Symbol("refused");
+const log$9 = createLogger(GetCurrentResourceName()), resource$4 = GetCurrentResourceName(), REFUSED = Symbol("refused");
 function onClientCallback(name, first, second) {
 	let [handler, options] = typeof first == "function" ? [first, second ?? {}] : [second, first], gate = new ClientGate(name, options, 20);
 	onNet(requestEvent(name), async (caller, id, ...raw) => {
@@ -459,7 +483,7 @@ function onClientCallback(name, first, second) {
 			let result = await gate.run(source, REFUSED, () => handler(source, ...args));
 			result === REFUSED ? emitNet(responseEvent(caller), source, id, !1, null) : emitNet(responseEvent(caller), source, id, !0, result ?? null);
 		} catch (error) {
-			log$8.error(`callback ${name} failed for ${source}`, error), emitNet(responseEvent(caller), source, id, !1, null);
+			log$9.error(`callback ${name} failed for ${source}`, error), emitNet(responseEvent(caller), source, id, !1, null);
 		}
 	});
 }
@@ -590,6 +614,68 @@ function validate(spec, value, path) {
 			return null;
 		default: return spec;
 	}
+}
+// ../../../packages/lib/src/server/admin/edit.ts
+const DEFAULT_KEY = "^[a-z0-9_]{2,32}$";
+function imported(spec, value) {
+	let base = clone(spec.newRecord ?? {}), out = {};
+	for (let name of Object.keys(spec.sections)) {
+		let v = name in value ? value[name] : base[name];
+		v !== void 0 && (out[name] = clone(v));
+	}
+	return out;
+}
+function linked(spec, value, ctx) {
+	return spec.type === "text" && spec.records && typeof value == "string" && value !== "" && !(value in ctx.get(spec.records)) ? "ADMIN_ERR_LOOKUP" : null;
+}
+function checkEdit(patch, spec, ctx) {
+	let data = ctx.get(patch.file);
+	if (patch.action === "create") return spec.kind !== "records" || !new RegExp(spec.keyPattern ?? DEFAULT_KEY).test(patch.key) ? ERR.pattern : patch.key in data ? "ADMIN_ERR_EXISTS" : null;
+	if (patch.action === "delete") return spec.kind !== "records" || !(patch.key in data) ? ERR.type : spec.locked?.includes(patch.key) ? "ADMIN_ERR_LOCKED" : null;
+	if (patch.action === "import") {
+		if (spec.kind !== "records") return ERR.type;
+		let pattern = new RegExp(spec.keyPattern ?? DEFAULT_KEY);
+		for (let [key, value] of Object.entries(patch.records)) {
+			if (!pattern.test(key)) return ERR.pattern;
+			let record = imported(spec, value);
+			for (let [name, section] of Object.entries(spec.sections)) {
+				let refusal = validate(section, record[name], name);
+				if (refusal) return refusal.error;
+				let link = linked(section, record[name], ctx);
+				if (link) return link;
+			}
+			let ruled = ctx.rule(patch.file)?.(key, record);
+			if (ruled) return ruled;
+		}
+		return null;
+	}
+	let section = spec.sections[patch.section];
+	if (!section || spec.kind === "records" && (!patch.key || !(patch.key in data))) return ERR.type;
+	let refusal = validate(section, patch.value, patch.section);
+	if (refusal) return refusal.error;
+	let link = linked(section, patch.value, ctx);
+	if (link) return link;
+	let current = spec.kind === "records" ? data[patch.key ?? ""] : data, next = {
+		...isRecord(current) ? current : {},
+		[patch.section]: patch.value
+	};
+	return ctx.rule(patch.file)?.(patch.key, next) ?? null;
+}
+function applyEdit(data, patch, spec) {
+	if (patch.action === "import") {
+		for (let [key, value] of Object.entries(patch.records)) data[key] = imported(spec, value);
+		return Object.keys(patch.records);
+	}
+	if (patch.action === "create") {
+		let record = clone(spec.newRecord ?? {});
+		spec.labelPath && (record[spec.labelPath] = patch.label), data[patch.key] = record;
+	} else if (patch.action === "delete") delete data[patch.key];
+	else {
+		let target = spec.kind === "records" ? data[patch.key ?? ""] : data;
+		if (!isRecord(target)) return [];
+		patch.value === void 0 || patch.value === null ? delete target[patch.section] : target[patch.section] = clone(patch.value);
+	}
+	return [spec.kind === "records" ? patch.key : void 0];
 }
 // ../../../packages/lib/src/server/admin/jsonSchema.ts
 const SCHEMA_KEY = {
@@ -727,15 +813,7 @@ function writeSchema(resource, name, text, log) {
 	(0, node_fs_promises.mkdir)(dir, { recursive: !0 }).then(() => (0, node_fs_promises.writeFile)(`${dir}/${name}.schema.json`, text, "utf8")).catch((error) => log.error(`writing ${resource}/${path} failed`, error));
 }
 // ../../../packages/lib/src/server/admin/panel.ts
-const core$14 = resourceExport(CORE.resource), DEFAULT_KEY = "^[a-z0-9_]{2,32}$";
-function imported(spec, value) {
-	let base = clone(spec.newRecord ?? {}), out = {};
-	for (let name of Object.keys(spec.sections)) {
-		let v = name in value ? value[name] : base[name];
-		v !== void 0 && (out[name] = clone(v));
-	}
-	return out;
-}
+const core$14 = resourceExport(CORE.resource);
 var AdminPanel = class {
 	schema;
 	data = new Map();
@@ -792,7 +870,10 @@ var AdminPanel = class {
 				ok: !1,
 				error: ERR.type
 			};
-			let error = this.check(patch, spec);
+			let error = checkEdit(patch, spec, {
+				get: (file) => this.get(file),
+				rule: (file) => this.rules.get(file)
+			});
 			return error ? (this.log.warn(`admin ${admin} edit refused (${error}): ${previewJson(patch, 300)}`), {
 				ok: !1,
 				error
@@ -827,59 +908,12 @@ var AdminPanel = class {
 	commitAfter(file, key, value) {
 		setImmediate(() => this.commit(file, key, value));
 	}
-	linked(spec, value) {
-		return spec.type === "text" && spec.records && typeof value == "string" && value !== "" && !(value in this.get(spec.records)) ? "ADMIN_ERR_LOOKUP" : null;
-	}
-	check(patch, spec) {
-		let data = this.get(patch.file);
-		if (patch.action === "create") return spec.kind !== "records" || !new RegExp(spec.keyPattern ?? DEFAULT_KEY).test(patch.key) ? ERR.pattern : patch.key in data ? "ADMIN_ERR_EXISTS" : null;
-		if (patch.action === "delete") return spec.kind !== "records" || !(patch.key in data) ? ERR.type : spec.locked?.includes(patch.key) ? "ADMIN_ERR_LOCKED" : null;
-		if (patch.action === "import") {
-			if (spec.kind !== "records") return ERR.type;
-			let pattern = new RegExp(spec.keyPattern ?? DEFAULT_KEY);
-			for (let [key, value] of Object.entries(patch.records)) {
-				if (!pattern.test(key)) return ERR.pattern;
-				let record = imported(spec, value);
-				for (let [name, section] of Object.entries(spec.sections)) {
-					let refusal = validate(section, record[name], name);
-					if (refusal) return refusal.error;
-					let link = this.linked(section, record[name]);
-					if (link) return link;
-				}
-				let ruled = this.rules.get(patch.file)?.(key, record);
-				if (ruled) return ruled;
-			}
-			return null;
-		}
-		let section = spec.sections[patch.section];
-		if (!section || spec.kind === "records" && (!patch.key || !(patch.key in data))) return ERR.type;
-		let refusal = validate(section, patch.value, patch.section);
-		if (refusal) return refusal.error;
-		let link = this.linked(section, patch.value);
-		if (link) return link;
-		let current = spec.kind === "records" ? data[patch.key ?? ""] : data, next = {
-			...isRecord(current) ? current : {},
-			[patch.section]: patch.value
-		};
-		return this.rules.get(patch.file)?.(patch.key, next) ?? null;
-	}
 	store(patch, spec) {
-		let data = this.data.get(patch.file) ?? {};
-		if (patch.action === "create") {
-			let record = clone(spec.newRecord ?? {});
-			spec.labelPath && (record[spec.labelPath] = patch.label), data[patch.key] = record;
-		} else if (patch.action === "delete") delete data[patch.key];
-		else if (patch.action === "import") {
-			for (let [key, value] of Object.entries(patch.records)) data[key] = imported(spec, value);
+		let data = this.data.get(patch.file) ?? {}, keys = applyEdit(data, patch, spec);
+		if (keys.length !== 0) {
 			this.data.set(patch.file, data);
-			for (let key of Object.keys(patch.records)) this.changed(patch.file, key);
-			return;
-		} else {
-			let target = spec.kind === "records" ? data[patch.key ?? ""] : data;
-			if (!isRecord(target)) return;
-			patch.value === void 0 || patch.value === null ? delete target[patch.section] : target[patch.section] = clone(patch.value);
+			for (let key of keys) this.changed(patch.file, key);
 		}
-		this.data.set(patch.file, data), this.changed(patch.file, spec.kind === "records" ? patch.key : void 0);
 	}
 	changed(file, key) {
 		let spec = this.schema.files[file], data = this.get(file), value = key === void 0 ? data : data[key] ?? null;
@@ -918,42 +952,65 @@ function notify(source, text, kind = "info", duration) {
 resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/online.ts
 const core$12 = resourceExport(CORE.resource);
+function reindex(index, source, before, after) {
+	for (let name of before) {
+		let set = index.get(name);
+		set && (set.delete(source), set.size === 0 && index.delete(name));
+	}
+	for (let name of after) {
+		let set = index.get(name);
+		set || index.set(name, set = new Set()), set.add(source);
+	}
+}
 var OnlinePlayers = class {
 	players = new Map();
 	onDuty = new Map();
+	jobIndex = new Map();
+	gangIndex = new Map();
 	started = !1;
 	start() {
 		if (this.started) return;
 		this.started = !0;
 		let load = (source, character) => {
-			this.put(source, character, (core$12.GetJobs(source) ?? []).map((m) => m.job), (core$12.GetGangs(source) ?? []).map((m) => m.gang)), this.setDuty(source, core$12.GetDutyJob(source));
+			this.drop(source), this.players.set(source, {
+				character,
+				jobs: [],
+				jobNames: [],
+				gangs: [],
+				gangNames: [],
+				duty: null
+			}), this.setJobs(source, core$12.GetJobs(source) ?? []), this.setGangs(source, core$12.GetGangs(source) ?? []), this.setDuty(source, core$12.GetDutyJob(source));
 		};
-		on(CORE.playerLoadedEvent, load), on(CORE.playerUnloadedEvent, (source) => this.drop(source)), on(CORE.jobsChangedEvent, (source, jobs) => {
-			let player = this.players.get(source);
-			player && (player.jobs = jobs.map((m) => m.job));
-		}), on(CORE.gangsChangedEvent, (source, gangs) => {
-			let player = this.players.get(source);
-			player && (player.gangs = gangs.map((m) => m.gang));
-		}), on(CORE.dutyChangedEvent, (source, job) => this.setDuty(source, job));
+		on(CORE.playerLoadedEvent, load), on(CORE.playerUnloadedEvent, (source) => this.drop(source)), on(CORE.jobsChangedEvent, (source, jobs) => this.setJobs(source, jobs)), on(CORE.gangsChangedEvent, (source, gangs) => this.setGangs(source, gangs)), on(CORE.dutyChangedEvent, (source, job) => this.setDuty(source, job));
 		for (let source of core$12.GetLoadedSources()) {
 			let character = core$12.GetCharacter(source);
 			character && load(source, character);
 		}
 	}
-	put(source, character, jobs, gangs) {
-		this.drop(source), this.players.set(source, {
-			character,
-			jobs,
-			gangs,
-			duty: null
-		});
-	}
 	drop(source) {
-		this.setDuty(source, null), this.players.delete(source);
+		let player = this.players.get(source);
+		player && (this.setDuty(source, null), reindex(this.jobIndex, source, player.jobNames, []), reindex(this.gangIndex, source, player.gangNames, []), this.players.delete(source));
+	}
+	setJobs(source, jobs) {
+		let player = this.players.get(source);
+		if (!player) return;
+		let names = jobs.map((m) => m.job);
+		reindex(this.jobIndex, source, player.jobNames, names), player.jobs = jobs, player.jobNames = names;
+	}
+	setGangs(source, gangs) {
+		let player = this.players.get(source);
+		if (!player) return;
+		let names = gangs.map((m) => m.gang);
+		reindex(this.gangIndex, source, player.gangNames, names), player.gangs = gangs, player.gangNames = names;
 	}
 	setDuty(source, job) {
 		let player = this.players.get(source);
-		if (!player || (player.duty && this.onDuty.get(player.duty)?.delete(source), player.duty = job, !job)) return;
+		if (!player) return;
+		if (player.duty) {
+			let set = this.onDuty.get(player.duty);
+			set?.delete(source), set?.size === 0 && this.onDuty.delete(player.duty);
+		}
+		if (player.duty = job, !job) return;
 		let set = this.onDuty.get(job);
 		set || this.onDuty.set(job, set = new Set()), set.add(source);
 	}
@@ -967,13 +1024,35 @@ var OnlinePlayers = class {
 		return this.start(), this.players.get(source)?.character ?? null;
 	}
 	jobs(source) {
-		return this.start(), this.players.get(source)?.jobs ?? [];
+		return this.start(), this.players.get(source)?.jobNames ?? [];
 	}
 	gangs(source) {
-		return this.start(), this.players.get(source)?.gangs ?? [];
+		return this.start(), this.players.get(source)?.gangNames ?? [];
+	}
+	jobGrade(source, job) {
+		return this.start(), this.players.get(source)?.jobs.find((m) => m.job === job)?.grade ?? null;
+	}
+	gangGrade(source, gang) {
+		return this.start(), this.players.get(source)?.gangs.find((m) => m.gang === gang)?.grade ?? null;
+	}
+	jobMembers(job) {
+		return this.start(), this.jobIndex.get(job) ?? EMPTY$1;
+	}
+	gangMembers(gang) {
+		return this.start(), this.gangIndex.get(gang) ?? EMPTY$1;
 	}
 	dutyJob(source) {
 		return this.start(), this.players.get(source)?.duty ?? null;
+	}
+	onDutyIn(source, jobs) {
+		let duty = this.dutyJob(source);
+		return duty !== null && jobs.includes(duty);
+	}
+	countOnDuty(jobs) {
+		this.start();
+		let count = 0;
+		for (let job of jobs) count += this.onDuty.get(job)?.size ?? 0;
+		return count;
 	}
 	onDutyFor(job) {
 		return this.start(), this.onDuty.get(job) ?? EMPTY$1;
@@ -982,11 +1061,11 @@ var OnlinePlayers = class {
 const EMPTY$1 = new Set();
 new OnlinePlayers(), resourceExport(CORE.resource), resourceExport(CORE.resource), createLogger(GetCurrentResourceName());
 // ../../../packages/lib/src/server/command.ts
-const resource$3 = GetCurrentResourceName(), log$6 = createLogger(resource$3);
+const resource$3 = GetCurrentResourceName(), log$7 = createLogger(resource$3);
 let texts = null;
 const t = (key, ...args) => formatText((texts ??= loadLocaleTexts(CORE.resource))[key] ?? key, args);
 function reply$1(source, text, kind) {
-	source > 0 ? notify(source, text, kind) : log$6.info(text);
+	source > 0 ? notify(source, text, kind) : log$7.info(text);
 }
 var Command = class {
 	params;
@@ -1021,7 +1100,7 @@ var Command = class {
 		if (!this.allowed(source, name)) return reply$1(source, t("COMMAND_NOT_ALLOWED"), "error");
 		let args = this.parse(raw);
 		if (typeof args == "string") return reply$1(source, args, "error"), reply$1(source, t("COMMAND_USAGE", this.usage), "info");
-		let fail = (error) => log$6.error(`command /${name} failed`, error);
+		let fail = (error) => log$7.error(`command /${name} failed`, error);
 		try {
 			let result = this.handler(source, args, line);
 			result instanceof Promise && result.catch(fail);
@@ -1082,12 +1161,12 @@ function addCommand(name, options, handler) {
 	commands.add(command);
 }
 // ../../../packages/lib/src/server/netEvent.ts
-const log$5 = createLogger(GetCurrentResourceName());
+const log$6 = createLogger(GetCurrentResourceName());
 function onClientEvent(name, first, second) {
 	let [handler, options] = typeof first == "function" ? [first, second ?? {}] : [second, first], gate = new ClientGate(name, options, 10);
 	onNet(name, (...raw) => {
 		let source = Number(globalThis.source), args = gate.check(source, raw);
-		args && gate.run(source, void 0, () => handler(source, ...args)).catch((error) => log$5.error(`event ${name} failed for ${source}`, error));
+		args && gate.run(source, void 0, () => handler(source, ...args)).catch((error) => log$6.error(`event ${name} failed for ${source}`, error));
 	});
 }
 // ../../../packages/mysql/src/typeCast.ts
@@ -1289,9 +1368,10 @@ function readDebug() {
 		debugList = [];
 	}
 }
-readDebug(), setInterval(readDebug, 1e4);
+let debugReadAt = 0;
 function debugEnabled() {
-	return debugAll || debugList.includes(resource$2);
+	let now = Date.now();
+	return now - debugReadAt >= 1e4 && (debugReadAt = now, readDebug()), debugAll || debugList.includes(resource$2);
 }
 function push(list, record, max) {
 	list.push(record), list.length > max && list.splice(0, list.length - max);
@@ -15381,7 +15461,7 @@ const mysql = {
 	startTransaction: (work) => runStartTransaction(work).catch((error) => (console.error(errorText(resource, error)), !1)),
 	setPoolSize,
 	close: closePool
-}, tables = () => typedDb(mysql), log$4 = createLogger("aicore-lib"), CREATE_TABLE = /^CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?([A-Za-z0-9_]+)`?\s*\(/i, NON_COLUMN_LINE = /^(PRIMARY|UNIQUE|KEY|INDEX|CONSTRAINT|FOREIGN|FULLTEXT|SPATIAL|CHECK)\b/i;
+}, tables = () => typedDb(mysql), log$5 = createLogger("aicore-lib"), CREATE_TABLE = /^CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?([A-Za-z0-9_]+)`?\s*\(/i, NON_COLUMN_LINE = /^(PRIMARY|UNIQUE|KEY|INDEX|CONSTRAINT|FOREIGN|FULLTEXT|SPATIAL|CHECK)\b/i;
 function stripComments(sql) {
 	return sql.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*--.*$/gm, "");
 }
@@ -15427,13 +15507,131 @@ async function createDatabaseTables(resource, file) {
 	for (let sql of statements) {
 		let statement = parseStatement(sql);
 		if (!statement) {
-			log$4.warn(`${resource}/${file}: skipped statement (only CREATE TABLE IF NOT EXISTS is applied)`);
+			log$5.warn(`${resource}/${file}: skipped statement (only CREATE TABLE IF NOT EXISTS is applied)`);
 			continue;
 		}
 		let columns = await existingColumns(statement.table);
-		if (!columns) await mysql.query(statement.sql), log$4.info(`^2created table ${statement.table}^7 (${resource})`);
-		else for (let [name, definition] of statement.columns) columns.has(name) || (await mysql.query(`ALTER TABLE \`${statement.table}\` ADD COLUMN ${definition}`), log$4.info(`^2added column ${statement.table}.${name}^7 (${resource})`));
+		if (!columns) await mysql.query(statement.sql), log$5.info(`^2created table ${statement.table}^7 (${resource})`);
+		else for (let [name, definition] of statement.columns) columns.has(name) || (await mysql.query(`ALTER TABLE \`${statement.table}\` ADD COLUMN ${definition}`), log$5.info(`^2added column ${statement.table}.${name}^7 (${resource})`));
 	}
+}
+let log$4 = null;
+var ScheduledJob = class {
+	interval;
+	fn;
+	name;
+	gen = 0;
+	active = !1;
+	stopped = !1;
+	quietUntil = 0;
+	skipped = 0;
+	constructor(interval, fn, name) {
+		this.interval = interval, this.fn = fn, this.name = name;
+	}
+	get running() {
+		return this.active;
+	}
+	set(active) {
+		active === this.active || active && this.stopped || (this.active = active, active ? scheduler.activate(this) : scheduler.deactivate(this));
+	}
+	stop() {
+		this.set(!1), this.stopped = !0;
+	}
+	call() {
+		try {
+			let result = this.fn();
+			result instanceof Promise && result.catch((error) => this.fail(error));
+		} catch (error) {
+			this.fail(error);
+		}
+	}
+	fail(error) {
+		let now = GetGameTimer();
+		if (now < this.quietUntil) {
+			this.skipped++;
+			return;
+		}
+		this.quietUntil = now + 1e4;
+		let more = this.skipped ? ` (+${this.skipped} more)` : "";
+		this.skipped = 0, log$4 ??= createLogger(GetCurrentResourceName()), log$4.error(`job "${this.name}" failed${more}`, error instanceof Error ? error.stack ?? error.message : error);
+	}
+}, Group = class {
+	interval;
+	jobs = Array(8);
+	gens = Array(8).fill(0);
+	dues = Array(8).fill(0);
+	head = 0;
+	mask = 7;
+	count = 0;
+	constructor(interval) {
+		this.interval = interval;
+	}
+	get front() {
+		return this.dues[this.head] ?? 0;
+	}
+	push(job, due) {
+		this.count > this.mask && this.grow();
+		let i = this.head + this.count & this.mask;
+		this.jobs[i] = job, this.gens[i] = job.gen, this.dues[i] = due, this.count++;
+	}
+	run(now) {
+		for (let left = this.count; left > 0 && this.count > 0; left--) {
+			let i = this.head, due = this.dues[i] ?? 0;
+			if (due > now) return;
+			let job = this.jobs[i], gen = this.gens[i];
+			if (this.jobs[i] = void 0, this.head = i + 1 & this.mask, this.count--, !job || job.gen !== gen) continue;
+			let next = due + this.interval;
+			next <= now && (next = now + this.interval), this.push(job, next), job.call();
+		}
+	}
+	grow() {
+		let size = (this.mask + 1) * 2, jobs = Array(size), gens = Array(size).fill(0), dues = Array(size).fill(0);
+		for (let n = 0; n < this.count; n++) {
+			let i = this.head + n & this.mask;
+			jobs[n] = this.jobs[i], gens[n] = this.gens[i] ?? 0, dues[n] = this.dues[i] ?? 0;
+		}
+		this.jobs = jobs, this.gens = gens, this.dues = dues, this.head = 0, this.mask = size - 1;
+	}
+};
+const scheduler = new class {
+	groups = [];
+	byInterval = new Map();
+	tick = null;
+	active = 0;
+	nextDue = Infinity;
+	running = !1;
+	activate(job) {
+		job.gen++, this.active++;
+		let due = GetGameTimer() + job.interval, group = this.byInterval.get(job.interval);
+		group || (group = new Group(job.interval), this.byInterval.set(job.interval, group), this.groups.push(group)), group.push(job, due), due < this.nextDue && (this.nextDue = due), this.tick ??= setTick(this.onTick);
+	}
+	deactivate(job) {
+		job.gen++, this.active--, this.active === 0 && !this.running && this.halt();
+	}
+	halt() {
+		this.tick !== null && clearTick(this.tick), this.tick = null, this.groups.length = 0, this.byInterval.clear(), this.nextDue = Infinity;
+	}
+	onTick = () => {
+		let now = GetGameTimer();
+		if (now < this.nextDue) return;
+		let groups = this.groups;
+		this.running = !0;
+		for (let i = 0; i < groups.length; i++) {
+			let group = groups[i];
+			group && group.count > 0 && group.front <= now && group.run(now);
+		}
+		if (this.running = !1, this.active === 0) return this.halt();
+		let soonest = Infinity, kept = 0;
+		for (let i = 0; i < groups.length; i++) {
+			let group = groups[i];
+			group && (group.count === 0 ? this.byInterval.delete(group.interval) : (groups[kept++] = group, group.front < soonest && (soonest = group.front)));
+		}
+		groups.length = kept, this.nextDue = soonest;
+	};
+}();
+function every(ms, fn, options = {}) {
+	let job = new ScheduledJob(Math.max(0, Math.floor(ms)), fn, options.name ?? (fn.name || "anonymous"));
+	return options.active !== !1 && job.set(!0), job;
 }
 // ../../../packages/lib/src/fivem/state.ts
 const stateNumber = (v) => typeof v == "number" && Number.isFinite(v) ? v : void 0, stateBoolean = (v) => typeof v == "boolean" ? v : void 0, stateString = (v) => typeof v == "string" ? v : void 0, isServer = IsDuplicityVersion();
@@ -15462,7 +15660,7 @@ var Mirror = class {
 			if (!bag.startsWith("entity:")) return;
 			let netId = Number(bag.slice(7));
 			this.handles.set(netId, GetEntityFromStateBagName(bag)), this.store(netId, value);
-		}), isServer ? on("entityRemoved", (entity) => this.forget(NetworkGetNetworkIdFromEntity(entity))) : setInterval(() => this.prune(), 3e4);
+		}), isServer ? on("entityRemoved", (entity) => this.forget(NetworkGetNetworkIdFromEntity(entity))) : every(3e4, () => this.prune(), { name: `state ${key}` });
 	}
 	get(entity) {
 		if (!entity) return;
@@ -15930,25 +16128,25 @@ function readSpot(raw, fallback) {
 		ped: vec4(s.ped, fallback.ped),
 		anim: typeof s.anim == "string" ? s.anim.trim().slice(0, 64) : fallback.anim,
 		clip: typeof s.clip == "string" ? s.clip.trim().slice(0, 64) : fallback.clip,
-		camDistance: num$1(s.camDistance, fallback.camDistance, .3, 15),
-		camHeight: num$1(s.camHeight, fallback.camHeight, -2, 2),
-		camAngle: num$1(s.camAngle, fallback.camAngle, -180, 180),
-		targetHeight: num$1(s.targetHeight, fallback.targetHeight, -2, 3),
-		sway: num$1(s.sway, fallback.sway, 0, 45),
+		camDistance: num(s.camDistance, fallback.camDistance, .3, 15),
+		camHeight: num(s.camHeight, fallback.camHeight, -2, 2),
+		camAngle: num(s.camAngle, fallback.camAngle, -180, 180),
+		targetHeight: num(s.targetHeight, fallback.targetHeight, -2, 3),
+		sway: num(s.sway, fallback.sway, 0, 45),
 		blur: bool$1(s.blur, fallback.blur),
-		blurNear: num$1(s.blurNear, fallback.blurNear, 0, 50),
-		blurFar: num$1(s.blurFar, fallback.blurFar, 0, 100),
-		blurStrength: num$1(s.blurStrength, fallback.blurStrength, 0, 100)
+		blurNear: num(s.blurNear, fallback.blurNear, 0, 50),
+		blurFar: num(s.blurFar, fallback.blurFar, 0, 100),
+		blurStrength: num(s.blurStrength, fallback.blurStrength, 0, 100)
 	};
 }
 function readScene(raw) {
 	let s = record(raw), time = record(s.time), spots = (Array.isArray(s.spots) ? s.spots.slice(0, 10) : []).map((value, i) => readSpot(value, DEFAULT_SCENE.spots[i] ?? DEFAULT_SCENE.spots[0]));
 	return {
-		fov: num$1(s.fov, DEFAULT_SCENE.fov, 20, 90),
+		fov: num(s.fov, DEFAULT_SCENE.fov, 20, 90),
 		time: {
 			enabled: bool$1(time.enabled, DEFAULT_SCENE.time.enabled),
-			hour: int$2(time.hour, DEFAULT_SCENE.time.hour, 0, 23),
-			minute: int$2(time.minute, DEFAULT_SCENE.time.minute, 0, 59),
+			hour: int(time.hour, DEFAULT_SCENE.time.hour, 0, 23),
+			minute: int(time.minute, DEFAULT_SCENE.time.minute, 0, 59),
 			weather: isWeather(time.weather) ? time.weather : DEFAULT_SCENE.time.weather
 		},
 		spots: spots.length ? spots : DEFAULT_SCENE.spots
@@ -15965,13 +16163,13 @@ const PRIME_TIME_SYSTEM_NAMES = ["tgiann-policealert"], PRIME_SOURCES = [
 	offPrimeMultiplier: .5,
 	start: 18,
 	finish: 1
-}, hour$1 = (value, fallback) => int$2(value, fallback, 0, 23);
+}, hour$1 = (value, fallback) => int(value, fallback, 0, 23);
 function readPrimeTime(raw) {
 	let v = record(raw), source = typeof v.source == "string" && PRIME_SOURCES.includes(v.source) ? v.source : "auto";
 	return {
 		enabled: bool$1(v.enabled, DEFAULT_PRIME_TIME.enabled),
 		source,
-		offPrimeMultiplier: num$1(v.offPrimeMultiplier, .5, 0, 1),
+		offPrimeMultiplier: num(v.offPrimeMultiplier, .5, 0, 1),
 		start: hour$1(v.start, DEFAULT_PRIME_TIME.start),
 		finish: hour$1(v.finish, DEFAULT_PRIME_TIME.finish)
 	};
@@ -16067,25 +16265,16 @@ const hourField = (path, label) => ({
 			showIf: ownHours
 		}
 	]
-}, num = (min, max) => ({
-	type: "number",
-	min,
-	max
-}), int$1 = (min, max) => ({
-	type: "number",
-	min,
-	max,
-	integer: !0
-}), sceneSection = {
+}, sceneSection = {
 	type: "object",
 	fields: {
-		fov: int$1(20, 90),
+		fov: spec.int(20, 90),
 		time: {
 			type: "object",
 			fields: {
 				enabled: { type: "bool" },
-				hour: int$1(0, 23),
-				minute: int$1(0, 59),
+				hour: spec.int(0, 23),
+				minute: spec.int(0, 59),
 				weather: {
 					type: "enum",
 					values: [...WEATHERS]
@@ -16110,15 +16299,15 @@ const hourField = (path, label) => ({
 						min: 0,
 						max: 64
 					},
-					camDistance: num(.3, 15),
-					camHeight: num(-2, 2),
-					camAngle: num(-180, 180),
-					targetHeight: num(-2, 3),
-					sway: num(0, 45),
+					camDistance: spec.num(.3, 15),
+					camHeight: spec.num(-2, 2),
+					camAngle: spec.num(-180, 180),
+					targetHeight: spec.num(-2, 3),
+					sway: spec.num(0, 45),
 					blur: { type: "bool" },
-					blurNear: num(0, 50),
-					blurFar: num(0, 100),
-					blurStrength: num(0, 100)
+					blurNear: spec.num(0, 50),
+					blurFar: spec.num(0, 100),
+					blurStrength: spec.num(0, 100)
 				}
 			}
 		}
@@ -16326,11 +16515,6 @@ const hourField = (path, label) => ({
 	type: "text",
 	min,
 	max
-}), int = (min, max) => ({
-	type: "number",
-	min,
-	max,
-	integer: !0
 }), bool = { type: "bool" }, grades = {
 	type: "list",
 	min: 1,
@@ -16339,9 +16523,9 @@ const hourField = (path, label) => ({
 		type: "object",
 		fields: {
 			label: text$6(48),
-			salary: int(0, 1e6),
+			salary: spec.int(0, 1e6),
 			offPrimePayment: {
-				...int(0, 1e6),
+				...spec.int(0, 1e6),
 				optional: !0
 			},
 			boss: {
@@ -16350,7 +16534,7 @@ const hourField = (path, label) => ({
 			}
 		}
 	}
-}, hour = int(0, 23), optionalHour = {
+}, hour = spec.int(0, 23), optionalHour = {
 	...hour,
 	optional: !0
 }, gradeRows = (salary) => [
@@ -16410,16 +16594,16 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 					characters: {
 						type: "object",
 						fields: {
-							slots: int(1, 10),
+							slots: spec.int(1, 10),
 							canDelete: bool,
-							minAge: int(0, 99)
+							minAge: spec.int(0, 99)
 						}
 					},
 					jobs: {
 						type: "object",
 						fields: {
 							multiJob: bool,
-							maxJobs: int(1, 20),
+							maxJobs: spec.int(1, 20),
 							unemployed: {
 								type: "text",
 								max: 32,
@@ -16432,13 +16616,13 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 						type: "object",
 						fields: {
 							multiGang: bool,
-							maxGangs: int(1, 20)
+							maxGangs: spec.int(1, 20)
 						}
 					},
 					paycheck: {
 						type: "object",
 						fields: {
-							intervalMinutes: int(0, 1440),
+							intervalMinutes: spec.int(0, 1440),
 							account: {
 								type: "text",
 								max: 32,
@@ -16469,7 +16653,7 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 						values: ["none", ...PRIME_SOURCES.filter((s) => s !== "auto")],
 						optional: !0
 					},
-					saveIntervalMinutes: int(1, 60),
+					saveIntervalMinutes: spec.int(1, 60),
 					inventory: {
 						type: "enum",
 						values: ["auto", ...inventories]
@@ -16585,7 +16769,7 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 				},
 				sections: {
 					label: text$6(48),
-					start: int(0, 1e8),
+					start: spec.int(0, 1e8),
 					allowNegative: bool
 				}
 			},
@@ -17635,27 +17819,27 @@ function readSettings(raw) {
 			background: brand.background === "wet-drive" ? "wet-drive" : "skyline"
 		},
 		characters: {
-			slots: int$2(chars.slots, 3, 1, 10),
+			slots: int(chars.slots, 3, 1, 10),
 			canDelete: bool$1(chars.canDelete, !0),
-			minAge: int$2(chars.minAge, 18, 0, 99)
+			minAge: int(chars.minAge, 18, 0, 99)
 		},
 		jobs: {
 			multiJob: bool$1(jobs.multiJob, !0),
-			maxJobs: int$2(jobs.maxJobs, 3, 1, 20),
+			maxJobs: int(jobs.maxJobs, 3, 1, 20),
 			unemployed: str(jobs.unemployed, "unemployed", 32),
 			restoreDuty: bool$1(jobs.restoreDuty, !1)
 		},
 		gangs: {
 			multiGang: bool$1(gangs.multiGang, !0),
-			maxGangs: int$2(gangs.maxGangs, 2, 1, 20)
+			maxGangs: int(gangs.maxGangs, 2, 1, 20)
 		},
 		paycheck: {
-			intervalMinutes: int$2(pay.intervalMinutes, 15, 0, 1440),
+			intervalMinutes: int(pay.intervalMinutes, 15, 0, 1440),
 			account: str(pay.account, "bank", 32),
 			fromJobAccount: bool$1(pay.fromJobAccount, !1)
 		},
 		primeTime: readPrimeTime(s.primeTime),
-		saveIntervalMinutes: int$2(s.saveIntervalMinutes, 5, 1, 60),
+		saveIntervalMinutes: int(s.saveIntervalMinutes, 5, 1, 60),
 		inventory: str(s.inventory, "auto", 32),
 		vehicleKeys: str(s.vehicleKeys, "auto", 32),
 		dispatch: str(s.dispatch, "auto", 32),
@@ -17678,9 +17862,9 @@ function readGrades(raw) {
 		let v = record(g);
 		return {
 			label: str(v.label, "Member"),
-			salary: int$2(v.salary, 0, 0),
+			salary: int(v.salary, 0, 0),
 			boss: bool$1(v.boss, !1),
-			offPrimePayment: int$2(v.offPrimePayment, 0, 0)
+			offPrimePayment: int(v.offPrimePayment, 0, 0)
 		};
 	});
 	return grades.length ? grades : [{
@@ -17697,7 +17881,7 @@ function entries(raw, read) {
 }
 const readAccount = (v) => ({
 	label: str(v.label, "Account"),
-	start: int$2(v.start, 0),
+	start: int(v.start, 0),
 	allowNegative: bool$1(v.allowNegative, !1)
 }), readJob = (v) => ({
 	label: str(v.label, "Job"),
@@ -18341,7 +18525,7 @@ const gameThread = () => new Promise((resolve) => setImmediate(resolve)), versio
 		}), before?.latest !== result.latest && log$3.warn(`${label} ${current} is outdated: ${result.latest} is out (${result.url})`);
 	}
 }();
-setTimeout(() => versions.checkAll(), 15e3), setInterval(() => versions.checkAll(), CHECK_EVERY_MS), on("onServerResourceStart", (resource) => setTimeout(() => void versions.check(resource), 5e3)), panel.onChange("settings", () => versions.checkAll()), registerExport("GetUpdates", () => versions.list());
+setTimeout(() => versions.checkAll(), 15e3), every(CHECK_EVERY_MS, () => versions.checkAll(), { name: "versions" }), on("onServerResourceStart", (resource) => setTimeout(() => void versions.check(resource), 5e3)), panel.onChange("settings", () => versions.checkAll()), registerExport("GetUpdates", () => versions.list());
 // resource/server/phone/adapters/lb-phone.ts
 const phone$1 = (name, ...args) => callExport("lb-phone", name, ...args), text$1 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, lbPhone = {
 	resource: "lb-phone",
@@ -18572,8 +18756,9 @@ recommendations.onChange((delta) => adminHost.recommendationChanged(delta)), reg
 const ADMIN_PLAYERS = {
 	deltaEvent: "ai-core:client:adminPlayers",
 	teleportEvent: "ai-core:client:adminTeleport",
+	killEvent: "ai-core:client:adminKill",
 	callback: (action) => `ai-core:adminPlayers:${action}`
-}, COLUMNS = "id, user_id, citizenid, slot, firstname, lastname, birthdate, sex, pos_x, pos_y, pos_z, pos_h, metadata, last_played";
+}, COLUMNS = "id, user_id, citizenid, slot, firstname, lastname, birthdate, sex, nationality, pos_x, pos_y, pos_z, pos_h, metadata, last_played";
 function toDate(value) {
 	if (typeof value == "string") return value.slice(0, 10);
 	let date = new Date(value), pad = (n) => String(n).padStart(2, "0");
@@ -18595,6 +18780,7 @@ function toRow(raw) {
 		lastname: raw.lastname,
 		birthdate: toDate(raw.birthdate),
 		sex,
+		nationality: raw.nationality,
 		position: hasPosition ? {
 			x: raw.pos_x ?? 0,
 			y: raw.pos_y ?? 0,
@@ -18617,14 +18803,15 @@ async function findCharacter(charId) {
 	return row ? toRow(row) : null;
 }
 async function insertCharacter(userId, input) {
-	let placeholder = `~${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`.slice(0, 16), id = await mysql.insert("INSERT INTO ai_core_characters (user_id, citizenid, slot, firstname, lastname, birthdate, sex) VALUES (?, ?, ?, ?, ?, ?, ?)", [
+	let placeholder = `~${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`.slice(0, 16), id = await mysql.insert("INSERT INTO ai_core_characters (user_id, citizenid, slot, firstname, lastname, birthdate, sex, nationality) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", [
 		userId,
 		placeholder,
 		input.slot,
 		input.firstname,
 		input.lastname,
 		input.birthdate,
-		input.sex
+		input.sex,
+		input.nationality
 	]);
 	if (!id) throw Error("could not create the character");
 	if (!await mysql.update("UPDATE ai_core_characters SET citizenid = ? WHERE id = ?", [String(id), id]).catch(() => 0)) throw await mysql.update("DELETE FROM ai_core_characters WHERE id = ?", [id]), Error(`citizen id ${id} is already taken`);
@@ -18858,11 +19045,12 @@ async function storedBalances(charId) {
 	return new Map(rows.map((row) => [row.name, Number(row.balance)]));
 }
 async function updateInfo(charId, info) {
-	await mysql.update("UPDATE ai_core_characters SET firstname = ?, lastname = ?, birthdate = ?, sex = ? WHERE id = ?", [
+	await mysql.update("UPDATE ai_core_characters SET firstname = ?, lastname = ?, birthdate = ?, sex = ?, nationality = ? WHERE id = ?", [
 		info.firstname,
 		info.lastname,
 		info.birthdate,
 		info.sex,
+		info.nationality,
 		charId
 	]);
 }
@@ -19276,6 +19464,7 @@ async function loadView(charId) {
 			lastname: info.lastname,
 			birthdate: info.birthdate,
 			sex: info.sex,
+			nationality: info.nationality,
 			source: player.source,
 			money: player.wallet.snapshot(),
 			jobs: player.jobs.all(),
@@ -19298,6 +19487,7 @@ async function loadView(charId) {
 		lastname: row.lastname,
 		birthdate: row.birthdate,
 		sex: row.sex,
+		nationality: row.nationality,
 		source: null,
 		money,
 		jobs,
@@ -19318,19 +19508,22 @@ action("info", ([charId, raw]) => {
 		firstname: toName(input.firstname),
 		lastname: toName(input.lastname),
 		birthdate: toBirthdate(input.birthdate),
-		sex: toSex(input.sex)
+		sex: toSex(input.sex),
+		nationality: toNationality(input.nationality)
 	}];
 }, async (source, charId, input) => {
-	let { firstname, lastname, birthdate, sex } = input;
+	let { firstname, lastname, birthdate, sex, nationality } = input;
 	if (!firstname) return fail("CHAR_ERR_FIRSTNAME");
 	if (!lastname) return fail("CHAR_ERR_LASTNAME");
 	if (!birthdate) return fail("CHAR_ERR_BIRTHDATE");
 	if (!sex) return fail("CHAR_ERR_SEX");
+	if (!nationality) return fail("CHAR_ERR_NATIONALITY");
 	let info = {
 		firstname,
 		lastname,
 		birthdate,
-		sex
+		sex,
+		nationality
 	}, result = await onCharacter(charId, async (player) => player.info().sex === sex ? (await updateInfo(charId, info), player.setInfo(info), OK) : fail("ADMIN_PLAYERS_ERR_SEX_ONLINE"), () => offline.info(charId, info));
 	return result.ok && logEdit(source, charId, "changed the character info", info), result;
 }), action("money", ([charId, account, mode, amount, reason]) => {
@@ -19468,6 +19661,9 @@ action("goto", charOnly, async (source, charId) => {
 		return medical.call("revive", (a) => a.revive(target), !1) || medical.call("heal", (a) => a.heal(target), void 0), notify(target, Locale("ADMIN_PLAYERS_NOTIFY_REVIVED"), "success"), OK;
 	}, null);
 	return result.ok && logEdit(source, charId, "revived the player"), result;
+}), action("kill", charOnly, async (source, charId) => {
+	let result = await onCharacter(charId, (player) => (emitNet(ADMIN_PLAYERS.killEvent, player.source), notify(player.source, Locale("ADMIN_PLAYERS_NOTIFY_KILLED"), "error"), OK), null);
+	return result.ok && logEdit(source, charId, "killed the player", {}, "warn"), result;
 }), action("item", ([charId, item, count, mode]) => {
 	let id = parse.charId(charId), name = parse.name(item), n = parse.int(count, 1, 1e4), m = mode === "give" || mode === "remove" ? mode : null;
 	return id === null || name === null || n === null || m === null ? null : [
@@ -19711,7 +19907,17 @@ const log$2 = createLogger("ai-core"), STAND_INS = {
 	"ai-core": [
 		"es_extended",
 		"qb-core",
-		"qbx_core"
+		"qbx_core",
+		"esx_context",
+		"esx_textui",
+		"esx_notify",
+		"esx_progressbar",
+		"esx_menu_default",
+		"esx_menu_dialog",
+		"esx_menu_list",
+		"qb-menu",
+		"qb-input",
+		"progressbar"
 	],
 	"ai-mysql": [
 		"oxmysql",
@@ -20148,7 +20354,7 @@ var Wallet = class {
 		return this.row.citizenid;
 	}
 	info() {
-		let { id, citizenid, slot, firstname, lastname, birthdate, sex } = this.row;
+		let { id, citizenid, slot, firstname, lastname, birthdate, sex, nationality } = this.row;
 		return {
 			id,
 			citizenid,
@@ -20156,7 +20362,8 @@ var Wallet = class {
 			firstname,
 			lastname,
 			birthdate,
-			sex
+			sex,
+			nationality
 		};
 	}
 	get fullName() {
@@ -20175,7 +20382,7 @@ var Wallet = class {
 		return { ...this.row.metadata };
 	}
 	setInfo(info) {
-		this.row.firstname = info.firstname, this.row.lastname = info.lastname, this.row.birthdate = info.birthdate, sendPlayerData(this.source, "character", this.info()), playerWatchers.char(this.row.id, info);
+		this.row.firstname = info.firstname, this.row.lastname = info.lastname, this.row.birthdate = info.birthdate, this.row.nationality = info.nationality, sendPlayerData(this.source, "character", this.info()), playerWatchers.char(this.row.id, info);
 	}
 	snapshot() {
 		return {
@@ -20190,6 +20397,10 @@ var Wallet = class {
 	sendSnapshot() {
 		for (let [key, value] of Object.entries(this.snapshot())) sendPlayerData(this.source, key, value);
 	}
+	armour() {
+		let value = this.row.metadata.armor;
+		return typeof value == "number" && Number.isFinite(value) ? Math.min(100, Math.max(0, Math.round(value))) : 0;
+	}
 	saveData() {
 		let ped = GetPlayerPed(String(this.source));
 		if (ped && DoesEntityExist(ped)) {
@@ -20200,6 +20411,8 @@ var Wallet = class {
 				z,
 				heading: GetEntityHeading(ped)
 			};
+			let armour = GetPedArmour(ped);
+			armour !== this.row.metadata.armor && this.setMeta("armor", armour);
 		}
 		let lastDuty = this.jobs.last();
 		return lastDuty !== this.row.metadata.lastDutyJob && this.setMeta("lastDutyJob", lastDuty), {
@@ -20235,6 +20448,7 @@ async function characterScreen(user) {
 			lastname: row.lastname,
 			birthdate: row.birthdate,
 			sex: row.sex,
+			nationality: row.nationality,
 			online: players.byCharacter(row.id) !== void 0,
 			job,
 			cash: Number(extra?.cash ?? 0),
@@ -20327,7 +20541,8 @@ async function loadNow(source, charId) {
 		selecting.delete(source), players.add(player), enterWorldBucket(source), player.sendSnapshot();
 		let spawn = {
 			...player.spawnPosition(),
-			model: row.sex === "female" ? "mp_f_freemode_01" : "mp_m_freemode_01"
+			model: row.sex === "female" ? "mp_f_freemode_01" : "mp_m_freemode_01",
+			armour: player.armour()
 		};
 		return emitNet(CORE.spawnEvent, source, spawn), emit(CORE.playerLoadedEvent, source, player.info()), log$3.info(`loaded #${player.charId} ${player.fullName} (src ${source})`), { ok: !0 };
 	} catch (error) {
@@ -20395,7 +20610,7 @@ async function drainWrites() {
 function saveNow(why) {
 	saveAll().then(drainWrites).then(() => log$3.info(`saved ${players.size} characters (${why})`)).catch((error) => log$3.error(`save failed (${why})`, error));
 }
-setInterval(() => saveNow("interval"), settings.saveIntervalMinutes * 6e4), on("txAdmin:events:serverShuttingDown", () => saveNow("shutdown")), on("onResourceStop", (resource) => {
+every(settings.saveIntervalMinutes * 6e4, () => saveNow("interval"), { name: "save" }), on("txAdmin:events:serverShuttingDown", () => saveNow("shutdown")), on("onResourceStop", (resource) => {
 	resource === GetCurrentResourceName() && saveNow("resource stop");
 });
 // resource/server/jobs/primeTime/adapters/tgiann-policealert.ts
@@ -20476,9 +20691,9 @@ async function payAll() {
 		}
 	}
 }
-settings.paycheck.intervalMinutes > 0 && setInterval(() => {
+settings.paycheck.intervalMinutes > 0 && every(settings.paycheck.intervalMinutes * 6e4, () => {
 	payAll().catch((error) => log$3.error("paycheck failed", error));
-}, settings.paycheck.intervalMinutes * 6e4);
+}, { name: "paycheck" });
 // resource/server/money/transfer.ts
 function sideOf(ref) {
 	if (!isRecord(ref) || typeof ref.account != "string") return null;

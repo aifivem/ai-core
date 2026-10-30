@@ -1,4 +1,5 @@
 import {
+  cache,
   onServerEvent,
   player,
   triggerServerCallback,
@@ -56,3 +57,6 @@ onServerEvent(
   },
   (point) => void player.teleport(point, { heading: point.heading }),
 );
+
+// An admin's kill (the server checked the admin); the death script reacts as to any death.
+onServerEvent(ADMIN_PLAYERS.killEvent, () => SetEntityHealth(cache.ped, 0));

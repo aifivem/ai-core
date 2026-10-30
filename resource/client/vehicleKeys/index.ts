@@ -2,8 +2,9 @@ import {
   GlobalKey,
   onServerEvent,
   stateString,
+  waitForEntity,
 } from "@aicore-fivem/lib/client";
-import { createLogger, waitFor } from "@aicore-fivem/lib/shared";
+import { createLogger } from "@aicore-fivem/lib/shared";
 import { AdapterFollower } from "common/adapters";
 import {
   VEHICLE_KEYS_CLIENT_EVENT,
@@ -61,11 +62,7 @@ async function apply(
   purpose: KeyPurpose,
 ): Promise<void> {
   if (!keys.active) return;
-  const vehicle = await waitFor(
-    () =>
-      NetworkDoesEntityExistWithNetworkId(netId) ? NetToVeh(netId) : undefined,
-    5000,
-  ).catch(() => 0);
+  const vehicle = await waitForEntity(netId, 5000);
   if (!vehicle) return;
   keys.call(
     `${action} key`,

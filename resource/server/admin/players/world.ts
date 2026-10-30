@@ -10,7 +10,7 @@ import { softDelete } from "./repo";
 import { loadView } from "./view";
 import { playerWatchers } from "./watchers";
 
-/** Player actions of the Players section: position, kick, revive, items, inventory, delete. */
+/** Player actions of the Players section: position, kick, revive, kill, items, inventory, delete. */
 
 function pedPosition(source: number): Position {
   const ped = GetPlayerPed(String(source));
@@ -98,6 +98,22 @@ action("revive", charOnly, async (source, charId) => {
     null,
   );
   if (result.ok) logEdit(source, charId, "revived the player");
+  return result;
+});
+
+// Health is client-owned (no server setter): the target's own ai-core client sets it to 0, so any death script sees
+// an ordinary death.
+action("kill", charOnly, async (source, charId) => {
+  const result = await onCharacter(
+    charId,
+    (player) => {
+      emitNet(ADMIN_PLAYERS.killEvent, player.source);
+      notify(player.source, Locale("ADMIN_PLAYERS_NOTIFY_KILLED"), "error");
+      return OK;
+    },
+    null,
+  );
+  if (result.ok) logEdit(source, charId, "killed the player", {}, "warn");
   return result;
 });
 

@@ -83,6 +83,7 @@ function view(charId: number): CharacterView | null {
     lastname,
     birthdate: "1994-06-12",
     sex: "male",
+    nationality: "American",
     user: {
       id: charId + 100,
       fivem: String(1_204_331 + charId),
