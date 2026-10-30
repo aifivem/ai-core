@@ -43,13 +43,14 @@ export function coreSchema(accounts: string[], inventories: string[] = [], keySy
           saveIntervalMinutes: int(1, 60),
           inventory: { type: "enum", values: ["auto", ...inventories] },
           vehicleKeys: { type: "enum", values: ["auto", ...keySystems] },
+          refuseOnConflict: { type: "bool" },
           spawn: {
             type: "object",
             fields: { default: { type: "vec4" } },
           },
           characterScene: sceneSection,
         },
-        defaults: { characterScene: DEFAULT_SCENE, inventory: "auto", vehicleKeys: "auto" },
+        defaults: { characterScene: DEFAULT_SCENE, inventory: "auto", vehicleKeys: "auto", refuseOnConflict: true },
       },
       jobs: {
         kind: "records",
@@ -155,6 +156,12 @@ export function coreSchema(accounts: string[], inventories: string[] = [], keySy
                 options: [{ value: "auto", label: "ADMIN_O_INVENTORY_AUTO" }, ...keySystems.map((value) => ({ value, label: value }))],
               },
             ],
+          },
+          {
+            icon: "shield",
+            title: "ADMIN_C_CONFLICTS",
+            desc: "ADMIN_C_CONFLICTS_DESC",
+            fields: [{ widget: "switch", path: "refuseOnConflict", label: "ADMIN_F_REFUSE_ON_CONFLICT", hint: "ADMIN_H_REFUSE_ON_CONFLICT" }],
           },
         ],
       },

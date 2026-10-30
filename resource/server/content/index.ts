@@ -21,6 +21,8 @@ export interface Settings {
   inventory: string;
   /** `auto` or the resource name of the key system ai-core's vehicle key layer uses. */
   vehicleKeys: string;
+  /** Refuse connecting players while an unneeded script runs next to the one that replaces it. */
+  refuseOnConflict: boolean;
   spawn: { default: Vec4 };
   characterScene: CharacterScene;
 }
@@ -62,6 +64,7 @@ function readSettings(raw: unknown): Settings {
     saveIntervalMinutes: int(s.saveIntervalMinutes, 5, 1, 60),
     inventory: str(s.inventory, "auto", 32),
     vehicleKeys: str(s.vehicleKeys, "auto", 32),
+    refuseOnConflict: bool(s.refuseOnConflict, true),
     spawn: {
       default: vec4(spawn.default, { x: -1035.71, y: -2731.87, z: 13.76, heading: 330 }),
     },

@@ -379,7 +379,7 @@ const requestEvent = (name) => `aicore:cb:${name}`;
 const responseEvent = (resource) => `aicore:cbr:${resource}`;
 
 // ../../../packages/lib/src/server/gate.ts
-const log$6 = createLogger(GetCurrentResourceName());
+const log$8 = createLogger(GetCurrentResourceName());
 /** The player is in ai-core's admin group (ACE `ai.admin` unless another ace is named). */
 const isAdmin = (ace = ADMIN.ace) => (source) => Boolean(IsPlayerAceAllowed(String(source), ace)) || `not allowed (${ace})`;
 /** Every gate of this resource; one playerDropped listener frees them all (one listener per gate trips Node's limit). */
@@ -428,12 +428,12 @@ var ClientGate = class {
 		this.lock?.release(source);
 	}
 	refuse(source, reason) {
-		log$6.warn(`${this.name} refused for ${GetPlayerName(String(source))} (${source}): ${reason}`);
+		log$8.warn(`${this.name} refused for ${GetPlayerName(String(source))} (${source}): ${reason}`);
 	}
 };
 
 // ../../../packages/lib/src/server/callback.ts
-const log$5 = createLogger(GetCurrentResourceName());
+const log$7 = createLogger(GetCurrentResourceName());
 const resource$4 = GetCurrentResourceName();
 const REFUSED = Symbol("refused");
 function onClientCallback(name, first, second) {
@@ -449,7 +449,7 @@ function onClientCallback(name, first, second) {
 			if (result === REFUSED) emitNet(responseEvent(caller), source, id, false, null);
 			else emitNet(responseEvent(caller), source, id, true, result ?? null);
 		} catch (error) {
-			log$5.error(`callback ${name} failed for ${source}`, error);
+			log$7.error(`callback ${name} failed for ${source}`, error);
 			emitNet(responseEvent(caller), source, id, false, null);
 		}
 	});
@@ -896,13 +896,13 @@ const scopes = new Scopes();
 
 // ../../../packages/lib/src/server/command.ts
 const resource$3 = GetCurrentResourceName();
-const log$4 = createLogger(resource$3);
+const log$6 = createLogger(resource$3);
 let texts = null;
 const t = (key, ...args) => formatText((texts ??= loadLocaleTexts(CORE.resource))[key] ?? key, args);
 /** A command answer: an ai-core notification for a player, a console line for the server. */
 function reply$1(source, text, kind) {
 	if (source > 0) notify(source, text, kind);
-	else log$4.info(text);
+	else log$6.info(text);
 }
 var Command = class {
 	params;
@@ -944,7 +944,7 @@ var Command = class {
 			reply$1(source, args, "error");
 			return reply$1(source, t("COMMAND_USAGE", this.usage), "info");
 		}
-		const fail = (error) => log$4.error(`command /${name} failed`, error);
+		const fail = (error) => log$6.error(`command /${name} failed`, error);
 		try {
 			const result = this.handler(source, args, line);
 			if (result instanceof Promise) result.catch(fail);
@@ -1044,7 +1044,7 @@ function addCommand(name, options, handler) {
 }
 
 // ../../../packages/lib/src/server/netEvent.ts
-const log$3 = createLogger(GetCurrentResourceName());
+const log$5 = createLogger(GetCurrentResourceName());
 function onClientEvent(name, first, second) {
 	const [handler, options] = typeof first === "function" ? [first, second ?? {}] : [second, first];
 	const gate = new ClientGate(name, options, 10);
@@ -1052,7 +1052,7 @@ function onClientEvent(name, first, second) {
 		const source = Number(globalThis.source);
 		const args = gate.check(source, raw);
 		if (!args) return;
-		gate.run(source, void 0, () => handler(source, ...args)).catch((error) => log$3.error(`event ${name} failed for ${source}`, error));
+		gate.run(source, void 0, () => handler(source, ...args)).catch((error) => log$5.error(`event ${name} failed for ${source}`, error));
 	});
 }
 
@@ -25519,7 +25519,7 @@ const mysql = {
 };
 
 // ../../../packages/lib/src/server/database.ts
-const log$2 = createLogger("aicore-lib");
+const log$4 = createLogger("aicore-lib");
 const CREATE_TABLE = /^CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?([A-Za-z0-9_]+)`?\s*\(/i;
 const NON_COLUMN_LINE = /^(PRIMARY|UNIQUE|KEY|INDEX|CONSTRAINT|FOREIGN|FULLTEXT|SPATIAL|CHECK)\b/i;
 function stripComments(sql) {
@@ -25582,19 +25582,19 @@ async function createDatabaseTables(resource, file) {
 	for (const sql of statements) {
 		const statement = parseStatement(sql);
 		if (!statement) {
-			log$2.warn(`${resource}/${file}: skipped statement (only CREATE TABLE IF NOT EXISTS is applied)`);
+			log$4.warn(`${resource}/${file}: skipped statement (only CREATE TABLE IF NOT EXISTS is applied)`);
 			continue;
 		}
 		const columns = await existingColumns(statement.table);
 		if (!columns) {
 			await mysql.query(statement.sql);
-			log$2.info(`^2created table ${statement.table}^7 (${resource})`);
+			log$4.info(`^2created table ${statement.table}^7 (${resource})`);
 			continue;
 		}
 		for (const [name, definition] of statement.columns) {
 			if (columns.has(name)) continue;
 			await mysql.query(`ALTER TABLE \`${statement.table}\` ADD COLUMN ${definition}`);
-			log$2.info(`^2added column ${statement.table}.${name}^7 (${resource})`);
+			log$4.info(`^2added column ${statement.table}.${name}^7 (${resource})`);
 		}
 	}
 }
@@ -25671,7 +25671,7 @@ const players = new PlayerRegistry();
 const selecting = /* @__PURE__ */ new Map();
 
 // resource/server/log.ts
-const log$1 = createLogger(ResourceName);
+const log$3 = createLogger(ResourceName);
 
 // resource/server/content/parse.ts
 /** Lowercase ids for jobs, gangs and accounts: letters, digits, underscores, 2-32 long. */
@@ -25707,7 +25707,7 @@ function read(raw) {
 		fivemstatsResource: str(s.fivemstatsResource, "tgiann-fivem-stats-script")
 	};
 }
-const logSettings = read(new DataFile(ResourceName, "logs", log$1).read());
+const logSettings = read(new DataFile(ResourceName, "logs", log$3).read());
 function readSecrets(raw) {
 	const s = record(raw);
 	const webhooks = {};
@@ -25717,7 +25717,7 @@ function readSecrets(raw) {
 		fivemanageKey: typeof s.fivemanageKey === "string" ? s.fivemanageKey : ""
 	};
 }
-const logSecrets = readSecrets(new DataFile(ResourceName, "secrets", log$1).read());
+const logSecrets = readSecrets(new DataFile(ResourceName, "secrets", log$3).read());
 /** The Discord webhook of a channel: `<resource>/<channel>`, else `<resource>`, else `default`. Empty = no Discord log. */
 function discordWebhook(resource, channel) {
 	const hooks = logSecrets.discordWebhooks;
@@ -25758,7 +25758,7 @@ var WebhookQueue = class {
 		this.queue.push(embed);
 		if (this.queue.length > MAX_QUEUE) {
 			this.queue.splice(0, this.queue.length - MAX_QUEUE);
-			if (!this.warnedFull) log$1.warn("a Discord log webhook cannot keep up; oldest logs are dropped");
+			if (!this.warnedFull) log$3.warn("a Discord log webhook cannot keep up; oldest logs are dropped");
 			this.warnedFull = true;
 		}
 		if (!this.running) this.run();
@@ -25790,7 +25790,7 @@ var WebhookQueue = class {
 				return Math.ceil((body.retry_after ?? 5) * 1e3) + 500;
 			}
 			if (response.status >= 400 && response.status < 500) {
-				log$1.warn(`Discord log webhook answered ${response.status}; the log is dropped`);
+				log$3.warn(`Discord log webhook answered ${response.status}; the log is dropped`);
 				return 0;
 			}
 			return 1e4;
@@ -25869,11 +25869,11 @@ function sendBatch(dataset, logs) {
 	}).then((response) => {
 		if (response.ok || warned) return;
 		warned = true;
-		log$1.warn(`Fivemanage logs answered ${response.status}`);
+		log$3.warn(`Fivemanage logs answered ${response.status}`);
 	}).catch((error) => {
 		if (warned) return;
 		warned = true;
-		log$1.warn("Fivemanage logs could not be sent", error);
+		log$3.warn("Fivemanage logs could not be sent", error);
 	});
 }
 function flushFivemanage() {
@@ -26485,6 +26485,7 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 						type: "enum",
 						values: ["auto", ...keySystems]
 					},
+					refuseOnConflict: { type: "bool" },
 					spawn: {
 						type: "object",
 						fields: { default: { type: "vec4" } }
@@ -26494,7 +26495,8 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 				defaults: {
 					characterScene: DEFAULT_SCENE,
 					inventory: "auto",
-					vehicleKeys: "auto"
+					vehicleKeys: "auto",
+					refuseOnConflict: true
 				}
 			},
 			jobs: {
@@ -26701,6 +26703,17 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 								value,
 								label: value
 							}))]
+						}]
+					},
+					{
+						icon: "shield",
+						title: "ADMIN_C_CONFLICTS",
+						desc: "ADMIN_C_CONFLICTS_DESC",
+						fields: [{
+							widget: "switch",
+							path: "refuseOnConflict",
+							label: "ADMIN_F_REFUSE_ON_CONFLICT",
+							hint: "ADMIN_H_REFUSE_ON_CONFLICT"
 						}]
 					}
 				]
@@ -27397,6 +27410,7 @@ function readSettings(raw) {
 		saveIntervalMinutes: int$2(s.saveIntervalMinutes, 5, 1, 60),
 		inventory: str(s.inventory, "auto", 32),
 		vehicleKeys: str(s.vehicleKeys, "auto", 32),
+		refuseOnConflict: bool$1(s.refuseOnConflict, true),
 		spawn: { default: vec4(spawn.default, {
 			x: -1035.71,
 			y: -2731.87,
@@ -27426,7 +27440,7 @@ function entries(raw, read) {
 	const out = /* @__PURE__ */ new Map();
 	for (const [id, value] of Object.entries(record(raw))) {
 		if (!ID_PATTERN.test(id)) {
-			log$1.warn(`skipped invalid id "${id}" in panel content`);
+			log$3.warn(`skipped invalid id "${id}" in panel content`);
 			continue;
 		}
 		out.set(id, read(record(value)));
@@ -27456,7 +27470,7 @@ function follow(file, target, read) {
 		else if (ID_PATTERN.test(key)) target.set(key, read(record(value)));
 	});
 }
-const startAccounts = Object.keys(record(new DataFile(ResourceName, "accounts", log$1).read()));
+const startAccounts = Object.keys(record(new DataFile(ResourceName, "accounts", log$3).read()));
 const panel = new AdminPanel(coreSchema(startAccounts, INVENTORIES.map((adapter) => adapter.resource), KEY_SYSTEMS.map((adapter) => adapter.resource)));
 const settings = readSettings(panel.get("settings"));
 panel.onChange("settings", (_key, value) => Object.assign(settings, readSettings(value)));
@@ -27605,7 +27619,7 @@ var CommandRegistry = class {
 		for (const principal of info.aces ?? []) {
 			if (principal === ADMIN.ace || principal.startsWith("command.")) continue;
 			if (!IsPrincipalAceAllowed("resource.ai-core", "command.add_ace")) {
-				if (!this.warned) log$1.warn("permission.cfg lacks `add_ace resource.ai-core command.add_ace allow` (and remove_ace): commands restricted to a principal like group.admin work only through command.<name>");
+				if (!this.warned) log$3.warn("permission.cfg lacks `add_ace resource.ai-core command.add_ace allow` (and remove_ace): commands restricted to a principal like group.admin work only through command.<name>");
 				this.warned = true;
 				return;
 			}
@@ -27622,7 +27636,7 @@ const commandRegistry = new CommandRegistry();
 registerExport("RegisterCommands", (resource, list) => {
 	if (typeof resource !== "string" || !Array.isArray(list)) return;
 	const infos = list.map(readInfo).filter((i) => i !== null);
-	if (infos.length !== list.length) log$1.warn(`${resource}: ${list.length - infos.length} command(s) with an invalid description skipped`);
+	if (infos.length !== list.length) log$3.warn(`${resource}: ${list.length - infos.length} command(s) with an invalid description skipped`);
 	commandRegistry.register(resource, infos);
 });
 on("onResourceStop", (resource) => commandRegistry.drop(resource));
@@ -27852,7 +27866,7 @@ on("onResourceStop", (resource) => adminHost.unregister(resource));
 mysql.setPoolSize(GetConvarInt("ai_core_pool_size", 10));
 /** Resolves when ai-core's tables exist; every first DB use of a player waits on it. */
 const databaseReady = createDatabaseTables(ResourceName, "sql/main.sql").catch((error) => {
-	log$1.error("database setup failed", error);
+	log$3.error("database setup failed", error);
 	throw error;
 });
 
@@ -27937,7 +27951,7 @@ var MoneyWriter = class {
 			try {
 				if (!await mysql.transaction([...balanceStatements(batch), ...ledgerStatements(batch)])) throw new Error("transaction rolled back");
 			} catch (error) {
-				log$1.error(`money write of ${batch.length} changes failed`, error);
+				log$3.error(`money write of ${batch.length} changes failed`, error);
 			}
 		});
 	}
@@ -28140,6 +28154,257 @@ onClientEvent(CORE.clientErrorEvent, {
 		source
 	});
 });
+
+// resource/server/player/users.ts
+function identifier(source, type) {
+	const value = GetPlayerIdentifierByType(String(source), type);
+	return value ? value.slice(type.length + 1) : null;
+}
+/** The connection's identity, or null without a FiveM account. */
+function identify(source) {
+	const fivem = identifier(source, "fivem");
+	if (!fivem) return null;
+	return {
+		fivem,
+		license: identifier(source, "license"),
+		discord: identifier(source, "discord"),
+		name: (GetPlayerName(String(source)) || "").slice(0, 64)
+	};
+}
+/** Creates or refreshes the account row and returns it. */
+async function upsertUser(identity) {
+	await mysql.query(`INSERT INTO ai_core_users (fivem, license, discord, name) VALUES (?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE license = VALUES(license), discord = VALUES(discord), name = VALUES(name), last_seen = NOW()`, [
+		identity.fivem,
+		identity.license,
+		identity.discord,
+		identity.name
+	]);
+	const row = await mysql.single("SELECT id, char_slots FROM ai_core_users WHERE fivem = ?", [identity.fivem]);
+	if (!row) throw new Error(`user row missing after upsert (fivem:${identity.fivem})`);
+	return {
+		id: row.id,
+		fivem: identity.fivem,
+		license: identity.license,
+		charSlots: row.char_slots
+	};
+}
+
+// resource/server/connection/conflicts.ts
+const log$2 = createLogger("ai-core");
+/** ai-* scripts that stand in for a third-party name: both can never run (one `provide`s the other's name). */
+const STAND_INS = {
+	"ai-banking": ["qb-banking", "Renewed-Banking"],
+	"ai-chat": ["chat"],
+	"ai-inventory": ["ox_inventory", "qb-inventory"],
+	"ai-radialmenu": ["qb-radialmenu"],
+	"ai-target": ["ox_target"],
+	"ai-vehiclekeys": ["qbx_vehiclekeys"],
+	"ai-vehicles": ["qbx_vehicles"],
+	"ai-weathersync": ["qb-weathersync"]
+};
+/** Third-party names ai-core and ai-mysql stand in for: the third-party copy is the one to delete. */
+const NEVER_NEXT_TO = {
+	"ai-core": [
+		"es_extended",
+		"qb-core",
+		"qbx_core"
+	],
+	"ai-mysql": [
+		"oxmysql",
+		"mysql-async",
+		"ghmattimysql"
+	]
+};
+/** Built-in rules: stand-ins, and every inventory / key system adapter making ai-inventory / ai-vehiclekeys unneeded. */
+function builtIn() {
+	const out = [];
+	for (const [ours, names] of Object.entries(STAND_INS)) for (const name of names) out.push({
+		keep: name,
+		remove: [ours],
+		from: "ai-core"
+	});
+	for (const [ours, names] of Object.entries(NEVER_NEXT_TO)) out.push({
+		keep: ours,
+		remove: names,
+		from: "ai-core"
+	});
+	for (const a of INVENTORIES) if (a.resource !== "ai-inventory") out.push({
+		keep: a.resource,
+		remove: ["ai-inventory"],
+		from: "ai-core"
+	});
+	for (const a of KEY_SYSTEMS) if (a.resource !== "ai-vehiclekeys") out.push({
+		keep: a.resource,
+		remove: ["ai-vehiclekeys"],
+		from: "ai-core"
+	});
+	return out;
+}
+/** Real resources on the server (a `provide`d name is not one) with their state. */
+function installed() {
+	const out = /* @__PURE__ */ new Map();
+	for (let i = 0; i < GetNumResources(); i++) {
+		const name = GetResourceByFindIndex(i);
+		if (name) out.set(name, GetResourceState(name));
+	}
+	return out;
+}
+/** `ai_replaces 'ai-inventory'` lines in a resource's fxmanifest. */
+function manifestRules(resources) {
+	const out = [];
+	for (const resource of resources) {
+		const count = GetNumResourceMetadata(resource, "ai_replaces");
+		const remove = [];
+		for (let i = 0; i < count; i++) {
+			const name = GetResourceMetadata(resource, "ai_replaces", i);
+			if (name) remove.push(name);
+		}
+		if (remove.length > 0) out.push({
+			keep: resource,
+			remove,
+			from: `${resource} fxmanifest`
+		});
+	}
+	return out;
+}
+/**
+* Finds scripts that are not needed next to others (tgiann-inventory makes ai-inventory unneeded): logged on the console
+* with the folder to delete, and while both run, players are refused at connecting (`index.ts`).
+*/
+var Conflicts = class {
+	declared = /* @__PURE__ */ new Map();
+	current = [];
+	reported = /* @__PURE__ */ new Set();
+	pending = null;
+	/** Checks again after `delay` ms (resource starts come in bursts). */
+	schedule(delay) {
+		if (this.pending) clearTimeout(this.pending);
+		this.pending = setTimeout(() => {
+			this.pending = null;
+			this.check();
+		}, delay);
+	}
+	/** A resource declares through the export that it makes `remove` unneeded; dropped when it stops. */
+	declare(keep, remove, from) {
+		this.declared.set(`${from}>${keep}`, {
+			keep,
+			remove,
+			from
+		});
+		this.check();
+	}
+	dropFrom(resource) {
+		for (const [key, rule] of this.declared) if (rule.from === resource) this.declared.delete(key);
+	}
+	/** The clashes right now. */
+	list() {
+		return this.current;
+	}
+	/** Whether players are refused: a clash with both scripts started. */
+	blocking() {
+		return this.current.filter((c) => c.running);
+	}
+	check() {
+		const resources = installed();
+		const rules = [
+			...builtIn(),
+			...manifestRules(resources.keys()),
+			...this.declared.values()
+		];
+		const found = /* @__PURE__ */ new Map();
+		for (const rule of rules) {
+			if (resources.get(rule.keep) !== "started") continue;
+			for (const remove of rule.remove) {
+				const state = resources.get(remove);
+				if (state === void 0 || state === "missing" || remove === rule.keep) continue;
+				found.set(`${rule.keep}>${remove}`, {
+					keep: rule.keep,
+					remove,
+					running: state === "started" || state === "starting",
+					from: rule.from
+				});
+			}
+		}
+		this.current = [...found.values()];
+		const now = /* @__PURE__ */ new Set();
+		for (const c of this.current) {
+			const key = `${c.keep}>${c.remove}:${c.running}`;
+			now.add(key);
+			if (this.reported.has(key)) continue;
+			const path = GetResourcePath(c.remove).replace(/\/+/g, "/");
+			if (c.running) log$2.error(`${c.keep} runs and makes ${c.remove} unneeded, but both are started: players are refused until ${c.remove} is removed. Delete ${path} and its ensure line, then restart. (rule: ${c.from})`);
+			else log$2.warn(`${c.keep} makes ${c.remove} unneeded: delete ${path} and its ensure line. (rule: ${c.from})`);
+		}
+		this.reported = now;
+	}
+};
+const conflicts = new Conflicts();
+
+// resource/server/connection/index.ts
+const log$1 = createLogger("ai-core");
+/**
+* The connecting stage: every player passes ai-core's checks (a FiveM account, no conflicting scripts running) and
+* the checks other resources add (`AddConnectionCheck`: whitelists, bans), in the order they were added.
+*/
+var ConnectionGate = class {
+	checks = /* @__PURE__ */ new Map();
+	add(id, resource, run) {
+		this.checks.set(id, {
+			resource,
+			run
+		});
+	}
+	dropResource(resource) {
+		for (const [id, check] of this.checks) if (check.resource === resource) this.checks.delete(id);
+	}
+	/** The first refusal, or null. */
+	run(source) {
+		const identifiers = {};
+		for (const id of getPlayerIdentifiers(String(source))) {
+			const at = id.indexOf(":");
+			if (at > 0) identifiers[id.slice(0, at)] = id.slice(at + 1);
+		}
+		for (const [id, check] of this.checks) try {
+			const reason = check.run(source, identifiers);
+			if (typeof reason === "string" && reason) return reason;
+		} catch (error) {
+			log$1.error(`connection check ${id} (${check.resource}) failed`, error);
+		}
+		return null;
+	}
+};
+const gate = new ConnectionGate();
+gate.add("ai-core:fivem", "ai-core", (source) => identify(source) ? null : Locale("CONNECT_NO_FIVEM"));
+gate.add("ai-core:conflicts", "ai-core", () => {
+	if (!settings.refuseOnConflict) return null;
+	const blocking = conflicts.blocking();
+	return blocking.length > 0 ? Locale("CONNECT_CONFLICT", blocking.map((c) => c.remove).join(", ")) : null;
+});
+on("playerConnecting", (_name, _kick, deferrals) => {
+	const source = Number(globalThis.source);
+	deferrals.defer();
+	setImmediate(() => {
+		const reason = gate.run(source);
+		if (reason) deferrals.done(reason);
+		else deferrals.done();
+	});
+});
+conflicts.schedule(5e3);
+on("onServerResourceStart", () => conflicts.schedule(1e3));
+on("onResourceStop", (resource) => {
+	gate.dropResource(resource);
+	conflicts.dropFrom(resource);
+	conflicts.schedule(1e3);
+});
+registerExport("AddConnectionCheck", (id, check) => {
+	if (typeof id === "string" && id && typeof check === "function") gate.add(id, GetInvokingResource() ?? "?", check);
+});
+registerExport("RegisterReplacement", (keep, remove) => {
+	const names = (Array.isArray(remove) ? remove : [remove]).filter((n) => typeof n === "string" && n !== "");
+	if (typeof keep === "string" && keep && names.length > 0) conflicts.declare(keep, names, GetInvokingResource() ?? keep);
+});
+registerExport("GetConflicts", () => conflicts.list().map((c) => ({ ...c })));
 
 // resource/server/characters/repo.ts
 const COLUMNS = "id, user_id, citizenid, slot, firstname, lastname, birthdate, sex, pos_x, pos_y, pos_z, pos_h, metadata, last_played";
@@ -28522,7 +28787,7 @@ var JobSet = class {
 	}
 };
 function logWriteError(label, error) {
-	log$1.error(`membership write failed (${label})`, error);
+	log$3.error(`membership write failed (${label})`, error);
 }
 
 // resource/server/player/wallet.ts
@@ -28731,50 +28996,7 @@ async function characterScreen(user) {
 	};
 }
 
-// resource/server/player/users.ts
-function identifier(source, type) {
-	const value = GetPlayerIdentifierByType(String(source), type);
-	return value ? value.slice(type.length + 1) : null;
-}
-/** The connection's identity, or null without a FiveM account. */
-function identify(source) {
-	const fivem = identifier(source, "fivem");
-	if (!fivem) return null;
-	return {
-		fivem,
-		license: identifier(source, "license"),
-		discord: identifier(source, "discord"),
-		name: (GetPlayerName(String(source)) || "").slice(0, 64)
-	};
-}
-/** Creates or refreshes the account row and returns it. */
-async function upsertUser(identity) {
-	await mysql.query(`INSERT INTO ai_core_users (fivem, license, discord, name) VALUES (?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE license = VALUES(license), discord = VALUES(discord), name = VALUES(name), last_seen = NOW()`, [
-		identity.fivem,
-		identity.license,
-		identity.discord,
-		identity.name
-	]);
-	const row = await mysql.single("SELECT id, char_slots FROM ai_core_users WHERE fivem = ?", [identity.fivem]);
-	if (!row) throw new Error(`user row missing after upsert (fivem:${identity.fivem})`);
-	return {
-		id: row.id,
-		fivem: identity.fivem,
-		license: identity.license,
-		charSlots: row.char_slots
-	};
-}
-
 // resource/server/player/session.ts
-on("playerConnecting", (_name, _kick, deferrals) => {
-	const source = Number(globalThis.source);
-	deferrals.defer();
-	setImmediate(() => {
-		if (!identify(source)) return deferrals.done(Locale("CONNECT_NO_FIVEM"));
-		deferrals.done();
-	});
-});
 const lock = new SourceLock();
 const BUSY = {
 	ok: false,
@@ -28886,10 +29108,10 @@ async function loadCharacter(source, charId) {
 		};
 		emitNet(CORE.spawnEvent, source, spawn);
 		emit(CORE.playerLoadedEvent, source, player.info());
-		log$1.info(`loaded #${player.charId} ${player.fullName} (src ${source})`);
+		log$3.info(`loaded #${player.charId} ${player.fullName} (src ${source})`);
 		return { ok: true };
 	} catch (error) {
-		log$1.error(`loading character ${charId} for ${source} failed`, error);
+		log$3.error(`loading character ${charId} for ${source} failed`, error);
 		return BUSY;
 	}
 }
@@ -28901,7 +29123,7 @@ async function unloadCharacter(player, reason) {
 	try {
 		await saveCharacters([player.saveData()]);
 	} catch (error) {
-		log$1.error(`saving #${player.charId} on unload failed`, error);
+		log$3.error(`saving #${player.charId} on unload failed`, error);
 	}
 }
 /** Back to the character screen (logout without leaving): the client reopens the screen. */
@@ -28940,7 +29162,7 @@ if (supported) on("onPedDeath", (ped, attacker, weaponHash) => {
 	if (source === null) return;
 	emit(CORE.playerDiedEvent, source, sourceOfPed(attacker), weaponHash);
 });
-else log$1.info(`FXServer ${build} has no onPedDeath (${PED_EVENTS_MIN_BUILD}+): death resources watch health on the client`);
+else log$3.info(`FXServer ${build} has no onPedDeath (${PED_EVENTS_MIN_BUILD}+): death resources watch health on the client`);
 
 // resource/server/persistence.ts
 /** Writes position and metadata of every online character (money and memberships are written as they change). */
@@ -28952,7 +29174,7 @@ async function drainWrites() {
 	await Promise.all([...[...players.all()].map((player) => player.idle()), ...sharedAccounts.all().map((account) => account.idle())]);
 }
 function saveNow(why) {
-	saveAll().then(drainWrites).then(() => log$1.info(`saved ${players.size} characters (${why})`)).catch((error) => log$1.error(`save failed (${why})`, error));
+	saveAll().then(drainWrites).then(() => log$3.info(`saved ${players.size} characters (${why})`)).catch((error) => log$3.error(`save failed (${why})`, error));
 }
 setInterval(() => saveNow("interval"), settings.saveIntervalMinutes * 6e4);
 on("txAdmin:events:serverShuttingDown", () => saveNow("shutdown"));
@@ -28980,7 +29202,7 @@ async function payAll() {
 	}
 }
 if (settings.paycheck.intervalMinutes > 0) setInterval(() => {
-	payAll().catch((error) => log$1.error("paycheck failed", error));
+	payAll().catch((error) => log$3.error("paycheck failed", error));
 }, settings.paycheck.intervalMinutes * 6e4);
 
 // resource/server/exports.ts
@@ -29129,7 +29351,7 @@ const inventory = new InventoryLayer(INVENTORIES, {
 		GlobalState.set(INVENTORY_STATE_KEY, resource, true);
 		emit(CORE.inventoryChangedEvent, resource);
 	},
-	log: log$1
+	log: log$3
 });
 inventory.setChoice(settings.inventory);
 panel.onChange("settings", () => inventory.setChoice(settings.inventory));
@@ -29237,7 +29459,7 @@ var VehicleKeysLayer = class {
 		if (next === this.current) return;
 		this.current = next;
 		GlobalState.set(VEHICLE_KEYS_STATE_KEY, next?.resource ?? null, true);
-		log$1.info(next ? `vehicle keys: ${next.resource}` : "no vehicle key system runs: every player counts as holding every key");
+		log$3.info(next ? `vehicle keys: ${next.resource}` : "no vehicle key system runs: every player counts as holding every key");
 	}
 	run(what, fn, fallback) {
 		const adapter = this.current;
@@ -29245,7 +29467,7 @@ var VehicleKeysLayer = class {
 		try {
 			return fn(adapter);
 		} catch (error) {
-			log$1.error(`${adapter.resource} ${what} failed`, error);
+			log$3.error(`${adapter.resource} ${what} failed`, error);
 			return fallback;
 		}
 	}
@@ -29400,6 +29622,6 @@ for (const type of ["job", "gang"]) panel.onChange(type === "job" ? "jobs" : "ga
 	if (!key || value === null || known[type].has(key)) return;
 	known[type].add(key);
 	if (type === "job") resetDutyCounts([key]);
-	sharedAccounts.load(type, key).catch((error) => log$1.error(`loading the accounts of ${type} ${key} failed`, error));
+	sharedAccounts.load(type, key).catch((error) => log$3.error(`loading the accounts of ${type} ${key} failed`, error));
 });
-databaseReady.then(() => Promise.all([...[...jobs.keys()].map((job) => sharedAccounts.load("job", job)), ...[...gangs.keys()].map((gang) => sharedAccounts.load("gang", gang))])).then(() => log$1.info(`ready: ${jobs.size} jobs, ${gangs.size} gangs`)).catch((error) => log$1.error("loading job and gang accounts failed", error));
+databaseReady.then(() => Promise.all([...[...jobs.keys()].map((job) => sharedAccounts.load("job", job)), ...[...gangs.keys()].map((gang) => sharedAccounts.load("gang", gang))])).then(() => log$3.info(`ready: ${jobs.size} jobs, ${gangs.size} gangs`)).catch((error) => log$3.error("loading job and gang accounts failed", error));

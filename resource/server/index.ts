@@ -7,6 +7,7 @@ import { sharedAccounts } from "./money/book";
 import "./logs";
 import "./logs/coreEvents";
 import "./clientErrors";
+import "./connection";
 import "./player/session";
 import "./player/deaths";
 import "./persistence";

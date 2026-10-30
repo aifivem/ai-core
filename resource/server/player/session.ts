@@ -19,23 +19,6 @@ import { players, selecting } from "./registry";
 import { characterScreen, slotsOf } from "./screen";
 import { identify, upsertUser } from "./users";
 
-/** The part of FXServer's deferrals object used here (not in the @citizenfx/server typings). */
-interface Deferrals {
-  defer(): void;
-  update(message: string): void;
-  done(failureReason?: string): void;
-}
-
-on("playerConnecting", (_name: string, _kick: (reason: string) => void, deferrals: Deferrals) => {
-  const source = Number(globalThis.source);
-  deferrals.defer();
-  // Deferrals need a tick between defer() and done(); setImmediate runs on the main thread natives need.
-  setImmediate(() => {
-    if (!identify(source)) return deferrals.done(Locale("CONNECT_NO_FIVEM"));
-    deferrals.done();
-  });
-});
-
 const lock = new SourceLock();
 const BUSY: CharacterActionResult = { ok: false, error: "CHAR_ERR_BUSY" };
 
