@@ -140,5 +140,6 @@
         "blurStrength": 100
       }
     ]
-  }
+  },
+  "inventory": "auto"
 }

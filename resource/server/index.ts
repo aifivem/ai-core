@@ -8,6 +8,7 @@ import "./logs";
 import "./logs/coreEvents";
 import "./clientErrors";
 import "./player/session";
+import "./player/deaths";
 import "./persistence";
 import "./jobs/paycheck";
 import "./exports";

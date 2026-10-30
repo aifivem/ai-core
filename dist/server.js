@@ -142,6 +142,8 @@ const CORE = {
 	inventoryChangedEvent: "ai-core:inventoryChanged",
 	/** (src, name: string, status: Record<string, number> | null) a player used an item; status = the needs it gives, from inventories that define them. */
 	itemUsedEvent: "ai-core:itemUsed",
+	/** (src, killer: number | null, weaponHash: number) a player with a loaded character died; fired from FXServer's `onPedDeath` (needs `PED_DEATH_STATE_KEY`). */
+	playerDiedEvent: "ai-core:playerDied",
 	clientPlayerLoadedEvent: "ai-core:client:playerLoaded",
 	clientPlayerUnloadedEvent: "ai-core:client:playerUnloaded",
 	/** (charId: number, url: string) a portrait image of a character on the character screen (e.g. `https://nui-img/<txd>/<txd>`). */
@@ -167,6 +169,10 @@ const CORE = {
 const dutyCountKey = (job) => `ai:duty:${job}`;
 /** GlobalState key holding the resource name of the active inventory (null while none runs). */
 const INVENTORY_STATE_KEY = "ai:inventory";
+/** GlobalState key: true when the server reports player deaths itself (FXServer 38039+ `onPedDeath`), so clients need not watch their health. */
+const PED_DEATH_STATE_KEY = "ai:pedDeath";
+/** The first FXServer build known to fire `onPedDeath` / `onPedHealthChanged` (citizenfx/fivem 1424ad0). */
+const PED_EVENTS_MIN_BUILD = 38039;
 
 // ../../../packages/shared/src/validation.ts
 const NAME$1 = /^[A-Za-zÀ-ɏ][A-Za-zÀ-ɏ' -]{1,19}$/;
@@ -28529,6 +28535,24 @@ on("playerDropped", () => {
 	const player = players.get(source);
 	if (player) unloadCharacter(player, "dropped");
 });
+
+// resource/server/player/deaths.ts
+/** The FXServer build number from the `version` convar ("FXServer-master SERVER v1.0.0.38039 win32"). */
+const build = Number(/v1\.0\.0\.(\d+)/.exec(GetConvar("version", ""))?.[1] ?? 0);
+const supported = build >= PED_EVENTS_MIN_BUILD;
+/** The player whose ped this is (deaths are rare, a scan of the online players is enough). */
+function sourceOfPed(ped) {
+	if (ped === 0) return null;
+	for (const player of players.all()) if (GetPlayerPed(String(player.source)) === ped) return player.source;
+	return null;
+}
+GlobalState.set(PED_DEATH_STATE_KEY, supported, true);
+if (supported) on("onPedDeath", (ped, attacker, weaponHash) => {
+	const source = sourceOfPed(ped);
+	if (source === null) return;
+	emit(CORE.playerDiedEvent, source, sourceOfPed(attacker), weaponHash);
+});
+else log$1.info(`FXServer ${build} has no onPedDeath (${PED_EVENTS_MIN_BUILD}+): death resources watch health on the client`);
 
 // resource/server/persistence.ts
 /** Writes position and metadata of every online character (money and memberships are written as they change). */
