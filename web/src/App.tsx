@@ -15,9 +15,10 @@ export function App() {
     if (payload) openScreen(payload);
   }, []);
   const onClose = useCallback(
-    () => update({ open: false, busy: false, error: null }),
+    () => update({ open: false, busy: false, error: null, leaving: false }),
     [],
   );
+  const onLeave = useCallback(() => update({ leaving: true }), []);
 
   useNuiMessage(NuiMessage.openCharacters, onOpen);
   const onPortrait = useCallback((data: unknown) => {
@@ -31,6 +32,7 @@ export function App() {
   }, []);
 
   useNuiMessage(NuiMessage.closeCharacters, onClose);
+  useNuiMessage(NuiMessage.leaveCharacters, onLeave);
   useNuiMessage(NuiMessage.portrait, onPortrait);
 
   // The page can mount after the client already sent the screen: ask once.

@@ -387,5 +387,13 @@
   "ADMIN_SETUP_WORLD": "World",
   "ADMIN_SETUP_WORLD_DESC": "GTA police, how busy the streets are and the seatbelt.",
   "ADMIN_F_SETUP_DONE": "Setup finished",
-  "ADMIN_H_SETUP_DONE": "Off: every player sees the setup notice after spawning and the panel opens on the setup guide."
+  "ADMIN_H_SETUP_DONE": "Off: every player sees the setup notice after spawning and the panel opens on the setup guide.",
+  "ADMIN_F_HINT_SCRIPT": "Key hint (script)",
+  "ADMIN_F_HINT": "Key hint on the HUD",
+  "ADMIN_H_HINT": "When the HUD lists this key on the left of the screen. The script's choice, or your own.",
+  "ADMIN_O_HINT_SCRIPT": "As the script says",
+  "ADMIN_O_HINT_NEVER": "Never",
+  "ADMIN_O_HINT_FOOT": "On foot",
+  "ADMIN_O_HINT_VEHICLE": "In a vehicle",
+  "ADMIN_O_HINT_ALWAYS": "Always"
 }

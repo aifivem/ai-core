@@ -23,6 +23,7 @@ class KeybindDefaults {
     this.world.onChange("keybinds", (name) => {
       const info = name ? this.known.get(name) : undefined;
       if (info && this.ready) this.answer(info);
+      else this.changed();
     });
   }
 
@@ -38,11 +39,39 @@ class KeybindDefaults {
       this.known.delete(name);
       this.answered.delete(name);
     }
+    this.changed();
+  }
+
+  /** Names of the keybinds of running resources, in the order they were announced. */
+  names(): string[] {
+    return [...this.known.keys()];
   }
 
   /** What the admin panel lists (sent when it opens). */
   list(): KeybindInfo[] {
     return [...this.known.values()];
+  }
+
+  /** A keybind's announcement (description, hint), while its resource runs. */
+  info(name: string): KeybindInfo | undefined {
+    return this.known.get(name);
+  }
+
+  /** The panel record of a keybind (the owner's key and hint choice). */
+  stored(name: string): Record<string, unknown> | null {
+    const raw = this.world.get("keybinds")[name];
+    return isRecord(raw) ? raw : null;
+  }
+
+  /** Runs `fn` after the panel's keybinds file changes and when keybinds come or go. */
+  onChange(fn: () => void): void {
+    this.listeners.push(fn);
+  }
+
+  private readonly listeners: Array<() => void> = [];
+
+  private changed(): void {
+    for (const fn of this.listeners) fn();
   }
 
   /** The key a keybind was registered with (its mapping command is `+<name>_<key>`); null until answered. */
@@ -58,12 +87,13 @@ class KeybindDefaults {
         : info.defaultKey;
     this.answered.set(info.name, key);
     emit(KEYBIND.keyEvent, info.resource, info.name, key);
+    this.changed();
   }
 }
 
 function toKeybindInfo(value: unknown): KeybindInfo | null {
   if (!isRecord(value)) return null;
-  const { resource, name, description, defaultKey, mapper } = value;
+  const { resource, name, description, defaultKey, mapper, hint } = value;
   if (
     typeof resource !== "string" ||
     typeof name !== "string" ||
@@ -72,7 +102,17 @@ function toKeybindInfo(value: unknown): KeybindInfo | null {
     typeof mapper !== "string"
   )
     return null;
-  return { resource, name, description, defaultKey, mapper };
+  return {
+    resource,
+    name,
+    description,
+    defaultKey,
+    mapper,
+    hint:
+      hint === "foot" || hint === "vehicle" || hint === "always"
+        ? hint
+        : undefined,
+  };
 }
 
 export const keybinds = new KeybindDefaults();

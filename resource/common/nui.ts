@@ -5,6 +5,8 @@ export const NuiMessage = {
   /** data: { screen: CharacterScreen, texts, portraits, scene: boolean } (scene: the world scene stands behind the screen). */
   openCharacters: "openCharacters",
   closeCharacters: "closeCharacters",
+  /** A character was picked: the screen fades out (then `closeCharacters`). */
+  leaveCharacters: "leaveCharacters",
   /** data: { id: number, url: string }, a character's portrait arrived (from an appearance resource). */
   portrait: "portrait",
   /** data: { panels: AdminPanelSnapshot[], texts }, the admin panel opens. */

@@ -41,6 +41,25 @@
           "minLength": 0,
           "maxLength": 32,
           "pattern": "^[A-Za-z0-9_]*$"
+        },
+        "hintWhen": {
+          "description": "Key hint (script)",
+          "enum": [
+            "",
+            "foot",
+            "vehicle",
+            "always"
+          ]
+        },
+        "hint": {
+          "description": "Key hint on the HUD: When the HUD lists this key on the left of the screen. The script's choice, or your own.",
+          "enum": [
+            "",
+            "never",
+            "foot",
+            "vehicle",
+            "always"
+          ]
         }
       },
       "required": [

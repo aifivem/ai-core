@@ -18,6 +18,8 @@ export interface ScreenState {
   portraits: Record<number, string>;
   /** The game's scene with the characters stands behind the screen; without it the background picture shows. */
   scene: boolean;
+  /** A character was picked: the screen fades out while the game fades to black, then closes. */
+  leaving: boolean;
 }
 
 let state: ScreenState = {
@@ -29,6 +31,7 @@ let state: ScreenState = {
   error: null,
   portraits: {},
   scene: false,
+  leaving: false,
 };
 const listeners = new Set<() => void>();
 

@@ -16199,6 +16199,27 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 						min: 0,
 						max: 32,
 						pattern: "^[A-Za-z0-9_]*$"
+					},
+					hintWhen: {
+						type: "enum",
+						values: [
+							"",
+							"foot",
+							"vehicle",
+							"always"
+						],
+						optional: !0
+					},
+					hint: {
+						type: "enum",
+						values: [
+							"",
+							"never",
+							"foot",
+							"vehicle",
+							"always"
+						],
+						optional: !0
 					}
 				}
 			},
@@ -16753,6 +16774,45 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 							label: "ADMIN_F_DEFAULT_KEY",
 							hint: "ADMIN_H_DEFAULT_KEY",
 							placeholder: "ADMIN_PH_KEYBIND"
+						},
+						{
+							widget: "info",
+							path: "hintWhen",
+							label: "ADMIN_F_HINT_SCRIPT",
+							values: {
+								foot: "ADMIN_O_HINT_FOOT",
+								vehicle: "ADMIN_O_HINT_VEHICLE",
+								always: "ADMIN_O_HINT_ALWAYS"
+							},
+							empty: "ADMIN_O_HINT_NEVER"
+						},
+						{
+							widget: "select",
+							path: "hint",
+							label: "ADMIN_F_HINT",
+							hint: "ADMIN_H_HINT",
+							options: [
+								{
+									value: "",
+									label: "ADMIN_O_HINT_SCRIPT"
+								},
+								{
+									value: "never",
+									label: "ADMIN_O_HINT_NEVER"
+								},
+								{
+									value: "foot",
+									label: "ADMIN_O_HINT_FOOT"
+								},
+								{
+									value: "vehicle",
+									label: "ADMIN_O_HINT_VEHICLE"
+								},
+								{
+									value: "always",
+									label: "ADMIN_O_HINT_ALWAYS"
+								}
+							]
 						}
 					]
 				}]
@@ -17380,13 +17440,14 @@ const FILE = "keybinds", NAME = /^[\w.-]{1,64}$/, KEYBOARD = new Set([
 ]), text$2 = (value, max) => typeof value == "string" && value.length <= max ? value : null;
 function readKeybind(value) {
 	if (!isRecord(value)) return null;
-	let resource = text$2(value.resource, 64), name = text$2(value.name, 64), description = text$2(value.description, 120), defaultKey = text$2(value.defaultKey, 32), mapper = text$2(value.mapper, 32);
+	let resource = text$2(value.resource, 64), name = text$2(value.name, 64), description = text$2(value.description, 120), defaultKey = text$2(value.defaultKey, 32), mapper = text$2(value.mapper, 32), hint = value.hint === "foot" || value.hint === "vehicle" || value.hint === "always" ? value.hint : void 0;
 	return !resource || !name || !NAME.test(name) || description === null || defaultKey === null || !mapper ? null : {
 		resource,
 		name,
 		description,
 		defaultKey: defaultKey.toUpperCase(),
-		mapper
+		mapper,
+		hint
 	};
 }
 function readKeybinds(value) {
@@ -17396,14 +17457,16 @@ function reportKeybinds(list) {
 	let stored = panel.get(FILE);
 	for (let info of list) {
 		let raw = stored[info.name], old = isRecord(raw) ? raw : null;
-		if (old && old.resource === info.resource && old.description === info.description && old.defaultKey === info.defaultKey && old.mapper === info.mapper) continue;
-		let key = typeof old?.key == "string" ? old.key : "";
+		if (old && old.resource === info.resource && old.description === info.description && old.defaultKey === info.defaultKey && old.mapper === info.mapper && old.hintWhen === (info.hint ?? "")) continue;
+		let key = typeof old?.key == "string" ? old.key : "", hint = typeof old?.hint == "string" ? old.hint : "";
 		panel.commit(FILE, info.name, {
 			resource: info.resource,
 			description: info.description,
 			defaultKey: info.defaultKey,
 			mapper: info.mapper,
-			key
+			key,
+			hintWhen: info.hint ?? "",
+			hint
 		});
 	}
 }

@@ -64,7 +64,7 @@ function ErrorLine({ text }: { text: string }) {
 /** Character select (docs/design.md, tgiann-multichar): title and details left, slot row bottom centre, actions bottom right. */
 export function CharacterScreen() {
   const t = useLang();
-  const { open, screen, selected, view, busy, error, portraits, scene } =
+  const { open, screen, selected, view, busy, error, portraits, scene, leaving } =
     useScreen();
   if (!open || !screen) return null;
 
@@ -76,7 +76,13 @@ export function CharacterScreen() {
       : undefined;
 
   return (
-    <div className={cn("absolute inset-0 animate-fade", !scene && "bg-page")}>
+    <div
+      className={cn(
+        "absolute inset-0 animate-fade transition-opacity duration-[800ms] ease-out",
+        !scene && "bg-page",
+        leaving && "pointer-events-none opacity-0",
+      )}
+    >
       {!scene && (
         <div
           className="absolute inset-0 bg-cover bg-center"

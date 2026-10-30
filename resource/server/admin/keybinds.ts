@@ -87,6 +87,10 @@ function readKeybind(value: unknown): KeybindInfo | null {
   const description = text(value.description, 120);
   const defaultKey = text(value.defaultKey, 32);
   const mapper = text(value.mapper, 32);
+  const hint =
+    value.hint === "foot" || value.hint === "vehicle" || value.hint === "always"
+      ? value.hint
+      : undefined;
   if (
     !resource ||
     !name ||
@@ -102,6 +106,7 @@ function readKeybind(value: unknown): KeybindInfo | null {
     description,
     defaultKey: defaultKey.toUpperCase(),
     mapper,
+    hint,
   };
 }
 
@@ -122,16 +127,20 @@ export function reportKeybinds(list: KeybindInfo[]): void {
       old.resource === info.resource &&
       old.description === info.description &&
       old.defaultKey === info.defaultKey &&
-      old.mapper === info.mapper
+      old.mapper === info.mapper &&
+      old.hintWhen === (info.hint ?? "")
     )
       continue;
     const key = typeof old?.key === "string" ? old.key : "";
+    const hint = typeof old?.hint === "string" ? old.hint : "";
     panel.commit(FILE, info.name, {
       resource: info.resource,
       description: info.description,
       defaultKey: info.defaultKey,
       mapper: info.mapper,
       key,
+      hintWhen: info.hint ?? "",
+      hint,
     });
   }
 }

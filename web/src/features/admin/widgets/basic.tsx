@@ -321,6 +321,8 @@ export function SwitchW({
 }
 
 /** Options are stored with their own type (a number option saves a number). */
+const EMPTY_OPTION = "__empty";
+
 export function SelectW({
   spec,
   path,
@@ -330,19 +332,31 @@ export function SelectW({
 }) {
   const { t } = useEditor();
   const [value, save] = useField(path);
+  // Radix refuses an empty item value: "" (a "default" choice) travels as a sentinel, and a missing value shows it.
+  const hasEmpty = spec.options.some((o) => o.value === "");
+  const wire = (v: string | number) => (v === "" ? EMPTY_OPTION : String(v));
   const options = spec.options.map((o) => ({
-    value: String(o.value),
+    value: wire(o.value),
     label: t(o.label),
   }));
+  const current =
+    value === undefined || value === null
+      ? hasEmpty
+        ? EMPTY_OPTION
+        : undefined
+      : wire(typeof value === "number" ? value : String(value));
   return (
     <Select
       aria-label={t(spec.label)}
       className="w-[24vh]"
-      value={value === undefined || value === null ? undefined : String(value)}
+      value={current}
       options={options}
       onChange={(picked) =>
         save(
-          spec.options.find((o) => String(o.value) === picked)?.value ?? picked,
+          picked === EMPTY_OPTION
+            ? ""
+            : (spec.options.find((o) => String(o.value) === picked)?.value ??
+                picked),
         )
       }
     />

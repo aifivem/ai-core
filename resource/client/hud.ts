@@ -1,14 +1,27 @@
-import { isResourceStarted, registerExport } from "@aicore-fivem/lib/client";
+import {
+  callExport,
+  isResourceStarted,
+  registerExport,
+} from "@aicore-fivem/lib/client";
 import { CORE } from "@aicore-fivem/shared";
 
 /** HUD resources ai-core drives besides those listening to `CORE.clientHudVisibleEvent` (ai-hud does). */
 const ADAPTERS: ReadonlyArray<{
   resource: string;
   set: (visible: boolean) => void;
+  /** Opens the HUD's own settings (its /hud). */
+  settings: () => void;
 }> = [
   {
     resource: "tgiann-lumihud",
     set: (visible) => TriggerEvent("tgiann-lumihud:ui", visible),
+    settings: () => ExecuteCommand("hud"),
+  },
+  {
+    // ai-hud follows the visibility event itself and drives the minimap (its panel's minimap mode).
+    resource: "ai-hud",
+    set: () => undefined,
+    settings: () => callExport("ai-hud", "OpenSettings"),
   },
 ];
 
@@ -63,4 +76,14 @@ registerExport(
     typeof reason === "string" && visibility.set(`${owner()}:${reason}`, false),
 );
 registerExport("IsHudVisible", () => visibility.visible);
+// Every HUD has its own settings screen: the radial menu (and any script) opens the running one's through here.
+registerExport("OpenHudSettings", () => {
+  const adapter = ADAPTERS.find((a) => isResourceStarted(a.resource));
+  if (!adapter) return false;
+  adapter.settings();
+  return true;
+});
+registerExport("HasHudSettings", () =>
+  ADAPTERS.some((a) => isResourceStarted(a.resource)),
+);
 on("onClientResourceStop", (resource: string) => visibility.drop(resource));
