@@ -43,6 +43,8 @@ export interface Settings {
   refuseOnConflict: boolean;
   /** GitHub release check of every script with a `repository` line; `ignore` = resources never checked. */
   updates: { check: boolean; ignore: string[] };
+  /** The admin finished the setup guide; until then every player sees how to start it after spawning. */
+  setupDone: boolean;
   spawn: { default: Vec4 };
   characterScene: CharacterScene;
 }
@@ -106,6 +108,7 @@ function readSettings(raw: unknown): Settings {
     interaction: s.interaction === "target" ? "target" : "prompt",
     refuseOnConflict: bool(s.refuseOnConflict, true),
     updates: readUpdates(record(s.updates)),
+    setupDone: bool(s.setupDone, false),
     spawn: {
       default: vec4(spawn.default, {
         x: -1035.71,

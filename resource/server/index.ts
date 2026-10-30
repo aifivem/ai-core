@@ -18,6 +18,7 @@ import "./vehicleKeys";
 import "./interaction";
 import "./scopes";
 import "./versions";
+import "./setup";
 import "./world";
 import "./phone";
 import "./devCommands";

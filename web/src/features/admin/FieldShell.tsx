@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCircleCheck,
@@ -7,7 +7,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { cn } from "../../lib/utils";
 import { useAppSelector } from "../../store";
-import { fieldId } from "./actions";
+import { clearFocus, fieldId } from "./actions";
 import { useEditor } from "./context";
 
 interface Props {
@@ -35,6 +35,15 @@ export function FieldShell({
       s.admin.fields[id] ??
       Object.entries(s.admin.fields).find(([k]) => k.startsWith(`${id}.`))?.[1],
   );
+  const focused = useAppSelector((s) => s.admin.focus === id);
+  const ref = useRef<HTMLDivElement>(null);
+  // The global search jumped here: bring the field into view and flash it once.
+  useEffect(() => {
+    if (!focused) return;
+    ref.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+    const timer = setTimeout(clearFocus, 1800);
+    return () => clearTimeout(timer);
+  }, [focused]);
   const status = (
     <span className="inline-flex w-[1.4vh] justify-center text-[1.15vh]">
       {state?.status === "saving" && (
@@ -55,7 +64,14 @@ export function FieldShell({
     </span>
   );
   return (
-    <div className="flex flex-col gap-[1vh] py-[1.3vh]">
+    <div
+      ref={ref}
+      className={cn(
+        "flex flex-col gap-[1vh] rounded-[0.8vh] py-[1.3vh] transition-[background-color,box-shadow] duration-300",
+        focused &&
+          "bg-tgi-green-15 [box-shadow:0_0_0_0.6vh_var(--color-tgi-green-15)]",
+      )}
+    >
       <div
         className={cn(
           "flex gap-[1.6vh]",

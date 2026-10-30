@@ -208,6 +208,10 @@
       "description": "Refuse players while both run: Nobody can join while an unneeded script is started next to its replacement; the refusal and the console say which one to remove.",
       "type": "boolean"
     },
+    "setupDone": {
+      "description": "Setup finished: Off: every player sees the setup notice after spawning and the panel opens on the setup guide.",
+      "type": "boolean"
+    },
     "updates": {
       "type": "object",
       "properties": {

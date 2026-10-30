@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useParams, useSearch } from "@tanstack/react-router";
+import { useParams, useRouterState, useSearch } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import { useNuiEvent } from "fivem-nui-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -18,8 +18,10 @@ import { changed } from "../../store/admin";
 import { closePanel, openPanel } from "./actions";
 import { Dashboard } from "./Dashboard";
 import { Editor } from "./Editor";
+import { GlobalSearch } from "./GlobalSearch";
 import { usePanelLang } from "./lang";
 import { RecordsView } from "./RecordsView";
+import { Setup } from "./Setup";
 import { Sidebar } from "./Sidebar";
 import { TableView } from "./TableView";
 
@@ -82,6 +84,9 @@ export function AdminRoot() {
   const external = useAppSelector((state) => state.admin.external);
   const { resource, tab: tabId, id: externalId } = useParams({ strict: false });
   const { key } = useSearch({ strict: false });
+  const setup = useRouterState({
+    select: (s) => s.location.pathname === "/admin/setup",
+  });
   const panel = useAppSelector((state) =>
     state.admin.panels.find((p) => p.resource === resource),
   );
@@ -112,17 +117,21 @@ export function AdminRoot() {
   const page = externalId
     ? external.find((e) => e.id === externalId)
     : undefined;
-  const dashboard = !tab && !page;
-  const title = page
-    ? page.label
-    : tab
-      ? t(tab.label)
-      : (coreTexts.ADMIN_DASHBOARD ?? "");
-  const subtitle = page
-    ? (page.description ?? page.resource)
-    : tab
-      ? t(tab.desc)
-      : (coreTexts.ADMIN_DASHBOARD_DESC ?? "");
+  const dashboard = !tab && !page && !setup;
+  const title = setup
+    ? (coreTexts.ADMIN_SETUP ?? "")
+    : page
+      ? page.label
+      : tab
+        ? t(tab.label)
+        : (coreTexts.ADMIN_DASHBOARD ?? "");
+  const subtitle = setup
+    ? (coreTexts.ADMIN_SETUP_DESC ?? "")
+    : page
+      ? (page.description ?? page.resource)
+      : tab
+        ? t(tab.desc)
+        : (coreTexts.ADMIN_DASHBOARD_DESC ?? "");
 
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-black/40">
@@ -148,6 +157,7 @@ export function AdminRoot() {
                 {subtitle}
               </p>
             </div>
+            <GlobalSearch />
             <button
               type="button"
               onClick={closePanel}
@@ -167,6 +177,7 @@ export function AdminRoot() {
           </header>
           <div className="flex min-h-0 flex-1 flex-col p-[2.2vh] pr-[1.2vh]">
             {dashboard && <Dashboard />}
+            {setup && <Setup />}
             {page?.url && (
               <iframe
                 title={page.label}

@@ -75,7 +75,7 @@ class AdminPanelClient {
   }
 }
 
-const panel = new AdminPanelClient();
+export const panel = new AdminPanelClient();
 
 new Keybind({
   name: "aicore_admin",

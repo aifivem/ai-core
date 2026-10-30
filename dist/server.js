@@ -16094,6 +16094,7 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 						values: ["prompt", "target"]
 					},
 					refuseOnConflict: { type: "bool" },
+					setupDone: { type: "bool" },
 					updates: {
 						type: "object",
 						fields: {
@@ -16118,6 +16119,7 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 					vehicleKeys: "auto",
 					interaction: "prompt",
 					refuseOnConflict: !0,
+					setupDone: !1,
 					updates: {
 						check: !0,
 						ignore: []
@@ -16423,6 +16425,11 @@ function coreSchema(accounts, inventories = [], keySystems = []) {
 							path: "refuseOnConflict",
 							label: "ADMIN_F_REFUSE_ON_CONFLICT",
 							hint: "ADMIN_H_REFUSE_ON_CONFLICT"
+						}, {
+							widget: "switch",
+							path: "setupDone",
+							label: "ADMIN_F_SETUP_DONE",
+							hint: "ADMIN_H_SETUP_DONE"
 						}]
 					}
 				]
@@ -17067,6 +17074,7 @@ function readSettings(raw) {
 		interaction: s.interaction === "target" ? "target" : "prompt",
 		refuseOnConflict: bool$1(s.refuseOnConflict, !0),
 		updates: readUpdates(record(s.updates)),
+		setupDone: bool$1(s.setupDone, !1),
 		spawn: { default: vec4(spawn.default, {
 			x: -1035.71,
 			y: -2731.87,
@@ -18925,7 +18933,15 @@ var Scopes = class {
 	}
 };
 const EMPTY = new Set(), scopes = new Scopes();
-scopes.start(), registerExport("GetPlayersInScope", (source) => typeof source == "number" ? [...scopes.of(source)] : []);
+// resource/server/setup.ts
+scopes.start(), registerExport("GetPlayersInScope", (source) => typeof source == "number" ? [...scopes.of(source)] : []), on(CORE.playerLoadedEvent, (source) => {
+	if (settings.setupDone) return;
+	let fivem = getPlayerIdentifiers(String(source)).find((id) => id.startsWith("fivem:")), welcome = {
+		admin: !!IsPlayerAceAllowed(String(source), "ai.admin"),
+		adminLine: fivem ? `add_principal identifier.${fivem} group.admin` : ""
+	};
+	emitNet("ai-core:client:setupWelcome", source, welcome);
+});
 // resource/server/world.ts
 const SYSTEM = "qb-weathersync";
 function call(name, ...args) {

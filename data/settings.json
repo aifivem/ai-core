@@ -149,5 +149,6 @@
   "updates": {
     "check": true,
     "ignore": []
-  }
+  },
+  "setupDone": false
 }

@@ -9,6 +9,7 @@ import { AdminRoot } from "./features/admin/AdminRoot";
 import { Prompts } from "./features/prompts/Prompts";
 import { Notifications } from "./features/notify/Notifications";
 import { Dialogs } from "./features/dialogs/Dialogs";
+import { Welcome } from "./features/setup/Welcome";
 
 /**
  * Where the admin panel is (script, tab, record) lives in the router; memory history (NUI has no url), the browser
@@ -22,6 +23,7 @@ const rootRoute = createRootRoute({
       <Notifications />
       <Dialogs />
       <AdminRoot />
+      <Welcome />
     </>
   ),
 });
@@ -33,6 +35,11 @@ const indexRoute = createRoute({
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin",
+  component: () => null,
+});
+const setupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/setup",
   component: () => null,
 });
 const externalRoute = createRoute({
@@ -56,6 +63,7 @@ export const router = createRouter({
   routeTree: rootRoute.addChildren([
     indexRoute,
     dashboardRoute,
+    setupRoute,
     externalRoute,
     adminRoute,
   ]),

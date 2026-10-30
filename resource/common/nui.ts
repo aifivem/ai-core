@@ -25,6 +25,8 @@ export const NuiMessage = {
   /** data: InputRequest */
   inputOpen: "inputOpen",
   dialogClose: "dialogClose",
+  /** data: SetupWelcome & { texts }, the setup guide is not finished: the welcome card shows. */
+  setupWelcome: "setupWelcome",
 } as const;
 
 /** NUI -> client callbacks (fetch `https://ai-core/<name>`), each answers `{ ok, error? }` or data. */
@@ -59,4 +61,6 @@ export const NuiCallback = {
   dialogAnswer: "dialogAnswer",
   /** ({ id }) -> true, the pointer or focus moved onto a menu item. */
   dialogHover: "dialogHover",
+  /** ({ openPanel: boolean }) -> true, the welcome card closed (an admin may open the panel from it). */
+  setupWelcomeClose: "setupWelcomeClose",
 } as const;

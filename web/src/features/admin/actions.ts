@@ -15,10 +15,12 @@ import {
   changed,
   closed,
   fieldState,
+  focused,
   opened,
   picking,
 } from "../../store/admin";
 import { getAt, sectionWrite } from "./path";
+import { setupDone } from "./setupSteps";
 
 /** Every navigation and NUI call of the admin panel; components never call the router or fetchNui themselves. */
 
@@ -54,6 +56,39 @@ export function goTo(resource: string, tab: string, key?: string): void {
   });
 }
 
+/** Opens what the global search found; a settings field is scrolled to and flashed. */
+export function jumpTo(target: {
+  resource: string;
+  tab: string;
+  file: string;
+  key?: string;
+  path?: string;
+}): void {
+  goTo(target.resource, target.tab, target.key);
+  store.dispatch(
+    focused(
+      target.path
+        ? fieldId(target.resource, target.file, undefined, target.path)
+        : null,
+    ),
+  );
+}
+
+/** The flashed field is done (it scrolled into view). */
+export function clearFocus(): void {
+  store.dispatch(focused(null));
+}
+
+export function goSetup(): void {
+  void router.navigate({ to: "/admin/setup" });
+}
+
+/** The last step of the setup guide: the server is set up, the welcome card stops showing. */
+export async function finishSetup(): Promise<void> {
+  await saveField("ai-core", "settings", undefined, "setupDone", true);
+  goDashboard();
+}
+
 export function goDashboard(): void {
   void router.navigate({ to: "/admin" });
 }
@@ -71,6 +106,8 @@ export function openPanel(
     router.state.matches.at(-1)?.params ?? {};
   if (typeof params.id === "string" && external.some((e) => e.id === params.id))
     return;
+  // A server that never finished the setup guide opens on it.
+  if (!setupDone(panels)) return goSetup();
   const panel = panels.find((p) => p.resource === params.resource);
   const tab = panel?.schema.tabs.find((t) => t.id === params.tab);
   if (!panel || !tab) goDashboard();

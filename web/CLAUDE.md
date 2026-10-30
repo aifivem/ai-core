@@ -11,7 +11,9 @@ Two screens in one page: the character screen (`src/features/characters`, its ow
 
 ## Admin panel
 
-- Routes: `/admin` dashboard (`Dashboard.tsx`), `/admin/$resource/$tab` a script's tab, `/admin/external/$id` another script's page in an iframe. Lookup lists, other panels and the free camera state (`picking`: the panel hides behind a key help bar) live in the admin slice.
+- Routes: `/admin` dashboard (`Dashboard.tsx`), `/admin/setup` the setup guide (`Setup.tsx`), `/admin/$resource/$tab` a script's tab, `/admin/external/$id` another script's page in an iframe. Lookup lists, other panels and the free camera state (`picking`: the panel hides behind a key help bar) live in the admin slice.
+- Global search (`GlobalSearch.tsx` in the header, Ctrl+K, and the dashboard box) runs on one index (`searchIndex.ts`: scripts, tabs, every field label / hint / card, records by their label) built from the open snapshots in the admin's language; a hit opens the tab (the record), a settings field scrolls into view and flashes (`jumpTo`, admin slice `focus`, `FieldShell`).
+- Setup guide: steps in `setupSteps.ts` name fields of any script's panel (`resource`, `file`, `key?`, `path`); each renders the field's own widget from that script's schema, so it saves live like its tab; steps whose scripts do not run are left out. The panel opens on it while ai-core's `setupDone` is off; the last step sets it. The welcome card players see after spawning meanwhile is `features/setup/Welcome.tsx` (`?view=welcome`, `&admin=1`).
 - Lookup fields: `widgets/lookup.tsx` (`LookupBox` on the Radix popover, arrows / Enter / Escape, 40 shown); `TextW` and `TagsW` switch to it when the spec has `lookup`; a stored value the game does not know shows a red "Not found" chip. Name suggestions (`suggest`) and the free camera point pick ask ai-core's client (`adminPlaceNames`, `adminPickPoint`).
 - Blip widget: `widgets/BlipW.tsx` with `blips.json` (FiveM blip reference: sprite names, pictures at docs-backend.fivem.net, colours).
 - Schema driven: `Field.tsx` only dispatches, each widget is in `widgets/`; a new widget = a new case there plus the spec in `@aicore-fivem/shared` `admin.ts`.

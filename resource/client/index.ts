@@ -12,6 +12,7 @@ import "./vehicleKeys";
 import "./vehicles";
 import "./hud";
 import "./world";
+import "./setup";
 import { openCharacters } from "./characters";
 import { announceUnloaded } from "./playerState";
 

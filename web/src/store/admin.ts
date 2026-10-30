@@ -28,6 +28,7 @@ export interface AdminState {
   updates: UpdateInfo[];
   /** A point is being picked with the free camera: the panel hides. */
   picking: boolean;
+  focus: string | null;
 }
 
 const NO_LOOKUPS: Lookups = {
@@ -49,6 +50,7 @@ const initialState: AdminState = {
   external: [],
   updates: [],
   picking: false,
+  focus: null,
 };
 
 type Data = Record<string, unknown>;
@@ -90,6 +92,10 @@ const admin = createSlice({
       state.fields = {};
       state.picking = false;
     },
+    /** A field the global search jumped to (its field id): it scrolls into view and flashes once. */
+    focused(state, action: PayloadAction<string | null>) {
+      state.focus = action.payload;
+    },
     picking(state, action: PayloadAction<boolean>) {
       state.picking = action.payload;
     },
@@ -111,5 +117,6 @@ const admin = createSlice({
   },
 });
 
-export const { opened, closed, changed, fieldState, picking } = admin.actions;
+export const { opened, closed, changed, fieldState, focused, picking } =
+  admin.actions;
 export default admin.reducer;

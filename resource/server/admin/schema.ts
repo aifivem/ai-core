@@ -104,6 +104,7 @@ export function coreSchema(
           vehicleKeys: { type: "enum", values: ["auto", ...keySystems] },
           interaction: { type: "enum", values: ["prompt", "target"] },
           refuseOnConflict: { type: "bool" },
+          setupDone: { type: "bool" },
           updates: {
             type: "object",
             fields: {
@@ -128,6 +129,7 @@ export function coreSchema(
           vehicleKeys: "auto",
           interaction: "prompt",
           refuseOnConflict: true,
+          setupDone: false,
           updates: { check: true, ignore: [] },
         },
       },
@@ -388,6 +390,12 @@ export function coreSchema(
                 path: "refuseOnConflict",
                 label: "ADMIN_F_REFUSE_ON_CONFLICT",
                 hint: "ADMIN_H_REFUSE_ON_CONFLICT",
+              },
+              {
+                widget: "switch",
+                path: "setupDone",
+                label: "ADMIN_F_SETUP_DONE",
+                hint: "ADMIN_H_SETUP_DONE",
               },
             ],
           },

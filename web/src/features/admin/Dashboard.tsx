@@ -10,21 +10,14 @@ import type {
   AdminPanelSnapshot,
   ExternalPanel,
   UpdateInfo,
-  WidgetSpec,
 } from "@aicore-fivem/shared";
 import { ScrollArea } from "../../components/ui/scroll-area";
 import { useAppSelector } from "../../store";
-import { goTo, openExternal } from "./actions";
+import { goSetup, goTo, jumpTo, openExternal } from "./actions";
+import { setupDone } from "./setupSteps";
+import { KIND_KEYS } from "./GlobalSearch";
+import { buildIndex, search } from "./searchIndex";
 import { iconOf } from "./icons";
-
-interface Hit {
-  kind: "tab" | "setting";
-  resource: string;
-  tab: string;
-  title: string;
-  where: string;
-  icon: string;
-}
 
 const text = (
   panel: AdminPanelSnapshot,
@@ -32,59 +25,6 @@ const text = (
   key: string,
 ): string => panel.texts[key] ?? core[key] ?? key;
 const norm = (s: string) => s.toLocaleLowerCase();
-
-/** Every field label of a tab, list rows included. */
-function labels(fields: WidgetSpec[]): string[] {
-  return fields.flatMap((f) => [
-    f.label,
-    ...(f.widget === "list" ? f.rows.map((r) => r.label) : []),
-  ]);
-}
-
-/** Tabs and settings of every script matching the query (labels in the script's language). */
-function search(
-  panels: AdminPanelSnapshot[],
-  core: Record<string, string>,
-  query: string,
-): Hit[] {
-  const q = norm(query.trim());
-  if (!q) return [];
-  const hits: Hit[] = [];
-  for (const panel of panels) {
-    const title = text(panel, core, panel.schema.title);
-    for (const tab of panel.schema.tabs) {
-      const tabLabel = text(panel, core, tab.label);
-      if (
-        norm(tabLabel).includes(q) ||
-        norm(text(panel, core, tab.desc)).includes(q) ||
-        norm(title).includes(q) ||
-        panel.resource.includes(q)
-      )
-        hits.push({
-          kind: "tab",
-          resource: panel.resource,
-          tab: tab.id,
-          title: tabLabel,
-          where: title,
-          icon: tab.icon,
-        });
-      for (const card of tab.cards)
-        for (const label of labels(card.fields)) {
-          const name = text(panel, core, label);
-          if (norm(name).includes(q))
-            hits.push({
-              kind: "setting",
-              resource: panel.resource,
-              tab: tab.id,
-              title: name,
-              where: `${title} › ${tabLabel}`,
-              icon: card.icon,
-            });
-        }
-    }
-  }
-  return hits.slice(0, 80);
-}
 
 function ScriptCard({
   panel,
@@ -230,9 +170,10 @@ export function Dashboard() {
       (_, i: string) => args[Number(i)] ?? "",
     );
   const [query, setQuery] = useState("");
+  const index = useMemo(() => buildIndex(panels, core), [panels, core]);
   const hits = useMemo(
-    () => search(panels, core, query),
-    [panels, core, query],
+    () => search(index, query, 80).filter((e) => e.kind !== "script"),
+    [index, query],
   );
   const q = norm(query.trim());
   const scripts = q
@@ -267,14 +208,38 @@ export function Dashboard() {
       </label>
       <ScrollArea className="-mr-[1.2vh] min-h-0 flex-1 pr-[1.2vh]">
         <div className="flex flex-col gap-[2.4vh] pb-[1vh]">
+          {!q && !setupDone(panels) && (
+            <button
+              type="button"
+              onClick={goSetup}
+              className="group flex items-center gap-[1.6vh] rounded-[1.2vh] border border-tgi-green-40 bg-tgi-green-10 p-[1.8vh] text-left transition-colors duration-150 hover:bg-tgi-green-15"
+            >
+              <span className="flex size-[4.6vh] shrink-0 items-center justify-center rounded-[1vh] bg-tgi-green text-[1.9vh] text-tgi-green-text">
+                <FontAwesomeIcon icon={iconOf("flag-checkered")} aria-hidden />
+              </span>
+              <span className="flex min-w-0 flex-1 flex-col gap-[0.4vh]">
+                <span className="text-[1.6vh] font-semibold">
+                  {t("ADMIN_SETUP_BANNER")}
+                </span>
+                <span className="text-[1.3vh] text-text-3">
+                  {t("ADMIN_SETUP_BANNER_DESC")}
+                </span>
+              </span>
+              <FontAwesomeIcon
+                icon={faChevronRight}
+                className="text-[1.3vh] text-tgi-green"
+                aria-hidden
+              />
+            </button>
+          )}
           {!q && updates.length > 0 && <Updates updates={updates} t={t} />}
           {q && hits.length > 0 && (
             <section className="flex flex-col gap-[0.6vh]">
               {hits.map((hit, i) => (
                 <button
-                  key={`${hit.resource}/${hit.tab}/${hit.title}/${i}`}
+                  key={`${hit.kind}/${hit.resource}/${hit.tab}/${hit.key ?? ""}/${hit.title}/${i}`}
                   type="button"
-                  onClick={() => goTo(hit.resource, hit.tab)}
+                  onClick={() => jumpTo(hit)}
                   className="flex h-[5vh] items-center gap-[1.2vh] rounded-[0.9vh] bg-row px-[1.4vh] text-left transition-colors duration-150 hover:bg-white/6"
                 >
                   <FontAwesomeIcon
@@ -289,11 +254,7 @@ export function Dashboard() {
                     {hit.where}
                   </span>
                   <span className="shrink-0 rounded-[0.4vh] bg-white/6 px-[0.6vh] text-[1.05vh] font-bold text-text-3 uppercase">
-                    {t(
-                      hit.kind === "tab"
-                        ? "ADMIN_RESULT_TAB"
-                        : "ADMIN_RESULT_SETTING",
-                    )}
+                    {t(KIND_KEYS[hit.kind])}
                   </span>
                 </button>
               ))}
