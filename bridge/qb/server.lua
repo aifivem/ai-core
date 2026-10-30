@@ -269,9 +269,9 @@ end
 ---@param cb fun(source: integer, args: string[])
 ---@param permission? string
 function QBCore.Commands.Add(name, help, _arguments, _required, cb, permission)
-    local restricted = permission ~= nil and permission ~= 'user'
-    RegisterCommand(name, function(source, args) cb(source, args) end, restricted)
-    if help then TriggerClientEvent('chat:addSuggestion', -1, '/' .. name, help) end
+    aiLib.addCommand(name, { help = help, restricted = permission ~= nil and permission ~= 'user' }, function(source, _, raw)
+        cb(source, Bridge.words(raw))
+    end)
 end
 
 RegisterNetEvent('QBCore:Server:TriggerCallback', function(name, ...)

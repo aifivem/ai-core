@@ -10,6 +10,8 @@ node_version '22'
 
 client_scripts {
 	'dist/client.js',
+	'bridge/core/lib.lua',
+	'bridge/lib/init.lua',
 	'bridge/core/client.lua',
 	'bridge/core/ui.lua',
 	'bridge/qb/client.lua',
@@ -22,6 +24,8 @@ client_scripts {
 }
 server_scripts {
 	'dist/server.js',
+	'bridge/core/lib.lua',
+	'bridge/lib/init.lua',
 	'bridge/core/server.lua',
 	'bridge/qb/server.lua',
 	'bridge/qbx/server.lua',
@@ -46,6 +50,8 @@ files {
 	'data/jobs.json',
 	'data/gangs.json',
 	'modules/playerdata.lua',
+	'bridge/lib/lua/client/*.lua',
+	'bridge/lib/lua/shared/*.lua',
 	'shared/locale.lua',
 	'imports.lua',
 	'locale.lua',

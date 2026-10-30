@@ -66,12 +66,8 @@ function ESX.Await(conditionFunc, errorMessage, timeoutMs)
     timeoutMs = timeoutMs or 1000
     if not ESX.IsFunctionReference(conditionFunc) then error('Condition Function should be a function reference.') end
     local invoker = GetInvokingResource()
-    local start = GetGameTimer()
-    while GetGameTimer() - start < timeoutMs do
-        local result = conditionFunc()
-        if result then return true, result end
-        Wait(0)
-    end
+    local result = aiLib.waitFor(function() return conditionFunc() or nil end, timeoutMs)
+    if result then return true, result end
     if errorMessage then error(('[%s] -> %s'):format(invoker, errorMessage)) end
     return false
 end
@@ -82,11 +78,7 @@ ESX.Math = {}
 ---@param numDecimalPlaces? integer
 ---@return number
 function ESX.Math.Round(value, numDecimalPlaces)
-    if numDecimalPlaces then
-        local power = 10 ^ numDecimalPlaces
-        return math.floor((value * power) + 0.5) / power
-    end
-    return math.floor(value + 0.5)
+    return aiLib.numbers.round(value, numDecimalPlaces)
 end
 
 ---@param value number
@@ -97,9 +89,7 @@ function ESX.Round(value, numDecimalPlaces) return ESX.Math.Round(value, numDeci
 ---@param value number|string
 ---@return string
 function ESX.Math.GroupDigits(value)
-    local left, num, right = string.match(tostring(value), '^([^%d]*%d)(%d*)(.-)$')
-    if not left then return tostring(value) end
-    return left .. (num:reverse():gsub('(%d%d%d)', '%1,'):reverse()) .. right
+    return aiLib.numbers.groupDigits(value)
 end
 
 ---@param value any
@@ -120,8 +110,7 @@ end
 ---@param target vector3|table
 ---@return number
 function ESX.Math.GetHeadingFromCoords(origin, target)
-    local heading = math.deg(math.atan(origin.y - target.y, origin.x - target.x)) + 90
-    return (heading + 360) % 360
+    return aiLib.numbers.headingTo(origin, target)
 end
 
 ESX.Table = {}

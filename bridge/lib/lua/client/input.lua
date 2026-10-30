@@ -1,0 +1,1 @@
+return aiLib.menu.input

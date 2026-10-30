@@ -596,7 +596,15 @@ end
 function ESX.HideUI() BridgeUI.hideText('esx_textui') end
 
 -- Help notifications become ai-core's prompt (scripts call them every frame): hidden once the calls stop.
-local help = { text = nil, untilTime = 0, watching = false }
+local help = { text = nil, untilTime = 0 }
+---@type AiLibJob
+local helpWatch
+helpWatch = aiLib.every(100, function()
+    if GetGameTimer() < help.untilTime then return end
+    help.text = nil
+    BridgeUI.hideText('esx_help')
+    helpWatch:set(false)
+end, { active = false, name = 'esx help' })
 
 ---@param msg string
 ---@param thisFrame? boolean
@@ -609,13 +617,7 @@ function ESX.ShowHelpNotification(msg, thisFrame, _beep, duration)
         help.text = text
         BridgeUI.showText('esx_help', text, GetInvokingResource() or RESOURCE)
     end
-    if help.watching then return end
-    help.watching = true
-    CreateThread(function()
-        while GetGameTimer() < help.untilTime do Wait(100) end
-        help.watching, help.text = false, nil
-        BridgeUI.hideText('esx_help')
-    end)
+    if not helpWatch.running then helpWatch:set(true) end
 end
 
 ---@param msg string

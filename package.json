@@ -39,6 +39,8 @@
     "typescript": "^6.0.3"
   },
   "fxServerScripts": [
+    "bridge/core/lib.lua",
+    "bridge/lib/init.lua",
     "bridge/core/server.lua",
     "bridge/qb/server.lua",
     "bridge/qbx/server.lua",
@@ -46,6 +48,8 @@
     "bridge/esx/shared.lua"
   ],
   "fxClientScripts": [
+    "bridge/core/lib.lua",
+    "bridge/lib/init.lua",
     "bridge/core/client.lua",
     "bridge/core/ui.lua",
     "bridge/qb/client.lua",
@@ -76,6 +80,8 @@
     "data/jobs.json",
     "data/gangs.json",
     "modules/playerdata.lua",
+    "bridge/lib/lua/client/*.lua",
+    "bridge/lib/lua/shared/*.lua",
     "shared/locale.lua",
     "imports.lua",
     "locale.lua"

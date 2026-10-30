@@ -1,7 +1,12 @@
-import { onServerEvent, registerExport } from "@aicore-fivem/lib/client";
+import {
+  Keybind,
+  onServerEvent,
+  registerExport,
+} from "@aicore-fivem/lib/client";
 import { asArgs, logSafe } from "@aicore-fivem/lib/shared";
 import { CORE, type Notification } from "@aicore-fivem/shared";
 import { NuiMessage } from "common/nui";
+import { Locale } from "common";
 
 const KINDS = ["success", "error", "info", "warning"] as const;
 
@@ -39,13 +44,27 @@ onServerEvent(
   (n) => show(n),
 );
 
+let progressShown = false;
+
 registerExport("ShowProgress", (label: unknown, duration: unknown) => {
-  if (typeof label === "string" && typeof duration === "number")
-    SendNUIMessage({
-      action: NuiMessage.progressShow,
-      data: { label: logSafe(label, 60), duration },
-    });
+  if (typeof label !== "string" || typeof duration !== "number") return;
+  progressShown = true;
+  SendNUIMessage({
+    action: NuiMessage.progressShow,
+    data: { label: logSafe(label, 60), duration },
+  });
 });
-registerExport("HideProgress", () =>
-  SendNUIMessage({ action: NuiMessage.progressHide }),
-);
+registerExport("HideProgress", () => {
+  progressShown = false;
+  SendNUIMessage({ action: NuiMessage.progressHide });
+});
+
+// One cancel key for every resource's progress bar (lib `progress` with `canCancel`, the framework bars).
+new Keybind({
+  name: "aicore_cancel_progress",
+  description: Locale("KEYBIND_CANCEL_PROGRESS"),
+  defaultKey: "BACK",
+  onPressed: () => {
+    if (progressShown) emit(CORE.clientCancelProgressEvent);
+  },
+});

@@ -51,7 +51,7 @@ local kinds = { primary = 'info', inform = 'info', info = 'info', success = 'suc
 ---@param duration? integer
 function BridgeClient.notify(text, kind, duration)
     if type(text) == 'table' then text = text.text or text.caption or '' end
-    exports['ai-core']:Notify({ text = tostring(text), kind = kinds[kind or 'info'] or 'info', duration = duration })
+    aiLib.notify(tostring(text), kinds[kind or 'info'] or 'info', duration)
 end
 
 --- ai-core's values the job and gang views are built from.

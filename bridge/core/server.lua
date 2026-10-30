@@ -172,6 +172,16 @@ local function setOnDuty(job, source, on)
     end
 end
 
+--- The words after the command name of a typed command line (the frameworks hand commands their raw arguments).
+---@param raw string
+---@return string[]
+function Bridge.words(raw)
+    local out = {}
+    for word in tostring(raw or ''):gmatch('%S+') do out[#out + 1] = word end
+    table.remove(out, 1)
+    return out
+end
+
 ---@param source integer
 ---@return string|nil
 function Bridge.license(source)
@@ -181,7 +191,7 @@ end
 ---@param source integer
 ---@return boolean
 function Bridge.isAdmin(source)
-    return source > 0 and IsPlayerAceAllowed(tostring(source), 'ai.admin')
+    return aiLib.isAdmin(source)
 end
 
 local kinds = { primary = 'info', inform = 'info', info = 'info', success = 'success', error = 'error', warning = 'warning' }
@@ -193,7 +203,7 @@ local kinds = { primary = 'info', inform = 'info', info = 'info', success = 'suc
 ---@param duration? integer
 function Bridge.notify(source, text, kind, duration)
     if type(text) == 'table' then text = text.text or text.caption or '' end
-    TriggerClientEvent('ai-core:client:notify', source, { text = tostring(text), kind = kinds[kind or 'info'] or 'info', duration = duration })
+    aiLib.notify(source, tostring(text), kinds[kind or 'info'] or 'info', duration)
 end
 
 ---@param source integer
@@ -307,25 +317,17 @@ CreateThread(function()
     end
 end)
 
---- Callbacks of both frameworks share one gate: at most 30 requests per player per 10 s.
----@type table<integer, { count: integer, reset: integer }>
-local rates = {}
+--- Callbacks of both frameworks share one gate: at most 30 requests per player in any 10 s.
+local rates = aiLib.RateLimit.new(30, 10000)
 
 ---@param source integer
 ---@return boolean
 function Bridge.allow(source)
-    local now = GetGameTimer()
-    local rate = rates[source]
-    if not rate or now > rate.reset then
-        rates[source] = { count = 1, reset = now + 10000 }
-        return true
-    end
-    rate.count = rate.count + 1
-    return rate.count <= 30
+    return rates:take(source)
 end
 
 AddEventHandler('playerDropped', function()
-    rates[source] = nil
+    rates:release(source)
 end)
 
 --- ai-core's inventory layer (JS side, `resource/server/inventory`): the active inventory answers every item call,

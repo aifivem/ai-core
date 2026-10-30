@@ -358,24 +358,14 @@ function F.GetClosestObject(coords) return closest(GetGamePool('CObject'), coord
 ---@return boolean, integer|string
 function F.LoadModel(model, timeout)
     local hash = type(model) == 'number' and model or joaat(model)
-    if HasModelLoaded(hash) then return true, model end
-    if not IsModelValid(hash) and not IsModelInCdimage(hash) then return false, hash end
-    RequestModel(hash)
-    local limit = GetGameTimer() + (timeout or 5000)
-    while not HasModelLoaded(hash) and GetGameTimer() < limit do Wait(0) end
-    return HasModelLoaded(hash), hash
+    return aiLib.requestModel(hash, timeout or 5000) ~= nil, hash
 end
 
 ---@param animDict string
 ---@param timeout? integer
 ---@return boolean, string
 function F.RequestAnimDict(animDict, timeout)
-    if HasAnimDictLoaded(animDict) then return true, animDict end
-    if not DoesAnimDictExist(animDict) then return false, animDict end
-    RequestAnimDict(animDict)
-    local limit = GetGameTimer() + (timeout or 5000)
-    while not HasAnimDictLoaded(animDict) and GetGameTimer() < limit do Wait(0) end
-    return HasAnimDictLoaded(animDict), animDict
+    return aiLib.requestAnimDict(animDict, timeout or 5000) ~= nil, animDict
 end
 
 ---@param vehicle integer
@@ -388,7 +378,7 @@ end
 ---@return string|nil
 function F.GetVehicleLabel(vehicle)
     if not vehicle or vehicle == 0 then return end
-    return GetLabelText(GetDisplayNameFromVehicleModel(GetEntityModel(vehicle)))
+    return aiLib.vehicleLabel(vehicle)
 end
 
 ---@param x number
@@ -431,13 +421,13 @@ end
 ---@param coords vector3|table
 ---@return { main: string, cross: string }
 function F.GetStreetNametAtCoords(coords)
-    local main, cross = GetStreetNameAtCoord(coords.x, coords.y, coords.z)
-    return { main = GetStreetNameFromHashKey(main), cross = GetStreetNameFromHashKey(cross) }
+    local location = aiLib.locationName(vector3(coords.x, coords.y, coords.z))
+    return { main = location.street, cross = location.crossing or '' }
 end
 
 ---@param coords vector3
 ---@return string
-function F.GetZoneAtCoords(coords) return GetLabelText(GetNameOfZone(coords.x, coords.y, coords.z)) end
+function F.GetZoneAtCoords(coords) return aiLib.locationName(vector3(coords.x, coords.y, coords.z)).zone end
 
 ---@param entity? integer
 ---@return string
@@ -466,8 +456,8 @@ end
 ---@return vector3|table|nil
 function F.GetGroundZCoord(coords)
     if not coords then return end
-    local found, groundZ = GetGroundZFor_3dCoord(coords.x, coords.y, coords.z, false)
-    return found and vector3(coords.x, coords.y, groundZ) or coords
+    local ground = aiLib.groundZ(coords.x, coords.y, coords.z)
+    return ground and vector3(coords.x, coords.y, ground) or coords
 end
 
 ---@param entity integer

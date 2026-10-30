@@ -38,8 +38,7 @@ end
 ---@param text any
 ---@return string
 function BridgeUI.clean(text)
-    if text == nil then return '' end
-    return (tostring(text):gsub('<[^>]*>', ''):gsub('~[%a_]+~', ''):gsub('&nbsp;', ' '))
+    return aiLib.stripGameText(text)
 end
 
 --- A Font Awesome class list (`fas fa-scroll`) as ai-core's icon name (`scroll`); nil without one.
@@ -51,22 +50,15 @@ function BridgeUI.icon(icon)
     return name ~= '' and name or nil
 end
 
----@type table<string, string>|nil
-local texts
+---@type (fun(key: string, ...: string|number): string)|nil
+local translate
 
---- One of ai-core's lang texts (`locales/en.json` overlaid with the `ai:locale` language).
+--- One of ai-core's lang texts (ai-lib's locale: `locales/en.json` overlaid with the `ai:locale` language).
 ---@param key string
 ---@return string
 function BridgeUI.text(key)
-    local t = texts
-    if not t then
-        t = json.decode(LoadResourceFile(RESOURCE, 'locales/en.json') or '{}') or {}
-        local lang = GetConvar('ai:locale', 'en')
-        local own = lang ~= 'en' and LoadResourceFile(RESOURCE, ('locales/%s.json'):format(lang))
-        for k, v in pairs(own and json.decode(own) or {}) do t[k] = v end
-        texts = t
-    end
-    return t[key] or key
+    translate = translate or aiLib.locale(RESOURCE)
+    return translate(key)
 end
 
 -- Dialogs ------------------------------------------------------------------------------------------------------------
@@ -198,85 +190,47 @@ end)
 ---@field scenario? string
 ---@field onDone fun(cancelled: boolean)
 
----@type { options: BridgeProgressOptions, cancelled: boolean, silent: boolean }|nil
+---@type { options: BridgeProgressOptions, silent: boolean }|nil
 local running = nil
 
-local DISABLED = {
-    disableMovement = { 30, 31, 36, 21, 44 },
-    disableCarMovement = { 63, 64, 71, 72, 75 },
-    disableMouse = { 1, 2, 106 },
-    disableCombat = { 24, 25, 37, 47, 58, 140, 141, 142, 143, 257, 263, 264 },
-}
-
----@param disable table
-local function disableControls(disable)
-    for kind, list in pairs(DISABLED) do
-        if disable[kind] then
-            for i = 1, #list do DisableControlAction(0, list[i], true) end
-        end
-    end
-    if disable.disableCombat then DisablePlayerFiring(PlayerId(), true) end
-end
-
----@param dict string
----@return boolean
-local function loadAnimDict(dict)
-    if not DoesAnimDictExist(dict) then return false end
-    RequestAnimDict(dict)
-    local timeout = GetGameTimer() + 3000
-    while not HasAnimDictLoaded(dict) do
-        if GetGameTimer() > timeout then return false end
-        Wait(0)
-    end
-    return true
-end
-
---- Runs a timed action with ai-core's progress bar (the frameworks' progress bars); false while one runs.
+--- Runs a timed action with ai-lib's progress (ai-core's bar; the frameworks' progress bars); false while one runs.
+--- The cancel key is ai-core's (`aicore_cancel_progress`), the same one every resource's progress uses.
 ---@param options BridgeProgressOptions
 ---@return boolean
 function BridgeUI.progress(options)
     if running then return false end
-    local own = { options = options, cancelled = false, silent = false }
+    local own = { options = options, silent = false }
     running = own
     CreateThread(function()
-        local ped = PlayerPedId()
-        local anim = options.anim
-        if anim and loadAnimDict(anim.dict) then
-            TaskPlayAnim(ped, anim.dict, anim.clip, 3.0, 3.0, -1, anim.flag or 1, 0, false, false, false)
-            RemoveAnimDict(anim.dict)
-        elseif options.scenario then
-            TaskStartScenarioInPlace(ped, options.scenario, 0, true)
-        end
-        if options.freeze then FreezeEntityPosition(ped, true) end
-        core:ShowProgress(BridgeUI.clean(options.label), options.duration)
-        local finish = GetGameTimer() + options.duration
-        local disable = options.disable
-        local perFrame = disable and next(disable) ~= nil
-        while GetGameTimer() < finish and not own.cancelled do
-            if not options.whileDead and IsEntityDead(ped) then own.cancelled = true end
-            if perFrame then disableControls(disable) end
-            Wait(perFrame and 0 or 100)
-        end
-        core:HideProgress()
-        if anim then StopAnimTask(ped, anim.dict, anim.clip, 1.0) elseif options.scenario then ClearPedTasks(ped) end
-        if options.freeze then FreezeEntityPosition(ped, false) end
+        local d = options.disable or {}
+        local done = aiLib.progress({
+            label = BridgeUI.clean(options.label),
+            duration = options.duration,
+            anim = options.anim,
+            scenario = options.scenario,
+            allowVehicle = true,
+            canCancel = options.canCancel ~= false,
+            whileDead = options.whileDead,
+            freeze = options.freeze,
+            disable = { move = d.disableMovement, car = d.disableCarMovement, mouse = d.disableMouse, combat = d.disableCombat },
+        })
         running = nil
-        if not own.silent then BridgeUI.call(options.onDone, own.cancelled) end
+        if not own.silent then BridgeUI.call(options.onDone, not done) end
     end)
     return true
 end
 
---- Cancels the running progress (the frameworks' cancel key and functions); `force` cancels one that cannot be.
+--- Cancels the running progress (the frameworks' cancel functions); `force` cancels one that cannot be.
 ---@param force? boolean
 function BridgeUI.cancelProgress(force)
-    if running and (force or running.options.canCancel ~= false) then running.cancelled = true end
+    if running and (force or running.options.canCancel ~= false) then aiLib.progress.cancel() end
 end
 
 ---@return boolean
 function BridgeUI.isProgressRunning() return running ~= nil end
 
+-- Scripts that run QB's `cancelprog` command themselves.
 RegisterCommand('cancelprog', function() BridgeUI.cancelProgress() end, false)
-RegisterKeyMapping('cancelprog', BridgeUI.text('KEYBIND_CANCEL_PROGRESS'), 'keyboard', 'BACK')
 
 -- A stopped resource takes its dialogs, prompts and progress with it, without calling back into it.
 AddEventHandler('onClientResourceStop', function(resource)
@@ -293,6 +247,7 @@ AddEventHandler('onClientResourceStop', function(resource)
         if owner == resource then BridgeUI.hideText(id) end
     end
     if running and running.options.owner == resource then
-        running.silent, running.cancelled = true, true
+        running.silent = true
+        aiLib.progress.cancel()
     end
 end)

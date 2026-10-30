@@ -7,59 +7,39 @@ ESX.serverId = GetPlayerServerId(ESX.playerId)
 ESX.Game.Utils = {}
 ESX.Streaming = {}
 
--- Streaming ----------------------------------------------------------------------------------------------------------
+-- Streaming (ai-lib's loaders: a missing asset or a load past the timeout answers nil instead of waiting forever) ----
 
----@param has fun(asset: any): boolean
----@param request fun(asset: any)
 ---@param asset any
 ---@param cb? function
-local function load(has, request, asset, cb)
-    if not has(asset) then
-        request(asset)
-        while not has(asset) do Wait(0) end
-    end
-    if cb then cb(asset) end
+local function done(asset, cb)
+    if asset ~= nil and cb then cb(asset) end
     return asset
 end
 
 ---@param modelHash string|integer
 ---@param cb? function
 ---@return integer|nil
-function ESX.Streaming.RequestModel(modelHash, cb)
-    modelHash = type(modelHash) == 'number' and modelHash or joaat(modelHash)
-    if not IsModelInCdimage(modelHash) then return end
-    return load(HasModelLoaded, RequestModel, modelHash, cb)
-end
+function ESX.Streaming.RequestModel(modelHash, cb) return done(aiLib.requestModel(modelHash), cb) end
 
 ---@param textureDict string
 ---@param cb? function
-function ESX.Streaming.RequestStreamedTextureDict(textureDict, cb)
-    return load(HasStreamedTextureDictLoaded, function(d) RequestStreamedTextureDict(d, false) end, textureDict, cb)
-end
+function ESX.Streaming.RequestStreamedTextureDict(textureDict, cb) return done(aiLib.requestTextureDict(textureDict), cb) end
 
 ---@param assetName string
 ---@param cb? function
-function ESX.Streaming.RequestNamedPtfxAsset(assetName, cb)
-    return load(HasNamedPtfxAssetLoaded, RequestNamedPtfxAsset, assetName, cb)
-end
+function ESX.Streaming.RequestNamedPtfxAsset(assetName, cb) return done(aiLib.requestPtfxAsset(assetName), cb) end
 
 ---@param animSet string
 ---@param cb? function
-function ESX.Streaming.RequestAnimSet(animSet, cb)
-    return load(HasAnimSetLoaded, RequestAnimSet, animSet, cb)
-end
+function ESX.Streaming.RequestAnimSet(animSet, cb) return done(aiLib.requestAnimSet(animSet), cb) end
 
 ---@param animDict string
 ---@param cb? function
-function ESX.Streaming.RequestAnimDict(animDict, cb)
-    return load(HasAnimDictLoaded, RequestAnimDict, animDict, cb)
-end
+function ESX.Streaming.RequestAnimDict(animDict, cb) return done(aiLib.requestAnimDict(animDict), cb) end
 
 ---@param weaponHash string|integer
 ---@param cb? function
-function ESX.Streaming.RequestWeaponAsset(weaponHash, cb)
-    return load(HasWeaponAssetLoaded, function(w) RequestWeaponAsset(w, 31, 0) end, weaponHash, cb)
-end
+function ESX.Streaming.RequestWeaponAsset(weaponHash, cb) return done(aiLib.requestWeaponAsset(weaponHash), cb) end
 
 -- Game ---------------------------------------------------------------------------------------------------------------
 
@@ -67,10 +47,7 @@ end
 ---@param transparent? boolean
 ---@return integer|nil, string|nil
 function ESX.Game.GetPedMugshot(ped, transparent)
-    if not DoesEntityExist(ped) then return end
-    local mugshot = transparent and RegisterPedheadshotTransparent(ped) or RegisterPedheadshot(ped)
-    while not IsPedheadshotReady(mugshot) do Wait(0) end
-    return mugshot, GetPedheadshotTxdString(mugshot)
+    return aiLib.pedHeadshot(ped, transparent)
 end
 
 ---@param entity integer
@@ -327,29 +304,29 @@ end
 ---@type table<integer, ESXPointInternal>
 local points = {}
 local nextPoint = 0
-local looping = false
+--- The points are spheres of ai-lib's Zones (one scheduler job for all of them, each checked every 500 ms).
+local zones = aiLib.Zones.new()
 
-local function pointsLoop()
-    if looping then return end
-    looping = true
-    CreateThread(function()
-        while next(points) do
-            local coords = GetEntityCoords(PlayerPedId())
-            for _, point in pairs(points) do
-                if not point.hidden and #(coords - point.coords) <= point.distance then
-                    if not point.nearby then
-                        point.nearby = true
-                        BridgeUI.call(point.enter)
-                    end
-                elseif point.nearby then
-                    point.nearby = false
-                    BridgeUI.call(point.leave)
-                end
-            end
-            Wait(500)
-        end
-        looping = false
-    end)
+---@param handle integer
+local function leave(handle)
+    local point = points[handle]
+    if point and point.nearby then
+        point.nearby = false
+        BridgeUI.call(point.leave)
+    end
+end
+
+---@param handle integer
+local function watch(handle)
+    local point = points[handle]
+    zones:add(tostring(handle), {
+        shape = { type = 'sphere', center = point.coords, radius = point.distance },
+        onEnter = function()
+            point.nearby = true
+            BridgeUI.call(point.enter)
+        end,
+        onExit = function() leave(handle) end,
+    })
 end
 
 ---@param coords vector3
@@ -368,17 +345,30 @@ function ESX.CreatePointInternal(coords, distance, hidden, enter, leave)
         leave = leave,
         resource = GetInvokingResource() or GetCurrentResourceName(),
     }
-    pointsLoop()
+    if not hidden then watch(nextPoint) end
     return nextPoint
 end
 
 ---@param handle integer
-function ESX.RemovePointInternal(handle) points[handle] = nil end
+function ESX.RemovePointInternal(handle)
+    if not points[handle] then return end
+    zones:remove(tostring(handle))
+    leave(handle)
+    points[handle] = nil
+end
 
 ---@param handle integer
 ---@param hidden boolean
 function ESX.HidePointInternal(handle, hidden)
-    if points[handle] then points[handle].hidden = hidden end
+    local point = points[handle]
+    if not point or point.hidden == hidden then return end
+    point.hidden = hidden
+    if hidden then
+        zones:remove(tostring(handle))
+        leave(handle)
+    else
+        watch(handle)
+    end
 end
 
 -- Inputs and utilities ------------------------------------------------------------------------------------------------
@@ -389,7 +379,8 @@ function ESX.HashString(str)
     return ('~INPUT_%s~'):format(('%x'):format(joaat(str) & 0x7fffffff + 2 ^ 31):upper())
 end
 
---- A key mapping for the calling script (registered in ai-core, so it goes when ai-core stops).
+--- A key mapping for the calling script: an ai-lib Keybind, so it shows in the panel's keybinds and the keys screen
+--- (registered in ai-core, so it goes when ai-core stops).
 ---@param command_name string
 ---@param label string
 ---@param input_group string
@@ -397,10 +388,14 @@ end
 ---@param on_press function
 ---@param on_release? function
 function ESX.RegisterInput(command_name, label, input_group, key, on_press, on_release)
-    local command = on_release and '+' .. command_name or command_name
-    RegisterCommand(command, function() BridgeUI.call(on_press) end, false)
-    if on_release then RegisterCommand('-' .. command_name, function() BridgeUI.call(on_release) end, false) end
-    RegisterKeyMapping(command, label or '', input_group or 'keyboard', key or '')
+    aiLib.Keybind.new({
+        name = command_name,
+        description = label or command_name,
+        defaultKey = key ~= '' and key or nil,
+        defaultMapper = input_group ~= '' and input_group or nil,
+        onPressed = function() BridgeUI.call(on_press) end,
+        onReleased = on_release and function() BridgeUI.call(on_release) end or nil,
+    })
 end
 
 ---@param account string
@@ -422,6 +417,9 @@ end
 
 AddEventHandler('onClientResourceStop', function(resource)
     for handle, point in pairs(points) do
-        if point.resource == resource then points[handle] = nil end
+        if point.resource == resource then
+            zones:remove(tostring(handle))
+            points[handle] = nil
+        end
     end
 end)
