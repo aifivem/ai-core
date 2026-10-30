@@ -41,6 +41,7 @@
   "fxServerScripts": [
     "bridge/core/lib.lua",
     "bridge/lib/init.lua",
+    "bridge/core/shapes.lua",
     "bridge/core/server.lua",
     "bridge/qb/server.lua",
     "bridge/qbx/server.lua",
@@ -50,6 +51,7 @@
   "fxClientScripts": [
     "bridge/core/lib.lua",
     "bridge/lib/init.lua",
+    "bridge/core/shapes.lua",
     "bridge/core/client.lua",
     "bridge/core/ui.lua",
     "bridge/qb/client.lua",

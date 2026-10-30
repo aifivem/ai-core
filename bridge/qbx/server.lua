@@ -86,19 +86,7 @@ local function groupsOf(source)
     return out
 end
 
----@param groups table<string, integer>
----@param filter string|string[]|table<string, integer>
----@return string|nil, integer|nil
-local function match(groups, filter)
-    if type(filter) == 'string' then
-        if groups[filter] then return filter, groups[filter] end
-        return
-    end
-    for key, value in pairs(filter) do
-        local name, min = tostring(type(key) == 'number' and value or key), type(key) == 'number' and 0 or value
-        if groups[name] and groups[name] >= min then return name, groups[name] end
-    end
-end
+local match = BridgeShapes.matchGroup
 
 provide('GetGroups', groupsOf)
 provide('HasGroup', function(source, filter) return match(groupsOf(source), filter) end)

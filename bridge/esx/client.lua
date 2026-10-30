@@ -3,10 +3,7 @@
 
 local function esxAccount(account) return account == 'cash' and 'money' or account end
 
----@param job table
-local function esxJob(job)
-    return { id = 0, name = job.name, label = job.label, grade = job.grade, grade_name = (job.gradeLabel:lower():gsub('%s+', '_')), grade_label = job.gradeLabel, grade_salary = job.salary, skin_male = {}, skin_female = {}, onDuty = job.onDuty }
-end
+local esxJob = BridgeShapes.esxJob
 
 ---@class ESXClientPlayerData
 ---@field identifier string

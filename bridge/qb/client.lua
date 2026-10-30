@@ -13,15 +13,7 @@
 ---@field metadata table
 ---@field items table
 
----@param job table
-local function qbJob(job)
-    return { name = job.name, label = job.label, type = job.type, payment = job.salary, onduty = job.onDuty, isboss = job.boss, grade = { name = job.gradeLabel, level = job.grade } }
-end
-
----@param gang table
-local function qbGang(gang)
-    return { name = gang.name, label = gang.label, isboss = gang.boss, grade = { name = gang.gradeLabel, level = gang.grade } }
-end
+local qbJob, qbGang = BridgeShapes.qbJob, BridgeShapes.qbGang
 
 --- QB's metadata defaults under ai-core's character metadata.
 local META_DEFAULTS = { hunger = 100, thirst = 100, stress = 0, isdead = false, inlaststand = false, ishandcuffed = false, armor = 0, injail = 0, licences = {} }

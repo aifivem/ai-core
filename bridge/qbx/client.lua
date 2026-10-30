@@ -12,12 +12,5 @@ provide('HasPrimaryGroup', function(filter)
     if not data.job then return end
     local groups = { [data.job.name] = data.job.grade.level }
     if data.gang and data.gang.name ~= 'none' then groups[data.gang.name] = data.gang.grade.level end
-    if type(filter) == 'string' then
-        if groups[filter] then return filter, groups[filter] end
-        return
-    end
-    for key, value in pairs(filter) do
-        local name, min = tostring(type(key) == 'number' and value or key), type(key) == 'number' and 0 or value
-        if groups[name] and groups[name] >= min then return name, groups[name] end
-    end
+    return BridgeShapes.matchGroup(groups, filter)
 end)
