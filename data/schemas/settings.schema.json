@@ -151,6 +151,56 @@
         "fromJobAccount"
       ]
     },
+    "primeTime": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Lower salary outside prime time: Off: full salary all day. The hours still answer scripts that ask whether it is prime time.",
+          "type": "boolean"
+        },
+        "source": {
+          "description": "Prime hours from: Automatic uses the hours of a script that keeps its own (tgiann-policealert: config.primeTime in its config.lua) while it runs, else the hours below. A picked script that is stopped pays full salary all day.",
+          "enum": [
+            "auto",
+            "ai-core",
+            "tgiann-policealert"
+          ]
+        },
+        "offPrimeMultiplier": {
+          "description": "Salary outside prime time: 0.5 pays half the salary, 1 the full salary. A rank with its own off prime salary gets that instead.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "start": {
+          "description": "Starts at",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 23
+        },
+        "finish": {
+          "description": "Ends at",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 23
+        }
+      },
+      "required": [
+        "enabled",
+        "source",
+        "offPrimeMultiplier",
+        "start",
+        "finish"
+      ]
+    },
+    "primeTimeActive": {
+      "description": "Hours in use now: Which hours decide prime time at the moment: the hours set here or a script's name.",
+      "enum": [
+        "none",
+        "ai-core",
+        "tgiann-policealert"
+      ]
+    },
     "saveIntervalMinutes": {
       "description": "Save every",
       "type": "integer",
@@ -205,6 +255,14 @@
         "ai-policealert"
       ]
     },
+    "appearance": {
+      "description": "Clothing script: Automatic uses the first one that runs; ai-appearance comes last.",
+      "enum": [
+        "auto",
+        "tgiann-clothing",
+        "ai-appearance"
+      ]
+    },
     "interaction": {
       "description": "Interaction style: Prompt: a box on the right and the interaction key when close. Target: players hold the target key and pick the option on the point or NPC (needs a target script such as ai-target; without one the prompt is used).",
       "enum": [
@@ -241,6 +299,25 @@
       "required": [
         "check",
         "ignore"
+      ]
+    },
+    "recommendations": {
+      "type": "object",
+      "properties": {
+        "dismissed": {
+          "description": "Dismissed recommendations: Recommendations dismissed from the dashboard. Remove one to show it again.",
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[a-z0-9_-]{2,64}$"
+          }
+        }
+      },
+      "required": [
+        "dismissed"
       ]
     },
     "spawn": {

@@ -73,6 +73,7 @@ export function coreSchema(
   inventories: string[] = [],
   keySystems: string[] = [],
   alertSystems: string[] = [],
+  clothingSystems: string[] = [],
 ): PanelSchema {
   const accountOptions = accounts.map((value) => ({ value, label: value }));
   return {
@@ -138,6 +139,7 @@ export function coreSchema(
           inventory: { type: "enum", values: ["auto", ...inventories] },
           vehicleKeys: { type: "enum", values: ["auto", ...keySystems] },
           dispatch: { type: "enum", values: ["auto", ...alertSystems] },
+          appearance: { type: "enum", values: ["auto", ...clothingSystems] },
           interaction: { type: "enum", values: ["prompt", "target"] },
           refuseOnConflict: { type: "bool" },
           setupDone: { type: "bool" },
@@ -166,6 +168,7 @@ export function coreSchema(
           inventory: "auto",
           vehicleKeys: "auto",
           dispatch: "auto",
+          appearance: "auto",
           interaction: "prompt",
           refuseOnConflict: true,
           setupDone: false,
@@ -411,6 +414,23 @@ export function coreSchema(
                 options: [
                   { value: "auto", label: "ADMIN_O_INVENTORY_AUTO" },
                   ...alertSystems.map((value) => ({ value, label: value })),
+                ],
+              },
+            ],
+          },
+          {
+            icon: "shirt",
+            title: "ADMIN_C_APPEARANCE",
+            desc: "ADMIN_C_APPEARANCE_DESC",
+            fields: [
+              {
+                widget: "select",
+                path: "appearance",
+                label: "ADMIN_F_APPEARANCE",
+                hint: "ADMIN_H_APPEARANCE",
+                options: [
+                  { value: "auto", label: "ADMIN_O_INVENTORY_AUTO" },
+                  ...clothingSystems.map((value) => ({ value, label: value })),
                 ],
               },
             ],

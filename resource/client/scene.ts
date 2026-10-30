@@ -1,15 +1,13 @@
-import {
-  optionalExport,
-  requestAnimDict,
-  requestModel,
-} from "@aicore-fivem/lib/client";
+import { requestAnimDict, requestModel } from "@aicore-fivem/lib/client";
 import { createLogger, waitFor } from "@aicore-fivem/lib/shared";
 import type {
+  CharacterAppearance,
   CharacterCard,
   CharacterScene,
   SceneSpot,
   Sex,
 } from "@aicore-fivem/shared";
+import { applyLook, sameModel } from "./appearance";
 import { SceneCamera } from "./sceneCamera";
 import { worldSync } from "./world";
 import { visibility } from "./hud";
@@ -44,7 +42,7 @@ export async function waitForGround(): Promise<void> {
 
 /**
  * The world behind the character screen: the player's characters stand on the scene's spots as local peds in their
- * saved look (ai-appearance, when it runs), the camera frames the picked one. The player itself waits hidden.
+ * saved look (appearance layer, when a clothing script runs), the camera frames the picked one. The player itself waits hidden.
  */
 export class SelectScene {
   private scene: CharacterScene | null = null;
@@ -52,6 +50,8 @@ export class SelectScene {
   private focused: number | null = null;
   /** Character id -> its ped and the spot index it stands on. */
   private readonly peds = new Map<number, { ped: number; spot: number }>();
+  /** Looks of the cards by character id; they may arrive before the scene and stay until a character spawns. */
+  private readonly looks = new Map<number, CharacterAppearance>();
   private readonly camera = new SceneCamera();
   private queue: Promise<void> = Promise.resolve();
   /** Raised by `leave`: ped creation still loading for an older scene drops its ped. */
@@ -111,11 +111,29 @@ export class SelectScene {
     if (spot) this.camera.frame(spot, scene.fov, false);
   }
 
-  /** Puts a character's saved look on its ped (the look arrives from ai-appearance, possibly after the ped). */
-  dress(id: number): void {
+  /** A card's look arrived (possibly after its ped): dress the ped. */
+  setLook(id: number, look: CharacterAppearance): void {
+    this.looks.set(id, look);
+    this.dress(id);
+  }
+
+  /** Forgets the card looks (a character spawned). */
+  clearLooks(): void {
+    this.looks.clear();
+  }
+
+  /** Puts a character's look on its ped; a ped of another model (a non-freemode look) is made again with the look's. */
+  private dress(id: number): void {
     const entry = this.peds.get(id);
-    if (entry)
-      optionalExport("ai-appearance")?.ApplyCharacterAppearance(entry.ped, id);
+    const look = this.looks.get(id);
+    if (!entry || !look) return;
+    if (sameModel(GetEntityModel(entry.ped), look.model)) {
+      applyLook(entry.ped, look);
+      return;
+    }
+    DeletePed(entry.ped);
+    this.peds.delete(id);
+    void this.sync();
   }
 
   /** Deletes the peds, drops the camera and gives time and weather back to the sync. */
@@ -174,16 +192,22 @@ export class SelectScene {
       const card = this.characters.find((c) => c.id === id);
       const spot = scene.spots[index];
       if (this.peds.has(id) || !card || !spot) continue;
-      const ped = await this.createPed(card.sex, spot);
+      const ped = await this.createPed(
+        this.looks.get(id)?.model ?? MODELS[card.sex],
+        spot,
+      );
       if (generation !== this.generation) return DeletePed(ped);
       this.peds.set(id, { ped, spot: index });
       this.dress(id);
     }
   }
 
-  /** A local (not networked) frozen ped on the spot, default freemode clothes, playing the spot's idle. */
-  private async createPed(sex: Sex, spot: SceneSpot): Promise<number> {
-    const hash = await requestModel(MODELS[sex]);
+  /** A local (not networked) frozen ped on the spot, default clothes, playing the spot's idle. */
+  private async createPed(
+    model: string | number,
+    spot: SceneSpot,
+  ): Promise<number> {
+    const hash = await requestModel(model);
     const { x, y, z, heading } = spot.ped;
     const ped = CreatePed(4, hash, x, y, z, heading, false, false);
     SetModelAsNoLongerNeeded(hash);

@@ -69,8 +69,11 @@ function vec4(value, fallback) {
 		heading: num$1(v.heading, fallback.heading)
 	};
 }
-// ../../../packages/lib/src/shared/records.ts
-const isObject = (value) => typeof value == "object" && !!value && !Array.isArray(value);
+// ../../../packages/lib/src/shared/strict.ts
+function readInt(value, min, max) {
+	return Number.isInteger(value) && value >= min && value <= max ? value : null;
+}
+const readId = (value) => readInt(value, 1, 2147483647), isObject = (value) => typeof value == "object" && !!value && !Array.isArray(value);
 function readRecords(raw, readOne) {
 	let out = new Map();
 	if (!isObject(raw)) return out;
@@ -237,7 +240,7 @@ const CORE = {
 	clientPlayerLoadedEvent: "ai-core:client:playerLoaded",
 	clientPlayerUnloadedEvent: "ai-core:client:playerUnloaded",
 	clientCharacterPortraitEvent: "ai-core:client:characterPortrait",
-	clientCharacterLookEvent: "ai-core:client:characterLook",
+	characterLooksEvent: "ai-core:client:characterLooks",
 	clientPromptPressedEvent: "ai-core:client:promptPressed",
 	clientCacheEvent: "ai-core:client:cache",
 	clientHudVisibleEvent: "ai-core:client:hudVisible",
@@ -347,7 +350,17 @@ const ADMIN = {
 	"SNOWLIGHT",
 	"XMAS",
 	"HALLOWEEN"
-], WEATHER_SET = new Set(WEATHERS), isWeather = (value) => typeof value == "string" && WEATHER_SET.has(value), named = new Set();
+], WEATHER_SET = new Set(WEATHERS), isWeather = (value) => typeof value == "string" && WEATHER_SET.has(value);
+function toCharacterAppearance(value) {
+	if (typeof value != "object" || !value || Array.isArray(value)) return null;
+	let { model, data } = value;
+	return Number.isInteger(model) && model !== 0 && data != null ? {
+		model,
+		data
+	} : null;
+}
+// ../../../packages/lib/src/fivem/exports.ts
+const named = new Set();
 function registerExport(name, handler) {
 	named.add(name), globalThis.exports(name, handler);
 	let first = name.charAt(0), twin = (first === first.toUpperCase() ? first.toLowerCase() : first.toUpperCase()) + name.slice(1);
@@ -389,7 +402,7 @@ function loadLocaleTexts(resource = GetCurrentResourceName()) {
 	return texts;
 }
 // ../../../packages/lib/src/fivem/callbackNames.ts
-const requestEvent = (name) => `aicore:cb:${name}`, responseEvent = (resource) => `aicore:cbr:${resource}`, core$15 = resourceExport(CORE.resource), log$9 = createLogger(GetCurrentResourceName()), isAdmin = (ace = ADMIN.ace) => (source) => !!IsPlayerAceAllowed(String(source), ace) || `not allowed (${ace})`, hasCharacter = () => (source) => core$15.GetCharacter(source) !== null || "no character loaded", gates = new Set();
+const requestEvent = (name) => `aicore:cb:${name}`, responseEvent = (resource) => `aicore:cbr:${resource}`, core$16 = resourceExport(CORE.resource), log$9 = createLogger(GetCurrentResourceName()), isAdmin = (ace = ADMIN.ace) => (source) => !!IsPlayerAceAllowed(String(source), ace) || `not allowed (${ace})`, hasCharacter = () => (source) => core$16.GetCharacter(source) !== null || "no character loaded", gates = new Set();
 on("playerDropped", () => {
 	let source = Number(globalThis.source);
 	for (let gate of gates) gate.release(source);
@@ -497,7 +510,7 @@ function toPatch(value) {
 		default: return null;
 	}
 }
-const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$14 = resourceExport(CORE.resource), ERR = {
+const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$15 = resourceExport(CORE.resource), ERR = {
 	type: "ADMIN_ERR_TYPE",
 	range: "ADMIN_ERR_RANGE",
 	length: "ADMIN_ERR_LENGTH",
@@ -511,7 +524,7 @@ const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(va
 		if (cached && Date.now() - cached.at < 2e3) return cached.values.size > 0 ? cached.values : null;
 		let list = [];
 		try {
-			list = core$14.GetLookupValues(source);
+			list = core$15.GetLookupValues(source);
 		} catch {}
 		let values = new Set(Array.isArray(list) ? list.filter((v) => typeof v == "string") : []);
 		return this.lists.set(source, {
@@ -714,7 +727,7 @@ function writeSchema(resource, name, text, log) {
 	(0, node_fs_promises.mkdir)(dir, { recursive: !0 }).then(() => (0, node_fs_promises.writeFile)(`${dir}/${name}.schema.json`, text, "utf8")).catch((error) => log.error(`writing ${resource}/${path} failed`, error));
 }
 // ../../../packages/lib/src/server/admin/panel.ts
-const core$13 = resourceExport(CORE.resource), DEFAULT_KEY = "^[a-z0-9_]{2,32}$";
+const core$14 = resourceExport(CORE.resource), DEFAULT_KEY = "^[a-z0-9_]{2,32}$";
 function imported(spec, value) {
 	let base = clone(spec.newRecord ?? {}), out = {};
 	for (let name of Object.keys(spec.sections)) {
@@ -738,7 +751,7 @@ var AdminPanel = class {
 	constructor(schema) {
 		this.schema = schema;
 		for (let [name, spec] of Object.entries(schema.files)) this.load(name, spec);
-		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges)), setImmediate(() => core$13.RegisterAdminPanel(this.resource));
+		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges)), setImmediate(() => core$14.RegisterAdminPanel(this.resource));
 	}
 	get(file) {
 		return this.data.get(file) ?? {};
@@ -872,7 +885,7 @@ var AdminPanel = class {
 		let spec = this.schema.files[file], data = this.get(file), value = key === void 0 ? data : data[key] ?? null;
 		this.dataFiles.get(file)?.write(data), this.views.changed(file, key, value);
 		for (let handler of this.handlers.get(file) ?? []) handler(key, value);
-		if (core$13.AdminPanelChanged({
+		if (core$14.AdminPanelChanged({
 			resource: this.resource,
 			file,
 			key,
@@ -904,7 +917,7 @@ function notify(source, text, kind = "info", duration) {
 }
 resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/online.ts
-const core$11 = resourceExport(CORE.resource);
+const core$12 = resourceExport(CORE.resource);
 var OnlinePlayers = class {
 	players = new Map();
 	onDuty = new Map();
@@ -913,7 +926,7 @@ var OnlinePlayers = class {
 		if (this.started) return;
 		this.started = !0;
 		let load = (source, character) => {
-			this.put(source, character, (core$11.GetJobs(source) ?? []).map((m) => m.job), (core$11.GetGangs(source) ?? []).map((m) => m.gang)), this.setDuty(source, core$11.GetDutyJob(source));
+			this.put(source, character, (core$12.GetJobs(source) ?? []).map((m) => m.job), (core$12.GetGangs(source) ?? []).map((m) => m.gang)), this.setDuty(source, core$12.GetDutyJob(source));
 		};
 		on(CORE.playerLoadedEvent, load), on(CORE.playerUnloadedEvent, (source) => this.drop(source)), on(CORE.jobsChangedEvent, (source, jobs) => {
 			let player = this.players.get(source);
@@ -922,8 +935,8 @@ var OnlinePlayers = class {
 			let player = this.players.get(source);
 			player && (player.gangs = gangs.map((m) => m.gang));
 		}), on(CORE.dutyChangedEvent, (source, job) => this.setDuty(source, job));
-		for (let source of core$11.GetLoadedSources()) {
-			let character = core$11.GetCharacter(source);
+		for (let source of core$12.GetLoadedSources()) {
+			let character = core$12.GetCharacter(source);
 			character && load(source, character);
 		}
 	}
@@ -15531,7 +15544,7 @@ var GlobalGroup$1 = class extends Mirror {
 		GlobalState.set(this.prefix + id, value ?? null, !0), this.put(id, value);
 	}
 };
-resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource);
+resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/index.ts
 function isOnline(source) {
 	return !!GetPlayerName(String(source));
@@ -16368,7 +16381,7 @@ const hourField = (path, label) => ({
 		label: "ADMIN_F_BOSS"
 	}
 ];
-function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = []) {
+function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = [], clothingSystems = []) {
 	let accountOptions = accounts.map((value) => ({
 		value,
 		label: value
@@ -16469,6 +16482,10 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 						type: "enum",
 						values: ["auto", ...alertSystems]
 					},
+					appearance: {
+						type: "enum",
+						values: ["auto", ...clothingSystems]
+					},
 					interaction: {
 						type: "enum",
 						values: ["prompt", "target"]
@@ -16500,6 +16517,7 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 					inventory: "auto",
 					vehicleKeys: "auto",
 					dispatch: "auto",
+					appearance: "auto",
 					interaction: "prompt",
 					refuseOnConflict: !0,
 					setupDone: !1,
@@ -16807,6 +16825,24 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 								value: "auto",
 								label: "ADMIN_O_INVENTORY_AUTO"
 							}, ...alertSystems.map((value) => ({
+								value,
+								label: value
+							}))]
+						}]
+					},
+					{
+						icon: "shirt",
+						title: "ADMIN_C_APPEARANCE",
+						desc: "ADMIN_C_APPEARANCE_DESC",
+						fields: [{
+							widget: "select",
+							path: "appearance",
+							label: "ADMIN_F_APPEARANCE",
+							hint: "ADMIN_H_APPEARANCE",
+							options: [{
+								value: "auto",
+								label: "ADMIN_O_INVENTORY_AUTO"
+							}, ...clothingSystems.map((value) => ({
 								value,
 								label: value
 							}))]
@@ -17556,7 +17592,30 @@ const itemsOf = (ref) => call$1(typeof ref == "number" ? "GetPlayerItems" : "Get
 			custom
 		});
 	}
-}, aiPoliceAlert];
+}, aiPoliceAlert], APPEARANCE_SYSTEMS = [{
+	resource: "tgiann-clothing",
+	version: "4.1.0",
+	load: async (charId) => {
+		let citizenid = players.byCharacter(charId)?.citizenid ?? await mysql.scalar("SELECT citizenid FROM ai_core_characters WHERE id = ?", [charId]);
+		if (!citizenid) return null;
+		let row = await mysql.single("SELECT model, skin FROM tgiann_skin WHERE citizenid = ?", [citizenid]);
+		if (!row?.skin) return null;
+		let skin = JSON.parse(row.skin), model = Number(row.model ?? skin.pedModel);
+		return Number.isInteger(model) && model !== 0 ? {
+			model: model | 0,
+			data: skin
+		} : null;
+	}
+}, {
+	resource: "ai-appearance",
+	load: async (charId) => {
+		let row = await mysql.single("SELECT model, data FROM ai_appearance_characters WHERE char_id = ?", [charId]);
+		return !row || typeof row.model != "string" ? null : {
+			model: GetHashKey(row.model),
+			data: JSON.parse(row.data)
+		};
+	}
+}];
 // resource/server/content/index.ts
 function readUpdates(u) {
 	let ignore = Array.isArray(u.ignore) ? u.ignore : [];
@@ -17600,6 +17659,7 @@ function readSettings(raw) {
 		inventory: str(s.inventory, "auto", 32),
 		vehicleKeys: str(s.vehicleKeys, "auto", 32),
 		dispatch: str(s.dispatch, "auto", 32),
+		appearance: str(s.appearance, "auto", 32),
 		interaction: s.interaction === "target" ? "target" : "prompt",
 		refuseOnConflict: bool$1(s.refuseOnConflict, !0),
 		updates: readUpdates(record(s.updates)),
@@ -17654,7 +17714,7 @@ function follow(file, target, read) {
 		key !== void 0 && (value === null ? target.delete(key) : ID_PATTERN.test(key) && target.set(key, read(record(value))));
 	});
 }
-const panel = new AdminPanel(coreSchema(Object.keys(record(new DataFile(ResourceName, "accounts", log$3).read())), INVENTORIES.map((adapter) => adapter.resource), KEY_SYSTEMS.map((adapter) => adapter.resource), DISPATCH_SYSTEMS.map((adapter) => adapter.resource))), settings = readSettings(panel.get("settings"));
+const panel = new AdminPanel(coreSchema(Object.keys(record(new DataFile(ResourceName, "accounts", log$3).read())), INVENTORIES.map((adapter) => adapter.resource), KEY_SYSTEMS.map((adapter) => adapter.resource), DISPATCH_SYSTEMS.map((adapter) => adapter.resource), APPEARANCE_SYSTEMS.map((adapter) => adapter.resource))), settings = readSettings(panel.get("settings"));
 panel.onChange("settings", (_key, value) => Object.assign(settings, readSettings(value)));
 const accountTypes = entries(panel.get("accounts"), readAccount), jobs = entries(panel.get("jobs"), readJob), gangs = entries(panel.get("gangs"), readGang);
 follow("accounts", accountTypes, readAccount), follow("jobs", jobs, readJob), follow("gangs", gangs, readGang), jobs.has(settings.jobs.unemployed) || jobs.set(settings.jobs.unemployed, {
@@ -19636,6 +19696,7 @@ async function upsertUser(identity) {
 }
 // resource/server/connection/conflicts.ts
 const log$2 = createLogger("ai-core"), STAND_INS = {
+	"ai-appearance": ["tgiann-clothing"],
 	"ai-banking": ["qb-banking", "Renewed-Banking"],
 	"ai-chat": ["chat"],
 	"ai-inventory": ["ox_inventory", "qb-inventory"],
@@ -20451,7 +20512,7 @@ registerExport("GetPlayerData", (src) => players.get(src)?.snapshot() ?? null), 
 	return !player || typeof key != "string" ? !1 : (player.setMeta(key, value), !0);
 }), registerExport("GetJobDefinitions", () => Object.fromEntries(jobs)), registerExport("GetGangDefinitions", () => Object.fromEntries(gangs)), registerExport("GetAccountTypes", () => Object.fromEntries(accountTypes)), registerExport("GetSharedMoney", (ownerType, ownerId, account) => sharedAccounts.get(ownerType, ownerId, account)?.balance ?? null), registerExport("AddSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("RemoveSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(-amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("TransferMoney", (from, to, amount, reason, fee) => transferMoney(from, to, amount, reasonOf(reason), fee ?? 0));
 // resource/server/vehicleKeys/index.ts
-const activeKeys = new GlobalKey("ai:vehicleKeys", stateString), layer = new AdapterPicker({
+const activeKeys = new GlobalKey("ai:vehicleKeys", stateString), layer$1 = new AdapterPicker({
 	category: "vehicle keys",
 	adapters: KEY_SYSTEMS,
 	log: log$3,
@@ -20459,7 +20520,7 @@ const activeKeys = new GlobalKey("ai:vehicleKeys", stateString), layer = new Ada
 	noneText: "no vehicle key system runs: every player counts as holding every key",
 	onSwitch: (next) => activeKeys.set(next?.resource)
 });
-panel.onChange("settings", () => layer.setChoice(settings.vehicleKeys));
+panel.onChange("settings", () => layer$1.setChoice(settings.vehicleKeys));
 function target(vehicle) {
 	return typeof vehicle == "string" ? vehicle.trim() ? {
 		vehicle: null,
@@ -20473,13 +20534,13 @@ function target(vehicle) {
 }
 registerExport("GiveVehicleKeys", (source, vehicle, purpose) => {
 	let t = target(vehicle);
-	typeof source == "number" && t && layer.call("give", (a) => a.give(source, t, toKeyPurpose(purpose)), void 0);
+	typeof source == "number" && t && layer$1.call("give", (a) => a.give(source, t, toKeyPurpose(purpose)), void 0);
 }), registerExport("RemoveVehicleKeys", (source, vehicle) => {
 	let t = target(vehicle);
-	typeof source == "number" && t && layer.call("remove", (a) => a.remove(source, t), void 0);
+	typeof source == "number" && t && layer$1.call("remove", (a) => a.remove(source, t), void 0);
 }), registerExport("HasVehicleKeys", (source, vehicle) => {
 	let t = target(vehicle);
-	return typeof source != "number" || !t ? !1 : layer.call("has", (a) => !a.has || a.has(source, t), !0);
+	return typeof source != "number" || !t ? !1 : layer$1.call("has", (a) => !a.has || a.has(source, t), !0);
 });
 // resource/server/interaction.ts
 const style = new GlobalKey(CORE.interactionStateKey, stateString), publish = () => style.set(settings.interaction);
@@ -20631,6 +20692,44 @@ addCommand("aicore_alert", {
 		priority: args.priority === "high" ? "high" : "normal"
 	});
 	log$3.info(sent ? `test alert sent through ${dispatch.active?.resource}` : "no alert system runs");
+});
+// resource/server/appearance/index.ts
+const activeAppearance = new GlobalKey("ai:appearance", stateString), layer = new AdapterPicker({
+	category: "appearance",
+	adapters: APPEARANCE_SYSTEMS,
+	log: log$3,
+	choice: settings.appearance,
+	noneText: "no clothing script runs: peds wear default clothes",
+	onSwitch: (next) => activeAppearance.set(next?.resource)
+});
+panel.onChange("settings", () => layer.setChoice(settings.appearance));
+async function loadLook(charId) {
+	let adapter = layer.active;
+	if (!adapter) return null;
+	try {
+		return toCharacterAppearance(await adapter.load(charId));
+	} catch (error) {
+		return log$3.error(`${adapter.resource} look of #${charId} failed`, error), null;
+	}
+}
+registerExport("GetAppearanceSystem", () => layer.active?.resource ?? null), registerExport("GetCharacterAppearance", (charId, done) => {
+	if (typeof done != "function") return;
+	let id = readId(charId);
+	(id === null ? Promise.resolve(null) : loadLook(id)).then((look) => {
+		try {
+			done(look);
+		} catch (error) {
+			log$3.error("GetCharacterAppearance callback failed", error);
+		}
+	});
+}), on(CORE.characterScreenEvent, (source, charIds) => {
+	layer.active && charIds.length !== 0 && Promise.all(charIds.map(async (id) => ({
+		id,
+		look: await loadLook(id)
+	}))).then((entries) => {
+		let looks = entries.filter((e) => e.look !== null);
+		looks.length && TriggerLatentClientEvent(CORE.characterLooksEvent, String(source), 5e4, looks);
+	});
 });
 // resource/server/devCommands.ts
 const log = createLogger("ai-core:dev");

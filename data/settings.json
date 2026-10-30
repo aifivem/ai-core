@@ -151,5 +151,17 @@
     "ignore": []
   },
   "setupDone": true,
-  "dispatch": "auto"
+  "dispatch": "auto",
+  "primeTime": {
+    "enabled": false,
+    "source": "auto",
+    "offPrimeMultiplier": 0.5,
+    "start": 18,
+    "finish": 1
+  },
+  "appearance": "auto",
+  "recommendations": {
+    "dismissed": []
+  },
+  "primeTimeActive": "ai-core"
 }

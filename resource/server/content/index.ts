@@ -12,6 +12,7 @@ import { coreSchema } from "../admin/schema";
 import { INVENTORIES } from "../inventory/registry";
 import { KEY_SYSTEMS } from "../vehicleKeys/registry";
 import { DISPATCH_SYSTEMS } from "../dispatch/registry";
+import { APPEARANCE_SYSTEMS } from "../appearance/registry";
 import { log } from "../log";
 import { bool, ID_PATTERN, int, record, str, vec4, type Vec4 } from "./parse";
 import { readScene } from "./scene";
@@ -47,6 +48,8 @@ export interface Settings {
   vehicleKeys: string;
   /** `auto` or the resource name of the alert system ai-core's dispatch layer uses. */
   dispatch: string;
+  /** `auto` or the resource name of the clothing script ai-core's appearance layer uses. */
+  appearance: string;
   /** How players use points of every script: the right-side prompt and its key, or the target eye (needs a target resource). */
   interaction: "prompt" | "target";
   /** Refuse connecting players while an unneeded script runs next to the one that replaces it. */
@@ -124,6 +127,7 @@ function readSettings(raw: unknown): Settings {
     inventory: str(s.inventory, "auto", 32),
     vehicleKeys: str(s.vehicleKeys, "auto", 32),
     dispatch: str(s.dispatch, "auto", 32),
+    appearance: str(s.appearance, "auto", 32),
     interaction: s.interaction === "target" ? "target" : "prompt",
     refuseOnConflict: bool(s.refuseOnConflict, true),
     updates: readUpdates(record(s.updates)),
@@ -215,6 +219,7 @@ export const panel = new AdminPanel(
     INVENTORIES.map((adapter) => adapter.resource),
     KEY_SYSTEMS.map((adapter) => adapter.resource),
     DISPATCH_SYSTEMS.map((adapter) => adapter.resource),
+    APPEARANCE_SYSTEMS.map((adapter) => adapter.resource),
   ),
 );
 

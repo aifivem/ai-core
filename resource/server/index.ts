@@ -27,6 +27,7 @@ import "./phone";
 import "./dispatch";
 import "./dispatch/compat";
 import "./medical";
+import "./appearance";
 import "./buckets";
 import "./devCommands";
 

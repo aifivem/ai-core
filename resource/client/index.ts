@@ -17,6 +17,7 @@ import "./vehicleKeys";
 import "./vehicles";
 import "./hud";
 import "./gestures";
+import "./appearance";
 import "./radial";
 import "./world";
 import "./setup";

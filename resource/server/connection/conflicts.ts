@@ -22,6 +22,7 @@ export interface Conflict {
 
 /** ai-* scripts that stand in for a third-party name: both can never run (one `provide`s the other's name). */
 const STAND_INS: Record<string, string[]> = {
+  "ai-appearance": ["tgiann-clothing"],
   "ai-banking": ["qb-banking", "Renewed-Banking"],
   "ai-chat": ["chat"],
   "ai-inventory": ["ox_inventory", "qb-inventory"],

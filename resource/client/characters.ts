@@ -1,4 +1,9 @@
-import { createLogger, isRecord, waitFor } from "@aicore-fivem/lib/shared";
+import {
+  createLogger,
+  isRecord,
+  readId,
+  waitFor,
+} from "@aicore-fivem/lib/shared";
 import {
   loadLocaleTexts,
   onServerEvent,
@@ -6,6 +11,7 @@ import {
 } from "@aicore-fivem/lib/client";
 import {
   CORE,
+  toCharacterAppearance,
   type CharacterActionResult,
   type CharacterScreen,
   type SpawnPoint,
@@ -96,9 +102,26 @@ RegisterNuiCallback(NuiCallback.focus, (id: unknown, cb: NuiReply) => {
   cb(true);
 });
 
-on(CORE.clientCharacterLookEvent, (id: unknown) => {
-  if (typeof id === "number") scene.dress(id);
-});
+onServerEvent(
+  CORE.characterLooksEvent,
+  {
+    args: ([raw]) =>
+      Array.isArray(raw)
+        ? [
+            raw.flatMap((entry: unknown) => {
+              const id = isRecord(entry) ? readId(entry.id) : null;
+              const look = isRecord(entry)
+                ? toCharacterAppearance(entry.look)
+                : null;
+              return id !== null && look ? [{ id, look }] : [];
+            }),
+          ]
+        : null,
+  },
+  (looks) => {
+    for (const { id, look } of looks) scene.setLook(id, look);
+  },
+);
 
 on("onResourceStop", (resource: string) => {
   if (resource === ResourceName) scene.leave();
@@ -199,6 +222,7 @@ onServerEvent(
       DoScreenFadeIn(500);
       screen = null;
       portraits = {};
+      scene.clearLooks();
       announceLoaded();
     } catch (error) {
       log.error("spawn failed", error);
