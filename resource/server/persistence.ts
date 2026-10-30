@@ -6,10 +6,7 @@ import { sharedAccounts } from "./money/book";
 
 /** Writes position and metadata of every online character (money and memberships are written as they change). */
 export async function saveAll(): Promise<void> {
-  const saves = [...players.all()].map((player) => player.saveData());
-  if (saves.length === 0) return;
-  // Chunks keep one batch from holding a pool connection too long.
-  for (let i = 0; i < saves.length; i += 200) await saveCharacters(saves.slice(i, i + 200));
+  await saveCharacters([...players.all()].map((player) => player.saveData()));
 }
 
 /** Resolves when every queued money and membership write is in the DB. */

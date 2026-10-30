@@ -13,20 +13,23 @@ interface AccountRow {
  * starting amount; job and gang accounts start empty.
  */
 export async function loadAccounts(ownerType: OwnerType, ownerId: string): Promise<Map<string, Account>> {
-  const names = [...accountTypes.keys()];
-  if (names.length > 0) {
-    const values = names.map((name) => [ownerType, ownerId, name, ownerType === "character" ? (accountTypes.get(name)?.start ?? 0) : 0]);
-    await mysql.query(
-      `INSERT IGNORE INTO ai_core_accounts (owner_type, owner_id, name, balance) VALUES ${values.map(() => "(?, ?, ?, ?)").join(", ")}`,
-      values.flat(),
-    );
-  }
-
-  const rows =
+  const select = async (): Promise<AccountRow[]> =>
     (await mysql.query<AccountRow[]>("SELECT id, name, balance FROM ai_core_accounts WHERE owner_type = ? AND owner_id = ?", [
       ownerType,
       ownerId,
     ])) ?? [];
+  // Read first: an owner seen before has every row, so a login writes nothing; only missing types are inserted.
+  let rows = await select();
+  const have = new Set(rows.map((row) => row.name));
+  const missing = [...accountTypes.keys()].filter((name) => !have.has(name));
+  if (missing.length > 0) {
+    const values = missing.map((name) => [ownerType, ownerId, name, ownerType === "character" ? (accountTypes.get(name)?.start ?? 0) : 0]);
+    await mysql.query(
+      `INSERT IGNORE INTO ai_core_accounts (owner_type, owner_id, name, balance) VALUES ${values.map(() => "(?, ?, ?, ?)").join(", ")}`,
+      values.flat(),
+    );
+    rows = await select();
+  }
 
   const accounts = new Map<string, Account>();
   for (const row of rows) {

@@ -6,11 +6,11 @@ import { players } from "./registry";
 const build = Number(/v1\.0\.0\.(\d+)/.exec(GetConvar("version", ""))?.[1] ?? 0);
 const supported = build >= PED_EVENTS_MIN_BUILD;
 
-/** The player whose ped this is (deaths are rare, a scan of the online players is enough). */
+/** The player whose ped this is: a player always owns its own ped, so the owner is checked instead of scanning 10k players. */
 function sourceOfPed(ped: number): number | null {
-  if (ped === 0) return null;
-  for (const player of players.all()) if (GetPlayerPed(String(player.source)) === ped) return player.source;
-  return null;
+  if (ped === 0 || !DoesEntityExist(ped)) return null;
+  const owner = NetworkGetEntityOwner(ped);
+  return owner > 0 && players.get(owner) !== undefined && GetPlayerPed(String(owner)) === ped ? owner : null;
 }
 
 // FXServer reports ped deaths from the synced health itself: no client needs to watch its own health. Older builds

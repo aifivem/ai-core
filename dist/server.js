@@ -727,6 +727,167 @@ function notify(source, text, kind = "info", duration) {
 	emitNet(CORE.clientNotifyEvent, source, notification);
 }
 
+// ../../../packages/lib/src/server/online.ts
+/**
+* This resource's mirror of ai-core's loaded players: characters, job and gang names and duty, read once from ai-core's
+* exports on first use and then kept by its local events. Hot paths (every chat message, every alert) read it
+* instead of copying ai-core's whole player list through an export (10k players = 10k export calls per message).
+*/
+var OnlinePlayers = class {
+	players = /* @__PURE__ */ new Map();
+	onDuty = /* @__PURE__ */ new Map();
+	started = false;
+	start() {
+		if (this.started) return;
+		this.started = true;
+		const core = resourceExport(CORE.resource);
+		const load = (source, character) => {
+			this.put(source, character, (core.GetJobs(source) ?? []).map((m) => m.job), (core.GetGangs(source) ?? []).map((m) => m.gang));
+			this.setDuty(source, core.GetDutyJob(source));
+		};
+		on(CORE.playerLoadedEvent, load);
+		on(CORE.playerUnloadedEvent, (source) => this.drop(source));
+		on(CORE.jobsChangedEvent, (source, jobs) => {
+			const player = this.players.get(source);
+			if (player) player.jobs = jobs.map((m) => m.job);
+		});
+		on(CORE.gangsChangedEvent, (source, gangs) => {
+			const player = this.players.get(source);
+			if (player) player.gangs = gangs.map((m) => m.gang);
+		});
+		on(CORE.dutyChangedEvent, (source, job) => this.setDuty(source, job));
+		for (const source of core.GetLoadedSources()) {
+			const character = core.GetCharacter(source);
+			if (character) load(source, character);
+		}
+	}
+	put(source, character, jobs, gangs) {
+		this.drop(source);
+		this.players.set(source, {
+			character,
+			jobs,
+			gangs,
+			duty: null
+		});
+	}
+	drop(source) {
+		this.setDuty(source, null);
+		this.players.delete(source);
+	}
+	setDuty(source, job) {
+		const player = this.players.get(source);
+		if (!player) return;
+		if (player.duty) this.onDuty.get(player.duty)?.delete(source);
+		player.duty = job;
+		if (!job) return;
+		let set = this.onDuty.get(job);
+		if (!set) this.onDuty.set(job, set = /* @__PURE__ */ new Set());
+		set.add(source);
+	}
+	/** Server ids of every player with a loaded character. */
+	sources() {
+		this.start();
+		return this.players.keys();
+	}
+	/** How many players have a loaded character. */
+	get size() {
+		this.start();
+		return this.players.size;
+	}
+	/** The loaded character of a player, or null. */
+	character(source) {
+		this.start();
+		return this.players.get(source)?.character ?? null;
+	}
+	/** Job names of a player (every membership, on duty or not). */
+	jobs(source) {
+		this.start();
+		return this.players.get(source)?.jobs ?? [];
+	}
+	/** Gang names of a player. */
+	gangs(source) {
+		this.start();
+		return this.players.get(source)?.gangs ?? [];
+	}
+	/** The job a player is on duty for, or null. */
+	dutyJob(source) {
+		this.start();
+		return this.players.get(source)?.duty ?? null;
+	}
+	/** Players on duty for a job (a live set: copy before awaiting). */
+	onDutyFor(job) {
+		this.start();
+		return this.onDuty.get(job) ?? EMPTY$1;
+	}
+};
+const EMPTY$1 = /* @__PURE__ */ new Set();
+const online = new OnlinePlayers();
+
+// ../../../packages/lib/src/server/proximity.ts
+/**
+* Who is near whom without scanning every player: OneSync tells the server which players are in each other's scope
+* (`playerEnteredScope` / `playerLeftScope`, ~424 m). A "near" question only measures the few players in scope
+* instead of all 10k online. Players already in scope when the resource starts are found once from a 424 m grid.
+*/
+const SCOPE_RADIUS = 424;
+const posOf = (source) => {
+	const [x = 0, y = 0, z = 0] = GetEntityCoords(GetPlayerPed(String(source)));
+	return {
+		x,
+		y,
+		z
+	};
+};
+var Scopes = class {
+	scopes = /* @__PURE__ */ new Map();
+	started = false;
+	link(a, b) {
+		let set = this.scopes.get(a);
+		if (!set) this.scopes.set(a, set = /* @__PURE__ */ new Set());
+		set.add(b);
+	}
+	start() {
+		if (this.started) return;
+		this.started = true;
+		on("playerEnteredScope", (data) => this.link(Number(data.for), Number(data.player)));
+		on("playerLeftScope", (data) => this.scopes.get(Number(data.for))?.delete(Number(data.player)));
+		on("playerDropped", () => {
+			const source = Number(globalThis.source);
+			for (const other of this.scopes.get(source) ?? []) this.scopes.get(other)?.delete(source);
+			this.scopes.delete(source);
+		});
+		this.seed();
+	}
+	/** The players in scope of each other right now: a grid of scope-sized cells, each player against 9 cells. */
+	seed() {
+		const cells = /* @__PURE__ */ new Map();
+		const all = [];
+		for (let i = 0; i < GetNumPlayerIndices(); i++) {
+			const source = Number(GetPlayerFromIndex(i));
+			const entry = {
+				source,
+				p: posOf(source)
+			};
+			all.push(entry);
+			const key = `${Math.floor(entry.p.x / SCOPE_RADIUS)}:${Math.floor(entry.p.y / SCOPE_RADIUS)}`;
+			const cell = cells.get(key);
+			if (cell) cell.push(entry);
+			else cells.set(key, [entry]);
+		}
+		for (const { source, p } of all) {
+			const cx = Math.floor(p.x / SCOPE_RADIUS);
+			const cy = Math.floor(p.y / SCOPE_RADIUS);
+			for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (const other of cells.get(`${cx + dx}:${cy + dy}`) ?? []) if (other.source !== source && Math.hypot(other.p.x - p.x, other.p.y - p.y) <= SCOPE_RADIUS) this.link(source, other.source);
+		}
+	}
+	of(source) {
+		this.start();
+		return this.scopes.get(source) ?? EMPTY;
+	}
+};
+const EMPTY = /* @__PURE__ */ new Set();
+const scopes = new Scopes();
+
 // ../../../packages/lib/src/server/command.ts
 const resource$3 = GetCurrentResourceName();
 const log$4 = createLogger(resource$3);
@@ -25684,7 +25845,7 @@ function sendToDiscord(entry, url) {
 
 // resource/server/logs/services.ts
 const FIVEMANAGE_URL = "https://api.fivemanage.com/api/v3/logs";
-const FLUSH_MS = 2e3;
+const FLUSH_MS$1 = 2e3;
 const MAX_BATCH = 50;
 /** Fivemanage logs, batched per dataset (one request per 2 s or 50 logs). */
 const batches = /* @__PURE__ */ new Map();
@@ -25733,7 +25894,7 @@ function sendToFivemanage(entry) {
 	if (batch.length >= MAX_BATCH) {
 		batches.delete(entry.dataset);
 		sendBatch(entry.dataset, batch);
-	} else flushTimer ??= setTimeout(flushFivemanage, FLUSH_MS);
+	} else flushTimer ??= setTimeout(flushFivemanage, FLUSH_MS$1);
 }
 /** FiveM Stats (tgiann-fivem-stats-script) batches and stores the logs itself; it adds identifiers from the sources. */
 function sendToFivemStats(entry) {
@@ -27536,6 +27697,7 @@ on("playerDropped", () => adminHost.close(Number(globalThis.source)));
 on("onResourceStop", (resource) => adminHost.unregister(resource));
 
 // resource/server/database.ts
+mysql.setPoolSize(GetConvarInt("ai_core_pool_size", 10));
 /** Resolves when ai-core's tables exist; every first DB use of a player waits on it. */
 const databaseReady = createDatabaseTables(ResourceName, "sql/main.sql").catch((error) => {
 	log$1.error("database setup failed", error);
@@ -27561,13 +27723,85 @@ function resetDutyCounts(jobs) {
 	}
 }
 
+// resource/server/money/writer.ts
+/** Changes collected this long go out as one transaction (a paycheck for 10k players is one write, not 10k). */
+const FLUSH_MS = 50;
+/** Rows per statement: keeps each statement and its placeholder list a sane size. */
+const CHUNK = 1e3;
+/** `UPDATE ... JOIN` of the summed delta per account, in chunks. */
+function balanceStatements(entries) {
+	const sums = /* @__PURE__ */ new Map();
+	for (const e of entries) sums.set(e.accountId, (sums.get(e.accountId) ?? 0) + e.delta);
+	const pairs = [...sums].filter(([, delta]) => delta !== 0);
+	const out = [];
+	for (let i = 0; i < pairs.length; i += CHUNK) {
+		const part = pairs.slice(i, i + CHUNK);
+		const rows = part.map((_, n) => n === 0 ? "SELECT ? AS id, ? AS d" : "SELECT ?, ?").join(" UNION ALL ");
+		out.push({
+			query: `UPDATE ai_core_accounts a JOIN (${rows}) v ON a.id = v.id SET a.balance = a.balance + v.d`,
+			values: part.flat()
+		});
+	}
+	return out;
+}
+/** Multi-row ledger inserts in the order the changes happened, in chunks. */
+function ledgerStatements(entries) {
+	const out = [];
+	for (let i = 0; i < entries.length; i += CHUNK) {
+		const part = entries.slice(i, i + CHUNK);
+		out.push({
+			query: `INSERT INTO ai_core_transactions (account_id, amount, balance_after, reason, actor) VALUES ${part.map(() => "(?, ?, ?, ?, ?)").join(", ")}`,
+			values: part.flatMap((e) => [
+				e.accountId,
+				e.delta,
+				e.balanceAfter,
+				e.reason.slice(0, 64),
+				e.actor?.slice(0, 64) ?? null
+			])
+		});
+	}
+	return out;
+}
+/**
+* Every account's DB writes, batched: changes are collected for `FLUSH_MS`, then balances (summed per account) and
+* ledger rows go out in one transaction. Flushes run one after another, so writes land in the order they happened;
+* a crash can only lose the changes of the last `FLUSH_MS` and the flush in flight.
+*/
+var MoneyWriter = class {
+	pending = [];
+	timer = null;
+	chain = Promise.resolve();
+	push(entry) {
+		this.pending.push(entry);
+		this.timer ??= setTimeout(() => this.flush(), FLUSH_MS);
+	}
+	flush() {
+		if (this.timer) clearTimeout(this.timer);
+		this.timer = null;
+		const batch = this.pending;
+		if (batch.length === 0) return;
+		this.pending = [];
+		this.chain = this.chain.then(async () => {
+			try {
+				if (!await mysql.transaction([...balanceStatements(batch), ...ledgerStatements(batch)])) throw new Error("transaction rolled back");
+			} catch (error) {
+				log$1.error(`money write of ${batch.length} changes failed`, error);
+			}
+		});
+	}
+	/** Resolves when every change made so far is in the DB (flushes what is still collecting). */
+	idle() {
+		this.flush();
+		return this.chain;
+	}
+};
+const moneyWriter = new MoneyWriter();
+
 // resource/server/money/account.ts
-const LEDGER_SQL = "INSERT INTO ai_core_transactions (account_id, amount, balance_after, reason, actor) VALUES (?, ?, ?, ?, ?)";
-const BALANCE_SQL = "UPDATE ai_core_accounts SET balance = balance + ? WHERE id = ?";
 /**
 * One money account. ai-core is the only writer of balances, so memory is the truth: a change is checked and
-* applied here synchronously, and its DB write (atomic balance delta + ledger row, one transaction) is queued at
-* once on this account's own queue, so writes land in order and a crash can only lose writes still in flight.
+* applied here synchronously, and its DB write (atomic balance delta + ledger row) goes to the money writer, which
+* batches every account's changes into one transaction per 50 ms, in order.
 */
 var Account = class {
 	id;
@@ -27576,7 +27810,6 @@ var Account = class {
 	name;
 	amount;
 	allowNegative;
-	queue = new WriteQueue((label, error) => log$1.error(`account write failed (${label})`, error));
 	constructor(id, ownerType, ownerId, name, amount, allowNegative) {
 		this.id = id;
 		this.ownerType = ownerType;
@@ -27604,21 +27837,12 @@ var Account = class {
 			error: "INSUFFICIENT_FUNDS"
 		};
 		this.amount = next;
-		const label = `${this.ownerType}:${this.ownerId}:${this.name} ${delta} ${reason}`;
-		this.queue.push(label, async () => {
-			if (!await mysql.transaction([{
-				query: BALANCE_SQL,
-				values: [delta, this.id]
-			}, {
-				query: LEDGER_SQL,
-				values: [
-					this.id,
-					delta,
-					next,
-					reason.slice(0, 64),
-					actor?.slice(0, 64) ?? null
-				]
-			}])) throw new Error("transaction rolled back");
+		moneyWriter.push({
+			accountId: this.id,
+			delta,
+			balanceAfter: next,
+			reason,
+			actor
 		});
 		return {
 			ok: true,
@@ -27633,9 +27857,9 @@ var Account = class {
 		};
 		return this.change(amount - this.amount, reason, actor);
 	}
-	/** Resolves when every queued write of this account is in the DB. */
+	/** Resolves when every queued money write (this account's included) is in the DB. */
 	idle() {
-		return this.queue.idle();
+		return moneyWriter.idle();
 	}
 };
 
@@ -27645,17 +27869,20 @@ var Account = class {
 * starting amount; job and gang accounts start empty.
 */
 async function loadAccounts(ownerType, ownerId) {
-	const names = [...accountTypes.keys()];
-	if (names.length > 0) {
-		const values = names.map((name) => [
+	const select = async () => await mysql.query("SELECT id, name, balance FROM ai_core_accounts WHERE owner_type = ? AND owner_id = ?", [ownerType, ownerId]) ?? [];
+	let rows = await select();
+	const have = new Set(rows.map((row) => row.name));
+	const missing = [...accountTypes.keys()].filter((name) => !have.has(name));
+	if (missing.length > 0) {
+		const values = missing.map((name) => [
 			ownerType,
 			ownerId,
 			name,
 			ownerType === "character" ? accountTypes.get(name)?.start ?? 0 : 0
 		]);
 		await mysql.query(`INSERT IGNORE INTO ai_core_accounts (owner_type, owner_id, name, balance) VALUES ${values.map(() => "(?, ?, ?, ?)").join(", ")}`, values.flat());
+		rows = await select();
 	}
-	const rows = await mysql.query("SELECT id, name, balance FROM ai_core_accounts WHERE owner_type = ? AND owner_id = ?", [ownerType, ownerId]) ?? [];
 	const accounts = /* @__PURE__ */ new Map();
 	for (const row of rows) {
 		const type = accountTypes.get(row.name);
@@ -27831,17 +28058,26 @@ async function insertCharacter(userId, input) {
 async function deleteCharacter(userId, charId) {
 	return (await mysql.update("UPDATE ai_core_characters SET deleted_at = NOW() WHERE id = ? AND user_id = ? AND deleted_at IS NULL", [charId, userId]) ?? 0) > 0;
 }
-/** Writes position and metadata of several characters with one prepared statement (the periodic flush). */
+/** Rows per save statement. */
+const SAVE_CHUNK = 500;
+/**
+* Writes position and metadata of several characters: one `UPDATE ... JOIN` per 500 characters (the periodic flush of
+* 10k online characters is 20 statements, not 10k).
+*/
 async function saveCharacters(saves) {
-	if (saves.length === 0) return;
-	await mysql.prepare("UPDATE ai_core_characters SET pos_x = ?, pos_y = ?, pos_z = ?, pos_h = ?, metadata = ?, last_played = NOW() WHERE id = ?", saves.map((s) => [
-		s.position.x,
-		s.position.y,
-		s.position.z,
-		s.position.heading,
-		JSON.stringify(s.metadata),
-		s.id
-	]));
+	for (let i = 0; i < saves.length; i += SAVE_CHUNK) {
+		const part = saves.slice(i, i + SAVE_CHUNK);
+		const rows = part.map((_, n) => n === 0 ? "SELECT ? AS id, ? AS x, ? AS y, ? AS z, ? AS h, ? AS m" : "SELECT ?, ?, ?, ?, ?, ?").join(" UNION ALL ");
+		await mysql.query(`UPDATE ai_core_characters c JOIN (${rows}) v ON c.id = v.id
+       SET c.pos_x = v.x, c.pos_y = v.y, c.pos_z = v.z, c.pos_h = v.h, c.metadata = v.m, c.last_played = NOW()`, part.flatMap((s) => [
+			s.id,
+			s.position.x,
+			s.position.y,
+			s.position.z,
+			s.position.heading,
+			JSON.stringify(s.metadata)
+		]));
+	}
 }
 
 // resource/server/player/buckets.ts
@@ -28540,11 +28776,11 @@ on("playerDropped", () => {
 /** The FXServer build number from the `version` convar ("FXServer-master SERVER v1.0.0.38039 win32"). */
 const build = Number(/v1\.0\.0\.(\d+)/.exec(GetConvar("version", ""))?.[1] ?? 0);
 const supported = build >= PED_EVENTS_MIN_BUILD;
-/** The player whose ped this is (deaths are rare, a scan of the online players is enough). */
+/** The player whose ped this is: a player always owns its own ped, so the owner is checked instead of scanning 10k players. */
 function sourceOfPed(ped) {
-	if (ped === 0) return null;
-	for (const player of players.all()) if (GetPlayerPed(String(player.source)) === ped) return player.source;
-	return null;
+	if (ped === 0 || !DoesEntityExist(ped)) return null;
+	const owner = NetworkGetEntityOwner(ped);
+	return owner > 0 && players.get(owner) !== void 0 && GetPlayerPed(String(owner)) === ped ? owner : null;
 }
 GlobalState.set(PED_DEATH_STATE_KEY, supported, true);
 if (supported) on("onPedDeath", (ped, attacker, weaponHash) => {
@@ -28557,9 +28793,7 @@ else log$1.info(`FXServer ${build} has no onPedDeath (${PED_EVENTS_MIN_BUILD}+):
 // resource/server/persistence.ts
 /** Writes position and metadata of every online character (money and memberships are written as they change). */
 async function saveAll() {
-	const saves = [...players.all()].map((player) => player.saveData());
-	if (saves.length === 0) return;
-	for (let i = 0; i < saves.length; i += 200) await saveCharacters(saves.slice(i, i + 200));
+	await saveCharacters([...players.all()].map((player) => player.saveData()));
 }
 /** Resolves when every queued money and membership write is in the DB. */
 async function drainWrites() {

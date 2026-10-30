@@ -114,11 +114,23 @@ export interface CharacterSave {
   metadata: Record<string, unknown>;
 }
 
-/** Writes position and metadata of several characters with one prepared statement (the periodic flush). */
+/** Rows per save statement. */
+const SAVE_CHUNK = 500;
+
+/**
+ * Writes position and metadata of several characters: one `UPDATE ... JOIN` per 500 characters (the periodic flush of
+ * 10k online characters is 20 statements, not 10k).
+ */
 export async function saveCharacters(saves: CharacterSave[]): Promise<void> {
-  if (saves.length === 0) return;
-  await mysql.prepare(
-    "UPDATE ai_core_characters SET pos_x = ?, pos_y = ?, pos_z = ?, pos_h = ?, metadata = ?, last_played = NOW() WHERE id = ?",
-    saves.map((s) => [s.position.x, s.position.y, s.position.z, s.position.heading, JSON.stringify(s.metadata), s.id]),
-  );
+  for (let i = 0; i < saves.length; i += SAVE_CHUNK) {
+    const part = saves.slice(i, i + SAVE_CHUNK);
+    const rows = part
+      .map((_, n) => (n === 0 ? "SELECT ? AS id, ? AS x, ? AS y, ? AS z, ? AS h, ? AS m" : "SELECT ?, ?, ?, ?, ?, ?"))
+      .join(" UNION ALL ");
+    await mysql.query(
+      `UPDATE ai_core_characters c JOIN (${rows}) v ON c.id = v.id
+       SET c.pos_x = v.x, c.pos_y = v.y, c.pos_z = v.z, c.pos_h = v.h, c.metadata = v.m, c.last_played = NOW()`,
+      part.flatMap((s) => [s.id, s.position.x, s.position.y, s.position.z, s.position.heading, JSON.stringify(s.metadata)]),
+    );
+  }
 }

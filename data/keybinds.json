@@ -1,1 +1,149 @@
-{}
+{
+  "aicore_admin": {
+    "resource": "ai-core",
+    "description": "Open the admin panel",
+    "defaultKey": "F10",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "aicore_interact": {
+    "resource": "ai-core",
+    "description": "Interact with the prompt on screen",
+    "defaultKey": "E",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "inventory_reload": {
+    "resource": "ai-inventory",
+    "description": "Reload the weapon",
+    "defaultKey": "R",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "inventory_open": {
+    "resource": "ai-inventory",
+    "description": "Open the inventory",
+    "defaultKey": "TAB",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "inventory_hotbar_1": {
+    "resource": "ai-inventory",
+    "description": "Use the item in quick slot 1",
+    "defaultKey": "1",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "inventory_hotbar_2": {
+    "resource": "ai-inventory",
+    "description": "Use the item in quick slot 2",
+    "defaultKey": "2",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "inventory_hotbar_3": {
+    "resource": "ai-inventory",
+    "description": "Use the item in quick slot 3",
+    "defaultKey": "3",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "inventory_hotbar_4": {
+    "resource": "ai-inventory",
+    "description": "Use the item in quick slot 4",
+    "defaultKey": "4",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "inventory_hotbar_5": {
+    "resource": "ai-inventory",
+    "description": "Use the item in quick slot 5",
+    "defaultKey": "5",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "chat_open": {
+    "resource": "ai-chat",
+    "description": "Open the chat",
+    "defaultKey": "T",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "police_menu": {
+    "resource": "ai-police",
+    "description": "Open the police menu",
+    "defaultKey": "F6",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "radialmenu_open": {
+    "resource": "ai-radialmenu",
+    "description": "Open the radial menu",
+    "defaultKey": "F1",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "scoreboard_open": {
+    "resource": "ai-scoreboard",
+    "description": "Show the scoreboard (hold)",
+    "defaultKey": "HOME",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "smallresources_belt": {
+    "resource": "ai-smallresources",
+    "description": "Seatbelt",
+    "defaultKey": "B",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "smallresources_cruise": {
+    "resource": "ai-smallresources",
+    "description": "Cruise control",
+    "defaultKey": "Y",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "smallresources_crouch": {
+    "resource": "ai-smallresources",
+    "description": "Crouch",
+    "defaultKey": "X",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "smallresources_tackle": {
+    "resource": "ai-smallresources",
+    "description": "Tackle while sprinting",
+    "defaultKey": "G",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "smallresources_binoculars": {
+    "resource": "ai-smallresources",
+    "description": "Put the binoculars away",
+    "defaultKey": "BACK",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "smallresources_newsview": {
+    "resource": "ai-smallresources",
+    "description": "News camera view (while holding the camera)",
+    "defaultKey": "H",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "admin_menu": {
+    "resource": "ai-admin",
+    "description": "Admin: quick menu",
+    "defaultKey": "F9",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "admin_noclip": {
+    "resource": "ai-admin",
+    "description": "Admin: noclip on / off",
+    "defaultKey": "",
+    "mapper": "keyboard",
+    "key": ""
+  }
+}
