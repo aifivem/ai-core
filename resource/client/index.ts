@@ -11,6 +11,7 @@ import "./inventory";
 import "./vehicleKeys";
 import "./vehicles";
 import "./hud";
+import "./gestures";
 import "./world";
 import "./setup";
 import { openCharacters } from "./characters";
