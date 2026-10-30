@@ -153,5 +153,54 @@
     "defaultKey": "L",
     "mapper": "keyboard",
     "key": ""
+  },
+  "smallresources_point": {
+    "resource": "ai-smallresources",
+    "description": "Point with your finger",
+    "defaultKey": "B",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "smallresources_handsup": {
+    "resource": "ai-smallresources",
+    "description": "Hands up",
+    "defaultKey": "U",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "smallresources_ragdoll": {
+    "resource": "ai-smallresources",
+    "description": "Fall over (hold)",
+    "defaultKey": "M",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "siren_lights": {
+    "resource": "ai-sirens",
+    "description": "Siren: emergency lights on / off",
+    "defaultKey": "Q",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "siren_toggle": {
+    "resource": "ai-sirens",
+    "description": "Siren: main siren on / off",
+    "defaultKey": "LMENU",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "siren_cycle": {
+    "resource": "ai-sirens",
+    "description": "Siren: next tone (hold for the manual siren while it is off)",
+    "defaultKey": "Y",
+    "mapper": "keyboard",
+    "key": ""
+  },
+  "siren_horn": {
+    "resource": "ai-sirens",
+    "description": "Siren: airhorn",
+    "defaultKey": "E",
+    "mapper": "keyboard",
+    "key": ""
   }
 }

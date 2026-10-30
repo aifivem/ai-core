@@ -1,11 +1,11 @@
 {
   "$schema": "./schemas/settings.schema.json",
   "branding": {
-    "name": "Los Santos",
-    "subtitle": "Roleplay",
-    "tagline": "A city of opportunity",
-    "taglineSub": "People • Stories • A second chance",
-    "background": "skyline"
+    "background": "skyline",
+    "name": "AI CORE",
+    "subtitle": "Framework",
+    "tagline": "AI-core Framework",
+    "taglineSub": "People • Stories • A second chance"
   },
   "characters": {
     "slots": 3,
@@ -150,5 +150,5 @@
     "check": true,
     "ignore": []
   },
-  "setupDone": false
+  "setupDone": true
 }
