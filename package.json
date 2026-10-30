@@ -73,6 +73,8 @@
   ],
   "fxFiles": [
     "data/keybinds.json",
+    "data/jobs.json",
+    "data/gangs.json",
     "modules/playerdata.lua",
     "shared/locale.lua",
     "imports.lua",

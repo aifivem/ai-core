@@ -66,18 +66,15 @@ local function qbGang(gang)
     return { name = gang.name, label = gang.label, isboss = gang.boss, grade = { name = gang.gradeLabel, level = gang.grade } }
 end
 
---- QB metadata keys read from ai-core's character metadata when a Player object is handed out (tables crossing a
---- resource boundary are copied, so metadata is a plain table; GetMetaData reads any key live).
-local META_KEYS = { 'hunger', 'thirst', 'stress', 'isdead', 'inlaststand', 'ishandcuffed', 'armor', 'injail', 'callsign', 'phone', 'bloodtype', 'fingerprint', 'walletid', 'licences' }
+--- QB's metadata defaults under ai-core's character metadata (the mirror follows ai-core's `metaChanged`).
+local META_DEFAULTS = { hunger = 100, thirst = 100, stress = 0, isdead = false, inlaststand = false, ishandcuffed = false, armor = 0, injail = 0, licences = {} }
 
----@param source integer
+---@param mirror BridgeMirror
 ---@return table<string, any>
-local function metadataOf(source)
-    local out = { hunger = 100, thirst = 100, stress = 0, isdead = false, inlaststand = false, ishandcuffed = false, armor = 0, injail = 0, licences = {} }
-    for _, key in ipairs(META_KEYS) do
-        local value = core:GetMeta(source, key)
-        if value ~= nil then out[key] = value end
-    end
+local function metadataOf(mirror)
+    local out = {}
+    for key, value in pairs(META_DEFAULTS) do out[key] = value end
+    for key, value in pairs(mirror.metadata) do out[key] = value end
     return out
 end
 
@@ -101,7 +98,7 @@ local function build(source)
         charinfo = { firstname = c.firstname, lastname = c.lastname, birthdate = c.birthdate, gender = c.sex == 'female' and 1 or 0, nationality = c.nationality or '', phone = '', account = '' },
         job = qbJob(Bridge.jobOf(mirror)),
         gang = qbGang(Bridge.gangOf(mirror)),
-        metadata = metadataOf(source),
+        metadata = metadataOf(mirror),
         items = {},
     }
     local inv = Bridge.inventory
@@ -118,7 +115,11 @@ local function build(source)
         SetJobDuty = function(onDuty) core:SetDuty(source, onDuty and data.job.name or nil) end,
         SetGang = function(gang, grade) return core:SetGang(source, gang, tonumber(grade) or 0) end,
         SetMetaData = function(key, value) core:SetMeta(source, key, value) end,
-        GetMetaData = function(key) return core:GetMeta(source, key) end,
+        GetMetaData = function(key)
+            local value = mirror.metadata[key]
+            if value == nil then return META_DEFAULTS[key] end
+            return value
+        end,
         AddItem = function(item, amount, slot, info)
             local i = inv()
             return i ~= nil and i:AddItem(source, item, amount or 1, info, slot) or false
@@ -152,11 +153,13 @@ local function build(source)
     return player
 end
 
+--- The Player object, built once when the character loads and kept current by the mirror's changes.
 ---@param source integer
 ---@return QBPlayer|nil
 local function getPlayer(source)
     source = tonumber(source) --[[@as integer]]
-    return Bridge.players[source] and build(source) or nil
+    if not Bridge.players[source] then return nil end
+    return qbPlayers[source] or build(source)
 end
 
 ---@param citizenid string
@@ -212,7 +215,6 @@ end
 
 ---@return table<integer, QBPlayer>
 function QBCore.Functions.GetQBPlayers()
-    for source in pairs(Bridge.players) do getPlayer(source) end
     return qbPlayers
 end
 
@@ -321,6 +323,13 @@ Bridge.on('gang', function(source, gang)
     local player = qbPlayers[source]
     if player then player.PlayerData.gang = qbGang(gang) end
     TriggerEvent('QBCore:Server:OnGangUpdate', source, qbGang(gang))
+end)
+
+Bridge.on('meta', function(source, key, value)
+    local player = qbPlayers[source]
+    if not player then return end
+    if value == nil then value = META_DEFAULTS[key] end
+    player.PlayerData.metadata[key] = value
 end)
 
 BridgeQB = { getPlayer = getPlayer, getPlayerByCitizenId = getPlayerByCitizenId, qbJob = qbJob, sharedJobs = sharedJobs, sharedGangs = sharedGangs, coreObject = coreObject }

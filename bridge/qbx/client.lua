@@ -6,13 +6,7 @@ local function provide(name, fn) BridgeClient.provideExport('qbx_core', name, fn
 provide('GetPlayerData', function() return BridgeQBClient.getPlayerData() end)
 provide('Notify', function(text, kind, duration) BridgeClient.notify(text, kind, duration) end)
 provide('IsLoggedIn', function() return BridgeClient.loaded end)
-provide('GetGroups', function()
-    local data = BridgeQBClient.getPlayerData()
-    local out = {}
-    if data.job then out[data.job.name] = data.job.grade.level end
-    if data.gang and data.gang.name ~= 'none' then out[data.gang.name] = data.gang.grade.level end
-    return out
-end)
+provide('GetGroups', function() return BridgeClient.groups() end)
 provide('HasPrimaryGroup', function(filter)
     local data = BridgeQBClient.getPlayerData()
     if not data.job then return end

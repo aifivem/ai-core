@@ -19,8 +19,10 @@ function snapshot(): AiPlayerData | null {
     money: getPlayerData("money") ?? {},
     jobs: getPlayerData("jobs") ?? [],
     duty: getPlayerData("duty") ?? null,
+    job: getPlayerData("job") ?? { job: "unemployed", grade: 0 },
     gangs: getPlayerData("gangs") ?? [],
     activeGang: getPlayerData("activeGang") ?? null,
+    metadata: getPlayerData("metadata") ?? {},
   };
 }
 

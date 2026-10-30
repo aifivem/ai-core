@@ -1,6 +1,7 @@
 import { onServerEvent } from "@aicore-fivem/lib/client";
 import { createLogger, waitFor } from "@aicore-fivem/lib/shared";
 import { CORE } from "@aicore-fivem/shared";
+import "./definitions";
 import "./keybinds";
 import "./keyHints";
 import "./admin";

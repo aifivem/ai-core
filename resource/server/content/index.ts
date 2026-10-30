@@ -7,6 +7,7 @@ import type {
   GradeDefinition,
   JobDefinition,
 } from "@aicore-fivem/shared";
+import { CORE } from "@aicore-fivem/shared";
 import { ResourceName } from "common";
 import { coreSchema } from "../admin/schema";
 import { INVENTORIES } from "../inventory/registry";
@@ -234,6 +235,10 @@ export const gangs = entries(panel.get("gangs"), readGang);
 follow("accounts", accountTypes, readAccount);
 follow("jobs", jobs, readJob);
 follow("gangs", gangs, readGang);
+for (const file of ["jobs", "gangs"])
+  panel.onChange(file, (key) => {
+    if (key !== undefined) emit(CORE.definitionsChangedEvent, file, key);
+  });
 
 if (!jobs.has(settings.jobs.unemployed)) {
   jobs.set(settings.jobs.unemployed, {

@@ -39,8 +39,10 @@ local core = exports['ai-core']
 ---@field money table<string, number>
 ---@field jobs AiJobMembership[]
 ---@field duty string|nil
+---@field job AiJobMembership the job other scripts see (ai-core's current job: on duty, else last on duty, else the first, else unemployed)
 ---@field gangs AiGangMembership[]
 ---@field activeGang string|nil
+---@field metadata table<string, any>
 
 ---@class BridgeJob
 ---@field name string
@@ -57,17 +59,25 @@ Bridge = {}
 ---@type table<integer, BridgeMirror>
 Bridge.players = {}
 
+---@type table<string, integer> citizenid -> source of the loaded characters
+local byCitizen = {}
+
+---@type table<string, table<integer, true>> job -> on-duty sources
+local onDuty = {}
+
 --- Calls `fn(...)` for every part (ESX, QB) that wants to hear a player change.
 ---@type table<string, fun(source: integer, ...)[]>
-local listeners = { loaded = {}, unloaded = {}, money = {}, job = {}, gang = {} }
+local listeners = { loaded = {}, unloaded = {}, money = {}, job = {}, gang = {}, meta = {} }
 
----@param kind 'loaded'|'unloaded'|'money'|'job'|'gang'
+---@alias BridgeChange 'loaded'|'unloaded'|'money'|'job'|'gang'|'meta'
+
+---@param kind BridgeChange
 ---@param fn fun(source: integer, ...)
 function Bridge.on(kind, fn)
     listeners[kind][#listeners[kind] + 1] = fn
 end
 
----@param kind 'loaded'|'unloaded'|'money'|'job'|'gang'
+---@param kind BridgeChange
 local function emitChange(kind, source, ...)
     for i = 1, #listeners[kind] do
         local ok, err = pcall(listeners[kind][i], source, ...)
@@ -85,26 +95,27 @@ function Bridge.provideExport(name, export, fn)
     end)
 end
 
---- ai-core's job definitions (panel content), read when asked: definitions change rarely and only from the panel.
+--- ai-core's job and gang definitions (panel content): read once, dropped when the panel changes one.
+---@type { jobs: table<string, AiJobDefinition>|nil, gangs: table<string, { label: string, grades: AiGrade[] }>|nil }
+local definitions = {}
+
 ---@return table<string, AiJobDefinition>
 function Bridge.jobDefinitions()
-    return core:GetJobDefinitions() or {}
+    definitions.jobs = definitions.jobs or core:GetJobDefinitions() or {}
+    return definitions.jobs
 end
 
 ---@return table<string, { label: string, grades: AiGrade[] }>
 function Bridge.gangDefinitions()
-    return core:GetGangDefinitions() or {}
+    definitions.gangs = definitions.gangs or core:GetGangDefinitions() or {}
+    return definitions.gangs
 end
 
---- The job a framework script sees: the on-duty job, else the first membership, else unemployed.
+--- The job a framework script sees: ai-core's current job (`GetCurrentJob`) with its definition.
 ---@param mirror BridgeMirror
 ---@return BridgeJob
 function Bridge.jobOf(mirror)
-    local pick
-    for i = 1, #mirror.jobs do
-        if mirror.jobs[i].job == mirror.duty then pick = mirror.jobs[i] break end
-    end
-    pick = pick or mirror.jobs[1] or { job = 'unemployed', grade = 0 }
+    local pick = mirror.job
     local definition = Bridge.jobDefinitions()[pick.job]
     local grade = definition and definition.grades[pick.grade + 1] or { label = 'Freelancer', salary = 0, boss = false }
     return {
@@ -136,8 +147,28 @@ end
 ---@param citizenid string
 ---@return integer|nil
 function Bridge.sourceByCitizenId(citizenid)
-    for source, mirror in pairs(Bridge.players) do
-        if mirror.character.citizenid == citizenid then return source end
+    return byCitizen[citizenid]
+end
+
+--- The on-duty sources of a job (a live set: do not change it).
+---@param job string
+---@return table<integer, true>
+function Bridge.onDutyIn(job)
+    return onDuty[job] or {}
+end
+
+---@param job string|nil
+---@param source integer
+---@param on boolean
+local function setOnDuty(job, source, on)
+    if not job then return end
+    local set = onDuty[job]
+    if on then
+        if not set then set = {} onDuty[job] = set end
+        set[source] = true
+    elseif set then
+        set[source] = nil
+        if next(set) == nil then onDuty[job] = nil end
     end
 end
 
@@ -150,7 +181,7 @@ end
 ---@param source integer
 ---@return boolean
 function Bridge.isAdmin(source)
-    return IsPlayerAceAllowed(tostring(source), 'ai.admin') == true or IsPlayerAceAllowed(tostring(source), 'ai.admin') == 1
+    return source > 0 and IsPlayerAceAllowed(tostring(source), 'ai.admin')
 end
 
 local kinds = { primary = 'info', inform = 'info', info = 'info', success = 'success', error = 'error', warning = 'warning' }
@@ -165,28 +196,6 @@ function Bridge.notify(source, text, kind, duration)
     TriggerClientEvent('ai-core:client:notify', source, { text = tostring(text), kind = kinds[kind or 'info'] or 'info', duration = duration })
 end
 
---- The bridge's own channel to the client part: a snapshot at load, then patches (job, gang, money, metadata).
----@param source integer
----@param part string
----@param value any
-function Bridge.patch(source, part, value)
-    TriggerClientEvent('ai-core:bridge:patch', source, part, value)
-end
-
----@param source integer
-local function snapshot(source)
-    local mirror = Bridge.players[source]
-    if not mirror then return end
-    TriggerClientEvent('ai-core:bridge:snapshot', source, {
-        character = mirror.character,
-        money = mirror.money,
-        job = Bridge.jobOf(mirror),
-        gang = Bridge.gangOf(mirror),
-        license = Bridge.license(source),
-        name = GetPlayerName(tostring(source)),
-    })
-end
-
 ---@param source integer
 local function load(source)
     local data = core:GetPlayerData(source)
@@ -197,10 +206,15 @@ local function load(source)
         money = data.money or {},
         jobs = data.jobs or {},
         duty = data.duty,
+        job = data.job or { job = 'unemployed', grade = 0 },
         gangs = data.gangs or {},
         activeGang = data.activeGang,
+        metadata = data.metadata or {},
     }
-    snapshot(source)
+    byCitizen[data.character.citizenid] = source
+    setOnDuty(data.duty, source, true)
+    -- The client part builds everything else from ai-core's own player data channel; only the license is extra.
+    TriggerClientEvent('ai-core:bridge:license', source, Bridge.license(source))
     emitChange('loaded', source)
 end
 
@@ -209,8 +223,11 @@ AddEventHandler('ai-core:playerLoaded', function(source)
 end)
 
 AddEventHandler('ai-core:playerUnloaded', function(source, _, reason)
-    if not Bridge.players[source] then return end
+    local mirror = Bridge.players[source]
+    if not mirror then return end
     emitChange('unloaded', source, reason)
+    byCitizen[mirror.character.citizenid] = nil
+    setOnDuty(mirror.duty, source, false)
     Bridge.players[source] = nil
 end)
 
@@ -218,17 +235,22 @@ AddEventHandler('ai-core:moneyChanged', function(source, account, balance, delta
     local mirror = Bridge.players[source]
     if not mirror then return end
     mirror.money[account] = balance
-    Bridge.patch(source, 'money', { [account] = balance })
     emitChange('money', source, account, balance, delta, reason)
+end)
+
+AddEventHandler('ai-core:metaChanged', function(source, key, value)
+    local mirror = Bridge.players[source]
+    if not mirror then return end
+    mirror.metadata[key] = value
+    emitChange('meta', source, key, value)
 end)
 
 ---@param source integer
 local function jobChanged(source)
     local mirror = Bridge.players[source]
     if not mirror then return end
-    local job = Bridge.jobOf(mirror)
-    Bridge.patch(source, 'job', job)
-    emitChange('job', source, job)
+    mirror.job = core:GetCurrentJob(source) or mirror.job
+    emitChange('job', source, Bridge.jobOf(mirror))
 end
 
 AddEventHandler('ai-core:jobsChanged', function(source, jobs)
@@ -241,6 +263,8 @@ end)
 AddEventHandler('ai-core:dutyChanged', function(source, job)
     local mirror = Bridge.players[source]
     if not mirror then return end
+    setOnDuty(mirror.duty, source, false)
+    setOnDuty(job, source, true)
     mirror.duty = job
     jobChanged(source)
 end)
@@ -249,10 +273,17 @@ end)
 local function gangChanged(source)
     local mirror = Bridge.players[source]
     if not mirror then return end
-    local gang = Bridge.gangOf(mirror)
-    Bridge.patch(source, 'gang', gang)
-    emitChange('gang', source, gang)
+    emitChange('gang', source, Bridge.gangOf(mirror))
 end
+
+-- A panel edit of a job or gang reaches the players who hold it (labels, grades, salaries).
+AddEventHandler('ai-core:definitionsChanged', function(file, name)
+    definitions[file] = nil
+    for source, mirror in pairs(Bridge.players) do
+        if file == 'jobs' and mirror.job.job == name then jobChanged(source)
+        elseif file == 'gangs' and mirror.activeGang == name then gangChanged(source) end
+    end
+end)
 
 AddEventHandler('ai-core:gangsChanged', function(source, gangs)
     local mirror = Bridge.players[source]

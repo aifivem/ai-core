@@ -1,5 +1,13 @@
-import { sendPlayerData, WriteQueue } from "@aicore-fivem/lib/server";
-import type { AiPlayerData, CharacterInfo } from "@aicore-fivem/shared";
+import {
+  patchPlayerData,
+  sendPlayerData,
+  WriteQueue,
+} from "@aicore-fivem/lib/server";
+import {
+  CORE,
+  type AiPlayerData,
+  type CharacterInfo,
+} from "@aicore-fivem/shared";
 import type { CharacterRow, CharacterSave } from "../characters/repo";
 import { playerWatchers } from "../admin/players/watchers";
 import { settings } from "../content";
@@ -101,6 +109,8 @@ export class Player {
     if (value === undefined || value === null) delete this.row.metadata[key];
     else this.row.metadata[key] = value;
     playerWatchers.meta(this.row.id, key, value ?? null);
+    patchPlayerData(this.source, "metadata", { [key]: value ?? null });
+    emit(CORE.metaChangedEvent, this.source, key, value ?? null);
   }
 
   /** A copy of the whole metadata bag (the admin panel's snapshot). */
@@ -130,8 +140,10 @@ export class Player {
       money: this.wallet.snapshot(),
       jobs: this.jobs.all(),
       duty: this.jobs.onDuty(),
+      job: this.jobs.current(),
       gangs: this.gangs.all(),
       activeGang: this.gangs.activeGang(),
+      metadata: this.metadata(),
     };
   }
 

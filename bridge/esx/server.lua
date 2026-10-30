@@ -134,7 +134,7 @@ local function build(source)
     function self.kick(reason) DropPlayer(tostring(source), reason or '') end
     function self.set(key, value) self.variables[key] = value end
     function self.get(key) return self.variables[key] end
-    function self.getMeta(key) return core:GetMeta(source, key) end
+    function self.getMeta(key) return mirror.metadata[key] end
     function self.setMeta(key, value) core:SetMeta(source, key, value) end
     xPlayers[source] = self --[[@as xPlayer]]
     return self --[[@as xPlayer]]

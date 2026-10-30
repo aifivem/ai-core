@@ -173,7 +173,7 @@ export function coreSchema(
       },
       jobs: {
         kind: "records",
-        sync: "admin",
+        sync: "all",
         labelPath: "label",
         locked: ["unemployed"],
         newRecord: {
@@ -196,7 +196,7 @@ export function coreSchema(
       },
       gangs: {
         kind: "records",
-        sync: "admin",
+        sync: "all",
         labelPath: "label",
         newRecord: { grades: [{ label: "Member", salary: 0 }] },
         sections: { label: text(48), grades },

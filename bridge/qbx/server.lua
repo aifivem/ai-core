@@ -118,19 +118,17 @@ end)
 ---@return integer, integer[]
 local function dutyCount(job)
     local sources = {}
-    for source, mirror in pairs(Bridge.players) do
-        if mirror.duty == job then sources[#sources + 1] = source end
-    end
+    for source in pairs(Bridge.onDutyIn(job)) do sources[#sources + 1] = source end
     return #sources, sources
 end
 
 provide('GetDutyCountJob', dutyCount)
 provide('GetDutyCountType', function(jobType)
     local sources = {}
-    local definitions = Bridge.jobDefinitions()
-    for source, mirror in pairs(Bridge.players) do
-        local definition = mirror.duty and definitions[mirror.duty]
-        if definition and definition.type == jobType then sources[#sources + 1] = source end
+    for job, definition in pairs(Bridge.jobDefinitions()) do
+        if definition.type == jobType then
+            for source in pairs(Bridge.onDutyIn(job)) do sources[#sources + 1] = source end
+        end
     end
     return #sources, sources
 end)

@@ -108,6 +108,7 @@ export class JobSet {
       this.lastDuty = job;
     }
     sendPlayerData(this.source, "duty", job);
+    sendPlayerData(this.source, "job", this.current());
     emit(CORE.dutyChangedEvent, this.source, job);
     return { ok: true };
   }
@@ -123,6 +124,7 @@ export class JobSet {
   private pushJobs(): void {
     const list = this.all();
     sendPlayerData(this.source, "jobs", list);
+    sendPlayerData(this.source, "job", this.current());
     emit(CORE.jobsChangedEvent, this.source, list);
   }
 }

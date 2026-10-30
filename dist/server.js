@@ -250,6 +250,8 @@ const CORE = {
 	dutyChangedEvent: "ai-core:dutyChanged",
 	gangsChangedEvent: "ai-core:gangsChanged",
 	activeGangChangedEvent: "ai-core:activeGangChanged",
+	metaChangedEvent: "ai-core:metaChanged",
+	definitionsChangedEvent: "ai-core:definitionsChanged",
 	characterScreenEvent: "ai-core:characterScreen",
 	inventoryChangedEvent: "ai-core:inventoryChanged",
 	itemUsedEvent: "ai-core:itemUsed",
@@ -262,6 +264,7 @@ const CORE = {
 	clientCacheEvent: "ai-core:client:cache",
 	clientHudVisibleEvent: "ai-core:client:hudVisible",
 	clientWorldSyncEvent: "ai-core:client:worldSync",
+	clientDefinitionsEvent: "ai-core:client:definitions",
 	vehicleTypeCallback: "ai-core:vehicleType",
 	interactionStateKey: "ai:interaction",
 	charactersCallback: "ai-core:characters",
@@ -16715,7 +16718,7 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 			},
 			jobs: {
 				kind: "records",
-				sync: "admin",
+				sync: "all",
 				labelPath: "label",
 				locked: ["unemployed"],
 				newRecord: {
@@ -16748,7 +16751,7 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 			},
 			gangs: {
 				kind: "records",
-				sync: "admin",
+				sync: "all",
 				labelPath: "label",
 				newRecord: { grades: [{
 					label: "Member",
@@ -17902,7 +17905,11 @@ function follow(file, target, read) {
 const panel = new AdminPanel(coreSchema(Object.keys(record(new DataFile(ResourceName, "accounts", log$3).read())), INVENTORIES.map((adapter) => adapter.resource), KEY_SYSTEMS.map((adapter) => adapter.resource), DISPATCH_SYSTEMS.map((adapter) => adapter.resource), APPEARANCE_SYSTEMS.map((adapter) => adapter.resource))), settings = readSettings(panel.get("settings"));
 panel.onChange("settings", (_key, value) => Object.assign(settings, readSettings(value)));
 const accountTypes = entries(panel.get("accounts"), readAccount), jobs = entries(panel.get("jobs"), readJob), gangs = entries(panel.get("gangs"), readGang);
-follow("accounts", accountTypes, readAccount), follow("jobs", jobs, readJob), follow("gangs", gangs, readGang), jobs.has(settings.jobs.unemployed) || jobs.set(settings.jobs.unemployed, {
+follow("accounts", accountTypes, readAccount), follow("jobs", jobs, readJob), follow("gangs", gangs, readGang);
+for (let file of ["jobs", "gangs"]) panel.onChange(file, (key) => {
+	key !== void 0 && emit(CORE.definitionsChangedEvent, file, key);
+});
+jobs.has(settings.jobs.unemployed) || jobs.set(settings.jobs.unemployed, {
 	label: "Civilian",
 	type: "none",
 	defaultDuty: !0,
@@ -20277,7 +20284,7 @@ var GangSet = class {
 		return job !== null && !this.list.some((m) => m.job === job) ? {
 			ok: !1,
 			error: "NOT_MEMBER"
-		} : (job === this.duty || (this.duty && changeDutyCount(this.duty, -1), this.duty = job, job && (changeDutyCount(job, 1), this.lastDuty = job), sendPlayerData(this.source, "duty", job), emit(CORE.dutyChangedEvent, this.source, job)), { ok: !0 });
+		} : (job === this.duty || (this.duty && changeDutyCount(this.duty, -1), this.duty = job, job && (changeDutyCount(job, 1), this.lastDuty = job), sendPlayerData(this.source, "duty", job), sendPlayerData(this.source, "job", this.current()), emit(CORE.dutyChangedEvent, this.source, job)), { ok: !0 });
 	}
 	release() {
 		this.duty && changeDutyCount(this.duty, -1), this.duty = null;
@@ -20285,7 +20292,7 @@ var GangSet = class {
 	}
 	pushJobs() {
 		let list = this.all();
-		sendPlayerData(this.source, "jobs", list), emit(CORE.jobsChangedEvent, this.source, list);
+		sendPlayerData(this.source, "jobs", list), sendPlayerData(this.source, "job", this.current()), emit(CORE.jobsChangedEvent, this.source, list);
 	}
 };
 function logWriteError(label, error) {
@@ -20377,7 +20384,7 @@ var Wallet = class {
 		return this.row.metadata[key];
 	}
 	setMeta(key, value) {
-		value == null ? delete this.row.metadata[key] : this.row.metadata[key] = value, playerWatchers.meta(this.row.id, key, value ?? null);
+		value == null ? delete this.row.metadata[key] : this.row.metadata[key] = value, playerWatchers.meta(this.row.id, key, value ?? null), patchPlayerData(this.source, "metadata", { [key]: value ?? null }), emit(CORE.metaChangedEvent, this.source, key, value ?? null);
 	}
 	metadata() {
 		return { ...this.row.metadata };
@@ -20391,8 +20398,10 @@ var Wallet = class {
 			money: this.wallet.snapshot(),
 			jobs: this.jobs.all(),
 			duty: this.jobs.onDuty(),
+			job: this.jobs.current(),
 			gangs: this.gangs.all(),
-			activeGang: this.gangs.activeGang()
+			activeGang: this.gangs.activeGang(),
+			metadata: this.metadata()
 		};
 	}
 	sendSnapshot() {

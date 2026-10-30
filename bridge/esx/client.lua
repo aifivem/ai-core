@@ -47,7 +47,7 @@ local function rebuild()
         lastName = c.lastname,
         dateofbirth = c.birthdate,
         sex = c.sex == 'female' and 'f' or 'm',
-        metadata = {},
+        metadata = BridgeClient.metadata,
         ped = PlayerPedId(),
     }
     ESX.PlayerLoaded = true
@@ -117,6 +117,10 @@ end)
 -- ESX keeps the ped in PlayerData; ai-core's cache watcher tells when it changes (model swap, respawn).
 AddEventHandler('ai-core:client:cache', function(key, value)
     if key == 'ped' and ESX.PlayerLoaded then ESX.SetPlayerData('ped', value) end
+end)
+
+BridgeClient.on('meta', function()
+    if ESX.PlayerLoaded then ESX.SetPlayerData('metadata', BridgeClient.metadata) end
 end)
 
 BridgeClient.on('job', function(job, last)

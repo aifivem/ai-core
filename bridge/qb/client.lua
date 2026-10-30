@@ -1,5 +1,5 @@
 -- QBCore on ai-core, client side: QBCore.Functions.GetPlayerData / TriggerCallback / Notify and QBCore's client
--- events, fired locally from the bridge mirror (the network only carries the snapshot and the patches).
+-- events, fired locally from the bridge mirror (bridge/core/client.lua, fed by ai-core's player data channel).
 
 ---@class QBClientPlayerData
 ---@field citizenid string
@@ -23,6 +23,17 @@ local function qbGang(gang)
     return { name = gang.name, label = gang.label, isboss = gang.boss, grade = { name = gang.gradeLabel, level = gang.grade } }
 end
 
+--- QB's metadata defaults under ai-core's character metadata.
+local META_DEFAULTS = { hunger = 100, thirst = 100, stress = 0, isdead = false, inlaststand = false, ishandcuffed = false, armor = 0, injail = 0, licences = {} }
+
+---@return table<string, any>
+local function metadata()
+    local out = {}
+    for key, value in pairs(META_DEFAULTS) do out[key] = value end
+    for key, value in pairs(BridgeClient.metadata) do out[key] = value end
+    return out
+end
+
 ---@type QBClientPlayerData|table
 local PlayerData = {}
 
@@ -43,7 +54,7 @@ local function rebuild()
         charinfo = { firstname = c.firstname, lastname = c.lastname, birthdate = c.birthdate, gender = c.sex == 'female' and 1 or 0, nationality = c.nationality or '', phone = '', account = '' },
         job = qbJob(s.job),
         gang = qbGang(s.gang),
-        metadata = {},
+        metadata = metadata(),
         items = {},
     }
 end
@@ -144,6 +155,13 @@ end)
 BridgeClient.on('gang', function(gang)
     PlayerData.gang = qbGang(gang)
     TriggerEvent('QBCore:Client:OnGangUpdate', PlayerData.gang)
+    TriggerEvent('QBCore:Player:SetPlayerData', PlayerData)
+end)
+
+BridgeClient.on('meta', function(key, value)
+    if not PlayerData.metadata then return end
+    if value == nil then value = META_DEFAULTS[key] end
+    PlayerData.metadata[key] = value
     TriggerEvent('QBCore:Player:SetPlayerData', PlayerData)
 end)
 
