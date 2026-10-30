@@ -23,6 +23,7 @@ import "./scopes";
 import "./versions";
 import "./setup";
 import "./world";
+import "./prison";
 import "./phone";
 import "./dispatch";
 import "./dispatch/compat";

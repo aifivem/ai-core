@@ -4,6 +4,15 @@ return {
     ---@param src integer
     ---@return table? character { id, citizenid, firstname, lastname, birthdate, sex, nationality }
     character = function(src) return core:GetCharacter(src) end,
+    ---The character's "Firstname Lastname", else the FiveM player name ('' with `fallback = false`).
+    ---@param src integer
+    ---@param fallback? boolean
+    ---@return string
+    name = function(src, fallback)
+        local c = core:GetCharacter(src)
+        if c then return ('%s %s'):format(c.firstname, c.lastname) end
+        return fallback == false and '' or (GetPlayerName(src) or '')
+    end,
     ---@param src integer
     ---@return table[] jobs { job, grade, ... }
     jobs = function(src) return core:GetJobs(src) or {} end,

@@ -60,7 +60,8 @@ end
 ---@field onServerEvent fun(name: string, handler: (fun(...: any))) client
 ---@field onClientEvent fun(name: string, handler: (fun(source: integer, ...: any)), options?: table) server
 ---@field aiLog fun(channel: string, message: string, options?: table) server
----@field online table server: `character`, `jobs`, `gangs`, `jobGrade`, `gangGrade`, `dutyJob`, `sources`
+---@field prison { jail: (fun(src: integer, minutes: integer, by?: integer): boolean), release: (fun(src: integer): boolean), timeLeft: (fun(src: integer): integer) } server: jail sentences through ai-core
+---@field online table server: `character`, `name`, `jobs`, `gangs`, `jobGrade`, `gangGrade`, `dutyJob`, `sources`
 ---@field nearestVehicleTo fun(source: integer, metres: number, filter?: fun(vehicle: integer): boolean): integer server
 ---@field vehicleFromNet fun(netId: any): integer server: the live vehicle behind a client's net id, or 0
 ---@field vehicleNearPlayer fun(source: integer, netId: any, options?: { metres?: number, driver?: boolean }): integer server

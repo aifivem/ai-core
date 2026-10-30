@@ -70,6 +70,12 @@ import {
   faBuildingColumns,
   faKeyboard,
   faTerminal,
+  faHandcuffs,
+  faBuildingShield,
+  faBed,
+  faDrawPolygon,
+  faGavel,
+  faPersonRunning,
 } from "@fortawesome/free-solid-svg-icons";
 
 /** Icons a schema may name (Font Awesome solid, without `fa-`); add a name here when a schema uses a new one. */
@@ -78,6 +84,12 @@ const ICONS: Record<string, IconDefinition> = {
   "car-rear": faCarRear,
   "square-parking": faSquareParking,
   "gas-pump": faGasPump,
+  handcuffs: faHandcuffs,
+  "building-shield": faBuildingShield,
+  bed: faBed,
+  "draw-polygon": faDrawPolygon,
+  gavel: faGavel,
+  "person-running": faPersonRunning,
   "screwdriver-wrench": faScrewdriverWrench,
   lock: faLock,
   key: faKey,
