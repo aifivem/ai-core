@@ -1,4 +1,8 @@
-import { GlobalKey, registerExport, stateString } from "@aicore-fivem/lib/client";
+import {
+  GlobalKey,
+  registerExport,
+  stateString,
+} from "@aicore-fivem/lib/client";
 import { createLogger } from "@aicore-fivem/lib/shared";
 import {
   INVENTORY_STATE_KEY,

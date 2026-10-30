@@ -35,7 +35,11 @@ function parse(text: string): Records | null {
     const out: Records = {};
     for (const [key, record] of Object.entries(value)) {
       if (key === "$schema") continue;
-      if (typeof record !== "object" || record === null || Array.isArray(record))
+      if (
+        typeof record !== "object" ||
+        record === null ||
+        Array.isArray(record)
+      )
         return null;
       out[key] = record as Record<string, unknown>;
     }

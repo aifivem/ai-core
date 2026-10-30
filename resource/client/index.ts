@@ -10,6 +10,7 @@ import "./menu";
 import "./inventory";
 import "./vehicleKeys";
 import "./vehicles";
+import "./hud";
 import { openCharacters } from "./characters";
 import { announceUnloaded } from "./playerState";
 

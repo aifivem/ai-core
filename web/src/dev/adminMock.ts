@@ -182,14 +182,31 @@ export function mockAdminOpen():
       job: options(jobs),
       gang: options(gangs),
       account: options(accounts),
-      resource: ["ai-core", "ai-rental", "ai-fuel", "ai-target"].map((value) => ({ value, label: value })),
+      resource: ["ai-core", "ai-rental", "ai-fuel", "ai-target"].map(
+        (value) => ({ value, label: value }),
+      ),
       player: [{ value: "AB123456", label: "John Doe (1)" }],
-      vehicle: ["adder", "sultan", "police", "taxi"].map((value) => ({ value, label: value })),
+      vehicle: ["adder", "sultan", "police", "taxi"].map((value) => ({
+        value,
+        label: value,
+      })),
       ped: [],
     },
     updates: [
-      { resource: "ai-rental", current: "0.1.0", latest: "0.2.0", url: "https://github.com/TGIANN/ai-rental/releases/tag/v0.2.0" },
-      { resource: "ai-fuel", current: "0.1.0", latest: "0.1.3", url: "https://github.com/TGIANN/ai-fuel/releases/tag/v0.1.3" },
+      {
+        resource: "ai-rental",
+        label: "ai-rental",
+        current: "0.1.0",
+        latest: "0.2.0",
+        url: "https://github.com/TGIANN/ai-rental/releases/tag/v0.2.0",
+      },
+      {
+        resource: "ai-fuel",
+        label: "ai-fuel",
+        current: "0.1.0",
+        latest: "0.1.3",
+        url: "https://github.com/TGIANN/ai-fuel/releases/tag/v0.1.3",
+      },
     ],
     external: [
       {

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+  faChevronDown,
   faFilter,
   faGauge,
   faShieldHalved,
@@ -120,37 +121,63 @@ export function Sidebar({
                 </span>
               </button>
             ) : (
-              <div key={panel.resource} className="flex flex-col gap-[0.4vh]">
-                <span className="flex items-center gap-[0.8vh] px-[1.4vh] pb-[0.4vh] text-[1.2vh] font-semibold text-text-3 uppercase">
-                  <FontAwesomeIcon
-                    icon={iconOf(panel.schema.icon)}
-                    aria-hidden
-                  />
-                  <span className="truncate">
+              <div
+                key={panel.resource}
+                className="flex flex-col gap-[0.4vh] rounded-[1.1vh] bg-white/3 p-[0.4vh] [box-shadow:inset_0_0_0_1px_rgba(255,255,255,0.05)]"
+              >
+                {/* The open script: its own row, then its tabs one step in, on a guide line. */}
+                <button
+                  type="button"
+                  onClick={() =>
+                    panel.schema.tabs[0] &&
+                    goTo(panel.resource, panel.schema.tabs[0].id)
+                  }
+                  className="flex h-[5vh] items-center gap-[1.2vh] rounded-[0.9vh] px-[1vh] text-left text-[1.5vh] font-semibold text-text transition-colors duration-150 hover:bg-white/5"
+                >
+                  <span className="flex size-[3vh] shrink-0 items-center justify-center rounded-[0.7vh] bg-tgi-green-15 text-[1.4vh] text-tgi-green">
+                    <FontAwesomeIcon
+                      icon={iconOf(panel.schema.icon)}
+                      aria-hidden
+                    />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">
                     {fill(panel.texts, panel.schema.title)}
                   </span>
-                </span>
-                {panel.schema.tabs.map((item) => {
-                  const active = panel.resource === resource && item.id === tab;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      aria-current={active ? "page" : undefined}
-                      onClick={() => goTo(panel.resource, item.id)}
-                      className={row(active)}
-                    >
-                      <FontAwesomeIcon
-                        icon={iconOf(item.icon)}
-                        className="w-[1.8vh] text-[1.6vh]"
-                        aria-hidden
-                      />
-                      <span className="truncate">
-                        {fill(panel.texts, item.label)}
-                      </span>
-                    </button>
-                  );
-                })}
+                  <FontAwesomeIcon
+                    icon={faChevronDown}
+                    className="text-[1.1vh] text-text-3"
+                    aria-hidden
+                  />
+                </button>
+                <div className="ml-[2.5vh] flex flex-col gap-[0.3vh] border-l border-white/10 pb-[0.4vh] pl-[0.8vh]">
+                  {panel.schema.tabs.map((item) => {
+                    const active =
+                      panel.resource === resource && item.id === tab;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        aria-current={active ? "page" : undefined}
+                        onClick={() => goTo(panel.resource, item.id)}
+                        className={cn(
+                          "flex h-[4.2vh] items-center gap-[1vh] rounded-[0.8vh] px-[1vh] text-left text-[1.4vh] transition-[background-color,color] duration-150 ease-out",
+                          active
+                            ? "bg-tgi-green-15 font-semibold text-tgi-green"
+                            : "font-medium text-text-2 hover:bg-white/5 hover:text-text",
+                        )}
+                      >
+                        <FontAwesomeIcon
+                          icon={iconOf(item.icon)}
+                          className="w-[1.6vh] text-[1.3vh]"
+                          aria-hidden
+                        />
+                        <span className="truncate">
+                          {fill(panel.texts, item.label)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             ),
           )}

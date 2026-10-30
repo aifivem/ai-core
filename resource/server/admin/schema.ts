@@ -104,7 +104,18 @@ export function coreSchema(
           vehicleKeys: { type: "enum", values: ["auto", ...keySystems] },
           interaction: { type: "enum", values: ["prompt", "target"] },
           refuseOnConflict: { type: "bool" },
-          updates: { type: "object", fields: { check: { type: "bool" }, ignore: { type: "names", lookup: "resource", max: 64, itemMax: 64 } } },
+          updates: {
+            type: "object",
+            fields: {
+              check: { type: "bool" },
+              ignore: {
+                type: "names",
+                lookup: "resource",
+                max: 64,
+                itemMax: 64,
+              },
+            },
+          },
           spawn: {
             type: "object",
             fields: { default: { type: "vec4" } },
@@ -351,8 +362,20 @@ export function coreSchema(
             title: "ADMIN_C_UPDATES",
             desc: "ADMIN_C_UPDATES_DESC",
             fields: [
-              { widget: "switch", path: "updates.check", label: "ADMIN_F_UPDATES_CHECK", hint: "ADMIN_H_UPDATES_CHECK" },
-              { widget: "tags", lookup: "resource", path: "updates.ignore", label: "ADMIN_F_UPDATES_IGNORE", hint: "ADMIN_H_UPDATES_IGNORE", placeholder: "ADMIN_PH_UPDATES_IGNORE" },
+              {
+                widget: "switch",
+                path: "updates.check",
+                label: "ADMIN_F_UPDATES_CHECK",
+                hint: "ADMIN_H_UPDATES_CHECK",
+              },
+              {
+                widget: "tags",
+                lookup: "resource",
+                path: "updates.ignore",
+                label: "ADMIN_F_UPDATES_IGNORE",
+                hint: "ADMIN_H_UPDATES_IGNORE",
+                placeholder: "ADMIN_PH_UPDATES_IGNORE",
+              },
             ],
           },
           {

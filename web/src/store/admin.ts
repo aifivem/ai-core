@@ -30,7 +30,16 @@ export interface AdminState {
   picking: boolean;
 }
 
-const NO_LOOKUPS: Lookups = { item: [], job: [], gang: [], account: [], resource: [], player: [], vehicle: [], ped: [] };
+const NO_LOOKUPS: Lookups = {
+  item: [],
+  job: [],
+  gang: [],
+  account: [],
+  resource: [],
+  player: [],
+  vehicle: [],
+  ped: [],
+};
 const initialState: AdminState = {
   open: false,
   panels: [],

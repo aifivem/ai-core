@@ -32,7 +32,11 @@ function toMenu(v: unknown): MenuRequest | null {
         ]
       : [],
   );
-  return { title: logSafe(v.title, 60), items: items.slice(0, 40) };
+  return {
+    title: logSafe(v.title, 60),
+    items: items.slice(0, 40),
+    back: v.back === true,
+  };
 }
 
 function toInput(v: unknown): InputRequest | null {

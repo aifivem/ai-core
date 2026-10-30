@@ -1,4 +1,9 @@
-import { GlobalKey, isResourceStarted, registerExport, stateString } from "@aicore-fivem/lib/server";
+import {
+  GlobalKey,
+  isResourceStarted,
+  registerExport,
+  stateString,
+} from "@aicore-fivem/lib/server";
 import { isRecord } from "@aicore-fivem/lib/shared";
 import {
   CORE,

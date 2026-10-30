@@ -144,7 +144,13 @@ function ScriptCard({
 }
 
 /** Scripts with a newer GitHub release: what runs, what is out, where to get it. */
-function Updates({ updates, t }: { updates: UpdateInfo[]; t: (key: string, ...args: string[]) => string }) {
+function Updates({
+  updates,
+  t,
+}: {
+  updates: UpdateInfo[];
+  t: (key: string, ...args: string[]) => string;
+}) {
   return (
     <section className="flex flex-col gap-[1vh]">
       <h2 className="flex items-center gap-[0.8vh] text-[1.2vh] font-semibold text-tgi-green uppercase">
@@ -153,12 +159,19 @@ function Updates({ updates, t }: { updates: UpdateInfo[]; t: (key: string, ...ar
       </h2>
       <div className="flex flex-col gap-[0.6vh]">
         {updates.map((u) => (
-          <div key={u.resource} className="flex h-[5vh] items-center gap-[1.2vh] rounded-[0.9vh] bg-row px-[1.4vh]">
-            <span className="font-mono text-[1.35vh] font-medium">{u.resource}</span>
+          <div
+            key={u.resource}
+            className="flex h-[5vh] items-center gap-[1.2vh] rounded-[0.9vh] bg-row px-[1.4vh]"
+          >
+            <span className="font-mono text-[1.35vh] font-medium">
+              {u.label}
+            </span>
             <span className="rounded-full bg-tgi-green-15 px-[0.9vh] py-[0.3vh] text-[1.15vh] font-semibold text-tgi-green tabular-nums">
               {t("ADMIN_UPDATE_TO", u.current, u.latest)}
             </span>
-            <span className="min-w-0 flex-1 truncate text-right font-mono text-[1.15vh] text-text-3 select-text">{u.url}</span>
+            <span className="min-w-0 flex-1 truncate text-right font-mono text-[1.15vh] text-text-3 select-text">
+              {u.url}
+            </span>
           </div>
         ))}
       </div>

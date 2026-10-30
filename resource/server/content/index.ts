@@ -54,7 +54,10 @@ export type GangDef = GangDefinition;
 
 function readUpdates(u: Record<string, unknown>): Settings["updates"] {
   const ignore = Array.isArray(u.ignore) ? u.ignore : [];
-  return { check: bool(u.check, true), ignore: ignore.filter((r): r is string => typeof r === "string") };
+  return {
+    check: bool(u.check, true),
+    ignore: ignore.filter((r): r is string => typeof r === "string"),
+  };
 }
 
 function readSettings(raw: unknown): Settings {

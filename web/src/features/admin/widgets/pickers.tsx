@@ -146,7 +146,7 @@ export function ColorW({ spec, path }: { spec: Spec<"color">; path: string }) {
             type="button"
             aria-label={t(spec.label)}
             onClick={() => setOpen((v) => !v)}
-            className="size-[3.8vh] shrink-0 rounded-full transition-transform duration-150 [box-shadow:inset_0_0_0_0.15vh_rgba(255,255,255,0.15)] hover:[transform:scale(1.06)]"
+            className="size-[3.8vh] shrink-0 rounded-full [box-shadow:inset_0_0_0_0.15vh_rgba(255,255,255,0.15)] transition-transform duration-150 hover:[transform:scale(1.06)]"
             style={{ background: HEX.test(stored) ? stored : "transparent" }}
           />
         }
@@ -186,7 +186,13 @@ export function ColorW({ spec, path }: { spec: Spec<"color">; path: string }) {
 }
 
 /** A world object picked with the free camera: its position at `path`, its model name at `modelPath`. */
-export function EntityW({ spec, path }: { spec: Spec<"entity">; path: string }) {
+export function EntityW({
+  spec,
+  path,
+}: {
+  spec: Spec<"entity">;
+  path: string;
+}) {
   const { t, resource, file, key, record } = useEditor();
   const [value, save] = useField(path);
   const point =

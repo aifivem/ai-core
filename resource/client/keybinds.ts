@@ -5,11 +5,11 @@ import { KEYBIND, type KeybindInfo } from "@aicore-fivem/shared";
 /**
  * Every resource's keybinds on this client (the lib's `Keybind` announces each one) and their default keys: the
  * panel's `keybinds` file (cached at start + changes since start) wins over the script's own key. Answered once the
- * file is current; a change made later applies when the script starts again or the player reconnects.
+ * file is current; a change made in the panel later is answered again at once (the keybind maps the new key).
  */
 class KeybindDefaults {
   private readonly known = new Map<string, KeybindInfo>();
-  /** The key each keybind was answered with (later panel changes apply on its next start). */
+  /** The key each keybind was answered with last. */
   private readonly answered = new Map<string, string>();
   private readonly world = new AdminWorld(["keybinds"]);
   private ready = false;
@@ -18,6 +18,11 @@ class KeybindDefaults {
     void this.world.ready.then(() => {
       this.ready = true;
       for (const info of this.known.values()) this.answer(info);
+    });
+    // A key changed in the panel applies at once: the keybind registers the new key's mapping.
+    this.world.onChange("keybinds", (name) => {
+      const info = name ? this.known.get(name) : undefined;
+      if (info && this.ready) this.answer(info);
     });
   }
 

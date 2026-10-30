@@ -1,4 +1,9 @@
-import { callExport, EntityState, resourceExport, stateBoolean } from "@aicore-fivem/lib/server";
+import {
+  callExport,
+  EntityState,
+  resourceExport,
+  stateBoolean,
+} from "@aicore-fivem/lib/server";
 import { CORE, type VehicleKeysAdapter } from "@aicore-fivem/shared";
 
 // ai-core's own inventory export: importing the inventory layer here would load it before the panel content.
@@ -32,8 +37,7 @@ export const tgiannHotwire: VehicleKeysAdapter = {
       hotwire("SetNonRemoveableIgnition", t.netId, t.vehicle, false);
   },
   has: (source, t) => {
-    if (t.vehicle !== null && inIgnition.get(t.vehicle))
-      return true;
+    if (t.vehicle !== null && inIgnition.get(t.vehicle)) return true;
     const plate = t.plate.toUpperCase();
     return core
       .GetItems(source)

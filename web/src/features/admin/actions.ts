@@ -1,5 +1,12 @@
 import { fetchNui } from "fivem-nui-react";
-import type { AdminPanelSnapshot, AdminPatch, AdminResult, ExternalPanel, Lookups, UpdateInfo } from "@aicore-fivem/shared";
+import type {
+  AdminPanelSnapshot,
+  AdminPatch,
+  AdminResult,
+  ExternalPanel,
+  Lookups,
+  UpdateInfo,
+} from "@aicore-fivem/shared";
 import { NuiCallback } from "../../../../resource/common/nui";
 import { mockAdminApply } from "../../dev/adminMock";
 import { router } from "../../router";
@@ -235,7 +242,12 @@ export async function pickPoint(root: boolean): Promise<Point | null> {
 }
 
 /** A world object picked with the free camera: its model name and position (null: cancelled). */
-export async function pickEntity(): Promise<{ model: string; x: number; y: number; z: number } | null> {
+export async function pickEntity(): Promise<{
+  model: string;
+  x: number;
+  y: number;
+  z: number;
+} | null> {
   store.dispatch(picking(true));
   const answer = await fetchNui<unknown>(NuiCallback.adminPickEntity, null, {
     mockData: { model: "v_ilev_ph_door01", x: 434.75, y: -980.62, z: 30.84 },
@@ -244,7 +256,10 @@ export async function pickEntity(): Promise<{ model: string; x: number; y: numbe
   store.dispatch(picking(false));
   if (typeof answer !== "object" || answer === null) return null;
   const e = answer as Record<string, unknown>;
-  return typeof e.model === "string" && typeof e.x === "number" && typeof e.y === "number" && typeof e.z === "number"
+  return typeof e.model === "string" &&
+    typeof e.x === "number" &&
+    typeof e.y === "number" &&
+    typeof e.z === "number"
     ? { model: e.model, x: e.x, y: e.y, z: e.z }
     : null;
 }

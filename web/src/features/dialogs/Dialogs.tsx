@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { fetchNui, useNuiEvent } from "fivem-nui-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import type { InputRequest, MenuRequest } from "@aicore-fivem/shared";
+import {
+  MENU_BACK,
+  type InputRequest,
+  type MenuRequest,
+} from "@aicore-fivem/shared";
 import { NuiCallback, NuiMessage } from "../../../../resource/common/nui";
 import { Button } from "../../components/ui/button";
 import { Dialog } from "../../components/ui/dialog";
@@ -15,9 +19,17 @@ const answer = (value: unknown) =>
 const hover = (id: string) =>
   void fetchNui(NuiCallback.dialogHover, { id }, { mockData: true });
 const MENU_OPTIONS = { mockData: MENU_MOCK, mockDelay: 200 };
+/** Holding Escape this long closes the whole menu flow. */
+const HOLD_MS = 600;
 
 /** A resource's menu (tgiann-core menu): title pill and a list on the right; hover fills a row green; click picks, Escape closes (answers null). */
-function MenuPanel({ menu }: { menu: MenuRequest }) {
+function MenuPanel({ menu, holding }: { menu: MenuRequest; holding: boolean }) {
+  // The first item takes the focus, so arrows and Enter work at once.
+  useEffect(() => {
+    document
+      .querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')
+      ?.focus();
+  }, [menu]);
   return (
     <motion.section
       initial={{ opacity: 0, x: "2vh" }}
@@ -36,8 +48,16 @@ function MenuPanel({ menu }: { menu: MenuRequest }) {
         <span className="truncate font-display text-[1.5vh] leading-none font-extrabold tracking-[-0.01em] uppercase">
           {menu.title}
         </span>
-        <span className="flex h-[3.2vh] items-center rounded-full bg-control px-[1.2vh] text-[1.1vh] font-bold text-text-3">
-          ESC
+        <span className="relative flex h-[3.2vh] items-center overflow-hidden rounded-full bg-control px-[1.2vh] text-[1.1vh] font-bold text-text-3">
+          {/* Fills while Escape is held: full = the whole menu closes. */}
+          <span
+            className="absolute inset-y-0 left-0 bg-tgi-green-30"
+            style={{
+              width: holding ? "100%" : "0%",
+              transition: holding ? `width ${HOLD_MS}ms linear` : "none",
+            }}
+          />
+          <span className="relative">{menu.back ? "ESC ←" : "ESC"}</span>
         </span>
       </header>
       <div className="flex max-h-[60vh] flex-col gap-[0.4vh] overflow-y-auto rounded-[1.4vh] bg-panel p-[0.6vh]">
@@ -138,6 +158,7 @@ function InputPanel({ input }: { input: InputRequest }) {
 export function Dialogs() {
   const [menu, setMenu] = useState<MenuRequest | null>(null);
   const [input, setInput] = useState<InputRequest | null>(null);
+  const [holding, setHolding] = useState(false);
 
   // The client checked both shapes (resource/client/menu.ts).
   useNuiEvent<MenuRequest>(
@@ -153,14 +174,51 @@ export function Dialogs() {
 
   useEffect(() => {
     if (!menu) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && answer(null);
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    // Escape: a tap goes back in a sub menu (closes a top menu), holding it closes the whole flow.
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const items = [
+          ...document.querySelectorAll<HTMLButtonElement>(
+            '[role="menuitem"]:not(:disabled)',
+          ),
+        ];
+        const at = items.indexOf(document.activeElement as HTMLButtonElement);
+        const next =
+          e.key === "ArrowDown"
+            ? (at + 1) % items.length
+            : (at - 1 + items.length) % items.length;
+        items[at === -1 ? 0 : next]?.focus();
+        return;
+      }
+      if (e.key !== "Escape" || e.repeat || timer) return;
+      setHolding(true);
+      timer = setTimeout(() => {
+        timer = null;
+        setHolding(false);
+        answer(null);
+      }, HOLD_MS);
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || !timer) return;
+      clearTimeout(timer);
+      timer = null;
+      setHolding(false);
+      answer(menu.back ? MENU_BACK : null);
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      if (timer) clearTimeout(timer);
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
   }, [menu]);
 
   return (
     <>
-      {menu && <MenuPanel menu={menu} />}
+      {menu && <MenuPanel menu={menu} holding={holding} />}
       {input && <InputPanel input={input} />}
     </>
   );

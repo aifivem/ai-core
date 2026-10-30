@@ -147,6 +147,7 @@ const CORE = {
 	clientCharacterLookEvent: "ai-core:client:characterLook",
 	clientPromptPressedEvent: "ai-core:client:promptPressed",
 	clientCacheEvent: "ai-core:client:cache",
+	clientHudVisibleEvent: "ai-core:client:hudVisible",
 	vehicleTypeCallback: "ai-core:vehicleType",
 	interactionStateKey: "ai:interaction",
 	charactersCallback: "ai-core:characters",
@@ -17593,7 +17594,7 @@ function allLookups() {
 }
 registerExport("GetLookupValues", (source) => SOURCES.includes(source) ? lookupOptions(source).map((o) => o.value) : []);
 // resource/server/versions.ts
-const CHECK_EVERY_MS = 216e5, GITHUB = /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/;
+const CHECK_EVERY_MS = 216e5, LABELS = { monitor: "txAdmin" }, GITHUB = /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/;
 function compare(a, b) {
 	let pa = a.replace(/^v/i, "").split(/[.-]/).map((n) => Number.parseInt(n, 10) || 0), pb = b.replace(/^v/i, "").split(/[.-]/).map((n) => Number.parseInt(n, 10) || 0);
 	for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
@@ -17667,12 +17668,18 @@ const gameThread = () => new Promise((resolve) => setImmediate(resolve)), versio
 	}
 	apply(resource, current, result) {
 		let before = this.outdated.get(resource);
-		!result.latest || compare(result.latest, current) <= 0 ? this.outdated.delete(resource) : (this.outdated.set(resource, {
+		if (!result.latest || compare(result.latest, current) <= 0) {
+			this.outdated.delete(resource);
+			return;
+		}
+		let label = LABELS[resource] ?? resource;
+		this.outdated.set(resource, {
 			resource,
+			label,
 			current,
 			latest: result.latest,
 			url: result.url
-		}), before?.latest !== result.latest && log$3.warn(`${resource} ${current} is outdated: ${result.latest} is out (${result.url})`));
+		}), before?.latest !== result.latest && log$3.warn(`${label} ${current} is outdated: ${result.latest} is out (${result.url})`);
 	}
 }();
 setTimeout(() => versions.checkAll(), 15e3), setInterval(() => versions.checkAll(), CHECK_EVERY_MS), on("onServerResourceStart", (resource) => setTimeout(() => void versions.check(resource), 5e3)), panel.onChange("settings", () => versions.checkAll()), registerExport("GetUpdates", () => versions.list());

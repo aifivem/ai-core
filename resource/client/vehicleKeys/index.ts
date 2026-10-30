@@ -1,4 +1,8 @@
-import { GlobalKey, onServerEvent, stateString } from "@aicore-fivem/lib/client";
+import {
+  GlobalKey,
+  onServerEvent,
+  stateString,
+} from "@aicore-fivem/lib/client";
 import { createLogger, waitFor } from "@aicore-fivem/lib/shared";
 import {
   VEHICLE_KEYS_CLIENT_EVENT,

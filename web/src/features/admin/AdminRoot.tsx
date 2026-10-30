@@ -4,7 +4,13 @@ import { motion } from "motion/react";
 import { useNuiEvent } from "fivem-nui-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDoorOpen } from "@fortawesome/free-solid-svg-icons";
-import type { AdminDelta, AdminPanelSnapshot, ExternalPanel, Lookups, UpdateInfo } from "@aicore-fivem/shared";
+import type {
+  AdminDelta,
+  AdminPanelSnapshot,
+  ExternalPanel,
+  Lookups,
+  UpdateInfo,
+} from "@aicore-fivem/shared";
 import { NuiMessage } from "../../../../resource/common/nui";
 import { mockAdminOpen } from "../../dev/adminMock";
 import { store, useAppSelector } from "../../store";
@@ -24,7 +30,16 @@ const OPEN_OPTIONS = { mockData: mockAdminOpen(), mockDelay: 300 };
 
 /** GTA's ped models (no native lists them): a static list shipped with the panel. */
 const PED_OPTIONS = peds.map((value) => ({ value, label: value }));
-const NO_LOOKUPS: Lookups = { item: [], job: [], gang: [], account: [], resource: [], player: [], vehicle: [], ped: [] };
+const NO_LOOKUPS: Lookups = {
+  item: [],
+  job: [],
+  gang: [],
+  account: [],
+  resource: [],
+  player: [],
+  vehicle: [],
+  ped: [],
+};
 
 function onOpen(value: unknown): void {
   if (typeof value !== "object" || value === null) return;

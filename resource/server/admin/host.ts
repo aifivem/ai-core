@@ -48,7 +48,12 @@ class AdminHost {
       const panel = this.call(resource);
       if (panel) panels.push(panel.AdminPanelSnapshot());
     }
-    return { panels, lookups: allLookups(), external: externalPanels.list(), updates: versions.list() };
+    return {
+      panels,
+      lookups: allLookups(),
+      external: externalPanels.list(),
+      updates: versions.list(),
+    };
   }
 
   close(source: number): void {

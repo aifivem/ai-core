@@ -36,7 +36,12 @@ function decode(raw: string): Decoded | null {
   } catch {
     return null;
   }
-  if (!isRecord(json) || typeof json.mappings !== "string" || !Array.isArray(json.sources)) return null;
+  if (
+    !isRecord(json) ||
+    typeof json.mappings !== "string" ||
+    !Array.isArray(json.sources)
+  )
+    return null;
   const sources = json.sources.map((s) => String(s).replace(/^(\.\.\/)+/, ""));
   let src = 0;
   let srcLine = 0;
@@ -47,7 +52,8 @@ function decode(raw: string): Decoded | null {
       ? text.split(",").flatMap((segment) => {
           const [dc = 0, ds, dl, dcol] = decodeVlq(segment);
           col += dc;
-          if (ds === undefined || dl === undefined || dcol === undefined) return [];
+          if (ds === undefined || dl === undefined || dcol === undefined)
+            return [];
           src += ds;
           srcLine += dl;
           srcCol += dcol;
@@ -71,7 +77,10 @@ class SourceMaps {
 
   private get(resource: string): Decoded | null {
     if (!this.maps.has(resource)) {
-      const raw = GetResourceState(resource) === "started" ? LoadResourceFile(resource, "dist/client.js.map") : null;
+      const raw =
+        GetResourceState(resource) === "started"
+          ? LoadResourceFile(resource, "dist/client.js.map")
+          : null;
       this.maps.set(resource, raw ? decode(raw) : null);
     }
     return this.maps.get(resource) ?? null;
@@ -79,20 +88,23 @@ class SourceMaps {
 
   /** `@res/dist/client.js:line:col` positions in a client error, written as source positions when a map has them. */
   resolve(text: string): string {
-    return text.replace(/@([\w.-]{1,64})\/dist\/client\.js:(\d+):(\d+)/g, (whole, resource: string, line: string, col: string) => {
-      const map = this.get(resource);
-      const segments = map?.lines[Number(line) - 1 - WRAPPER_LINES];
-      if (!map || !segments?.length) return whole;
-      const column = Number(col) - 1;
-      let found: number[] | undefined;
-      for (const segment of segments) {
-        if ((segment[0] ?? 0) > column) break;
-        found = segment;
-      }
-      if (!found) return whole;
-      const [, src = 0, srcLine = 0, srcCol = 0] = found;
-      return `@${resource}/${map.sources[src] ?? "?"}:${srcLine + 1}:${srcCol + 1}`;
-    });
+    return text.replace(
+      /@([\w.-]{1,64})\/dist\/client\.js:(\d+):(\d+)/g,
+      (whole, resource: string, line: string, col: string) => {
+        const map = this.get(resource);
+        const segments = map?.lines[Number(line) - 1 - WRAPPER_LINES];
+        if (!map || !segments?.length) return whole;
+        const column = Number(col) - 1;
+        let found: number[] | undefined;
+        for (const segment of segments) {
+          if ((segment[0] ?? 0) > column) break;
+          found = segment;
+        }
+        if (!found) return whole;
+        const [, src = 0, srcLine = 0, srcCol = 0] = found;
+        return `@${resource}/${map.sources[src] ?? "?"}:${srcLine + 1}:${srcCol + 1}`;
+      },
+    );
   }
 }
 

@@ -4,7 +4,16 @@ import type { LookupOption, Lookups, LookupSource } from "@aicore-fivem/shared";
 import { accountTypes, gangs, jobs } from "../content";
 import { inventory } from "../inventory";
 
-const SOURCES: readonly LookupSource[] = ["item", "job", "gang", "account", "resource", "player", "vehicle", "ped"];
+const SOURCES: readonly LookupSource[] = [
+  "item",
+  "job",
+  "gang",
+  "account",
+  "resource",
+  "player",
+  "vehicle",
+  "ped",
+];
 
 const sorted = (options: LookupOption[]): LookupOption[] =>
   options.sort((a, b) => a.label.localeCompare(b.label));
@@ -34,7 +43,10 @@ export function lookupOptions(source: LookupSource): LookupOption[] {
       );
     case "player":
       return sorted(
-        [...players.all()].map((p) => ({ value: p.citizenid, label: `${p.fullName} (${p.source})` })),
+        [...players.all()].map((p) => ({
+          value: p.citizenid,
+          label: `${p.fullName} (${p.source})`,
+        })),
       );
     // Only the admin's game can list models: its client fills these, the server never refuses a model.
     case "vehicle":
@@ -44,7 +56,8 @@ export function lookupOptions(source: LookupSource): LookupOption[] {
       const out: LookupOption[] = [];
       for (let i = 0; i < GetNumResources(); i++) {
         const name = GetResourceByFindIndex(i);
-        if (name && GetResourceState(name) === "started") out.push({ value: name, label: name });
+        if (name && GetResourceState(name) === "started")
+          out.push({ value: name, label: name });
       }
       return sorted(out);
     }

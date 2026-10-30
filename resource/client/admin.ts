@@ -1,4 +1,5 @@
 import {
+  hud,
   Keybind,
   loadLocaleTexts,
   onServerEvent,
@@ -20,8 +21,13 @@ function vehicleModels(): Array<{ value: string; label: string }> {
     .filter((n): n is string => typeof n === "string")
     .map((n) => {
       const value = n.toLowerCase();
-      const label = GetLabelText(GetDisplayNameFromVehicleModel(GetHashKey(value)));
-      return { value, label: label && label !== "NULL" ? `${label} (${value})` : value };
+      const label = GetLabelText(
+        GetDisplayNameFromVehicleModel(GetHashKey(value)),
+      );
+      return {
+        value,
+        label: label && label !== "NULL" ? `${label} (${value})` : value,
+      };
     });
 }
 
@@ -45,9 +51,14 @@ class AdminPanelClient {
     if (!isRecord(answer) || !Array.isArray(answer.panels)) return;
     this.open = true;
     SetNuiFocus(true, true);
+    hud.hide("admin");
     SendNUIMessage({
       action: NuiMessage.adminOpen,
-      data: { ...answer, lookups: { ...record(answer.lookups), vehicle: vehicleModels() }, texts: loadLocaleTexts() },
+      data: {
+        ...answer,
+        lookups: { ...record(answer.lookups), vehicle: vehicleModels() },
+        texts: loadLocaleTexts(),
+      },
     });
   }
 
@@ -55,6 +66,7 @@ class AdminPanelClient {
     if (!this.open) return;
     this.open = false;
     SetNuiFocus(false, false);
+    hud.show("admin");
     emitNet(ADMIN.closeEvent);
   }
 
@@ -145,14 +157,17 @@ RegisterNuiCallback(
   },
 );
 
-RegisterNuiCallback(NuiCallback.adminPickEntity, (_data: unknown, cb: NuiReply) => {
-  if (!panel.isOpen) return cb(null);
-  SetNuiFocus(false, false);
-  void pickEntity().then((entity) => {
-    if (panel.isOpen) SetNuiFocus(true, true);
-    cb(entity);
-  });
-});
+RegisterNuiCallback(
+  NuiCallback.adminPickEntity,
+  (_data: unknown, cb: NuiReply) => {
+    if (!panel.isOpen) return cb(null);
+    SetNuiFocus(false, false);
+    void pickEntity().then((entity) => {
+      if (panel.isOpen) SetNuiFocus(true, true);
+      cb(entity);
+    });
+  },
+);
 
 RegisterNuiCallback(
   NuiCallback.adminPlaceNames,
