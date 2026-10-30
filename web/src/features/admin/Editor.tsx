@@ -8,7 +8,7 @@ export function Editor({ tab, ctx }: { tab: TabSpec; ctx: EditorContext }) {
   return (
     <EditorCtx.Provider value={ctx}>
       <ScrollArea className="min-h-0 flex-1">
-        <div className="flex flex-col gap-[1.6vh] p-[2.4vh]">
+        <div className="flex flex-col gap-[1.6vh] pr-[1vh] pb-[2vh]">
           {tab.cards.map((card) => (
             <Card key={card.title} card={card} />
           ))}

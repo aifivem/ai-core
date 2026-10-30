@@ -20,8 +20,8 @@ const toPrompt = (value: unknown): Prompt | null => {
 const SHOW_OPTIONS = { mockData: mockPrompts(), mockDelay: 300 };
 
 /**
- * Prompts on the right edge, middle height (Dark Minimal): the key in an accent cap, the action next to it. The last
- * shown one is on top and is the one the interaction key acts on.
+ * Prompts on the right edge, middle height (tgiann-core draw text pill): the key in a round cap, the action next to it.
+ * The last shown one is on top, has the green key cap and is the one the interaction key acts on.
  */
 export function Prompts() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
@@ -49,12 +49,14 @@ export function Prompts() {
             animate={{ opacity: index === 0 ? 1 : 0.6, x: 0 }}
             exit={{ opacity: 0, x: "2vh", transition: { duration: 0.15, ease: "easeOut" } }}
             transition={{ type: "spring", duration: 0.3, bounce: 0 }}
-            className="flex items-center gap-[1.2vh] rounded-[0.8vh] border border-line bg-[rgba(var(--panel-rgb),0.92)] py-[0.6vh] pl-[0.6vh] pr-[1.6vh] [box-shadow:0_0.8vh_2.4vh_rgba(0,0,0,0.35)]"
+            className="flex h-[4.4vh] items-center gap-[1.2vh] rounded-full bg-[rgba(19,19,19,0.75)] pl-[0.6vh] pr-[1.8vh]"
           >
-            <span className="flex h-[3.2vh] min-w-[3.2vh] items-center justify-center rounded-[0.6vh] border border-accent bg-[rgba(var(--accent-rgb),0.1)] px-[0.8vh] text-[1.4vh] font-semibold text-accent">
+            <span
+              className={`flex h-[3.2vh] min-w-[3.2vh] items-center justify-center rounded-full px-[0.8vh] text-[1.4vh] font-bold ${index === 0 ? "bg-tgi-green text-tgi-green-text" : "bg-white/10 text-text"}`}
+            >
               {prompt.button}
             </span>
-            <span className="max-w-[36vh] truncate text-[1.4vh] font-medium leading-[1.3] text-text">{prompt.text}</span>
+            <span className="max-w-[36vh] truncate text-[1.4vh] leading-[1.3] font-medium">{prompt.text}</span>
           </motion.div>
         ))}
       </AnimatePresence>

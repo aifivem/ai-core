@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCircleCheck, faCircleExclamation, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { faCircleCheck, faCircleExclamation, faCircleNotch } from "@fortawesome/free-solid-svg-icons";
 import { cn } from "../../lib/utils";
 import { useAppSelector } from "../../store";
 import { fieldId } from "./actions";
@@ -23,29 +23,29 @@ export function FieldShell({ path, label, hint, inline = false, children }: Prop
   const state = useAppSelector((s) => s.admin.fields[id] ?? Object.entries(s.admin.fields).find(([k]) => k.startsWith(`${id}.`))?.[1]);
   const status = (
     <span className="inline-flex w-[1.4vh] justify-center text-[1.15vh]">
-      {state?.status === "saving" && <FontAwesomeIcon icon={faSpinner} spin className="text-text-3" aria-label={t("ADMIN_SAVING")} />}
-      {state?.status === "saved" && <FontAwesomeIcon icon={faCircleCheck} className="text-accent" aria-label={t("ADMIN_SAVED")} />}
+      {state?.status === "saving" && <FontAwesomeIcon icon={faCircleNotch} spin className="text-text-3" aria-label={t("ADMIN_SAVING")} />}
+      {state?.status === "saved" && <FontAwesomeIcon icon={faCircleCheck} className="text-tgi-green" aria-label={t("ADMIN_SAVED")} />}
     </span>
   );
   return (
-    <div className="flex flex-col gap-[0.6vh]">
-      <div className={cn("flex gap-[1.6vh]", inline ? "items-center justify-between" : "flex-col gap-[0.6vh]")}>
+    <div className="flex flex-col gap-[1vh] py-[1.3vh]">
+      <div className={cn("flex gap-[1.6vh]", inline ? "items-center justify-between" : "flex-col gap-[1vh]")}>
         {label ? (
-          <div className="flex min-w-0 flex-col gap-[0.2vh]">
-            <span className="flex items-center gap-[0.6vh] text-[1.35vh] font-medium text-text">
+          <div className="flex min-w-0 flex-col gap-[0.4vh]">
+            <span className="flex items-center gap-[0.8vh] text-[1.45vh] leading-[1.25] font-medium">
               {t(label)}
               {status}
             </span>
-            {hint && <span className="text-[1.2vh] leading-[1.4] text-text-3">{t(hint)}</span>}
+            {hint && <span className="text-[1.25vh] leading-[1.4] text-text-3">{t(hint)}</span>}
           </div>
         ) : (
           // A field without its own label (a list right under its card title) still shows its save state.
-          <span className="absolute right-[1.8vh] top-[1.8vh]">{status}</span>
+          <span className="absolute right-[1.6vh] top-[1.6vh]">{status}</span>
         )}
         <div className={cn(inline ? "shrink-0" : "w-full")}>{children}</div>
       </div>
       {state?.status === "error" && (
-        <span role="alert" className="flex items-center gap-[0.6vh] rounded-[0.6vh] bg-[rgba(var(--danger-rgb),0.1)] px-[1vh] py-[0.6vh] text-[1.25vh] text-danger">
+        <span role="alert" className="flex items-center gap-[0.6vh] rounded-[0.6vh] bg-danger-bg px-[1vh] py-[0.7vh] text-[1.3vh] leading-[1.4] text-danger">
           <FontAwesomeIcon icon={faCircleExclamation} aria-hidden />
           {t(state.error)}
         </span>

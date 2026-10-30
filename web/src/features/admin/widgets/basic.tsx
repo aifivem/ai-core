@@ -2,7 +2,6 @@ import { useEffect, useState, type KeyboardEvent } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMinus, faPlus } from "@fortawesome/free-solid-svg-icons";
 import type { WidgetSpec } from "@aicore-fivem/shared";
-import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Select } from "../../../components/ui/select";
 import { Switch } from "../../../components/ui/switch";
@@ -70,27 +69,29 @@ export function NumberW({ spec, path }: { spec: Spec<"number">; path: string }) 
   };
   const step = spec.step ?? 1;
   const unit = spec.unit ? (spec.unit === "$" ? "$" : t(spec.unit)) : "";
+  const stepButton = "flex size-[3vh] shrink-0 items-center justify-center rounded-full bg-control text-[1.1vh] text-text-2 transition-[background-color,color,transform] duration-150 ease-out enabled:hover:bg-control-hover enabled:hover:text-text enabled:active:[transform:scale(0.92)] disabled:cursor-not-allowed disabled:opacity-40";
   return (
-    <div className="flex items-center gap-[0.6vh]">
-      <Button variant="icon" aria-label={`${t(spec.label)} -${step}`} disabled={stored <= (spec.min ?? -Infinity)} onClick={() => put(stored - step)}>
+    <div className="flex h-[3.6vh] w-[20vh] shrink-0 items-center gap-[0.4vh] rounded-full border border-white/8 bg-[#2222224D] p-[0.2vh] transition-[border-color] duration-150 focus-within:border-tgi-green-40">
+      <button type="button" className={stepButton} aria-label={`${t(spec.label)} -${step}`} disabled={stored <= (spec.min ?? -Infinity)} onClick={() => put(stored - step)}>
         <FontAwesomeIcon icon={faMinus} />
-      </Button>
-      <div className="relative">
-        {unit === "$" && <span className="pointer-events-none absolute inset-y-0 left-[1vh] flex items-center text-[1.3vh] text-text-3">$</span>}
-        <Input
+      </button>
+      <span className="flex min-w-0 flex-1 items-center justify-center gap-[0.4vh]">
+        {unit === "$" && <span className="text-[1.25vh] font-semibold text-text-3">$</span>}
+        <input
           value={draft}
           inputMode="decimal"
+          size={Math.max(2, draft.length)}
           aria-label={t(spec.label)}
-          className={`w-[11vh] text-right tabular-nums ${unit === "$" ? "pl-[2.2vh]" : ""} ${unit && unit !== "$" ? "pr-[1vh]" : ""}`}
+          className="min-w-0 bg-transparent text-center text-[1.4vh] font-bold tabular-nums outline-none"
           onChange={(event) => setDraft(event.target.value)}
           onBlur={commit}
           onKeyDown={keys(() => setDraft(String(stored)))}
         />
-      </div>
-      {unit && unit !== "$" && <span className="min-w-[4vh] text-[1.25vh] text-text-3">{unit}</span>}
-      <Button variant="icon" aria-label={`${t(spec.label)} +${step}`} disabled={stored >= (spec.max ?? Infinity)} onClick={() => put(stored + step)}>
+        {unit && unit !== "$" && <span className="truncate text-[1.25vh] font-semibold text-text-3">{unit}</span>}
+      </span>
+      <button type="button" className={stepButton} aria-label={`${t(spec.label)} +${step}`} disabled={stored >= (spec.max ?? Infinity)} onClick={() => put(stored + step)}>
         <FontAwesomeIcon icon={faPlus} />
-      </Button>
+      </button>
     </div>
   );
 }

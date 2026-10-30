@@ -17,7 +17,7 @@ interface SelectProps {
   "aria-label"?: string;
 }
 
-/** Radix select in Dark Minimal: raised trigger, floating list on `--panel-raised`, selected row in accent text. */
+/** Radix select in TGIANN: pill trigger, floating `#161616` list, the picked row in green text. */
 export function Select({ value, options, onChange, placeholder, className, ...props }: SelectProps) {
   return (
     <SelectPrimitive.Root value={value} onValueChange={onChange}>
@@ -25,7 +25,7 @@ export function Select({ value, options, onChange, placeholder, className, ...pr
         data-slot="select-trigger"
         aria-label={props["aria-label"]}
         className={cn(
-          "flex h-[3.6vh] w-full items-center justify-between gap-[0.8vh] rounded-[0.6vh] border border-line bg-raised px-[1.2vh] text-[1.3vh] text-text transition-colors duration-150 hover:border-line-strong data-[placeholder]:text-text-3",
+          "flex h-[3.6vh] w-full items-center justify-between gap-[0.8vh] rounded-full border border-white/8 bg-[#2222224D] px-[1.4vh] text-[1.35vh] text-text transition-[border-color] duration-150 hover:border-white/14 data-[placeholder]:text-text-4 data-[state=open]:border-tgi-green-40",
           className,
         )}
       >
@@ -38,21 +38,23 @@ export function Select({ value, options, onChange, placeholder, className, ...pr
         <SelectPrimitive.Content
           position="popper"
           sideOffset={4}
-          className="z-[100] max-h-[40vh] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-[0.8vh] border border-line bg-raised p-[0.4vh] [box-shadow:0_0.8vh_2.4vh_rgba(0,0,0,0.5)]"
+          className="z-[100] max-h-[40vh] min-w-[var(--radix-select-trigger-width)] animate-fade overflow-hidden rounded-[1vh] bg-float p-[0.4vh] [box-shadow:0_0_0_1px_rgba(255,255,255,0.08),0_0.8vh_2.4vh_rgba(0,0,0,0.5)]"
         >
           <SelectPrimitive.Viewport>
-            {options.map((option) => (
-              <SelectPrimitive.Item
-                key={option.value}
-                value={option.value}
-                className="relative flex h-[3.2vh] cursor-pointer select-none items-center rounded-[0.6vh] pl-[3vh] pr-[1vh] text-[1.3vh] text-text-2 outline-none data-[highlighted]:bg-[rgba(255,255,255,0.06)] data-[state=checked]:text-accent"
-              >
-                <SelectPrimitive.ItemIndicator className="absolute left-[1vh]">
-                  <FontAwesomeIcon icon={faCheck} className="text-[1.1vh]" />
-                </SelectPrimitive.ItemIndicator>
-                <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
-              </SelectPrimitive.Item>
-            ))}
+            <SelectPrimitive.Group>
+              {options.map((option) => (
+                <SelectPrimitive.Item
+                  key={option.value}
+                  value={option.value}
+                  className="relative flex h-[3.2vh] cursor-pointer select-none items-center rounded-[0.6vh] pl-[3vh] pr-[1vh] text-[1.3vh] text-text-2 outline-none data-[highlighted]:bg-white/6 data-[highlighted]:text-text data-[state=checked]:text-tgi-green"
+                >
+                  <SelectPrimitive.ItemIndicator className="absolute left-[1vh]">
+                    <FontAwesomeIcon icon={faCheck} className="text-[1.1vh]" />
+                  </SelectPrimitive.ItemIndicator>
+                  <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
+                </SelectPrimitive.Item>
+              ))}
+            </SelectPrimitive.Group>
           </SelectPrimitive.Viewport>
         </SelectPrimitive.Content>
       </SelectPrimitive.Portal>

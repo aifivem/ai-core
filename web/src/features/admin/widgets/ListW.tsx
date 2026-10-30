@@ -24,7 +24,7 @@ function RowControl({ spec, path }: { spec: WidgetSpec; path: string }) {
   if (!control) return null;
   return (
     <label className={`flex flex-col gap-[0.4vh] ${spec.widget === "text" || spec.widget === "point" ? "min-w-0 flex-1" : "shrink-0"}`}>
-      <span className="text-[1.15vh] text-text-3">{t(spec.label)}</span>
+      <span className="px-[0.4vh] text-[1.15vh] font-medium text-text-3">{t(spec.label)}</span>
       <div className={`flex h-[3.6vh] items-center ${spec.widget === "point" ? "[&>*]:flex-1" : ""}`}>{control}</div>
     </label>
   );
@@ -37,16 +37,16 @@ export function ListW({ spec }: { spec: Spec }) {
   const rows = Array.isArray(value) ? value : [];
   const full = spec.max !== undefined && rows.length >= spec.max;
   return (
-    <div className="flex flex-col gap-[0.8vh]">
+    <div className="flex flex-col gap-[0.8vh] pb-[0.4vh]">
       {rows.map((_, index) => (
-        <div key={index} className="flex items-end gap-[1.2vh] rounded-[0.8vh] border border-line bg-bg px-[1.2vh] pb-[1vh] pt-[0.8vh]">
-          {spec.rowLabel && <span className="mb-[0.9vh] w-[7vh] shrink-0 text-[1.2vh] font-medium text-text-3">{t(spec.rowLabel, index + 1)}</span>}
+        <div key={index} className="flex items-end gap-[1.2vh] rounded-[0.8vh] bg-white/3 px-[1.2vh] pb-[1vh] pt-[0.8vh] transition-[background-color] duration-150 hover:bg-white/6">
+          {spec.rowLabel && <span className="mb-[0.9vh] w-[7vh] shrink-0 text-[1.35vh] font-medium text-text-2">{t(spec.rowLabel, index + 1)}</span>}
           {spec.rows.map((row) => (
             <RowControl key={row.path} spec={row} path={`${spec.path}.${index}.${row.path}`} />
           ))}
           <Button
             variant="icon"
-            className="mb-[0.3vh] hover:text-danger"
+            className="enabled:hover:bg-danger-bg enabled:hover:text-danger"
             aria-label={`${t("ADMIN_REMOVE")} ${index + 1}`}
             disabled={rows.length <= 1}
             onClick={() => save(rows.filter((__, i) => i !== index))}
@@ -55,7 +55,7 @@ export function ListW({ spec }: { spec: Spec }) {
           </Button>
         </div>
       ))}
-      <Button variant="secondary" size="sm" className="self-start" disabled={full} onClick={() => save([...rows, spec.newRow])}>
+      <Button variant="ghost" size="sm" className="self-start" disabled={full} onClick={() => save([...rows, spec.newRow])}>
         <FontAwesomeIcon icon={faPlus} data-icon="inline-start" aria-hidden />
         {t(spec.addLabel)}
       </Button>

@@ -6,7 +6,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDoorOpen } from "@fortawesome/free-solid-svg-icons";
 import type { AdminDelta, AdminPanelSnapshot } from "@aicore-fivem/shared";
 import { NuiMessage } from "../../../../resource/common/nui";
-import { Button } from "../../components/ui/button";
 import { mockAdminOpen } from "../../dev/adminMock";
 import { store, useAppSelector } from "../../store";
 import { changed } from "../../store/admin";
@@ -53,29 +52,33 @@ export function AdminRoot() {
   const kind = tab ? panel?.schema.files[tab.file]?.kind : undefined;
 
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-[rgba(0,0,0,0.45)]">
+    <div className="absolute inset-0 flex items-center justify-center bg-black/40">
       <motion.div
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: "spring", duration: 0.35, bounce: 0 }}
-        className="flex h-[88vh] w-[165vh] overflow-hidden rounded-[1.2vh] border border-line bg-bg [box-shadow:inset_0_0.1vh_0_rgba(255,255,255,0.04),0_2.4vh_6.4vh_rgba(0,0,0,0.6)]"
+        initial={{ opacity: 0, y: "1vh" }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", duration: 0.4, bounce: 0, opacity: { type: "tween", duration: 0.3, ease: "easeOut" } }}
+        className="flex h-[calc(100vh-3vh)] w-[calc(100vw-3vh)] overflow-hidden rounded-[1.8vh] bg-panel [box-shadow:0_0_0_1px_rgba(255,255,255,0.08),inset_0_0.1vh_0_rgba(255,255,255,0.06),0_2.4vh_6.4vh_rgba(0,0,0,0.6)]"
       >
         <Sidebar resource={resource} tab={tabId} />
         <main className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-[8vh] shrink-0 items-center gap-[1.6vh] border-b border-line px-[2.4vh]">
-            <div className="flex min-w-0 flex-1 flex-col gap-[0.3vh]">
-              <h1 className="truncate text-[2vh] font-semibold leading-[1.2] tracking-[-0.01em]">{tab ? t(tab.label) : ""}</h1>
-              <p className="truncate text-[1.3vh] text-text-3">{tab ? t(tab.desc) : ""}</p>
+          <header className="flex h-[7.6vh] shrink-0 items-center gap-[1.6vh] border-b border-white/8 bg-header px-[2.2vh]">
+            <div className="flex min-w-0 flex-1 flex-col gap-[0.6vh]">
+              <h1 className="truncate font-display font-extrabold text-[2vh] leading-[1.15] tracking-[-0.01em] uppercase">{tab ? t(tab.label) : ""}</h1>
+              <p className="truncate text-[1.3vh] leading-[1.3] text-text-3">{tab ? t(tab.desc) : ""}</p>
             </div>
-            <Button variant="secondary" size="sm" onClick={closePanel}>
-              <FontAwesomeIcon icon={faDoorOpen} data-icon="inline-start" aria-hidden />
-              {t("ADMIN_CLOSE")}
-            </Button>
+            <button type="button" onClick={closePanel} className="group flex items-center gap-[1vh] rounded-full">
+              <span className="text-[1.4vh] text-text-3 transition-colors duration-150 group-hover:text-text">{t("ADMIN_CLOSE")}</span>
+              <span className="flex size-[4vh] items-center justify-center rounded-full bg-control text-text-2 transition-[background-color,color,transform] duration-150 ease-out group-hover:bg-control-hover group-hover:text-text group-active:[transform:scale(0.92)]">
+                <FontAwesomeIcon icon={faDoorOpen} className="text-[1.6vh]" aria-hidden />
+              </span>
+            </button>
           </header>
-          {panel && tab && kind === "settings" && (
-            <Editor key={`${panel.resource}/${tab.id}`} tab={tab} ctx={{ resource: panel.resource, file: tab.file, key: undefined, record: panel.data[tab.file] ?? {}, t }} />
-          )}
-          {panel && tab && kind === "records" && <RecordsView key={`${panel.resource}/${tab.id}`} panel={panel} tab={tab} selected={key} t={t} />}
+          <div className="flex min-h-0 flex-1 flex-col p-[2.2vh] pr-[1.2vh]">
+            {panel && tab && kind === "settings" && (
+              <Editor key={`${panel.resource}/${tab.id}`} tab={tab} ctx={{ resource: panel.resource, file: tab.file, key: undefined, record: panel.data[tab.file] ?? {}, t }} />
+            )}
+            {panel && tab && kind === "records" && <RecordsView key={`${panel.resource}/${tab.id}`} panel={panel} tab={tab} selected={key} t={t} />}
+          </div>
         </main>
       </motion.div>
     </div>

@@ -1,72 +1,112 @@
+import { AnimatePresence, motion } from "motion/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCircleExclamation } from "@fortawesome/free-solid-svg-icons";
-import { Brand, Tagline } from "../../components/Brand";
+import { faCity, faPlay, faTrashCan } from "@fortawesome/free-solid-svg-icons";
+import type { Branding } from "@aicore-fivem/shared";
+import { PillBar, PillButton, ScreenHeader, Vignette, columnDelay, screenEnter } from "../../components/Screen";
 import { useLang } from "../../lib/lang";
 import { play, selectCard } from "./actions";
 import { CharacterCard, CreateCard } from "./CharacterCard";
+import { CharacterDetails } from "./CharacterDetails";
 import { CreateDialog } from "./CreateDialog";
 import { DeleteDialog } from "./DeleteDialog";
 import { update, useScreen } from "./store";
 
-/** Character select (docs/design.md): night Los Santos backdrop, brand, a row of character cards and free slots. */
+/** Server name, subtitle and tagline, bottom left. */
+function Brand({ branding }: { branding: Branding }) {
+  const tagline = [branding.tagline, branding.taglineSub].filter(Boolean).join(" · ");
+  return (
+    <div className="flex items-center gap-[1.2vh]">
+      <FontAwesomeIcon icon={faCity} className="text-[3.2vh] text-tgi-green" />
+      <div className="flex flex-col gap-[0.3vh]">
+        <span className="text-[1.6vh] leading-[1.2] font-bold uppercase">
+          {branding.name} {branding.subtitle}
+        </span>
+        {tagline && <span className="text-[1.3vh] leading-[1.3] text-text-3">{tagline}</span>}
+      </div>
+    </div>
+  );
+}
+
+/** A refused action (a lang key), top centre (tgiann NotifBox line). */
+function ErrorLine({ text }: { text: string }) {
+  return (
+    <motion.div
+      role="alert"
+      initial={{ opacity: 0, y: "-2vh" }}
+      animate={{ opacity: 1, y: "0vh" }}
+      exit={{ opacity: 0, y: "-1.2vh", transition: { duration: 0.15, ease: "easeOut" } }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      className="absolute inset-x-0 top-[9vh] mx-auto w-max max-w-[44vh] rounded-[0.5vh] border-l-[0.4vh] border-l-danger-solid bg-black/70 px-[1.5vh] py-[1vh] text-center text-[1.5vh] leading-[1.4]"
+    >
+      {text}
+    </motion.div>
+  );
+}
+
+/** Character select (docs/design.md, tgiann-multichar): title and details left, slot row bottom centre, actions bottom right. */
 export function CharacterScreen() {
   const t = useLang();
   const { open, screen, selected, view, busy, error, portraits } = useScreen();
   if (!open || !screen) return null;
 
   const slots = Array.from({ length: screen.slots }, (_, i) => i + 1);
+  const card = screen.characters.find((c) => c.id === selected);
   const deleting = view.kind === "delete" ? screen.characters.find((c) => c.id === view.characterId) : undefined;
 
   return (
-    <div className="absolute inset-0 animate-fade bg-bg">
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: `url(./backgrounds/${screen.branding.background}.jpg)` }}
-      />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(var(--bg-rgb),0.55)_0%,rgba(var(--bg-rgb),0.15)_35%,rgba(var(--bg-rgb),0.85)_100%)]" />
+    <div className="absolute inset-0 animate-fade bg-page">
+      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(./backgrounds/${screen.branding.background}.jpg)` }} />
+      <Vignette />
+      <Vignette variant="left" />
 
-      <div className="absolute inset-x-[5vh] top-[5vh] flex items-start justify-between">
-        <Brand branding={screen.branding} />
-        <Tagline branding={screen.branding} />
-      </div>
-
-      <div className="absolute inset-x-0 top-1/2 flex justify-center overflow-x-auto px-[5vh] [transform:translateY(-44%)]">
-        <div className="flex animate-rise gap-[2vh]">
-          {slots.map((slot) => {
-            const card = screen.characters.find((c) => c.slot === slot);
-            if (!card) return <CreateCard key={slot} onCreate={() => update({ view: { kind: "create", slot }, error: null })} />;
-            return (
-              <CharacterCard
-                key={slot}
-                card={card}
-                portrait={portraits[card.id]}
-                selected={selected === card.id}
-                canDelete={screen.canDelete}
-                busy={busy}
-                onSelect={() => selectCard(card.id)}
-                onPlay={() => void play(card.id)}
-                onDelete={() => update({ view: { kind: "delete", characterId: card.id }, error: null })}
-              />
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="absolute inset-x-0 bottom-[5vh] flex justify-center">
-        <span className="text-[1.2vh] uppercase tracking-[0.24em] text-text-3">{t("CHAR_SUBTITLE", screen.characters.length, screen.slots)}</span>
-      </div>
-
-      {view.kind === "create" && <CreateDialog slot={view.slot} />}
-      {deleting && <DeleteDialog card={deleting} />}
-
-      {error && (
-        <div className="absolute inset-x-0 bottom-[9vh] flex justify-center">
-          <div className="flex animate-rise items-center gap-[1vh] rounded-[0.6vh] border-[0.1vh] border-[rgba(var(--danger-rgb),0.6)] bg-panel px-[1.6vh] py-[1.1vh] text-[1.3vh] text-danger">
-            <FontAwesomeIcon icon={faCircleExclamation} />
-            <span className="leading-[1.4]">{t(error)}</span>
-          </div>
+      {view.kind === "create" ? (
+        <CreateDialog slot={view.slot} />
+      ) : (
+        <div className="relative grid h-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-x-[4vh] p-[2.4vh]">
+          <motion.div {...screenEnter} transition={columnDelay(0)} className="flex min-h-0 flex-col justify-between">
+            <ScreenHeader title={t("CHAR_TITLE")} desc={t("CHAR_SUBTITLE", screen.characters.length, screen.slots)} />
+            <CharacterDetails card={card} />
+            <Brand branding={screen.branding} />
+          </motion.div>
+          <motion.div {...screenEnter} transition={columnDelay(1)} className="flex min-h-0 items-end justify-center gap-[2vh] pb-[1vh]">
+            {slots.map((slot) => {
+              const character = screen.characters.find((c) => c.slot === slot);
+              if (!character) return <CreateCard key={slot} busy={busy} onCreate={() => update({ view: { kind: "create", slot }, error: null })} />;
+              return (
+                <CharacterCard
+                  key={slot}
+                  card={character}
+                  portrait={portraits[character.id]}
+                  selected={selected === character.id}
+                  busy={busy}
+                  onSelect={() => selectCard(character.id)}
+                  onPlay={() => void play(character.id)}
+                />
+              );
+            })}
+          </motion.div>
+          <motion.div {...screenEnter} transition={columnDelay(2)} className="flex min-h-0 flex-col items-end justify-end">
+            {card && (
+              <PillBar>
+                {screen.canDelete && (
+                  <PillButton
+                    label={t("CHAR_DELETE")}
+                    icon={faTrashCan}
+                    variant="danger"
+                    iconOnly
+                    disabled={card.online || busy}
+                    onClick={() => update({ view: { kind: "delete", characterId: card.id }, error: null })}
+                  />
+                )}
+                <PillButton label={t("CHAR_PLAY")} icon={faPlay} disabled={card.online} pending={busy} onClick={() => void play(card.id)} />
+              </PillBar>
+            )}
+          </motion.div>
         </div>
       )}
+
+      <DeleteDialog card={deleting} />
+      <AnimatePresence>{error && <ErrorLine key={error} text={t(error)} />}</AnimatePresence>
     </div>
   );
 }

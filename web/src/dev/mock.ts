@@ -61,7 +61,8 @@ export const MOCK_SCREEN: CharacterScreen = {
 
 export async function mockFetch(name: string, data?: unknown): Promise<unknown> {
   await new Promise((resolve) => setTimeout(resolve, 300));
-  if (name === "ready") return new URLSearchParams(window.location.search).get("view") === "admin" || new URLSearchParams(window.location.search).get("view") === "prompt" ? null : { screen: MOCK_SCREEN, texts: en };
+  // Views of the in-game UIs (admin, prompts, menu, notifications) preview without the character screen.
+  if (name === "ready") return ["admin", "prompt", "menu", "notify"].includes(new URLSearchParams(window.location.search).get("view") ?? "") ? null : { screen: MOCK_SCREEN, texts: en };
   if (name === "remove") return { ok: true, screen: { ...MOCK_SCREEN, characters: [] } };
   if (name === "create" && typeof data === "object" && data !== null && (data as { firstname?: string }).firstname === "Taken") {
     return { ok: false, error: "CHAR_ERR_SLOT_TAKEN" };

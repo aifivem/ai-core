@@ -7,7 +7,7 @@ import { inGame } from "../lib/nui";
  */
 export function applyPreview(): void {
   if (inGame) return;
-  document.body.style.background = "linear-gradient(135deg, #2b3440 0%, #11161c 100%)";
+  document.body.style.background = "linear-gradient(135deg, #2a2a2a 0%, #0e0e0e 100%)";
   const view = new URLSearchParams(window.location.search).get("view");
   if (!view) return;
   setTimeout(() => {

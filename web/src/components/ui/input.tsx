@@ -1,13 +1,13 @@
 import type { ComponentProps } from "react";
 import { cn } from "../../lib/utils";
 
-/** Dark Minimal text input: raised fill, 1px line, accent border on focus. */
+/** TGIANN pill input (docs/design.md): faint fill, white/8 frame, green frame on focus, red when invalid. */
 export function Input({ className, ...props }: ComponentProps<"input">) {
   return (
     <input
       data-slot="input"
       className={cn(
-        "h-[3.6vh] w-full min-w-0 rounded-[0.6vh] border border-line bg-raised px-[1.2vh] text-[1.3vh] text-text outline-none transition-colors duration-150 placeholder:text-text-3 hover:border-line-strong focus:border-accent aria-[invalid=true]:border-danger",
+        "h-[3.6vh] w-full min-w-0 rounded-full border border-white/8 bg-[#2222224D] px-[1.4vh] text-[1.35vh] text-text outline-none transition-[border-color,background-color] duration-150 [color-scheme:dark] placeholder:text-text-4 hover:border-white/14 focus:border-tgi-green-40 read-only:hover:border-white/8 aria-[invalid=true]:border-danger",
         className,
       )}
       {...props}

@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, searchForWorkspaceRoot } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import oklab from "@csstools/postcss-oklab-function";
@@ -18,7 +18,8 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
   },
   server: {
-    fs: { allow: [".."] },
+    // The workspace root holds the hoisted packages (fonts); without it the preview serves no font files.
+    fs: { allow: ["..", searchForWorkspaceRoot(process.cwd())] },
   },
   // Old FiveM CEF (Chromium ~103): no oklch, color-mix or @media (hover: hover).
   css: {

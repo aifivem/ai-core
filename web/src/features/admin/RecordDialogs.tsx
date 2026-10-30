@@ -21,7 +21,7 @@ const keyFrom = (name: string): string =>
 function ErrorLine({ text }: { text: string | null }) {
   if (!text) return null;
   return (
-    <p role="alert" className="flex items-center gap-[0.6vh] text-[1.3vh] text-danger">
+    <p role="alert" className="flex items-center gap-[0.6vh] rounded-[0.6vh] bg-danger-bg px-[1vh] py-[0.7vh] text-[1.3vh] leading-[1.4] text-danger">
       <FontAwesomeIcon icon={faCircleExclamation} aria-hidden />
       {text}
     </p>
@@ -62,20 +62,20 @@ export function CreateDialog({ open, onClose, t, title, resource, file, tab }: C
   return (
     <Dialog open={open} onOpenChange={(next) => !next && reset()} title={title} description={t("ADMIN_CREATE_DESC")}>
       <label className="flex flex-col gap-[0.6vh]">
-        <span className="text-[1.3vh] font-medium">{t("ADMIN_F_NAME")}</span>
+        <span className="px-[0.4vh] text-[1.2vh] font-semibold text-text-3 uppercase">{t("ADMIN_F_NAME")}</span>
         <Input autoFocus value={name} placeholder={t("ADMIN_PH_NAME")} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void submit()} />
       </label>
       <label className="flex flex-col gap-[0.6vh]">
-        <span className="text-[1.3vh] font-medium">{t("ADMIN_F_KEY")}</span>
+        <span className="px-[0.4vh] text-[1.2vh] font-semibold text-text-3 uppercase">{t("ADMIN_F_KEY")}</span>
         <Input className="font-mono" value={finalKey} placeholder={t("ADMIN_PH_KEY")} onChange={(e) => setKey(e.target.value.toLowerCase())} />
-        <span className="text-[1.2vh] text-text-3">{t("ADMIN_H_KEY")}</span>
+        <span className="px-[0.4vh] text-[1.25vh] leading-[1.4] text-text-3">{t("ADMIN_H_KEY")}</span>
       </label>
       <ErrorLine text={error} />
       <div className="flex justify-end gap-[0.8vh] pt-[0.4vh]">
         <Button variant="secondary" onClick={reset}>
           {t("ADMIN_CANCEL")}
         </Button>
-        <Button variant="filled" busy={busy} onClick={() => void submit()}>
+        <Button variant="primary" busy={busy} onClick={() => void submit()}>
           {title}
         </Button>
       </div>

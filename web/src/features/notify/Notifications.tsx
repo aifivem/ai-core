@@ -11,11 +11,12 @@ interface Card extends Notification {
   id: number;
 }
 
-const LOOK: Record<NotificationKind, { icon: IconDefinition; color: string }> = {
-  success: { icon: faCircleCheck, color: "var(--accent)" },
-  error: { icon: faCircleExclamation, color: "var(--danger)" },
-  warning: { icon: faTriangleExclamation, color: "var(--warn)" },
-  info: { icon: faCircleInfo, color: "var(--text-2)" },
+/** Kind = left edge, icon badge and icon colour (TGIANN NotifBox). */
+const LOOK: Record<NotificationKind, { icon: IconDefinition; edge: string; badge: string }> = {
+  success: { icon: faCircleCheck, edge: "border-l-tgi-green", badge: "bg-tgi-green-10 text-tgi-green" },
+  error: { icon: faCircleExclamation, edge: "border-l-danger-solid", badge: "bg-danger-bg text-danger" },
+  warning: { icon: faTriangleExclamation, edge: "border-l-warn", badge: "bg-[rgba(245,183,66,0.15)] text-warn" },
+  info: { icon: faCircleInfo, edge: "border-l-white/40", badge: "bg-white/10 text-text-2" },
 };
 let nextId = 0;
 const NOTIFY_OPTIONS = { mockData: NOTIFY_MOCK, mockDelay: 200 };
@@ -35,13 +36,14 @@ function NotificationCard({ card, onDone }: { card: Card; onDone: (id: number) =
       exit={{ opacity: 0, x: "3vh", transition: { duration: 0.15, ease: "easeOut" } }}
       transition={{ type: "spring", duration: 0.3, bounce: 0 }}
       role="status"
-      className="flex w-[36vh] items-center gap-[1.2vh] overflow-hidden rounded-[1vh] border border-line bg-panel py-[1.2vh] pr-[1.4vh] [box-shadow:0_0.8vh_2.4vh_rgba(0,0,0,0.35)]"
+      className={`flex w-[36vh] items-center gap-[1.2vh] rounded-[0.8vh] border-l-[0.4vh] bg-black/70 py-[1vh] pl-[1vh] pr-[1.4vh] ${look.edge}`}
     >
-      <span className="h-[3.6vh] w-[0.4vh] shrink-0 rounded-r-full" style={{ background: look.color }} />
-      <FontAwesomeIcon icon={look.icon} className="text-[2vh]" style={{ color: look.color }} />
-      <div className="flex min-w-0 flex-col gap-[0.3vh]">
-        {card.title && <span className="text-[1.4vh] font-semibold text-text">{card.title}</span>}
-        <span className="text-[1.3vh] leading-[1.4] text-text-2">{card.text}</span>
+      <span className={`flex size-[3.4vh] shrink-0 items-center justify-center rounded-full text-[1.5vh] ${look.badge}`}>
+        <FontAwesomeIcon icon={look.icon} />
+      </span>
+      <div className="flex min-w-0 flex-col gap-[0.2vh]">
+        {card.title && <span className="text-[1.4vh] leading-[1.3] font-bold uppercase">{card.title}</span>}
+        <span className="text-[1.4vh] leading-[1.4] text-text-2">{card.text}</span>
       </div>
     </motion.div>
   );
@@ -82,11 +84,11 @@ export function Notifications() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, transition: { duration: 0.15 } }}
             transition={{ type: "spring", duration: 0.3, bounce: 0 }}
-            className="pointer-events-none fixed inset-x-0 bottom-[12vh] mx-auto flex w-[34vh] flex-col gap-[0.8vh] rounded-[1vh] border border-line bg-panel p-[1.2vh]"
+            className="pointer-events-none fixed inset-x-0 bottom-[10vh] mx-auto flex w-[36vh] flex-col gap-[1vh] rounded-[1.4vh] bg-black/70 px-[1.6vh] py-[1.3vh]"
           >
-            <span className="text-[1.3vh] font-medium text-text-2">{bar.label}</span>
-            <div className="h-[0.5vh] overflow-hidden rounded-full bg-raised">
-              <div className="h-full origin-left rounded-full bg-accent" style={{ animation: `progress-fill ${bar.duration}ms linear both` }} />
+            <span className="truncate text-[1.4vh] font-bold uppercase">{bar.label}</span>
+            <div className="h-[0.6vh] overflow-hidden rounded-full bg-white/10">
+              <div className="h-full origin-left rounded-full bg-tgi-green" style={{ animation: `progress-fill ${bar.duration}ms linear both` }} />
             </div>
           </motion.div>
         )}

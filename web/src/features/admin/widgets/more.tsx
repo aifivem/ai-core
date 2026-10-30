@@ -4,6 +4,7 @@ import { faCrosshairs, faLocationArrow, faXmark } from "@fortawesome/free-solid-
 import type { WidgetSpec } from "@aicore-fivem/shared";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
+import { Tooltip } from "../../../components/ui/tooltip";
 import { myPosition, teleport, type Point } from "../actions";
 import { useEditor } from "../context";
 import { useField } from "./basic";
@@ -22,11 +23,16 @@ export function TagsW({ spec, path }: { spec: Spec<"tags">; path: string }) {
     if (name && !tags.includes(name)) save([...tags, name]);
   };
   return (
-    <div className="flex min-h-[3.6vh] flex-wrap items-center gap-[0.6vh] rounded-[0.6vh] border border-line bg-raised p-[0.5vh] focus-within:border-accent">
+    <div className="flex min-h-[3.6vh] flex-wrap items-center gap-[0.6vh] rounded-[1.8vh] border border-white/8 bg-[#2222224D] p-[0.4vh] transition-[border-color] duration-150 focus-within:border-tgi-green-40">
       {tags.map((tag) => (
-        <span key={tag} className="flex h-[2.6vh] items-center gap-[0.6vh] rounded-full bg-panel px-[1vh] text-[1.25vh] text-text-2">
+        <span key={tag} className="flex h-[2.6vh] items-center gap-[0.4vh] rounded-full bg-white/8 pl-[1vh] pr-[0.3vh] text-[1.3vh]">
           {tag}
-          <button type="button" aria-label={`${t("ADMIN_REMOVE")} ${tag}`} className="text-text-3 hover:text-text" onClick={() => save(tags.filter((x) => x !== tag))}>
+          <button
+            type="button"
+            aria-label={`${t("ADMIN_REMOVE")} ${tag}`}
+            className="flex size-[2vh] items-center justify-center rounded-full text-[1vh] text-text-3 transition-[background-color,color] duration-150 hover:bg-white/15 hover:text-text"
+            onClick={() => save(tags.filter((x) => x !== tag))}
+          >
             <FontAwesomeIcon icon={faXmark} />
           </button>
         </span>
@@ -35,7 +41,7 @@ export function TagsW({ spec, path }: { spec: Spec<"tags">; path: string }) {
         value={draft}
         aria-label={t(spec.label)}
         placeholder={spec.placeholder ? t(spec.placeholder) : undefined}
-        className="h-[2.6vh] min-w-[12vh] flex-1 bg-transparent px-[0.6vh] text-[1.3vh] text-text outline-none placeholder:text-text-3"
+        className="h-[2.6vh] min-w-[12vh] flex-1 bg-transparent px-[0.8vh] text-[1.35vh] outline-none placeholder:text-text-4"
         onChange={(event) => (event.target.value.endsWith(",") ? (setDraft(event.target.value), add()) : setDraft(event.target.value))}
         onBlur={add}
         onKeyDown={(event) => {
@@ -65,8 +71,7 @@ export function PointW({ spec, path }: { spec: Spec<"point">; path: string }) {
         value={point ? `${fmt(point.x)}, ${fmt(point.y)}, ${fmt(point.z)}${spec.heading ? `  ${Math.round(point.heading ?? 0)}°` : ""}` : t("ADMIN_NOT_SET")}
       />
       <Button
-        size="sm"
-        variant="secondary"
+        variant="ghost"
         onClick={async () => {
           const here = await myPosition(spec.from === "camera" ? "camera" : "ped", spec.ground === true);
           if (here) save(spec.heading ? here : { x: here.x, y: here.y, z: here.z });
@@ -75,9 +80,11 @@ export function PointW({ spec, path }: { spec: Spec<"point">; path: string }) {
         <FontAwesomeIcon icon={faCrosshairs} data-icon="inline-start" aria-hidden />
         {t(spec.from === "camera" ? "ADMIN_USE_CAMERA" : "ADMIN_USE_POSITION")}
       </Button>
-      <Button size="sm" variant="secondary" disabled={!point} aria-label={t("ADMIN_TELEPORT")} title={t("ADMIN_TELEPORT")} onClick={() => point && teleport(point)}>
-        <FontAwesomeIcon icon={faLocationArrow} aria-hidden />
-      </Button>
+      <Tooltip content={t("ADMIN_TELEPORT")}>
+        <Button variant="icon" disabled={!point} aria-label={t("ADMIN_TELEPORT")} onClick={() => point && teleport(point)}>
+          <FontAwesomeIcon icon={faLocationArrow} aria-hidden />
+        </Button>
+      </Tooltip>
     </div>
   );
 }

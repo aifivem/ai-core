@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faLock, faMagnifyingGlass, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faChevronRight, faLock, faMagnifyingGlass, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import type { AdminPanelSnapshot, TabSpec } from "@aicore-fivem/shared";
 import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
 import { VirtualList } from "../../components/VirtualList";
 import { cn } from "../../lib/utils";
 import { goTo } from "./actions";
 import { Editor } from "./Editor";
+import { iconOf } from "./icons";
 import { getAt } from "./path";
 import { CreateDialog, DeleteDialog } from "./RecordDialogs";
 
@@ -42,38 +42,50 @@ export function RecordsView({ panel, tab, selected, t }: Props) {
   const locked = selected !== undefined && (spec?.locked ?? []).includes(selected);
 
   return (
-    <div className="flex min-h-0 flex-1">
-      <div className="flex w-[32vh] shrink-0 flex-col gap-[1.2vh] border-r border-line p-[1.6vh]">
-        <div className="relative">
-          <FontAwesomeIcon icon={faMagnifyingGlass} className="pointer-events-none absolute inset-y-0 left-[1.1vh] my-auto text-[1.2vh] text-text-3" aria-hidden />
-          <Input className="pl-[3.2vh]" value={search} placeholder={t("ADMIN_SEARCH")} aria-label={t("ADMIN_SEARCH")} onChange={(e) => setSearch(e.target.value)} />
+    <div className="flex min-h-0 flex-1 gap-[2vh]">
+      <div className="flex w-[46vh] shrink-0 flex-col gap-[1.2vh]">
+        <div className="flex items-center gap-[1vh]">
+          <label className="flex h-[3.6vh] min-w-0 flex-1 items-center gap-[0.8vh] rounded-full border border-white/8 bg-[#2222224D] px-[1.4vh] transition-[border-color] duration-150 focus-within:border-tgi-green-40 hover:border-white/14">
+            <input
+              className="h-full min-w-0 flex-1 bg-transparent text-[1.35vh] outline-none placeholder:text-text-4"
+              value={search}
+              placeholder={t("ADMIN_SEARCH")}
+              aria-label={t("ADMIN_SEARCH")}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <FontAwesomeIcon icon={faMagnifyingGlass} className="text-[1.3vh] text-text-3" aria-hidden />
+          </label>
+          {tab.createLabel && (
+            <Button variant="primary" onClick={() => setCreating(true)}>
+              <FontAwesomeIcon icon={faPlus} data-icon="inline-start" aria-hidden />
+              {t(tab.createLabel)}
+            </Button>
+          )}
         </div>
-        {tab.createLabel && (
-          <Button variant="primary" size="sm" onClick={() => setCreating(true)}>
-            <FontAwesomeIcon icon={faPlus} data-icon="inline-start" aria-hidden />
-            {t(tab.createLabel)}
-          </Button>
-        )}
         <VirtualList
-          className="-mx-[0.4vh] min-h-0 flex-1 px-[0.4vh]"
+          className="min-h-0 flex-1 pr-[0.6vh]"
           items={keys}
-          estimateSize={5.2}
-          gap={0.4}
+          estimateSize={6.4}
+          gap={0.6}
           getItemKey={(key) => key}
-          empty={<p className="px-[0.8vh] py-[2vh] text-center text-[1.3vh] leading-[1.45] text-text-3">{t(search ? "ADMIN_NO_MATCH" : "ADMIN_EMPTY_LIST")}</p>}
+          empty={<p className="px-[0.4vh] py-[1.4vh] text-[1.4vh] leading-[1.45] text-text-3">{t(search ? "ADMIN_NO_MATCH" : "ADMIN_EMPTY_LIST")}</p>}
           renderItem={(key) => {
             const sub = tab.listSub ? getAt(records[key], tab.listSub) : undefined;
+            const active = key === selected;
             return (
               <button
                 type="button"
                 onClick={() => goTo(panel.resource, tab.id, key)}
                 className={cn(
-                  "flex w-full flex-col items-start gap-[0.2vh] rounded-[0.6vh] px-[1.2vh] py-[0.9vh] text-left transition-colors duration-150",
-                  key === selected ? "bg-[rgba(var(--accent-rgb),0.1)]" : "hover:bg-raised",
+                  "flex min-h-[6.4vh] w-full items-center gap-[1.2vh] rounded-[0.9vh] px-[1.4vh] py-[1vh] text-left transition-[background-color] duration-150 ease-out",
+                  active ? "bg-tgi-green-15" : "bg-surface [box-shadow:inset_0_0_0_1px_rgba(255,255,255,0.06)] hover:bg-[#202020]",
                 )}
               >
-                <span className={cn("w-full truncate text-[1.35vh] font-medium leading-[1.3]", key === selected ? "text-accent" : "text-text")}>{labelOf(key)}</span>
-                <span className="w-full truncate font-mono text-[1.15vh] leading-[1.3] text-text-3">{typeof sub === "string" && sub ? `${key} · ${sub}` : key}</span>
+                <span className="flex min-w-0 flex-1 flex-col gap-[0.4vh]">
+                  <span className={cn("truncate text-[1.5vh] leading-[1.2] font-semibold", active && "text-tgi-green")}>{labelOf(key)}</span>
+                  <span className="truncate text-[1.25vh] leading-[1.2] text-text-3">{typeof sub === "string" && sub ? `${key} · ${sub}` : key}</span>
+                </span>
+                <FontAwesomeIcon icon={faChevronRight} className={cn("text-[1.2vh]", active ? "text-tgi-green" : "text-text-4")} aria-hidden />
               </button>
             );
           }}
@@ -81,21 +93,28 @@ export function RecordsView({ panel, tab, selected, t }: Props) {
       </div>
 
       {record === undefined || selected === undefined ? (
-        <div className="flex flex-1 items-center justify-center p-[4vh] text-center text-[1.4vh] text-text-3">{t("ADMIN_PICK_RECORD")}</div>
+        <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-[1.6vh] border-l border-white/8 pl-[2vh] text-center">
+          <span className="flex size-[7vh] items-center justify-center rounded-full bg-white/5 text-[2.8vh] text-text-4">
+            <FontAwesomeIcon icon={iconOf(tab.icon)} aria-hidden />
+          </span>
+          <p className="max-w-[48vh] text-[1.55vh] leading-[1.5] text-text-3">{t("ADMIN_PICK_RECORD")}</p>
+        </div>
       ) : (
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-center gap-[1.2vh] border-b border-line px-[2.4vh] py-[1.4vh]">
-            <span className="truncate text-[1.7vh] font-semibold">{labelOf(selected)}</span>
-            <span className="rounded-full bg-raised px-[1vh] py-[0.3vh] font-mono text-[1.15vh] text-text-3">{selected}</span>
+        <div className="flex min-w-0 flex-1 flex-col border-l border-white/8 pl-[2vh]">
+          <div className="flex shrink-0 items-center gap-[1.2vh] pb-[1.6vh]">
+            <span className="flex min-w-0 flex-col gap-[0.4vh]">
+              <span className="truncate text-[2.1vh] leading-[1.2] font-semibold">{labelOf(selected)}</span>
+              <span className="truncate font-mono text-[1.25vh] leading-[1.2] text-text-3">{selected}</span>
+            </span>
             <span className="flex-1" />
             {locked ? (
-              <span className="flex items-center gap-[0.6vh] text-[1.2vh] text-text-3">
+              <span className="flex items-center gap-[0.6vh] text-[1.3vh] text-tgi-green">
                 <FontAwesomeIcon icon={faLock} aria-hidden />
                 {t("ADMIN_LOCKED")}
               </span>
             ) : (
               tab.deleteLabel && (
-                <Button variant="destructive" size="sm" onClick={() => setDeleting(true)}>
+                <Button variant="danger" onClick={() => setDeleting(true)}>
                   <FontAwesomeIcon icon={faTrash} data-icon="inline-start" aria-hidden />
                   {t(tab.deleteLabel)}
                 </Button>
