@@ -181,7 +181,8 @@ function ESX.GetJobs()
     for name, definition in pairs(Bridge.jobDefinitions()) do
         local grades = {}
         for i, grade in ipairs(definition.grades) do grades[tostring(i - 1)] = { grade = i - 1, name = grade.label:lower():gsub('%s+', '_'), label = grade.label, salary = grade.salary } end
-        out[name] = { name = name, label = definition.label, grades = grades }
+        -- ai-core has no free-to-join flag: only unemployed counts as not whitelisted (job centers list nothing else).
+        out[name] = { name = name, label = definition.label, whitelisted = name ~= 'unemployed', grades = grades }
     end
     return out
 end
@@ -220,6 +221,34 @@ function ESX.RegisterCommand(name, group, cb, allowConsole)
 end
 
 function ESX.GetExtendedPlayerCount() return #ESX.GetPlayers() end
+
+--- The player object by server id or identifier (ESX's static player): the same functions as xPlayer.
+---@param source integer|string
+---@return xPlayer|nil
+function ESX.Player(source)
+    if type(source) == 'string' then return ESX.GetPlayerFromIdentifier(source) end
+    return getPlayerFromId(source)
+end
+
+---@param source integer
+function ESX.IsPlayerLoaded(source) return Bridge.players[tonumber(source)] ~= nil end
+
+---@param identifier string
+function ESX.GetPlayerIdFromIdentifier(identifier) return Bridge.sourceByCitizenId(identifier) end
+
+---@param job string
+---@param grade integer|string
+function ESX.DoesJobExist(job, grade)
+    local definition = Bridge.jobDefinitions()[job]
+    return definition ~= nil and definition.grades[(tonumber(grade) or 0) + 1] ~= nil
+end
+
+---@param key? string
+function ESX.GetConfig(key)
+    local config = { Locale = GetConvar('esx:locale', 'en'), EnableDebug = false, CustomInventory = true, Multichar = true }
+    if key then return config[key] end
+    return config
+end
 
 RegisterNetEvent('esx:triggerServerCallback', function(name, requestId, invoker, ...)
     local src = source

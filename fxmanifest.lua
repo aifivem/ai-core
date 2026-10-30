@@ -36,6 +36,9 @@ files {
 	'dist/web/assets/*.woff2',
 	'dist/web/backgrounds/*.jpg',
 	'modules/playerdata.lua',
+	'shared/locale.lua',
+	'imports.lua',
+	'locale.lua',
 }
 provide 'es_extended'
 provide 'qb-core'

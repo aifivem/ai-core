@@ -50,6 +50,24 @@ local function rebuild()
 end
 
 function ESX.GetPlayerData() return ESX.PlayerData end
+
+---@param key? string
+function ESX.GetConfig(key)
+    local config = { Locale = GetConvar('esx:locale', 'en'), EnableDebug = false, CustomInventory = true, Multichar = true }
+    if key then return config[key] end
+    return config
+end
+
+--- A net event only the server may trigger (ESX's SecureNetEvent).
+---@param name string
+---@param cb function
+function ESX.SecureNetEvent(name, cb)
+    RegisterNetEvent(name, function(...)
+        if GetInvokingResource() ~= nil and GetInvokingResource() ~= 'ai-core' then return end
+        cb(...)
+    end)
+end
+
 function ESX.IsPlayerLoaded() return ESX.PlayerLoaded end
 
 ---@param key string

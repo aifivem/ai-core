@@ -55,6 +55,9 @@
     "qbx_core"
   ],
   "fxFiles": [
-    "modules/playerdata.lua"
+    "modules/playerdata.lua",
+    "shared/locale.lua",
+    "imports.lua",
+    "locale.lua"
   ]
 }
