@@ -48,6 +48,18 @@ try{
 			return value === void 0 ? match : String(value);
 		});
 	}
+	/** GTA vehicle class (`GetVehicleClassFromName`) -> the type `CreateVehicleServerSetter` wants. */
+	function vehicleTypeOfClass(vehicleClass) {
+		switch (vehicleClass) {
+			case 8:
+			case 13: return "bike";
+			case 14: return "boat";
+			case 15: return "heli";
+			case 16: return "plane";
+			case 21: return "train";
+			default: return "automobile";
+		}
+	}
 	/** One parsed value as an `args` result: `[value]`, or null to refuse the call. */
 	const asArgs = (value) => value === null ? null : [value];
 	/** Console output prefixed with the resource name, so server logs show where a line came from. */
@@ -61,7 +73,7 @@ try{
 	}
 
 // ../../../packages/lib/src/client/netEvent.ts
-	const log$7 = createLogger(GetCurrentResourceName());
+	const log$9 = createLogger(GetCurrentResourceName());
 	/**
 	* Whether the net event being handled came from the server (read it before the first `await`). On a client only
 	* events from the server carry a source (65535 in the docs); a local emit by any resource carries none.
@@ -72,14 +84,14 @@ try{
 		onNet(name, (...raw) => {
 			if (!fromServer() || !handler) return;
 			const args = parse ? parse(raw) : [];
-			if (!args) return log$7.warn(`event ${name} from the server had invalid arguments`);
-			Promise.resolve().then(() => handler(...args)).catch((error) => log$7.error(`event ${name} failed`, error));
+			if (!args) return log$9.warn(`event ${name} from the server had invalid arguments`);
+			Promise.resolve().then(() => handler(...args)).catch((error) => log$9.error(`event ${name} failed`, error));
 		});
 	}
 
 // ../../../packages/lib/src/client/callback.ts
 	const resource$1 = GetCurrentResourceName();
-	const log$6 = createLogger(resource$1);
+	const log$8 = createLogger(resource$1);
 	const pending = /* @__PURE__ */ new Map();
 	let nextId = 0;
 	onNet(responseEvent(resource$1), (id, ok, result) => {
@@ -108,6 +120,19 @@ try{
 				timer
 			});
 			emitNet(requestEvent(name), resource$1, id, ...args);
+		});
+	}
+	/** Answers the server's `triggerClientCallback(name, source, ...)`. Arguments are unknown: parse before use. */
+	function onServerCallback(name, handler) {
+		onNet(requestEvent(name), async (caller, id, ...args) => {
+			if (!fromServer() || typeof caller !== "string" || typeof id !== "number") return;
+			try {
+				const result = await handler(...args);
+				emitNet(responseEvent(caller), id, true, result ?? null);
+			} catch (error) {
+				log$8.error(`callback ${name} failed`, error);
+				emitNet(responseEvent(caller), id, false, null);
+			}
 		});
 	}
 
@@ -149,6 +174,10 @@ try{
 		clientPromptPressedEvent: "ai-core:client:promptPressed",
 		/** (key: keyof PlayerCache, value) a cached value of the local player changed (one watcher in ai-core for every resource). */
 		clientCacheEvent: "ai-core:client:cache",
+		/** Server -> client callback: (model: string) the `CreateVehicleServerSetter` type of a model, null when the game has no such vehicle (ai-core's client answers for every resource, lib `spawnVehicle`). */
+		vehicleTypeCallback: "ai-core:vehicleType",
+		/** GlobalState: "prompt" | "target", how lib `Points` let players interact (ai-core panel setting). */
+		interactionStateKey: "ai:interaction",
 		charactersCallback: "ai-core:characters",
 		createCharacterCallback: "ai-core:createCharacter",
 		deleteCharacterCallback: "ai-core:deleteCharacter",
@@ -164,9 +193,20 @@ try{
 	const INVENTORY_STATE_KEY = "ai:inventory";
 
 // ../../../packages/shared/src/vehicleKeys.ts
-/** GlobalState key holding the resource name of the active key system (null while none runs). */
+	const KEY_PURPOSES = [
+		"purchase",
+		"garage",
+		"job",
+		"rental",
+		"temporary"
+	];
+	/** A purpose from untrusted input; `temporary` for anything else. */
+	function toKeyPurpose(value) {
+		return KEY_PURPOSES.find((p) => p === value) ?? "temporary";
+	}
+	/** GlobalState key holding the resource name of the active key system (null while none runs). */
 	const VEHICLE_KEYS_STATE_KEY = "ai:vehicleKeys";
-	/** Server -> client: ("give" | "remove", netId, plate) for key systems with a client API only. */
+	/** Server -> client: ("give" | "remove", netId, plate, purpose) for key systems with a client API only. */
 	const VEHICLE_KEYS_CLIENT_EVENT = "ai-core:client:vehicleKeys";
 
 // ../../../packages/shared/src/admin.ts
@@ -265,6 +305,11 @@ try{
 // ../../../packages/lib/src/client/cache.ts
 /** The unarmed "weapon" hash: cached as `false`. */
 	const UNARMED = GetHashKey("WEAPON_UNARMED") | 0;
+	/** The weapon in a ped's hand, `false` when unarmed. */
+	function readWeapon(ped) {
+		const weapon = GetSelectedPedWeapon(ped) | 0;
+		return weapon === UNARMED ? false : weapon;
+	}
 	/** The vehicle, seat and weapon of a ped right now (also ai-core's watcher). */
 	function readPlayerState(ped) {
 		const vehicle = GetVehiclePedIsIn(ped, false);
@@ -274,11 +319,10 @@ try{
 			seat = i;
 			break;
 		}
-		const weapon = GetSelectedPedWeapon(ped) | 0;
 		return {
 			vehicle: vehicle || false,
 			seat,
-			weapon: weapon === UNARMED ? false : weapon
+			weapon: readWeapon(ped)
 		};
 	}
 	/**
@@ -310,7 +354,177 @@ try{
 	* (measured with 1,000,000 zones): zones sit in a grid of 64 m cells and a check looks only at the player's cell and
 	* the zones the player is in.
 	*/
-	const log$5 = createLogger(GetCurrentResourceName());
+	const log$7 = createLogger(GetCurrentResourceName());
+	const CELL = 64;
+	/** A zone wider than this many cells is kept in one list checked every time instead of in the grid. */
+	const MAX_CELLS = 64;
+	const cellKey = (cx, cy) => cx + 32768 << 16 | cy + 32768;
+	function contains(shape, x, y, z) {
+		switch (shape.type) {
+			case "sphere": {
+				const dx = x - shape.center.x;
+				const dy = y - shape.center.y;
+				const dz = z - shape.center.z;
+				return dx * dx + dy * dy + dz * dz <= shape.radius * shape.radius;
+			}
+			case "cylinder": {
+				const dx = x - shape.center.x;
+				const dy = y - shape.center.y;
+				return dx * dx + dy * dy <= shape.radius * shape.radius && Math.abs(z - shape.center.z) <= shape.height;
+			}
+			case "poly": {
+				if (z < shape.minZ || z > shape.maxZ) return false;
+				let inside = false;
+				const p = shape.points;
+				for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
+					const a = p[i];
+					const b = p[j];
+					if (a.y > y !== b.y > y && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+				}
+				return inside;
+			}
+			default: return shape;
+		}
+	}
+	/** Ground bounding box of a shape: [minX, minY, maxX, maxY]. */
+	function bounds(shape) {
+		if (shape.type !== "poly") return [
+			shape.center.x - shape.radius,
+			shape.center.y - shape.radius,
+			shape.center.x + shape.radius,
+			shape.center.y + shape.radius
+		];
+		let minX = Infinity;
+		let minY = Infinity;
+		let maxX = -Infinity;
+		let maxY = -Infinity;
+		for (const p of shape.points) {
+			minX = Math.min(minX, p.x);
+			minY = Math.min(minY, p.y);
+			maxX = Math.max(maxX, p.x);
+			maxY = Math.max(maxY, p.y);
+		}
+		return [
+			minX,
+			minY,
+			maxX,
+			maxY
+		];
+	}
+	var Zone = class {
+		options;
+		inside = false;
+		nextCheck = 0;
+		interval;
+		/** Grid cells the zone is filed under; empty when it is in the large list. */
+		cells = [];
+		constructor(options) {
+			this.options = options;
+			this.interval = Math.max(50, options.interval ?? 500);
+		}
+	};
+	/**
+	* The zones of one resource. One timer serves them all at the shortest interval any zone asks for; each zone is
+	* checked only when its own interval has passed. With no zones the timer stops (an active JS timer costs every frame).
+	*/
+	var Zones = class {
+		zones = /* @__PURE__ */ new Map();
+		grid = /* @__PURE__ */ new Map();
+		large = /* @__PURE__ */ new Set();
+		insideNow = /* @__PURE__ */ new Set();
+		/** How many zones use each interval, so the shortest one is found without walking every zone. */
+		intervals = /* @__PURE__ */ new Map();
+		timer = null;
+		period = 0;
+		/** Adds (or replaces) a zone. A replaced zone the player was in fires its onExit first. */
+		add(id, options) {
+			this.remove(id);
+			const zone = new Zone(options);
+			this.zones.set(id, zone);
+			const [minX, minY, maxX, maxY] = bounds(options.shape);
+			const x0 = Math.floor(minX / CELL);
+			const y0 = Math.floor(minY / CELL);
+			const x1 = Math.floor(maxX / CELL);
+			const y1 = Math.floor(maxY / CELL);
+			if ((x1 - x0 + 1) * (y1 - y0 + 1) > MAX_CELLS) this.large.add(zone);
+			else for (let cx = x0; cx <= x1; cx++) for (let cy = y0; cy <= y1; cy++) {
+				const key = cellKey(cx, cy);
+				let cell = this.grid.get(key);
+				if (!cell) this.grid.set(key, cell = /* @__PURE__ */ new Set());
+				cell.add(zone);
+				zone.cells.push(key);
+			}
+			this.intervals.set(zone.interval, (this.intervals.get(zone.interval) ?? 0) + 1);
+			this.schedule();
+		}
+		remove(id) {
+			const zone = this.zones.get(id);
+			if (!zone) return;
+			this.zones.delete(id);
+			this.large.delete(zone);
+			for (const key of zone.cells) {
+				const cell = this.grid.get(key);
+				cell?.delete(zone);
+				if (cell?.size === 0) this.grid.delete(key);
+			}
+			const left = (this.intervals.get(zone.interval) ?? 1) - 1;
+			if (left > 0) this.intervals.set(zone.interval, left);
+			else this.intervals.delete(zone.interval);
+			if (this.insideNow.delete(zone)) this.fire(zone, false);
+			this.schedule();
+		}
+		/** Removes every zone (exits fire for the ones the player is in). */
+		clear() {
+			const inside = [...this.insideNow];
+			this.zones.clear();
+			this.grid.clear();
+			this.large.clear();
+			this.insideNow.clear();
+			this.intervals.clear();
+			for (const zone of inside) this.fire(zone, false);
+			this.schedule();
+		}
+		isInside(id) {
+			return this.zones.get(id)?.inside ?? false;
+		}
+		get size() {
+			return this.zones.size;
+		}
+		schedule() {
+			let period = 0;
+			for (const interval of this.intervals.keys()) period = period === 0 ? interval : Math.min(period, interval);
+			if (period === this.period) return;
+			if (this.timer) clearInterval(this.timer);
+			this.timer = period ? setInterval(() => this.check(), period) : null;
+			this.period = period;
+		}
+		check() {
+			const now = GetGameTimer();
+			const [x = 0, y = 0, z = 0] = GetEntityCoords(cache.ped, false);
+			for (const zone of this.insideNow) this.test(zone, now, x, y, z);
+			for (const zone of this.large) this.test(zone, now, x, y, z);
+			const cell = this.grid.get(cellKey(Math.floor(x / CELL), Math.floor(y / CELL)));
+			if (cell) for (const zone of cell) this.test(zone, now, x, y, z);
+		}
+		test(zone, now, x, y, z) {
+			if (now < zone.nextCheck) return;
+			zone.nextCheck = now + zone.interval;
+			const inside = contains(zone.options.shape, x, y, z);
+			if (inside === zone.inside) return;
+			if (inside) this.insideNow.add(zone);
+			else this.insideNow.delete(zone);
+			this.fire(zone, inside);
+		}
+		fire(zone, inside) {
+			zone.inside = inside;
+			try {
+				if (inside) zone.options.onEnter?.();
+				else zone.options.onExit?.();
+			} catch (error) {
+				log$7.error("zone handler failed", error);
+			}
+		}
+	};
 
 // ../../../packages/lib/src/fivem/exports.ts
 	function registerExport(name, handler) {
@@ -335,6 +549,20 @@ try{
 		return Reflect.apply(fn, void 0, args);
 	}
 
+// ../../../packages/lib/src/client/prompt.ts
+	const core$3 = resourceExport(CORE.resource);
+	/** The player pressed the interaction key while this resource's prompt `id` was the one on top. */
+	function onPromptPressed(handler) {
+		const resource = GetCurrentResourceName();
+		on(CORE.clientPromptPressedEvent, (owner, id) => {
+			if (owner === resource && typeof id === "string") handler(id);
+		});
+	}
+
+// ../../../packages/lib/src/client/blip.ts
+	const LABEL = `AI_BLIP_${GetCurrentResourceName()}`;
+	AddTextEntry(LABEL, "~a~");
+
 // ../../../packages/lib/src/client/streaming.ts
 /**
 	* Loads a model and resolves with its hash. Rejects when the model does not exist or does not load in time.
@@ -355,8 +583,34 @@ try{
 		return dict;
 	}
 
+// ../../../packages/lib/src/client/localPed.ts
+	const log$6 = createLogger(GetCurrentResourceName());
+	/** One zone set for every local ped of this resource: peds exist only while their player is near. */
+	const zones = new Zones();
+	on("onResourceStop", (resource) => {
+		if (resource === GetCurrentResourceName()) zones.clear();
+	});
+
+// ../../../packages/lib/src/client/point.ts
+	const log$5 = createLogger(GetCurrentResourceName());
+	const TARGET = "ox_target";
+	const groups = /* @__PURE__ */ new Set();
+	const byPrompt = /* @__PURE__ */ new Map();
+	onPromptPressed((id) => byPrompt.get(id)?.press());
+	const restyleAll = () => {
+		for (const group of groups) group.restyle();
+	};
+	AddStateBagChangeHandler(CORE.interactionStateKey, "global", () => setTimeout(restyleAll, 0));
+	for (const event of ["onClientResourceStart", "onClientResourceStop"]) on(event, (resource) => {
+		if (resource === TARGET || resource === "ai-target") setTimeout(restyleAll, 0);
+	});
+
+// ../../../packages/lib/src/client/notify.ts
+	const core$2 = resourceExport(CORE.resource);
+
 // ../../../packages/lib/src/client/menu.ts
-/** Menus and input dialogs this resource asked ai-core for, waiting for the player's answer. */
+	const core$1 = resourceExport(CORE.resource);
+	/** Menus and input dialogs this resource asked ai-core for, waiting for the player's answer. */
 	var Requests = class {
 		resource = GetCurrentResourceName();
 		waiting = /* @__PURE__ */ new Map();
@@ -383,6 +637,9 @@ try{
 		}
 	};
 	const requests = new Requests();
+
+// ../../../packages/lib/src/client/inventory.ts
+	const core = resourceExport(CORE.resource);
 
 // ../../../packages/lib/src/client/vehicleProps.ts
 	const MOD_TYPES = Array.from({ length: 50 }, (_, i) => i);
@@ -943,17 +1200,28 @@ try{
 	});
 
 // resource/client/cacheWatch.ts
-/** How often the player's ped, vehicle, seat and weapon are read (ox_lib uses the same 100 ms). */
+/** How often the ped, weapon and (in a vehicle) seat are read. */
 	const INTERVAL = 100;
+	/** On foot, entering a vehicle comes from the game event; this many ticks between fallback reads (a warp, a missed event). */
+	const ON_FOOT_EVERY = 5;
 	/**
-	* The one watcher behind every resource's lib `cache`: reads the local player's often used values ten times a
-	* second and sends a local event only for a value that changed. Resources never poll these themselves.
+	* The one watcher behind every resource's lib `cache`: sends a local event only for a value that changed, so
+	* resources never poll these themselves. Entering a vehicle arrives at once through `CEventNetworkPlayerEnteredVehicle`
+	* (the game has no exit or seat event: those are read while in a vehicle).
 	*/
 	var CacheWatch = class {
 		last = { ...cache };
+		tick = 0;
 		check() {
 			const ped = PlayerPedId();
 			this.put("ped", ped);
+			if (this.last.vehicle === false && ++this.tick % ON_FOOT_EVERY !== 0) {
+				this.put("weapon", readWeapon(ped));
+				return;
+			}
+			this.read(ped);
+		}
+		read(ped) {
 			const state = readPlayerState(ped);
 			this.put("vehicle", state.vehicle);
 			this.put("seat", state.seat);
@@ -967,6 +1235,9 @@ try{
 	};
 	const watch = new CacheWatch();
 	setInterval(() => watch.check(), INTERVAL);
+	on("gameEventTriggered", (name, args) => {
+		if (name === "CEventNetworkPlayerEnteredVehicle" && args[0] === PlayerId()) watch.read(PlayerPedId());
+	});
 
 // resource/client/prompts.ts
 /**
@@ -1239,23 +1510,151 @@ try{
 	registerExport("OpenInventory", () => inventory.open());
 	registerExport("HasItem", (item, count) => typeof item === "string" && inventory.has(item, typeof count === "number" && count > 0 ? count : 1));
 
+// resource/client/vehicleKeys/adapters/0r-vehiclekeys.ts
+/** 0r-vehiclekeys client exports by plate (untested on ai-core). */
+	const zeroRVehicleKeys = {
+		resource: "0r-vehiclekeys",
+		give: (_vehicle, plate) => void callExport("0r-vehiclekeys", "GiveKeys", plate),
+		remove: (_vehicle, plate) => void callExport("0r-vehiclekeys", "RemoveKeys", plate)
+	};
+
+// resource/client/vehicleKeys/adapters/LifeSaver_KeySystem.ts
+/** LifeSaver_KeySystem client exports by plate and model name (untested on ai-core). */
+	const lifeSaverKeys = {
+		resource: "LifeSaver_KeySystem",
+		give: (vehicle, plate) => void callExport("LifeSaver_KeySystem", "AddCarkey", plate, GetDisplayNameFromVehicleModel(GetEntityModel(vehicle))),
+		remove: (vehicle, plate) => void callExport("LifeSaver_KeySystem", "RemoveCarkey", plate, GetDisplayNameFromVehicleModel(GetEntityModel(vehicle)))
+	};
+
+// resource/client/vehicleKeys/adapters/ak47_qb_vehiclekeys.ts
+/** ak47_qb_vehiclekeys client exports by plate (second argument: a local vehicle) (untested on ai-core). */
+	const ak47QbVehicleKeys = {
+		resource: "ak47_qb_vehiclekeys",
+		give: (vehicle, plate) => void callExport("ak47_qb_vehiclekeys", "GiveKey", plate, !NetworkGetEntityIsNetworked(vehicle)),
+		remove: (vehicle, plate) => void callExport("ak47_qb_vehiclekeys", "RemoveKey", plate, !NetworkGetEntityIsNetworked(vehicle))
+	};
+
+// resource/client/vehicleKeys/adapters/ak47_vehiclekeys.ts
+/** ak47_vehiclekeys client exports by plate (second argument: a local vehicle) (untested on ai-core). */
+	const ak47VehicleKeys = {
+		resource: "ak47_vehiclekeys",
+		give: (vehicle, plate) => void callExport("ak47_vehiclekeys", "GiveKey", plate, !NetworkGetEntityIsNetworked(vehicle)),
+		remove: (vehicle, plate) => void callExport("ak47_vehiclekeys", "RemoveKey", plate, !NetworkGetEntityIsNetworked(vehicle))
+	};
+
+// resource/client/vehicleKeys/adapters/brutal_keys.ts
+/** Brutal keys client exports by plate (untested on ai-core). */
+	const brutalKeys = {
+		resource: "brutal_keys",
+		give: (_vehicle, plate) => void callExport("brutal_keys", "addVehicleKey", plate, "car"),
+		remove: (_vehicle, plate) => void callExport("brutal_keys", "removeKey", plate, true)
+	};
+
+// resource/client/vehicleKeys/adapters/filo_vehiclekey.ts
+/** filo_vehiclekey client exports by plate (untested on ai-core). */
+	const filoVehicleKey = {
+		resource: "filo_vehiclekey",
+		give: (_vehicle, plate) => void callExport("filo_vehiclekey", "GiveKeys", plate),
+		remove: (_vehicle, plate) => void callExport("filo_vehiclekey", "RemoveKeys", plate)
+	};
+
+// resource/client/vehicleKeys/adapters/ic3d_vehiclekeys.ts
+/** ic3d_vehiclekeys key items by plate (untested on ai-core). */
+	const ic3dVehicleKeys = {
+		resource: "ic3d_vehiclekeys",
+		give: (_vehicle, plate) => void callExport("ic3d_vehiclekeys", "ClientInventoryKeys", "add", plate),
+		remove: (_vehicle, plate) => void callExport("ic3d_vehiclekeys", "ClientInventoryKeys", "remove", plate)
+	};
+
+// resource/client/vehicleKeys/adapters/is_vehiclekeys.ts
+/** is_vehiclekeys client exports by plate (untested on ai-core). */
+	const isVehicleKeys = {
+		resource: "is_vehiclekeys",
+		give: (_vehicle, plate) => void callExport("is_vehiclekeys", "GiveKey", plate),
+		remove: (_vehicle, plate) => void callExport("is_vehiclekeys", "RemoveKey", plate)
+	};
+
+// resource/client/vehicleKeys/adapters/mk_vehiclekeys.ts
+/** mk_vehiclekeys client exports by vehicle (untested on ai-core). */
+	const mkVehicleKeys = {
+		resource: "mk_vehiclekeys",
+		give: (vehicle, _plate) => void callExport("mk_vehiclekeys", "AddKey", vehicle),
+		remove: (vehicle, _plate) => void callExport("mk_vehiclekeys", "RemoveKey", vehicle)
+	};
+
+// resource/client/vehicleKeys/adapters/mm_carkeys.ts
+/** mm_carkeys key items by plate (untested on ai-core). */
+	const mmCarkeys = {
+		resource: "mm_carkeys",
+		give: (vehicle, plate) => void callExport("mm_carkeys", "GiveKeyItem", plate, vehicle),
+		remove: (_vehicle, plate) => void callExport("mm_carkeys", "RemoveKeyItem", plate)
+	};
+
+// resource/client/vehicleKeys/adapters/okokGarage.ts
+/** okokGarage keys through its server events by plate (untested on ai-core). */
+	const okokGarage = {
+		resource: "okokGarage",
+		give: (_vehicle, plate) => emitNet("okokGarage:GiveKeys", plate),
+		remove: (_vehicle, plate) => emitNet("okokGarage:RemoveKeys", plate)
+	};
+
+// resource/client/vehicleKeys/adapters/p_carkeys.ts
+/** p_carkeys keys through its server events by plate (untested on ai-core). */
+	const pCarkeys = {
+		resource: "p_carkeys",
+		give: (_vehicle, plate) => emitNet("p_carkeys:CreateKeys", plate),
+		remove: (_vehicle, plate) => emitNet("p_carkeys:RemoveKeys", plate)
+	};
+
+// resource/client/vehicleKeys/adapters/qs-vehiclekeys.ts
+/** Quasar qs-vehiclekeys client exports by plate and model name (untested on ai-core). */
+	const qsVehicleKeys = {
+		resource: "qs-vehiclekeys",
+		give: (vehicle, plate) => void callExport("qs-vehiclekeys", "GiveKeys", plate, GetDisplayNameFromVehicleModel(GetEntityModel(vehicle)), true),
+		remove: (vehicle, plate) => void callExport("qs-vehiclekeys", "RemoveKeys", plate, GetDisplayNameFromVehicleModel(GetEntityModel(vehicle)))
+	};
+
+// resource/client/vehicleKeys/adapters/rd_vehiclekeys.ts
+/** rd_vehiclekeys keys through its server events by plate (untested on ai-core). */
+	const rdVehicleKeys = {
+		resource: "rd_vehiclekeys",
+		give: (_vehicle, plate) => emitNet("rd_vehiclekeys:server:GiveKeys", plate),
+		remove: (_vehicle, plate) => emitNet("rd_vehiclekeys:server:RemoveKeys", plate)
+	};
+
 // resource/client/vehicleKeys/index.ts
 	const log$3 = createLogger("ai-core");
 	/** Key systems with only a client API, one adapter file each (server list: `server/vehicleKeys/registry.ts`). */
-	const ADAPTERS = [];
+	const ADAPTERS = [
+		zeroRVehicleKeys,
+		lifeSaverKeys,
+		ak47QbVehicleKeys,
+		ak47VehicleKeys,
+		brutalKeys,
+		filoVehicleKey,
+		ic3dVehicleKeys,
+		isVehicleKeys,
+		mkVehicleKeys,
+		mmCarkeys,
+		okokGarage,
+		pCarkeys,
+		qsVehicleKeys,
+		rdVehicleKeys
+	];
 	/** The client half of the vehicle key layer: follows the key system the server picked (GlobalState). */
 	var ClientKeys = class {
 		current = null;
 		pick(resource) {
 			this.current = ADAPTERS.find((a) => a.resource === resource) ?? null;
 		}
-		async apply(action, netId, plate) {
+		async apply(action, netId, plate, purpose) {
 			const adapter = this.current;
 			if (!adapter) return;
 			const vehicle = await waitFor(() => NetworkDoesEntityExistWithNetworkId(netId) ? NetToVeh(netId) : void 0, 5e3).catch(() => 0);
 			if (!vehicle) return;
 			try {
-				adapter[action](vehicle, plate);
+				if (action === "give") adapter.give(vehicle, plate, purpose);
+				else adapter.remove(vehicle, plate);
 			} catch (error) {
 				log$3.error(`${adapter.resource} ${action} key failed`, error);
 			}
@@ -1264,11 +1663,20 @@ try{
 	const keys = new ClientKeys();
 	keys.pick(GlobalState[VEHICLE_KEYS_STATE_KEY]);
 	AddStateBagChangeHandler(VEHICLE_KEYS_STATE_KEY, "global", (_bag, _key, value) => keys.pick(value));
-	onServerEvent(VEHICLE_KEYS_CLIENT_EVENT, { args: ([action, netId, plate]) => (action === "give" || action === "remove") && typeof netId === "number" && typeof plate === "string" ? [
+	onServerEvent(VEHICLE_KEYS_CLIENT_EVENT, { args: ([action, netId, plate, purpose]) => (action === "give" || action === "remove") && typeof netId === "number" && typeof plate === "string" ? [
 		action,
 		netId,
-		plate
-	] : null }, (action, netId, plate) => keys.apply(action, netId, plate));
+		plate,
+		toKeyPurpose(purpose)
+	] : null }, (action, netId, plate, purpose) => keys.apply(action, netId, plate, purpose));
+
+// resource/client/vehicles.ts
+/** Lib `spawnVehicle` of any resource asks here which `CreateVehicleServerSetter` type a model is (null: no such vehicle). */
+	onServerCallback(CORE.vehicleTypeCallback, (model) => {
+		if (typeof model !== "string") return null;
+		const hash = GetHashKey(model);
+		return IsModelInCdimage(hash) && IsModelAVehicle(hash) ? vehicleTypeOfClass(GetVehicleClassFromName(hash)) : null;
+	});
 
 // resource/client/sceneCamera.ts
 	const MOVE_MS = 500;

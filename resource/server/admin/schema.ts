@@ -43,6 +43,7 @@ export function coreSchema(accounts: string[], inventories: string[] = [], keySy
           saveIntervalMinutes: int(1, 60),
           inventory: { type: "enum", values: ["auto", ...inventories] },
           vehicleKeys: { type: "enum", values: ["auto", ...keySystems] },
+          interaction: { type: "enum", values: ["prompt", "target"] },
           refuseOnConflict: { type: "bool" },
           spawn: {
             type: "object",
@@ -50,7 +51,7 @@ export function coreSchema(accounts: string[], inventories: string[] = [], keySy
           },
           characterScene: sceneSection,
         },
-        defaults: { characterScene: DEFAULT_SCENE, inventory: "auto", vehicleKeys: "auto", refuseOnConflict: true },
+        defaults: { characterScene: DEFAULT_SCENE, inventory: "auto", vehicleKeys: "auto", interaction: "prompt", refuseOnConflict: true },
       },
       jobs: {
         kind: "records",
@@ -168,6 +169,23 @@ export function coreSchema(accounts: string[], inventories: string[] = [], keySy
                 label: "ADMIN_F_VEHICLE_KEYS",
                 hint: "ADMIN_H_VEHICLE_KEYS",
                 options: [{ value: "auto", label: "ADMIN_O_INVENTORY_AUTO" }, ...keySystems.map((value) => ({ value, label: value }))],
+              },
+            ],
+          },
+          {
+            icon: "hand-pointer",
+            title: "ADMIN_C_INTERACTION",
+            desc: "ADMIN_C_INTERACTION_DESC",
+            fields: [
+              {
+                widget: "select",
+                path: "interaction",
+                label: "ADMIN_F_INTERACTION",
+                hint: "ADMIN_H_INTERACTION",
+                options: [
+                  { value: "prompt", label: "ADMIN_O_INTERACTION_PROMPT" },
+                  { value: "target", label: "ADMIN_O_INTERACTION_TARGET" },
+                ],
               },
             ],
           },

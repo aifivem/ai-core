@@ -143,5 +143,6 @@
   },
   "inventory": "auto",
   "vehicleKeys": "auto",
-  "refuseOnConflict": true
+  "refuseOnConflict": true,
+  "interaction": "prompt"
 }

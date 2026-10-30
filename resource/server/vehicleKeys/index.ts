@@ -1,5 +1,5 @@
 import { isResourceStarted, registerExport } from "@aicore-fivem/lib/server";
-import { VEHICLE_KEYS_STATE_KEY, type KeyTarget, type VehicleKeysAdapter } from "@aicore-fivem/shared";
+import { toKeyPurpose, VEHICLE_KEYS_STATE_KEY, type KeyTarget, type VehicleKeysAdapter } from "@aicore-fivem/shared";
 import { panel, settings } from "../content";
 import { log } from "../log";
 import { KEY_SYSTEMS } from "./registry";
@@ -60,9 +60,9 @@ function target(vehicle: unknown): KeyTarget | null {
   return { vehicle, netId: NetworkGetNetworkIdFromEntity(vehicle), plate: GetVehicleNumberPlateText(vehicle).trim() };
 }
 
-registerExport("GiveVehicleKeys", (source: unknown, vehicle: unknown) => {
+registerExport("GiveVehicleKeys", (source: unknown, vehicle: unknown, purpose?: unknown) => {
   const t = target(vehicle);
-  if (typeof source === "number" && t) layer.run("give", (a) => a.give(source, t), undefined);
+  if (typeof source === "number" && t) layer.run("give", (a) => a.give(source, t, toKeyPurpose(purpose)), undefined);
 });
 registerExport("RemoveVehicleKeys", (source: unknown, vehicle: unknown) => {
   const t = target(vehicle);

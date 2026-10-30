@@ -15,6 +15,8 @@ import "./jobs/paycheck";
 import "./exports";
 import "./inventory";
 import "./vehicleKeys";
+import "./interaction";
+import "./scopes";
 import "./devCommands";
 
 resetDutyCounts(jobs.keys());

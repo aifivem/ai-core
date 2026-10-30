@@ -7,12 +7,12 @@ import { mVehicle } from "./adapters/mVehicle";
 import { qbVehicleKeys } from "./adapters/qb-vehiclekeys";
 import { qbxVehicleKeys } from "./adapters/qbx_vehiclekeys";
 import { renewedVehicleKeys } from "./adapters/Renewed-Vehiclekeys";
+import { tgiannHotwire } from "./adapters/tgiann-hotwire";
 import { jaksamVehicleKeys } from "./adapters/vehicles_keys";
 import { wasabiCarlock } from "./adapters/wasabi_carlock";
 
 /** Key systems with only a client API: each has its client adapter in `resource/client/vehicleKeys/adapters/`. */
 export const CLIENT_KEY_SYSTEMS = [
-  "tgiann-hotwire",
   "qs-vehiclekeys",
   "okokGarage",
   "0r-vehiclekeys",
@@ -36,6 +36,7 @@ export const CLIENT_KEY_SYSTEMS = [
  */
 export const KEY_SYSTEMS: readonly VehicleKeysAdapter[] = [
   aiVehicleKeys,
+  tgiannHotwire,
   qbxVehicleKeys,
   qbVehicleKeys,
   wasabiCarlock,
