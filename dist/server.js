@@ -316,7 +316,7 @@ const CORE = {
 	chooseSpawnEvent: "ai-core:client:chooseSpawn",
 	spawnChoiceCallback: "ai-core:spawnChoice",
 	openCharactersEvent: "ai-core:client:openCharacters"
-}, PED_EVENTS_MIN_BUILD = 38039, NAME$1 = /^[A-Za-zÀ-ɏ][A-Za-zÀ-ɏ' -]{1,19}$/, DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+}, NAME$1 = /^[A-Za-zÀ-ɏ][A-Za-zÀ-ɏ' -]{1,19}$/, DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 function toName(value) {
 	if (typeof value != "string") return null;
 	let name = value.trim().replace(/\s+/g, " ");
@@ -20773,16 +20773,15 @@ registerExport("SwitchCharacter", switchCharacter), on("playerDropped", () => {
 	player && unloadCharacter(player, "dropped");
 });
 // resource/server/player/deaths.ts
-const build = Number(/v1\.0\.0\.(\d+)/.exec(GetConvar("version", ""))?.[1] ?? 0), supported = build >= PED_EVENTS_MIN_BUILD;
 function sourceOfPed(ped) {
 	if (ped === 0 || !DoesEntityExist(ped)) return null;
 	let owner = NetworkGetEntityOwner(ped);
 	return owner > 0 && players.get(owner) !== void 0 && GetPlayerPed(String(owner)) === ped ? owner : null;
 }
-new GlobalKey("ai:pedDeath", stateBoolean).set(supported), supported ? on("onPedDeath", (ped, attacker, weaponHash) => {
+on("onPedDeath", (ped, attacker, weaponHash) => {
 	let source = sourceOfPed(ped);
 	source !== null && emit(CORE.playerDiedEvent, source, sourceOfPed(attacker), weaponHash);
-}) : log$3.info(`FXServer ${build} has no onPedDeath (${PED_EVENTS_MIN_BUILD}+): death resources watch health on the client`);
+});
 // resource/server/player/offlinePosition.ts
 const finite = (v) => typeof v == "number" && Number.isFinite(v);
 function toPosition(v) {

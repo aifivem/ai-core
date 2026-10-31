@@ -34,7 +34,45 @@
       "y": -2731.87,
       "z": 13.76,
       "heading": 330
-    }
+    },
+    "points": [
+      {
+        "label": "Legion Square",
+        "coords": {
+          "x": 195.17,
+          "y": -933.77,
+          "z": 29.7,
+          "heading": 144.5
+        }
+      },
+      {
+        "label": "Police Department",
+        "coords": {
+          "x": 428.23,
+          "y": -984.28,
+          "z": 29.76,
+          "heading": 3.5
+        }
+      },
+      {
+        "label": "Paleto Bay",
+        "coords": {
+          "x": 80.35,
+          "y": 6424.12,
+          "z": 31.67,
+          "heading": 45.5
+        }
+      },
+      {
+        "label": "Motels",
+        "coords": {
+          "x": 327.56,
+          "y": -205.08,
+          "z": 53.08,
+          "heading": 163.5
+        }
+      }
+    ]
   },
   "characterScene": {
     "fov": 50,

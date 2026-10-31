@@ -7,7 +7,7 @@
   "author": {
     "name": "TGIANN"
   },
-  "repository": "github:TGIANN/ai-core",
+  "repository": "github:aifivem/ai-core",
   "type": "module",
   "fxDependencies": [
     "/onesync",
