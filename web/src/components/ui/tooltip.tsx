@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Tooltip as TooltipPrimitive } from "radix-ui";
 
-/** TGIANN tooltip (tgiann-ui components.md): `#161616`, ring, 1.2vh text, 300 ms delay; names an icon-only button. */
+/** TGIANN tooltip (aicore-ui): `#161616`, ring, 1.2vh text, 300 ms delay; names an icon-only button. */
 export function Tooltip({
   content,
   children,

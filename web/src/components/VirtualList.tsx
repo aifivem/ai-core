@@ -16,7 +16,7 @@ interface VirtualListProps<T> {
   className?: string;
 }
 
-/** Every scrolling list of data (tgiann-ui rule): only visible rows render, positions on whole pixels. */
+/** Every scrolling list of data (aicore-ui rule): only visible rows render, positions on whole pixels. */
 export function VirtualList<T>({
   items,
   renderItem,

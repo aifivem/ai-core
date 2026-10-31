@@ -9,7 +9,7 @@ interface DialogProps {
   children: ReactNode;
 }
 
-/** TGIANN modal (tgiann-ui components.md): 0.6 black scrim, solid panel, display-font title; Escape and the scrim close it. */
+/** TGIANN modal (aicore-ui): 0.6 black scrim, solid panel, display-font title; Escape and the scrim close it. */
 export function Dialog({
   open,
   onOpenChange,
