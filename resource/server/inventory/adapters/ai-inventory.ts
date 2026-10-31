@@ -12,7 +12,6 @@ const imageOf: ImageOf = (_name, image) =>
 
 export const aiInventory: InventoryAdapter = {
   resource: RESOURCE,
-  version: "0.1.0",
   addItem: (ref, item, count, metadata, slot) =>
     inv.AddItem(ref, item, count, metadata, slot) === true,
   removeItem: (ref, item, count, metadata, slot) =>

@@ -18583,7 +18583,6 @@ function definitions(raw, imageOf) {
 // resource/server/inventory/adapters/ai-inventory.ts
 const RESOURCE$28 = "ai-inventory", inv$1 = resourceExport(RESOURCE$28), imageOf = (_name, image) => image ? `nui://${RESOURCE$28}/dist/web/images/${image}` : void 0, aiInventory = {
 	resource: RESOURCE$28,
-	version: "0.1.0",
 	addItem: (ref, item, count, metadata, slot) => inv$1.AddItem(ref, item, count, metadata, slot) === !0,
 	removeItem: (ref, item, count, metadata, slot) => inv$1.RemoveItem(ref, item, count, metadata, slot) === !0,
 	getItemCount: (ref, item, metadata) => Number(inv$1.GetItemCount(ref, item, metadata)) || 0,
