@@ -24,8 +24,6 @@ export const qbBanking = balanceReader(
   [],
   "2.0.0",
 );
-/** okokBankingV2 (written from its docs, docs.okokscripts.io/scripts/okokbankingv2/exports): `GetAccount(society)`. */
-export const okokBanking = balanceReader("okokBanking", "GetAccount");
 /** fd_banking (written from community_bridge's banking module): `GetAccount(job)`. */
 export const fdBanking = balanceReader("fd_banking", "GetAccount");
 /** wasabi_banking (written from community_bridge's banking module): `GetAccountBalance(job, "society")`. */

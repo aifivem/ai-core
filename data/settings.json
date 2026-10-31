@@ -210,5 +210,6 @@
   "fuel": "auto",
   "doorlock": "auto",
   "garages": "auto",
-  "notify": "ai-lib"
+  "notify": "ai-lib",
+  "bankAccounts": "core"
 }

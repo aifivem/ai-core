@@ -295,7 +295,7 @@
       ]
     },
     "banking": {
-      "description": "Banking script: Automatic uses the first one that runs. Money paid into a banking script's own job account is moved into the job's ai-core account when the script reports it (tgiann-bank).",
+      "description": "Banking script: Automatic uses the first one that runs.",
       "enum": [
         "auto",
         "ai-banking",
@@ -326,6 +326,13 @@
         "tgiann-policealert",
         "wasabi_ambulance_v2",
         "ai-core"
+      ]
+    },
+    "bankAccounts": {
+      "description": "Job and gang accounts: ai-core's accounts: ai-core keeps the job and gang money and the banking script shows the same balance; money moved on its screen is moved in ai-core too. At every start and when picked, the script's job and gang balances are set to ai-core's. The script's own accounts: the script keeps the money, and paychecks, bills and other scripts take from and pay into its accounts. Which scripts support each mode is in the compatibility notes.",
+      "enum": [
+        "core",
+        "own"
       ]
     },
     "fuel": {

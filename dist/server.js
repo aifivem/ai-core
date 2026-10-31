@@ -418,11 +418,12 @@ function toDispatchAlert(value) {
 const text$13 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, id$2 = (v) => typeof v == "number" && Number.isInteger(v) && v > 0 ? v : void 0;
 function toBillRequest(value) {
 	if (typeof value != "object" || !value || Array.isArray(value)) return null;
-	let v = value, to = id$2(v.to), label = text$13(v.label, 80), amount = v.amount;
-	if (to === void 0 || !label || typeof amount != "number" || !Number.isSafeInteger(amount) || amount < 1 || amount > 1e7) return null;
+	let v = value, to = id$2(v.to), toCitizenid = typeof v.toCitizenid == "string" && /^[A-Za-z0-9]{1,16}$/.test(v.toCitizenid) ? v.toCitizenid : void 0, label = text$13(v.label, 80), amount = v.amount;
+	if (to === void 0 == (toCitizenid === void 0) || !label || typeof amount != "number" || !Number.isSafeInteger(amount) || amount < 1 || amount > 1e7) return null;
 	let from = id$2(v.from), job = typeof v.job == "string" && /^[a-z0-9_]{2,32}$/.test(v.job) ? v.job : void 0;
-	return job === void 0 && from === void 0 || from === to ? null : {
+	return job === void 0 && from === void 0 || to !== void 0 && from === to ? null : {
 		to,
+		toCitizenid,
 		amount,
 		label,
 		from,
@@ -16310,7 +16311,7 @@ var WebhookQueue = class {
 		}
 	}
 };
-const queues = new Map();
+const queues$1 = new Map();
 function playerText(player) {
 	let lines = [
 		player.name,
@@ -16322,8 +16323,8 @@ function playerText(player) {
 }
 function sendToDiscord(entry, url) {
 	if (!url) return;
-	let queue = queues.get(url);
-	queue || (queue = new WebhookQueue(url), queues.set(url, queue));
+	let queue = queues$1.get(url);
+	queue || (queue = new WebhookQueue(url), queues$1.set(url, queue));
 	let metadata = Object.keys(entry.metadata).length ? JSON.stringify(entry.metadata).slice(0, MAX_FIELD) : null;
 	for (let i = 0; i < Math.max(1, entry.message.length); i += MAX_FIELD) {
 		let fields = [];
@@ -16914,12 +16915,31 @@ const hourField = (path, label) => ({
 		icon: "kit-medical",
 		name: "EMS"
 	}
-], servicesSections = (choices) => Object.fromEntries(LAYERS$1.map(({ key }) => [key, {
-	type: "enum",
-	values: ["auto", ...choices[key] ?? []]
-}])), SERVICES_DEFAULTS = {
+], MORE_FIELDS = { banking: [{
+	widget: "select",
+	path: "bankAccounts",
+	label: "ADMIN_F_BANK_ACCOUNTS",
+	hint: "ADMIN_H_BANK_ACCOUNTS",
+	options: [{
+		value: "core",
+		label: "ADMIN_O_BANK_ACCOUNTS_CORE"
+	}, {
+		value: "own",
+		label: "ADMIN_O_BANK_ACCOUNTS_OWN"
+	}]
+}] }, servicesSections = (choices) => ({
+	...Object.fromEntries(LAYERS$1.map(({ key }) => [key, {
+		type: "enum",
+		values: ["auto", ...choices[key] ?? []]
+	}])),
+	bankAccounts: {
+		type: "enum",
+		values: ["core", "own"]
+	}
+}), SERVICES_DEFAULTS = {
 	billing: "auto",
 	banking: "auto",
+	bankAccounts: "core",
 	mdt: "auto",
 	ems: "auto"
 }, servicesCards = (choices) => LAYERS$1.map(({ key, icon, name }) => ({
@@ -16938,7 +16958,7 @@ const hourField = (path, label) => ({
 			value,
 			label: value
 		}))]
-	}]
+	}, ...MORE_FIELDS[key] ?? []]
 })), NOTIFY_SYSTEMS = [
 	{ resource: LIB_UI.resource },
 	{ resource: "tgiann-lumihud" },
@@ -18182,8 +18202,8 @@ function definitions(raw, imageOf) {
 	return out;
 }
 // resource/server/inventory/adapters/ai-inventory.ts
-const RESOURCE$26 = "ai-inventory", inv$1 = resourceExport(RESOURCE$26), imageOf = (_name, image) => image ? `nui://${RESOURCE$26}/dist/web/images/${image}` : void 0, aiInventory = {
-	resource: RESOURCE$26,
+const RESOURCE$28 = "ai-inventory", inv$1 = resourceExport(RESOURCE$28), imageOf = (_name, image) => image ? `nui://${RESOURCE$28}/dist/web/images/${image}` : void 0, aiInventory = {
+	resource: RESOURCE$28,
 	version: "0.1.0",
 	addItem: (ref, item, count, metadata, slot) => inv$1.AddItem(ref, item, count, metadata, slot) === !0,
 	removeItem: (ref, item, count, metadata, slot) => inv$1.RemoveItem(ref, item, count, metadata, slot) === !0,
@@ -18213,8 +18233,8 @@ on("ai-inventory:usedItem", (source, name, _slot, _metadata, status) => {
 	emit(CORE.itemUsedEvent, source, name, isRecord(status) ? status : null);
 });
 // resource/server/inventory/adapters/codem-inventory.ts
-const RESOURCE$25 = "codem-inventory", call$7 = (name, ...args) => callExport(RESOURCE$25, name, ...args), codemImage = (name, image) => `nui://${RESOURCE$25}/html/itemimages/${image || `${name}.png`}`, stacksOf$4 = (ref) => rows(typeof ref == "number" ? call$7("GetInventory", players.get(ref)?.citizenid, ref) : call$7("GetStashItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []), codemInventory = {
-	resource: RESOURCE$25,
+const RESOURCE$27 = "codem-inventory", call$7 = (name, ...args) => callExport(RESOURCE$27, name, ...args), codemImage = (name, image) => `nui://${RESOURCE$27}/html/itemimages/${image || `${name}.png`}`, stacksOf$4 = (ref) => rows(typeof ref == "number" ? call$7("GetInventory", players.get(ref)?.citizenid, ref) : call$7("GetStashItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []), codemInventory = {
+	resource: RESOURCE$27,
 	version: "",
 	addItem: (ref, item, count, metadata, slot) => typeof ref == "number" && isTrue(call$7("AddItem", ref, item, count, slot, metadata)),
 	removeItem: (ref, item, count, _metadata, slot) => typeof ref == "number" && isTrue(call$7("RemoveItem", ref, item, count, slot)),
@@ -18229,7 +18249,7 @@ const RESOURCE$25 = "codem-inventory", call$7 = (name, ...args) => callExport(RE
 		return isRecord(list) ? definition(list[name], name, codemImage) : null;
 	},
 	getItemDefinitions: () => definitions(call$7("GetItemList"), codemImage)
-}, RESOURCE$24 = "core_inventory", call$6 = (name, ...args) => callExport(RESOURCE$24, name, ...args), inv = (ref) => typeof ref == "number" ? ref : `stash-${ref}`, labels = new Map();
+}, RESOURCE$26 = "core_inventory", call$6 = (name, ...args) => callExport(RESOURCE$26, name, ...args), inv = (ref) => typeof ref == "number" ? ref : `stash-${ref}`, labels = new Map();
 function stacksOf$3(ref) {
 	let data = call$6("getInventory", inv(ref)), content = isRecord(data) ? data.content : void 0;
 	return (Array.isArray(content) ? content.map((row, i) => [String(i + 1), row]) : isRecord(content) ? Object.entries(content) : []).flatMap(([slot, row]) => isRecord(row) ? stack({
@@ -18238,7 +18258,7 @@ function stacksOf$3(ref) {
 	}, (name) => name) ?? [] : []);
 }
 const coreInventory = {
-	resource: RESOURCE$24,
+	resource: RESOURCE$26,
 	version: "",
 	addItem: (ref, item, count, metadata) => isTrue(call$6("addItem", inv(ref), item, count, metadata)),
 	removeItem: (ref, item, count) => isTrue(call$6("removeItem", inv(ref), item, count)),
@@ -18253,11 +18273,11 @@ const coreInventory = {
 		return isRecord(list) ? definition(list[name], name) : null;
 	},
 	getItemDefinitions: () => definitions(call$6("getItemsList"))
-}, RESOURCE$23 = "jaksam_inventory", call$5 = (name, ...args) => callExport(RESOURCE$23, name, ...args), item$1 = (raw, name) => isRecord(raw) ? definition({
+}, RESOURCE$25 = "jaksam_inventory", call$5 = (name, ...args) => callExport(RESOURCE$25, name, ...args), item$1 = (raw, name) => isRecord(raw) ? definition({
 	...raw,
 	stack: raw.stackable !== !1
 }, name) : null, jaksamInventory = {
-	resource: RESOURCE$23,
+	resource: RESOURCE$25,
 	version: "",
 	addItem: (ref, name, count, metadata, slot) => isTrue(call$5("addItem", ref, name, count, metadata, slot)),
 	removeItem: (ref, name, count, metadata, slot) => isTrue(call$5("removeItem", ref, name, count, metadata, slot)),
@@ -18284,8 +18304,8 @@ const coreInventory = {
 		}
 		return out;
 	}
-}, RESOURCE$22 = "origen_inventory", call$4 = (name, ...args) => callExport(RESOURCE$22, name, ...args), stacksOf$2 = (ref) => rows(call$4("getInventoryItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []), origenInventory = {
-	resource: RESOURCE$22,
+}, RESOURCE$24 = "origen_inventory", call$4 = (name, ...args) => callExport(RESOURCE$24, name, ...args), stacksOf$2 = (ref) => rows(call$4("getInventoryItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []), origenInventory = {
+	resource: RESOURCE$24,
 	version: "",
 	addItem: (ref, item, count, metadata, slot) => isTrue(call$4("addItem", ref, item, count, metadata, slot)),
 	removeItem: (ref, item, count, metadata, slot) => isTrue(call$4("removeItem", ref, item, count, metadata, slot)),
@@ -18299,8 +18319,8 @@ const coreInventory = {
 	openInventory: () => !1,
 	getItemDefinition: (name) => definition(call$4("Items", name), name),
 	getItemDefinitions: () => definitions(call$4("Items"))
-}, oxImage = (name, image) => `nui://ox_inventory/web/images/${image || `${name}.png`}`, RESOURCE$21 = "ox_inventory", call$3 = (name, ...args) => callExport(RESOURCE$21, name, ...args), oxInventory = {
-	resource: RESOURCE$21,
+}, oxImage = (name, image) => `nui://ox_inventory/web/images/${image || `${name}.png`}`, RESOURCE$23 = "ox_inventory", call$3 = (name, ...args) => callExport(RESOURCE$23, name, ...args), oxInventory = {
+	resource: RESOURCE$23,
 	version: "2.48.1",
 	addItem: (ref, item, count, metadata, slot) => isTrue(call$3("AddItem", ref, item, count, metadata, slot)),
 	removeItem: (ref, item, count, metadata, slot) => isTrue(call$3("RemoveItem", ref, item, count, metadata, slot)),
@@ -18327,7 +18347,7 @@ const coreInventory = {
 		}))
 	}),
 	openShop: (source, name) => (TriggerClientEvent("ox_inventory:openInventory", source, "shop", { type: name }), !0)
-}, RESOURCE$20 = "qb-inventory", call$2 = (name, ...args) => callExport(RESOURCE$20, name, ...args);
+}, RESOURCE$22 = "qb-inventory", call$2 = (name, ...args) => callExport(RESOURCE$22, name, ...args);
 function itemsOf$1(ref) {
 	if (typeof ref == "string") {
 		let inventory = call$2("GetInventory", ref);
@@ -18337,7 +18357,7 @@ function itemsOf$1(ref) {
 	return isRecord(player) && isRecord(player.PlayerData) ? player.PlayerData.items : void 0;
 }
 const stacksOf$1 = (ref) => rows(itemsOf$1(ref)).flatMap((row) => stack(row, (name) => name) ?? []), qbInventory = {
-	resource: RESOURCE$20,
+	resource: RESOURCE$22,
 	version: "2.2.3",
 	addItem: (ref, item, count, metadata, slot) => isTrue(call$2("AddItem", ref, item, count, slot, metadata)),
 	removeItem: (ref, item, count, _metadata, slot) => isTrue(call$2("RemoveItem", ref, item, count, slot)),
@@ -18353,8 +18373,8 @@ const stacksOf$1 = (ref) => rows(itemsOf$1(ref)).flatMap((row) => stack(row, (na
 	openInventory: (source, ref) => (call$2(typeof ref == "number" ? "OpenInventoryById" : "OpenInventory", source, ref), !0),
 	getItemDefinition: () => null,
 	getItemDefinitions: () => ({})
-}, RESOURCE$19 = "qs-inventory", call$1 = (name, ...args) => callExport(RESOURCE$19, name, ...args), qsImage = (name, image) => `nui://${RESOURCE$19}/html/images/${image || `${name}.png`}`, stashes = new Map(), stashId = (name) => `Stash_${name}`, notRefused = (value) => first$1(value) !== !1, stacksOf = (ref) => rows(typeof ref == "number" ? call$1("GetInventory", ref) : call$1("GetStashItems", stashId(ref))).flatMap((row) => stack(row, (name) => name) ?? []), qsInventory = {
-	resource: RESOURCE$19,
+}, RESOURCE$21 = "qs-inventory", call$1 = (name, ...args) => callExport(RESOURCE$21, name, ...args), qsImage = (name, image) => `nui://${RESOURCE$21}/html/images/${image || `${name}.png`}`, stashes = new Map(), stashId = (name) => `Stash_${name}`, notRefused = (value) => first$1(value) !== !1, stacksOf = (ref) => rows(typeof ref == "number" ? call$1("GetInventory", ref) : call$1("GetStashItems", stashId(ref))).flatMap((row) => stack(row, (name) => name) ?? []), qsInventory = {
+	resource: RESOURCE$21,
 	version: "",
 	addItem: (ref, item, count, metadata, slot) => {
 		if (typeof ref == "number") return isTrue(call$1("AddItem", ref, item, count, slot, metadata));
@@ -18377,7 +18397,7 @@ const stacksOf$1 = (ref) => rows(itemsOf$1(ref)).flatMap((row) => stack(row, (na
 		return isRecord(list) ? definition(list[name], name, qsImage) : null;
 	},
 	getItemDefinitions: () => definitions(call$1("GetItemList"), qsImage)
-}, RESOURCE$18 = "tgiann-inventory", call = (name, ...args) => callExport(RESOURCE$18, name, ...args);
+}, RESOURCE$20 = "tgiann-inventory", call = (name, ...args) => callExport(RESOURCE$20, name, ...args);
 function item(name) {
 	try {
 		return call("Items", name);
@@ -18388,7 +18408,7 @@ function item(name) {
 const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetInventoryItems", ref), INVENTORIES = [
 	aiInventory,
 	{
-		resource: RESOURCE$18,
+		resource: RESOURCE$20,
 		version: "2.4.1",
 		addItem: (ref, name, count, metadata, slot) => isTrue(call("AddItem", ref, name, count, slot, metadata)),
 		removeItem: (ref, name, count, metadata, slot) => isTrue(call("RemoveItem", ref, name, count, slot, metadata)),
@@ -18637,9 +18657,9 @@ const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetIn
 			} : void 0
 		});
 	}
-}, RESOURCE$17 = "tgiann-policealert", DISPATCH_SYSTEMS = [
+}, RESOURCE$19 = "tgiann-policealert", DISPATCH_SYSTEMS = [
 	{
-		resource: RESOURCE$17,
+		resource: RESOURCE$19,
 		version: "2.10.0",
 		answersPoliceAlert: !0,
 		alert: (a) => {
@@ -18656,12 +18676,12 @@ const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetIn
 				bgAnimate: a.priority === "high",
 				blip: a.blip?.sprite
 			};
-			a.source === void 0 ? callExport(RESOURCE$17, "SendCustomAlert", {
+			a.source === void 0 ? callExport(RESOURCE$19, "SendCustomAlert", {
 				...common,
 				duration: a.duration ?? 5,
 				sound: { active: !0 },
 				information: { custom }
-			}, jobs) : callExport(RESOURCE$17, "Alert", a.source, {
+			}, jobs) : callExport(RESOURCE$19, "Alert", a.source, {
 				...common,
 				jobs,
 				custom
@@ -18766,7 +18786,7 @@ const blAppearance = {
 			data: JSON.parse(row.skin)
 		} : null;
 	}
-}, RESOURCE$16 = "rcore_clothing", APPEARANCE_SYSTEMS = [
+}, RESOURCE$18 = "rcore_clothing", APPEARANCE_SYSTEMS = [
 	{
 		resource: "tgiann-clothing",
 		version: "4.1.0",
@@ -18786,12 +18806,12 @@ const blAppearance = {
 	qbClothing,
 	crmAppearance,
 	{
-		resource: RESOURCE$16,
+		resource: RESOURCE$18,
 		version: "",
 		load: async (charId) => {
 			let citizenid = await citizenidOf(charId);
 			if (!citizenid) return null;
-			let found = callExport(RESOURCE$16, "getSkinByIdentifier", citizenid);
+			let found = callExport(RESOURCE$18, "getSkinByIdentifier", citizenid);
 			if (!isRecord(found) || found.skin == null) return null;
 			let model = modelOf(found.ped_model);
 			return model === null ? null : {
@@ -18921,7 +18941,7 @@ function clientGarage(resource, actions) {
 const tgiannGarage = {
 	resource: "tgiann-garage",
 	open: (source) => (emitNet("tgiann-garage:open", source), !0)
-}, RESOURCE$15 = "tgiann-realparking";
+}, RESOURCE$17 = "tgiann-realparking";
 function row(v) {
 	if (!isRecord(v) || typeof v.plate != "string" || v.state === "out") return null;
 	let props = isRecord(v.properties) ? v.properties : {};
@@ -18936,16 +18956,16 @@ function row(v) {
 const GARAGE_SYSTEMS = [
 	aiGarages,
 	{
-		resource: RESOURCE$15,
+		resource: RESOURCE$17,
 		version: "2.14.0",
 		impound: (_vehicle, plate) => {
-			let answer = callExport(RESOURCE$15, "ImpoundVehicle", plate, { deleteVehicle: !0 });
+			let answer = callExport(RESOURCE$17, "ImpoundVehicle", plate, { deleteVehicle: !0 });
 			return (Array.isArray(answer) ? answer[0] : answer) === !0;
 		},
 		stored: async (source) => {
 			let citizenid = players.get(source)?.citizenid;
 			if (citizenid === void 0) return null;
-			let rows = await callExport(RESOURCE$15, "GetPlayerVehicleDetails", citizenid);
+			let rows = await callExport(RESOURCE$17, "GetPlayerVehicleDetails", citizenid);
 			return Array.isArray(rows) ? rows.flatMap((v) => {
 				let vehicle = row(v);
 				return vehicle ? [vehicle] : [];
@@ -18975,28 +18995,28 @@ function listOf(raw, read, done) {
 	}) : answer(raw);
 }
 // resource/server/billing/adapters/codem-billing.ts
-const RESOURCE$14 = "codem-billing", codemBilling = {
-	resource: RESOURCE$14,
-	send: (b) => b.job !== void 0 && b.from !== void 0 && accepted(RESOURCE$14, callExport(RESOURCE$14, "createBilling", b.from, b.to, b.amount, b.label, b.job))
-}, RESOURCE$13 = "esx_billing", esxBilling = {
-	resource: RESOURCE$13,
+const RESOURCE$16 = "codem-billing", codemBilling = {
+	resource: RESOURCE$16,
+	send: (b) => b.job !== void 0 && b.from !== void 0 && accepted(RESOURCE$16, callExport(RESOURCE$16, "createBilling", b.from, b.to, b.amount, b.label, b.job))
+}, RESOURCE$15 = "esx_billing", esxBilling = {
+	resource: RESOURCE$15,
 	version: "1.0",
-	send: (b) => accepted(RESOURCE$13, callExport(RESOURCE$13, "BillPlayer", b.to, b.fromCitizenid ?? "server", b.job ? `society_${b.job}` : b.fromCitizenid, b.label, b.amount))
-}, RESOURCE$12 = "okokBilling", okokBilling = {
-	resource: RESOURCE$12,
-	send: (b) => accepted(RESOURCE$12, callExport(RESOURCE$12, "CreateInvoice", b.to, b.amount, b.label, b.job ?? b.from)),
-	unpaid: (source, _citizenid, done) => listOf(callExport(RESOURCE$12, "getInvoices", source), (rows) => rows.flatMap((r) => isRecord(r) && r.status !== "paid" && typeof r.amount == "number" ? [{
+	send: (b) => accepted(RESOURCE$15, callExport(RESOURCE$15, "BillPlayer", b.to, b.fromCitizenid ?? "server", b.job ? `society_${b.job}` : b.fromCitizenid, b.label, b.amount))
+}, RESOURCE$14 = "okokBilling", okokBilling = {
+	resource: RESOURCE$14,
+	send: (b) => accepted(RESOURCE$14, callExport(RESOURCE$14, "CreateInvoice", b.to, b.amount, b.label, b.job ?? b.from)),
+	unpaid: (source, _citizenid, done) => listOf(callExport(RESOURCE$14, "getInvoices", source), (rows) => rows.flatMap((r) => isRecord(r) && r.status !== "paid" && typeof r.amount == "number" ? [{
 		id: String(r.ref_id ?? r.id),
 		label: String(r.reason ?? ""),
 		amount: r.amount + (typeof r.fees == "number" ? r.fees : 0),
 		sender: String(r.sender ?? "")
 	}] : []), done),
-	pay: (source, id) => first(callExport(RESOURCE$12, "payReference", source, id)) !== !1
-}, RESOURCE$11 = "qs-billing", qsBilling = {
-	resource: RESOURCE$11,
-	send: (b) => b.job !== void 0 && accepted(RESOURCE$11, callExport(RESOURCE$11, "ServerCreateInvoice", b.to, b.label, b.label, b.amount, !0, !1, !1, !1, b.job))
-}, RESOURCE$10 = "tgiann-phone", tgiannPhoneBilling = {
-	resource: RESOURCE$10,
+	pay: (source, id) => first(callExport(RESOURCE$14, "payReference", source, id)) !== !1
+}, RESOURCE$13 = "qs-billing", qsBilling = {
+	resource: RESOURCE$13,
+	send: (b) => b.job !== void 0 && accepted(RESOURCE$13, callExport(RESOURCE$13, "ServerCreateInvoice", b.to, b.label, b.label, b.amount, !0, !1, !1, !1, b.job))
+}, RESOURCE$12 = "tgiann-phone", tgiannPhoneBilling = {
+	resource: RESOURCE$12,
 	version: "2.0.0-b8",
 	send: (b) => {
 		let sender = b.job ? {
@@ -19008,7 +19028,7 @@ const RESOURCE$14 = "codem-billing", codemBilling = {
 			id: b.fromCitizenid,
 			label: b.fromName
 		};
-		return sender.id ? accepted(RESOURCE$10, callExport(RESOURCE$10, "CreateInvoice", {
+		return sender.id ? accepted(RESOURCE$12, callExport(RESOURCE$12, "CreateInvoice", {
 			sender,
 			issuer: b.from,
 			target: {
@@ -19023,19 +19043,19 @@ const RESOURCE$14 = "codem-billing", codemBilling = {
 			vat: !1
 		})) : !1;
 	},
-	unpaid: (_source, citizenid, done) => listOf(callExport(RESOURCE$10, "GetUnpaidInvoices", citizenid), (rows) => rows.flatMap((r) => isRecord(r) && typeof r.amount == "number" ? [{
+	unpaid: (_source, citizenid, done) => listOf(callExport(RESOURCE$12, "GetUnpaidInvoices", citizenid), (rows) => rows.flatMap((r) => isRecord(r) && typeof r.amount == "number" ? [{
 		id: String(r.ref ?? r.id),
 		label: String(r.label ?? ""),
 		amount: r.amount,
 		sender: String(r.sender ?? "")
 	}] : []), done)
-}, RESOURCE$9 = "wasabi_billing", BILLING_SCRIPTS = [
+}, RESOURCE$11 = "wasabi_billing", BILLING_SCRIPTS = [
 	tgiannPhoneBilling,
 	okokBilling,
 	{
-		resource: RESOURCE$9,
-		send: (b) => b.from !== void 0 && accepted(RESOURCE$9, callExport(RESOURCE$9, "CreateInvoice", b.from, b.toCitizenid, b.amount, b.label, b.job ? "society" : "personal", "personal")),
-		pay: (source, id) => first(callExport(RESOURCE$9, "PayInvoiceByReference", source, id)) === !0
+		resource: RESOURCE$11,
+		send: (b) => b.from !== void 0 && accepted(RESOURCE$11, callExport(RESOURCE$11, "CreateInvoice", b.from, b.toCitizenid, b.amount, b.label, b.job ? "society" : "personal", "personal")),
+		pay: (source, id) => first(callExport(RESOURCE$11, "PayInvoiceByReference", source, id)) === !0
 	},
 	codemBilling,
 	qsBilling,
@@ -19045,8 +19065,11 @@ const RESOURCE$14 = "codem-billing", codemBilling = {
 	societyBalance: () => null
 };
 // resource/server/banking/answer.ts
+function firstOf(raw) {
+	return Array.isArray(raw) ? raw[0] : raw;
+}
 function balanceOf(raw) {
-	let value = Array.isArray(raw) ? raw[0] : raw;
+	let value = firstOf(raw);
 	return typeof value == "number" && Number.isFinite(value) ? value : null;
 }
 // resource/server/banking/adapters/balanceOnly.ts
@@ -19057,15 +19080,48 @@ function balanceReader(resource, exportName, extra = [], version) {
 		societyBalance: (job) => balanceOf(callExport(resource, exportName, job, ...extra))
 	};
 }
-const qbBanking = balanceReader("qb-banking", "GetAccountBalance", [], "2.0.0"), okokBanking = balanceReader("okokBanking", "GetAccount"), fdBanking = balanceReader("fd_banking", "GetAccount"), wasabiBanking = balanceReader("wasabi_banking", "GetAccountBalance", ["society"]), kartikBanking = balanceReader("kartik-banking", "GetAccountMoney"), tggBanking = balanceReader("tgg-banking", "GetSocietyAccountMoney"), renewedBanking = {
-	resource: "Renewed-Banking",
+const qbBanking = balanceReader("qb-banking", "GetAccountBalance", [], "2.0.0"), fdBanking = balanceReader("fd_banking", "GetAccount"), wasabiBanking = balanceReader("wasabi_banking", "GetAccountBalance", ["society"]), kartikBanking = balanceReader("kartik-banking", "GetAccountMoney"), tggBanking = balanceReader("tgg-banking", "GetSocietyAccountMoney"), RESOURCE$10 = "okokBanking", balance$1 = (name) => balanceOf(callExport(RESOURCE$10, "GetAccount", name)), okokBanking = {
+	resource: RESOURCE$10,
+	societyBalance: (job) => balance$1(job),
+	accounts: {
+		has: (_type, name) => balance$1(name) !== null,
+		balance: (_type, name) => balance$1(name),
+		add: (_type, name, amount) => firstOf(callExport(RESOURCE$10, "AddMoney", name, amount)) !== !1,
+		remove: (_type, name, amount) => (balance$1(name) ?? 0) >= amount && firstOf(callExport(RESOURCE$10, "RemoveMoney", name, amount)) !== !1
+	}
+}, RESOURCE$9 = "Renewed-Banking", balance = (name) => balanceOf(callExport(RESOURCE$9, "getAccountMoney", name)), renewedBanking = {
+	resource: RESOURCE$9,
 	version: "2.1.4",
-	societyBalance: (job) => balanceOf(callExport("Renewed-Banking", "getAccountMoney", job)),
-	open: (source) => (emitNet("Renewed-Banking:client:openBankUI", source, { atm: !1 }), !0)
-}, RESOURCE$8 = "tgiann-bank";
-function ibanOf(job) {
-	let raw = callExport(RESOURCE$8, "GetJobIbanFromName", job);
+	societyBalance: (job) => balance(job),
+	open: (source) => (emitNet("Renewed-Banking:client:openBankUI", source, { atm: !1 }), !0),
+	accounts: {
+		has: (_type, name) => balance(name) !== null,
+		balance: (_type, name) => balance(name),
+		add: (_type, name, amount) => firstOf(callExport(RESOURCE$9, "addAccountMoney", name, amount)) === !0,
+		remove: (_type, name, amount) => firstOf(callExport(RESOURCE$9, "removeAccountMoney", name, amount)) === !0
+	}
+}, RESOURCE$8 = "tgiann-bank", EXPORTS = {
+	job: {
+		iban: "GetJobIbanFromName",
+		balance: "GetJobAccountBalance",
+		add: "AddJobMoney",
+		remove: "RemoveJobMoney",
+		set: "SetJobMoney"
+	},
+	gang: {
+		iban: "GetGangIbanFromName",
+		balance: "GetGangAccountBalance",
+		add: "AddGangMoney",
+		remove: "RemoveGangMoney",
+		set: "SetGangMoney"
+	}
+};
+function ibanOf(type, name) {
+	let raw = callExport(RESOURCE$8, EXPORTS[type].iban, name);
 	return typeof raw == "string" && raw ? raw : null;
+}
+function moved(type, what, name, amount) {
+	return balanceOf(callExport(RESOURCE$8, EXPORTS[type][what], name, amount)) !== null;
 }
 // resource/server/banking/registry.ts
 const BANKING_SYSTEMS = [
@@ -19073,20 +19129,30 @@ const BANKING_SYSTEMS = [
 	{
 		resource: RESOURCE$8,
 		version: "2.9.1",
-		societyBalance: (job) => ibanOf(job) === null ? null : balanceOf(callExport(RESOURCE$8, "GetJobAccountBalance", job)),
-		watchDeposits: (names, deposited) => {
-			let jobs = new Map();
-			for (let job of names) {
-				let iban = ibanOf(job);
-				iban && jobs.set(iban, job);
+		societyBalance: (job) => ibanOf("job", job) === null ? null : balanceOf(callExport(RESOURCE$8, "GetJobAccountBalance", job)),
+		accounts: {
+			has: (type, name) => ibanOf(type, name) !== null,
+			balance: (type, name) => ibanOf(type, name) === null ? null : balanceOf(callExport(RESOURCE$8, EXPORTS[type].balance, name)),
+			add: (type, name, amount) => moved(type, "add", name, amount),
+			remove: (type, name, amount) => moved(type, "remove", name, amount),
+			set: (type, name, amount) => moved(type, "set", name, amount),
+			watch: (owners, changed) => {
+				if (callExport(RESOURCE$8, "RemoveHooks"), !owners) return;
+				let byIban = new Map();
+				for (let type of ["job", "gang"]) for (let name of owners[type]) {
+					let iban = ibanOf(type, name);
+					iban && byIban.set(iban, {
+						type,
+						name
+					});
+				}
+				byIban.size && callExport(RESOURCE$8, "RegisterHook", "balanceChanged", (payload) => {
+					if (!isRecord(payload) || typeof payload.iban != "string") return;
+					let owner = byIban.get(payload.iban), delta = balanceOf(payload.delta), balance = balanceOf(payload.balance);
+					owner && delta !== null && balance !== null && changed(owner.type, owner.name, Math.trunc(delta), Math.trunc(balance));
+				}, { ibanFilter: Object.fromEntries([...byIban.keys()].map((i) => [i, !0])) });
 			}
-			callExport(RESOURCE$8, "RemoveHooks"), jobs.size && callExport(RESOURCE$8, "RegisterHook", "balanceChanged", (payload) => {
-				if (!isRecord(payload) || typeof payload.delta != "number") return;
-				let job = typeof payload.iban == "string" ? jobs.get(payload.iban) : void 0;
-				job && payload.delta > 0 && deposited(job, Math.floor(payload.delta));
-			}, { ibanFilter: Object.fromEntries([...jobs.keys()].map((i) => [i, !0])) });
-		},
-		take: (job, amount) => balanceOf(callExport(RESOURCE$8, "RemoveJobMoney", job, amount)) !== null
+		}
 	},
 	renewedBanking,
 	qbBanking,
@@ -19164,6 +19230,7 @@ function readSettings(raw) {
 		appearance: str(s.appearance, "auto", 32),
 		billing: str(s.billing, "auto", 32),
 		banking: str(s.banking, "auto", 32),
+		bankAccounts: s.bankAccounts === "own" ? "own" : "core",
 		mdt: str(s.mdt, "auto", 32),
 		ems: str(s.ems, "auto", 32),
 		fuel: str(s.fuel, "auto", 32),
@@ -20435,17 +20502,28 @@ function ledgerStatements(entries) {
 }
 const moneyWriter = new class {
 	pending = [];
+	attached = [];
 	timer = null;
 	chain = Promise.resolve();
 	push(entry) {
 		this.pending.push(entry), this.timer ??= setTimeout(() => this.flush(), 50);
 	}
+	attach(query, values) {
+		this.attached.push({
+			query,
+			values
+		}), this.timer ??= setTimeout(() => this.flush(), 50);
+	}
 	flush() {
 		this.timer && clearTimeout(this.timer), this.timer = null;
-		let batch = this.pending;
-		batch.length !== 0 && (this.pending = [], this.chain = this.chain.then(async () => {
+		let batch = this.pending, attached = this.attached;
+		(batch.length !== 0 || attached.length !== 0) && (this.pending = [], this.attached = [], this.chain = this.chain.then(async () => {
 			try {
-				if (!await mysql.transaction([...balanceStatements(batch), ...ledgerStatements(batch)])) throw Error("transaction rolled back");
+				if (!await mysql.transaction([
+					...balanceStatements(batch),
+					...ledgerStatements(batch),
+					...attached
+				])) throw Error("transaction rolled back");
 			} catch (error) {
 				log$3.error(`money write of ${batch.length} changes failed`, error);
 			}
@@ -20456,6 +20534,10 @@ const moneyWriter = new class {
 	}
 }();
 // resource/server/money/account.ts
+let link = null;
+function linkSharedAccounts(next) {
+	link = next;
+}
 var Account = class {
 	id;
 	ownerType;
@@ -20467,7 +20549,7 @@ var Account = class {
 		this.id = id, this.ownerType = ownerType, this.ownerId = ownerId, this.name = name, this.amount = amount, this.allowNegative = allowNegative;
 	}
 	get balance() {
-		return this.amount;
+		return link === null || this.ownerType === "character" ? this.amount : link.balance(this) ?? this.amount;
 	}
 	change(delta, reason, actor = null) {
 		if (!Number.isSafeInteger(delta)) return {
@@ -20476,7 +20558,15 @@ var Account = class {
 		};
 		if (delta === 0) return {
 			ok: !0,
-			balance: this.amount
+			balance: this.balance
+		};
+		let shared = this.ownerType === "character" ? null : link, kept = shared?.change(this, delta) ?? null;
+		if (kept !== null) return kept ? {
+			ok: !0,
+			balance: this.balance
+		} : {
+			ok: !1,
+			error: "INSUFFICIENT_FUNDS"
 		};
 		let next = this.amount + delta;
 		return next < 0 && !this.allowNegative ? {
@@ -20488,13 +20578,13 @@ var Account = class {
 			balanceAfter: next,
 			reason,
 			actor
-		}), {
+		}), shared?.changed(this), {
 			ok: !0,
 			balance: next
 		});
 	}
 	set(amount, reason, actor = null) {
-		return Number.isSafeInteger(amount) ? this.change(amount - this.amount, reason, actor) : {
+		return Number.isSafeInteger(amount) ? this.change(amount - this.balance, reason, actor) : {
 			ok: !1,
 			error: "INVALID_AMOUNT"
 		};
@@ -22716,17 +22806,76 @@ addCommand("aicore_alert", {
 	log$3.info(sent ? `test alert sent through ${dispatch.active?.resource}` : "no alert system runs");
 });
 // resource/server/billing/builtin.ts
-const PAY_FROM = ["bank", "cash"], bills = new Map();
-let nextId = 1;
+const PAY_FROM = ["bank", "cash"], bills = new Map(), queues = new Map();
+function inOrder(charId, task) {
+	let run = (queues.get(charId) ?? Promise.resolve()).then(task).catch((error) => log$3.error(`bills of character #${charId} failed`, error));
+	queues.set(charId, run), run.then(() => {
+		queues.get(charId) === run && queues.delete(charId);
+	});
+}
 const view = (list) => list.map(({ id, label, amount, sender }) => ({
 	id,
 	label,
 	amount,
 	sender
 }));
-function showBills(source) {
-	let charId = players.get(source)?.charId, list = charId === void 0 ? void 0 : bills.get(charId);
-	list?.length && emitNet(CORE.billsEvent, source, view(list));
+function showBills(charId) {
+	let player = players.byCharacter(charId), list = bills.get(charId);
+	player && list?.length && emitNet(CORE.billsEvent, player.source, view(list));
+}
+async function load(charId) {
+	let rows = await db.select("ai_core_bills", [
+		"id",
+		"job",
+		"issuer_char_id",
+		"sender",
+		"label",
+		"amount"
+	], { char_id: charId }, { orderBy: { column: "id" } });
+	players.byCharacter(charId) && (bills.set(charId, rows.map((row) => ({
+		id: String(row.id),
+		label: row.label,
+		amount: row.amount,
+		sender: row.sender,
+		job: row.job ?? void 0,
+		fromCharId: row.issuer_char_id ?? void 0
+	}))), showBills(charId));
+}
+function add(charId, bill) {
+	let list = bills.get(charId);
+	list && !list.some((b) => b.id === bill.id) && (list.push(bill), showBills(charId));
+}
+function store(citizenid, bill) {
+	mysql.insert("INSERT INTO ai_core_bills (char_id, job, issuer_char_id, sender, label, amount, created_at)\n       SELECT c.id, ?, ?, ?, ?, ?, UTC_TIMESTAMP() FROM ai_core_characters c\n       WHERE c.citizenid = ? AND c.deleted_at IS NULL\n         AND (SELECT COUNT(*) FROM ai_core_bills b WHERE b.char_id = c.id) < ?", [
+		bill.job ?? null,
+		bill.fromCharId ?? null,
+		bill.sender.slice(0, 64),
+		bill.label,
+		bill.amount,
+		citizenid,
+		20
+	]).then((id) => {
+		if (!id) return log$3.warn(`bill "${bill.label}" for ${citizenid} refused: no such character or 20 open bills`);
+		let player = players.byCitizen(citizenid);
+		player && inOrder(player.charId, () => add(player.charId, {
+			...bill,
+			id: String(id)
+		}));
+	}, (error) => log$3.error(`storing a bill for ${citizenid} failed`, error));
+}
+function newBill(b) {
+	let fromCharId = b.from === void 0 ? void 0 : players.get(b.from)?.charId;
+	return !b.job && fromCharId === void 0 ? null : {
+		label: b.label,
+		amount: b.amount,
+		sender: b.jobLabel ?? b.fromName ?? "",
+		job: b.job,
+		fromCharId: b.job ? void 0 : fromCharId
+	};
+}
+function billOffline(citizenid, b) {
+	let bill = newBill(b);
+	return bill ? (store(citizenid, bill), !0) : !1;
 }
 function payBill(source, id) {
 	let payer = players.get(source), list = payer && bills.get(payer.charId), bill = list?.find((b) => b.id === id);
@@ -22748,24 +22897,15 @@ function payBill(source, id) {
 	return PAY_FROM.some((account) => transferMoney({
 		source,
 		account
-	}, to, bill.amount, reason)) ? (list.splice(list.indexOf(bill), 1), list.length || bills.delete(payer.charId), notify(source, Locale("BILL_PAID", bill.amount, bill.label), "success"), payee !== void 0 && notify(payee, Locale("BILL_PAID_TO_YOU", payer.fullName, bill.amount), "success"), null) : "BILL_ERR_MONEY";
+	}, to, bill.amount, reason)) ? (moneyWriter.attach("DELETE FROM ai_core_bills WHERE id = ?", [Number(bill.id)]), list.splice(list.indexOf(bill), 1), notify(source, Locale("BILL_PAID", bill.amount, bill.label), "success"), payee !== void 0 && notify(payee, Locale("BILL_PAID_TO_YOU", payer.fullName, bill.amount), "success"), null) : "BILL_ERR_MONEY";
 }
 const builtinBilling = {
 	resource: "ai-core",
 	send: (b) => {
 		let target = players.get(b.to);
-		if (!target) return !1;
-		let fromCharId = b.from === void 0 ? void 0 : players.get(b.from)?.charId;
-		if (!b.job && fromCharId === void 0) return !1;
-		let list = bills.get(target.charId) ?? [];
-		return list.length >= 20 ? !1 : (list.push({
-			id: String(nextId++),
-			label: b.label,
-			amount: b.amount,
-			sender: b.jobLabel ?? b.fromName ?? "",
-			job: b.job,
-			fromCharId: b.job ? void 0 : fromCharId
-		}), bills.set(target.charId, list), showBills(b.to), !0);
+		if (!target || (bills.get(target.charId)?.length ?? 0) >= 20) return !1;
+		let bill = newBill(b);
+		return bill ? (store(target.citizenid, bill), !0) : !1;
 	},
 	unpaid: (source, _citizenid, done) => {
 		let charId = players.get(source)?.charId;
@@ -22774,12 +22914,17 @@ const builtinBilling = {
 	pay: (source, id) => payBill(source, id) === null
 };
 onClientCallback(CORE.payBillCallback, {
-	args: oneArg((v) => readText(v, 16)),
+	args: oneArg((v) => readText(v, 20)),
 	lock: !0
 }, (source, id) => {
 	let error = payBill(source, id);
 	return error ? fail$1(error) : { ok: !0 };
-}), on(CORE.playerLoadedEvent, (source) => showBills(source));
+}), on(CORE.playerLoadedEvent, (source) => {
+	let charId = players.get(source)?.charId;
+	charId !== void 0 && inOrder(charId, () => load(charId));
+}), on(CORE.playerUnloadedEvent, (_source, charId) => {
+	bills.delete(charId);
+});
 // resource/server/billing/index.ts
 const billing = new AdapterPicker({
 	category: "billing",
@@ -22788,21 +22933,29 @@ const billing = new AdapterPicker({
 	choice: settings.billing
 });
 panel.onChange("settings", () => billing.setChoice(settings.billing));
-function resolve(bill) {
-	let to = players.get(bill.to), from = bill.from === void 0 ? void 0 : players.get(bill.from);
-	if (!to || bill.from !== void 0 && !from) return null;
-	let job = bill.job === void 0 ? void 0 : jobs.get(bill.job);
-	return bill.job !== void 0 && !job ? null : {
-		...bill,
-		toCitizenid: to.citizenid,
+function sendBill(bill) {
+	let from = bill.from === void 0 ? void 0 : players.get(bill.from), job = bill.job === void 0 ? void 0 : jobs.get(bill.job);
+	if (bill.from !== void 0 && !from || bill.job !== void 0 && !job) return !1;
+	let known = {
+		amount: bill.amount,
+		label: bill.label,
+		from: bill.from,
+		job: bill.job,
 		fromCitizenid: from?.citizenid,
 		fromName: from?.fullName,
 		jobLabel: job?.label
-	};
-}
-function sendBill(bill) {
-	let send = resolve(bill);
-	return send !== null && billing.call("send", (a) => a.send(send), !1);
+	}, to = bill.to === void 0 ? bill.toCitizenid === void 0 ? void 0 : players.byCitizen(bill.toCitizenid) : players.get(bill.to);
+	if (to) {
+		if (from === to) return !1;
+		let send = {
+			...known,
+			to: to.source,
+			toCitizenid: to.citizenid
+		};
+		return billing.call("send", (a) => a.send(send), !1);
+	}
+	let citizenid = bill.to === void 0 ? bill.toCitizenid : void 0;
+	return citizenid !== void 0 && citizenid !== from?.citizenid && billing.active === builtinBilling && billOffline(citizenid, known);
 }
 registerExport("GetBillingSystem", () => billing.active?.resource ?? null), registerExport("SendBill", (raw) => {
 	let bill = toBillRequest(raw);
@@ -22819,30 +22972,134 @@ registerExport("GetBillingSystem", () => billing.active?.resource ?? null), regi
 	if (!player || !adapter?.unpaid) return answer(null);
 	billing.call("unpaid", (a) => a.unpaid?.(player.source, player.citizenid, answer), void 0);
 }), registerExport("PayBill", (source, id) => typeof source == "number" && typeof id == "string" && players.get(source) !== void 0 && billing.call("pay", (a) => a.pay?.(source, id) ?? !1, !1));
-// resource/server/banking/index.ts
-const banking = new AdapterPicker({
+// resource/server/banking/link.ts
+const BANK = "bank", keyOf = (type, name) => `${type}:${name}`, societyLink = new class {
+	adapter = null;
+	owned = new Set();
+	refused = new Set();
+	known = new Map();
+	dirty = new Set();
+	scheduled = !1;
+	writing = !1;
+	retries = 0;
+	generation = 0;
+	constructor() {
+		linkSharedAccounts({
+			balance: (account) => this.keptBalance(account),
+			change: (account, delta) => this.keptChange(account, delta),
+			changed: (account) => this.changed(account)
+		});
+	}
+	activate(adapter, previous) {
+		previous && previous !== adapter && GetResourceState(previous.resource) === "started" && this.guard(previous, "watch", () => previous.accounts?.watch?.(null, () => void 0), void 0), this.adapter = adapter, this.generation++, this.owned.clear(), this.refused.clear(), this.known.clear(), this.dirty.clear(), this.retries = 0;
+		let accounts = adapter?.accounts;
+		if (!adapter || !accounts) return;
+		let core = settings.bankAccounts === "core" && accounts.set !== void 0;
+		if (accounts.watch) {
+			let owners = core ? {
+				job: [...jobs.keys()],
+				gang: [...gangs.keys()]
+			} : null;
+			this.guard(adapter, "watch", () => accounts.watch?.(owners, (t, n, d, b) => this.reported(t, n, d, b)), void 0);
+		}
+		if (!core) return;
+		let generation = this.generation, owners = [...[...jobs.keys()].map((name) => ["job", name]), ...[...gangs.keys()].map((name) => ["gang", name])];
+		databaseReady.then(() => Promise.all(owners.map(([type, name]) => sharedAccounts.load(type, name)))).then((loaded) => {
+			if (generation === this.generation) for (let list of loaded) {
+				let account = list.get(BANK);
+				account && this.changed(account);
+			}
+		}).catch((error) => log$3.error("linking the banking script's accounts failed", error));
+	}
+	kept(account) {
+		let type = account.ownerType;
+		if (settings.bankAccounts !== "own" || type === "character" || account.name !== BANK) return null;
+		let accounts = this.adapter?.accounts;
+		return accounts && this.has(accounts, type, account.ownerId) ? accounts : null;
+	}
+	keptBalance(account) {
+		let accounts = this.kept(account);
+		if (!accounts || account.ownerType === "character") return null;
+		let type = account.ownerType;
+		return this.call("balance", () => accounts.balance(type, account.ownerId), null) ?? 0;
+	}
+	keptChange(account, delta) {
+		let accounts = this.kept(account);
+		if (!accounts || account.ownerType === "character") return null;
+		let type = account.ownerType;
+		return delta > 0 ? this.call("add", () => accounts.add(type, account.ownerId, delta), !1) : this.call("remove", () => accounts.remove(type, account.ownerId, -delta), !1);
+	}
+	changed(account) {
+		settings.bankAccounts === "core" && account.name === BANK && account.ownerType !== "character" && this.adapter?.accounts?.set && (this.dirty.add(account), this.scheduled || (this.scheduled = !0, setImmediate(() => this.flush())));
+	}
+	flush() {
+		this.scheduled = !1;
+		let accounts = this.adapter?.accounts, set = accounts?.set, failed = [];
+		if (accounts && set && settings.bankAccounts === "core") for (let account of this.dirty) {
+			let type = account.ownerType;
+			if (type === "character") continue;
+			let name = account.ownerId, key = keyOf(type, name), balance = account.balance;
+			if (this.refused.has(key) || this.known.get(key) === balance || !this.has(accounts, type, name)) continue;
+			this.writing = !0;
+			let done = this.call("set", () => set(type, name, balance), !1);
+			this.writing = !1, done ? this.known.set(key, balance) : failed.push(account);
+		}
+		this.dirty.clear(), failed.length && this.retry(failed);
+	}
+	retry(failed) {
+		if (this.retries >= 10) {
+			for (let a of failed) this.refused.add(`${a.ownerType}:${a.ownerId}`);
+			log$3.warn(`${this.adapter?.resource}: could not set the balance of ${failed.map((a) => `${a.ownerType} ${a.ownerId}`).join(", ")}`);
+			return;
+		}
+		this.retries++;
+		let generation = this.generation;
+		setTimeout(() => {
+			if (generation === this.generation) for (let account of failed) this.changed(account);
+		}, 3e3);
+	}
+	reported(type, name, delta, balance) {
+		if (this.writing || settings.bankAccounts !== "core") return;
+		this.known.set(keyOf(type, name), balance);
+		let account = sharedAccounts.get(type, name, BANK);
+		if (!account || delta === 0) return;
+		let resource = this.adapter?.resource ?? "banking";
+		account.change(delta, `banking:${resource}`).ok || (log$3.warn(`${resource}: ${delta} in ${type} ${name} did not fit ai-core's balance; setting it back`), this.changed(account));
+	}
+	has(accounts, type, name) {
+		let key = keyOf(type, name);
+		return this.owned.has(key) ? !0 : this.call("has", () => accounts.has(type, name), !1) ? (this.owned.add(key), !0) : !1;
+	}
+	call(what, fn, fallback) {
+		return this.adapter ? this.guard(this.adapter, what, fn, fallback) : fallback;
+	}
+	guard(adapter, what, fn, fallback) {
+		try {
+			return fn();
+		} catch (error) {
+			return log$3.error(`${adapter.resource} ${what} failed`, error), fallback;
+		}
+	}
+}(), banking = new AdapterPicker({
 	category: "banking",
 	adapters: BANKING_SYSTEMS,
 	log: log$3,
 	choice: settings.banking,
 	noneText: "no banking script runs: job money stays in ai-core only",
-	onSwitch: (next) => watch(next)
+	onSwitch: (next, previous) => societyLink.activate(next, previous)
 });
-panel.onChange("settings", () => banking.setChoice(settings.banking)), panel.onChange("jobs", (key, value) => {
-	key !== void 0 && value !== null && watch(banking.active);
+let mode = settings.bankAccounts;
+panel.onChange("settings", () => {
+	banking.setChoice(settings.banking), settings.bankAccounts !== mode && (mode = settings.bankAccounts, societyLink.activate(banking.active, banking.active));
 });
-function watch(adapter) {
-	adapter?.watchDeposits && adapter.watchDeposits([...jobs.keys()], (job, amount) => setImmediate(() => forward(adapter, job, amount)));
-}
-function forward(adapter, job, amount) {
-	if (banking.active !== adapter || amount <= 0) return;
-	let account = sharedAccounts.get("job", job, "bank");
-	if (account) {
-		if (!banking.call("take", (a) => a.take?.(job, amount) ?? !1, !1)) return log$3.warn(`${adapter.resource}: could not move ${amount} of ${job} into ai-core`);
-		account.change(amount, `banking:${adapter.resource}`).ok || log$3.error(`${adapter.resource}: ${amount} taken from ${job} but not added`);
-	}
-}
-registerExport("GetBankingSystem", () => banking.active?.resource ?? null), registerExport("OpenBank", (source) => typeof source == "number" && players.get(source) !== void 0 && banking.call("open", (a) => a.open?.(source) ?? !1, !1)), registerExport("GetBankSocietyBalance", (job) => typeof job == "string" ? banking.call("societyBalance", (a) => a.societyBalance(job), null) : null);
+const seen = {
+	jobs: new Set(jobs.keys()),
+	gangs: new Set(gangs.keys())
+};
+for (let file of ["jobs", "gangs"]) panel.onChange(file, (key, value) => {
+	key === void 0 || value === null || seen[file].has(key) || (seen[file].add(key), societyLink.activate(banking.active, banking.active));
+});
+registerExport("GetBankingSystem", () => banking.active?.resource ?? null), registerExport("OpenBank", (source) => typeof source == "number" && players.get(source) !== void 0 && banking.call("open", (a) => a.open?.(source) ?? !1, !1)), registerExport("GetBankSocietyBalance", (job) => typeof job != "string" || !banking.active ? null : settings.bankAccounts === "core" ? sharedAccounts.get("job", job, "bank")?.balance ?? null : banking.call("societyBalance", (a) => a.societyBalance(job), null));
 // resource/server/mdt/index.ts
 const activeMdt = new GlobalKey(CORE.mdtStateKey, stateString), mdt = new AdapterPicker({
 	category: "MDT",

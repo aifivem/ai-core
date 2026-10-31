@@ -1,17 +1,17 @@
 import { registerExport } from "@aicore-fivem/lib/server";
-import type { BankingAdapter } from "@aicore-fivem/shared";
 import { AdapterPicker } from "common/adapters";
-import { jobs, panel, settings } from "../content";
+import { gangs, jobs, panel, settings } from "../content";
 import { log } from "../log";
 import { sharedAccounts } from "../money/book";
 import { players } from "../player/registry";
+import { societyLink } from "./link";
 import { BANKING_SYSTEMS } from "./registry";
 
 /**
- * ai-core's banking layer (lib `banking`): ai-core owns every balance (job accounts included); a banking script is
- * opened and its own society balance read for display. Money that lands in a banking script's own society account
- * (paid there by another script) is moved into ai-core's job `bank` account when the script reports it, so ai-core
- * stays the one place job money lives. Picked by the panel setting `banking` (`auto` = first running).
+ * ai-core's banking layer (lib `banking`): opens a banking script's screen, reports a job's society balance and keeps
+ * the script's own job / gang accounts linked to ai-core's (`./link.ts`, panel setting `bankAccounts`: `core` = ai-core
+ * holds the money and the script shows it, `own` = the script holds it). Picked by the panel setting `banking`
+ * (`auto` = first running).
  */
 const banking = new AdapterPicker({
   category: "banking",
@@ -19,34 +19,23 @@ const banking = new AdapterPicker({
   log,
   choice: settings.banking,
   noneText: "no banking script runs: job money stays in ai-core only",
-  onSwitch: (next) => watch(next),
+  onSwitch: (next, previous) => societyLink.activate(next, previous),
 });
-panel.onChange("settings", () => banking.setChoice(settings.banking));
-// A job added in the panel gets its deposits watched too.
-panel.onChange("jobs", (key, value) => {
-  if (key !== undefined && value !== null) watch(banking.active);
+let mode = settings.bankAccounts;
+panel.onChange("settings", () => {
+  banking.setChoice(settings.banking);
+  if (settings.bankAccounts === mode) return;
+  mode = settings.bankAccounts;
+  societyLink.activate(banking.active, banking.active);
 });
-
-function watch(adapter: BankingAdapter | null): void {
-  if (!adapter?.watchDeposits) return;
-  adapter.watchDeposits([...jobs.keys()], (job, amount) =>
-    // Out of the script's hook: its own money call must finish before we take.
-    setImmediate(() => forward(adapter, job, amount)),
-  );
-}
-
-/** Moves money a banking script took into its own job account over to ai-core's job account. */
-function forward(adapter: BankingAdapter, job: string, amount: number): void {
-  if (banking.active !== adapter || amount <= 0) return;
-  const account = sharedAccounts.get("job", job, "bank");
-  if (!account) return;
-  if (!banking.call("take", (a) => a.take?.(job, amount) ?? false, false))
-    return log.warn(
-      `${adapter.resource}: could not move ${amount} of ${job} into ai-core`,
-    );
-  if (!account.change(amount, `banking:${adapter.resource}`).ok)
-    log.error(`${adapter.resource}: ${amount} taken from ${job} but not added`);
-}
+// A job or gang added in the panel gets linked too (an edit of a known one changes nothing here).
+const seen = { jobs: new Set(jobs.keys()), gangs: new Set(gangs.keys()) };
+for (const file of ["jobs", "gangs"] as const)
+  panel.onChange(file, (key, value) => {
+    if (key === undefined || value === null || seen[file].has(key)) return;
+    seen[file].add(key);
+    societyLink.activate(banking.active, banking.active);
+  });
 
 registerExport("GetBankingSystem", () => banking.active?.resource ?? null);
 registerExport(
@@ -56,8 +45,10 @@ registerExport(
     players.get(source) !== undefined &&
     banking.call("open", (a) => a.open?.(source) ?? false, false),
 );
-registerExport("GetBankSocietyBalance", (job: unknown) =>
-  typeof job === "string"
-    ? banking.call("societyBalance", (a) => a.societyBalance(job), null)
-    : null,
-);
+// `core`: the society balance is ai-core's job account; `own`: the script's own.
+registerExport("GetBankSocietyBalance", (job: unknown) => {
+  if (typeof job !== "string" || !banking.active) return null;
+  if (settings.bankAccounts === "core")
+    return sharedAccounts.get("job", job, "bank")?.balance ?? null;
+  return banking.call("societyBalance", (a) => a.societyBalance(job), null);
+});

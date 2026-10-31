@@ -1,4 +1,4 @@
-import type { CardSpec, DataSpec } from "@aicore-fivem/shared";
+import type { CardSpec, DataSpec, WidgetSpec } from "@aicore-fivem/shared";
 
 /** The adapter names of the billing, banking, MDT and EMS layers (panel selects next to dispatch and clothing). */
 export interface ServiceChoices {
@@ -15,20 +15,39 @@ const LAYERS = [
   { key: "ems", icon: "kit-medical", name: "EMS" },
 ] as const;
 
-/** Settings sections: `auto` or one adapter's resource name each. */
+/** Fields of a layer's card after its script select. */
+const MORE_FIELDS: Partial<Record<keyof ServiceChoices, WidgetSpec[]>> = {
+  banking: [
+    {
+      widget: "select",
+      path: "bankAccounts",
+      label: "ADMIN_F_BANK_ACCOUNTS",
+      hint: "ADMIN_H_BANK_ACCOUNTS",
+      options: [
+        { value: "core", label: "ADMIN_O_BANK_ACCOUNTS_CORE" },
+        { value: "own", label: "ADMIN_O_BANK_ACCOUNTS_OWN" },
+      ],
+    },
+  ],
+};
+
+/** Settings sections: `auto` or one adapter's resource name each, plus the banking account mode. */
 export const servicesSections = (
   choices: ServiceChoices,
-): Record<string, DataSpec> =>
-  Object.fromEntries(
+): Record<string, DataSpec> => ({
+  ...Object.fromEntries(
     LAYERS.map(({ key }) => [
       key,
       { type: "enum", values: ["auto", ...(choices[key] ?? [])] },
     ]),
-  );
+  ),
+  bankAccounts: { type: "enum", values: ["core", "own"] },
+});
 
 export const SERVICES_DEFAULTS = {
   billing: "auto",
   banking: "auto",
+  bankAccounts: "core",
   mdt: "auto",
   ems: "auto",
 };
@@ -50,5 +69,6 @@ export const servicesCards = (choices: ServiceChoices): CardSpec[] =>
           ...(choices[key] ?? []).map((value) => ({ value, label: value })),
         ],
       },
+      ...(MORE_FIELDS[key] ?? []),
     ],
   }));

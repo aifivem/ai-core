@@ -63,6 +63,8 @@ export interface Settings {
   billing: string;
   /** `auto` or the resource name of the banking script ai-core's banking layer uses. */
   banking: string;
+  /** `core`: the banking script works on ai-core's job and gang accounts; `own`: it keeps its own and ai-core leaves them alone. */
+  bankAccounts: "core" | "own";
   /** `auto` or the resource name of the MDT ai-core's MDT layer uses. */
   mdt: string;
   /** `auto` or the resource name of the EMS source ("ai-core" = its own duty counts) of ai-core's EMS layer. */
@@ -164,6 +166,7 @@ function readSettings(raw: unknown): Settings {
     appearance: str(s.appearance, "auto", 32),
     billing: str(s.billing, "auto", 32),
     banking: str(s.banking, "auto", 32),
+    bankAccounts: s.bankAccounts === "own" ? "own" : "core",
     mdt: str(s.mdt, "auto", 32),
     ems: str(s.ems, "auto", 32),
     fuel: str(s.fuel, "auto", 32),

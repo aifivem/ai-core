@@ -3,11 +3,11 @@ import { aiBanking } from "./adapters/ai-banking";
 import {
   fdBanking,
   kartikBanking,
-  okokBanking,
   qbBanking,
   tggBanking,
   wasabiBanking,
 } from "./adapters/balanceOnly";
+import { okokBanking } from "./adapters/okokBanking";
 import { renewedBanking } from "./adapters/renewed-banking";
 import { tgiannBank } from "./adapters/tgiann-bank";
 
