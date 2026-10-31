@@ -6,9 +6,10 @@ const phone = (name: string, ...args: unknown[]) =>
 const text = (v: unknown) =>
   typeof v === "string" || typeof v === "number" ? String(v) : null;
 
-/** tgiann-phone's own exports (it also answers lb-phone's names: `SendNotification` comes from there). */
-export const tgiannPhone: PhoneAdapter = {
+/** tgiann-phone's own exports (it also answers lb-phone's names: `SendNotification` comes from there; read from 2.0.0-b8). */
+export const tgiannPhone: PhoneAdapter & { readonly version: string } = {
   resource: "tgiann-phone",
+  version: "2.0.0-b8",
   number: (source) => text(phone("GetPhoneNumber", source)),
   sourceOf: (number) => {
     const s = phone("GetSourceByNumber", number);

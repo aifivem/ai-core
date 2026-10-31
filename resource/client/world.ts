@@ -6,8 +6,9 @@ import { CORE } from "@aicore-fivem/shared";
  * Pausing the weather and time sync (interiors, scenes, cut scenes) for whatever weather script runs: every reason is
  * counted and the sync resumes when the last one ends or its resource stops. Scripts that send the common pause events
  * themselves (qb-weathersync, cd_easytime, vSync) count as reasons too, so one script's resume never ends another's
- * pause. The state goes out as ai-core's own event and as those scripts' events for third-party weather scripts;
- * with cd_easytime only as its own event (it turns the qb and vSync events into its pause with the meaning reversed).
+ * pause. The state goes out as ai-core's own event and as those scripts' events for third-party weather scripts
+ * (Renewed-Weathersync answers all three, av_weather its own freeze event); with cd_easytime only as its own event
+ * (it turns the qb and vSync events into its pause with the meaning reversed). Renewed `provide`s cd_easytime.
  */
 class WorldSync {
   /** Pause reasons owned by the calling resource (dropped when it stops); third-party events under `external`. */
@@ -32,7 +33,10 @@ class WorldSync {
     emit(CORE.clientWorldSyncEvent, paused);
     this.sending = true;
     try {
-      if (isResourceStarted("cd_easytime"))
+      if (
+        isResourceStarted("cd_easytime") &&
+        !isResourceStarted("Renewed-Weathersync")
+      )
         return emit("cd_easytime:PauseSync", paused);
       emit(
         paused
@@ -41,6 +45,7 @@ class WorldSync {
       );
       emit("cd_easytime:PauseSync", paused);
       emit("vSync:toggle", !paused);
+      emit("av_weather:freeze", paused);
     } finally {
       this.sending = false;
     }

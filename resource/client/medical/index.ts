@@ -6,12 +6,16 @@ import {
 import { createLogger } from "@aicore-fivem/lib/shared";
 import { CORE, type MedicalClientAdapter } from "@aicore-fivem/shared";
 import { AdapterFollower } from "common/adapters";
+import { brutalAmbulance, ospAmbulance } from "./adapters/exports";
 import { qbAmbulance } from "./adapters/qb-ambulancejob";
 import {
   aiDeath,
   arsAmbulance,
   esxAmbulance,
   qbxMedical,
+  tgiannAmbulance,
+  wasabiAmbulance,
+  wasabiAmbulanceV2,
 } from "./adapters/states";
 
 /** Client halves of the death scripts (server list: `server/medical/index.ts`). */
@@ -21,6 +25,11 @@ const ADAPTERS: readonly MedicalClientAdapter[] = [
   arsAmbulance,
   qbAmbulance,
   esxAmbulance,
+  tgiannAmbulance,
+  wasabiAmbulanceV2,
+  wasabiAmbulance,
+  ospAmbulance,
+  brutalAmbulance,
 ];
 
 /**

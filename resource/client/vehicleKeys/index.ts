@@ -28,6 +28,7 @@ import { okokGarage } from "./adapters/okokGarage";
 import { pCarkeys } from "./adapters/p_carkeys";
 import { qsVehicleKeys } from "./adapters/qs-vehiclekeys";
 import { rdVehicleKeys } from "./adapters/rd_vehiclekeys";
+import { t1gerKeys } from "./adapters/t1ger_keys";
 
 /** Key systems with only a client API, one adapter file each (server list: `server/vehicleKeys/registry.ts`). */
 const ADAPTERS: readonly VehicleKeysClientAdapter[] = [
@@ -45,6 +46,7 @@ const ADAPTERS: readonly VehicleKeysClientAdapter[] = [
   pCarkeys,
   qsVehicleKeys,
   rdVehicleKeys,
+  t1gerKeys,
 ];
 
 /** The client half of the vehicle key layer: follows the key system the server picked (GlobalState). */

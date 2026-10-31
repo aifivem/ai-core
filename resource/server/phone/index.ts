@@ -7,11 +7,26 @@ import type {
 } from "@aicore-fivem/shared";
 import { AdapterPicker } from "common/adapters";
 import { log } from "../log";
+import { mov17Phone } from "./adapters/17mov_Phone";
+import { gksPhone } from "./adapters/gksphone";
+import { highPhone } from "./adapters/high-phone";
 import { lbPhone } from "./adapters/lb-phone";
+import { qsSmartphone } from "./adapters/qs-smartphone";
+import { roadPhone } from "./adapters/roadphone";
 import { tgiannPhone } from "./adapters/tgiann-phone";
+import { ySeries } from "./adapters/yseries";
 
 /** Supported phones in detection order; a new phone = one adapter file and one line here. */
-const PHONES: readonly PhoneAdapter[] = [tgiannPhone, lbPhone];
+const PHONES: readonly PhoneAdapter[] = [
+  tgiannPhone,
+  lbPhone,
+  gksPhone,
+  mov17Phone,
+  ySeries,
+  highPhone,
+  roadPhone,
+  qsSmartphone,
+];
 
 /**
  * ai-core's phone layer: scripts ask a player's number, send mails, texts and notifications through ai-core (lib

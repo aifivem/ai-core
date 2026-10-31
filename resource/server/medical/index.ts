@@ -9,9 +9,14 @@ import { AdapterPicker } from "common/adapters";
 import { log } from "../log";
 import { aiDeath } from "./adapters/ai-death";
 import { arsAmbulance } from "./adapters/ars_ambulancejob";
+import { brutalAmbulance } from "./adapters/brutal_ambulancejob";
 import { esxAmbulance } from "./adapters/esx_ambulancejob";
+import { ospAmbulance } from "./adapters/osp_ambulance";
 import { qbAmbulance } from "./adapters/qb-ambulancejob";
 import { qbxMedical } from "./adapters/qbx_medical";
+import { tgiannAmbulance } from "./adapters/tgiann-ambulance";
+import { wasabiAmbulance } from "./adapters/wasabi_ambulance";
+import { wasabiAmbulanceV2 } from "./adapters/wasabi_ambulance_v2";
 
 /**
  * Every supported death / ambulance script in detection order: the first running one answers. ai-death comes first
@@ -23,6 +28,11 @@ const MEDICAL_SYSTEMS: readonly MedicalAdapter[] = [
   arsAmbulance,
   qbAmbulance,
   esxAmbulance,
+  tgiannAmbulance,
+  wasabiAmbulanceV2,
+  wasabiAmbulance,
+  ospAmbulance,
+  brutalAmbulance,
 ];
 
 /** The pick, for the client half (`client/medical`), which tells every resource when the local player is down. */

@@ -1,4 +1,5 @@
 import { createLogger } from "@aicore-fivem/lib/shared";
+import { APPEARANCE_SYSTEMS } from "../appearance/registry";
 import { INVENTORIES } from "../inventory/registry";
 import { KEY_SYSTEMS } from "../vehicleKeys/registry";
 
@@ -54,7 +55,10 @@ const NEVER_NEXT_TO: Record<string, string[]> = {
   "ai-mysql": ["oxmysql", "mysql-async", "ghmattimysql"],
 };
 
-/** Built-in rules: stand-ins, and every inventory / key system adapter making ai-inventory / ai-vehiclekeys unneeded. */
+/**
+ * Built-in rules: stand-ins, and every inventory / clothing / key system adapter making ai-inventory / ai-appearance /
+ * ai-vehiclekeys unneeded.
+ */
 function builtIn(): Replacement[] {
   const out: Replacement[] = [];
   for (const [ours, names] of Object.entries(STAND_INS))
@@ -65,6 +69,13 @@ function builtIn(): Replacement[] {
   for (const a of INVENTORIES)
     if (a.resource !== "ai-inventory")
       out.push({ keep: a.resource, remove: ["ai-inventory"], from: "ai-core" });
+  for (const a of APPEARANCE_SYSTEMS)
+    if (a.resource !== "ai-appearance")
+      out.push({
+        keep: a.resource,
+        remove: ["ai-appearance"],
+        from: "ai-core",
+      });
   for (const a of KEY_SYSTEMS)
     if (a.resource !== "ai-vehiclekeys")
       out.push({

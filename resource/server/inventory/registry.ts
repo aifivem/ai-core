@@ -1,7 +1,12 @@
 import type { InventoryAdapter } from "@aicore-fivem/shared";
 import { aiInventory } from "./adapters/ai-inventory";
+import { codemInventory } from "./adapters/codem-inventory";
+import { coreInventory } from "./adapters/core_inventory";
+import { jaksamInventory } from "./adapters/jaksam_inventory";
+import { origenInventory } from "./adapters/origen_inventory";
 import { oxInventory } from "./adapters/ox_inventory";
 import { qbInventory } from "./adapters/qb-inventory";
+import { qsInventory } from "./adapters/qs-inventory";
 import { tgiannInventory } from "./adapters/tgiann-inventory";
 
 /**
@@ -14,4 +19,9 @@ export const INVENTORIES: readonly InventoryAdapter[] = [
   tgiannInventory,
   oxInventory,
   qbInventory,
+  qsInventory,
+  codemInventory,
+  coreInventory,
+  origenInventory,
+  jaksamInventory,
 ];

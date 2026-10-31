@@ -214,7 +214,12 @@
         "ai-inventory",
         "tgiann-inventory",
         "ox_inventory",
-        "qb-inventory"
+        "qb-inventory",
+        "qs-inventory",
+        "codem-inventory",
+        "core_inventory",
+        "origen_inventory",
+        "jaksam_inventory"
       ]
     },
     "vehicleKeys": {
@@ -244,7 +249,8 @@
         "mk_vehiclekeys",
         "mm_carkeys",
         "p_carkeys",
-        "rd_vehiclekeys"
+        "rd_vehiclekeys",
+        "t1ger_keys"
       ]
     },
     "dispatch": {
@@ -252,6 +258,13 @@
       "enum": [
         "auto",
         "tgiann-policealert",
+        "ps-dispatch",
+        "cd_dispatch",
+        "rcore_dispatch",
+        "core_dispatch",
+        "linden_outlawalert",
+        "lb-tablet",
+        "wasabi_mdt",
         "ai-policealert"
       ]
     },
@@ -260,6 +273,11 @@
       "enum": [
         "auto",
         "tgiann-clothing",
+        "illenium-appearance",
+        "qb-clothing",
+        "crm-appearance",
+        "rcore_clothing",
+        "bl_appearance",
         "ai-appearance"
       ]
     },

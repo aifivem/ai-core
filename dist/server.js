@@ -373,15 +373,15 @@ const KEY_PURPOSES = [
 function toKeyPurpose(value) {
 	return KEY_PURPOSES.find((p) => p === value) ?? "temporary";
 }
-const text$7 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, finite$1 = (v) => typeof v == "number" && Number.isFinite(v), obj = (v) => typeof v == "object" && v && !Array.isArray(v) ? v : null;
+const text$13 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, finite$1 = (v) => typeof v == "number" && Number.isFinite(v), obj = (v) => typeof v == "object" && v && !Array.isArray(v) ? v : null;
 function toDispatchAlert(value) {
-	let v = obj(value), title = text$7(v?.title, 80);
+	let v = obj(value), title = text$13(v?.title, 80);
 	if (!v || !title) return null;
 	let c = obj(v.coords), b = obj(v.blip), jobs = Array.isArray(v.jobs) ? v.jobs.filter((j) => typeof j == "string" && j.length <= 32).slice(0, 10) : [];
 	return {
-		code: text$7(v.code, 12),
+		code: text$13(v.code, 12),
 		title,
-		message: text$7(v.message, 160),
+		message: text$13(v.message, 160),
 		coords: c && finite$1(c.x) && finite$1(c.y) && finite$1(c.z) ? {
 			x: c.x,
 			y: c.y,
@@ -395,7 +395,7 @@ function toDispatchAlert(value) {
 			scale: finite$1(b.scale) ? Math.min(3, Math.max(.1, b.scale)) : void 0
 		} : void 0,
 		duration: finite$1(v.duration) ? Math.min(3600, Math.max(1, Math.round(v.duration))) : void 0,
-		icon: text$7(v.icon, 40),
+		icon: text$13(v.icon, 40),
 		priority: v.priority === "high" ? "high" : "normal"
 	};
 }
@@ -444,7 +444,8 @@ const LIB_UI = {
 	cancelProgressEvent: "ai-lib:client:cancelProgress",
 	progressForCallback: "ai-lib:progressFor",
 	progressForCancelEvent: "ai-lib:client:progressForCancel",
-	minigameForCallback: "ai-lib:minigameFor"
+	minigameForCallback: "ai-lib:minigameFor",
+	zoneEvent: "ai-lib:client:zone"
 }, named = new Set();
 function registerExport(name, handler) {
 	named.add(name), globalThis.exports(name, handler);
@@ -15957,14 +15958,23 @@ var Mirror = class {
 	prune() {
 		for (let netId of this.values.keys()) DoesEntityExist(NetworkGetEntityFromNetworkId(netId)) || this.forget(netId);
 	}
-}, PlayerState$1 = class extends Mirror {
+};
+const playerStates = new Set();
+let dropListener = !1;
+var PlayerState$1 = class extends Mirror {
 	seen = new Set();
 	constructor(key, parse) {
 		super(key, parse), AddStateBagChangeHandler(key, "", (bag, _key, value) => {
 			if (!bag.startsWith("player:")) return;
 			let id = Number(bag.slice(7));
 			this.seen.add(id), this.store(id, value);
-		}), isServer && on("playerDropped", () => this.forget(Number(globalThis.source)));
+		}), isServer && (playerStates.add(this), dropListener || (dropListener = !0, on("playerDropped", () => {
+			let id = Number(globalThis.source);
+			for (let state of playerStates) state.dropPlayer(id);
+		})));
+	}
+	dropPlayer(serverId) {
+		this.forget(serverId);
 	}
 	get(serverId) {
 		if (!this.seen.has(serverId)) {
@@ -16806,7 +16816,7 @@ const hourField = (path, label) => ({
 		hint: "ADMIN_H_RECOMMENDATIONS_DISMISSED",
 		placeholder: "ADMIN_PH_RECOMMENDATIONS_DISMISSED"
 	}]
-}, ID$1 = "^[a-z0-9_]{2,32}$", text$6 = (max, min = 1) => ({
+}, ID$1 = "^[a-z0-9_]{2,32}$", text$12 = (max, min = 1) => ({
 	type: "text",
 	min,
 	max
@@ -16817,7 +16827,7 @@ const hourField = (path, label) => ({
 	of: {
 		type: "object",
 		fields: {
-			label: text$6(48),
+			label: text$12(48),
 			salary: spec.int(0, 1e6),
 			offPrimePayment: {
 				...spec.int(0, 1e6),
@@ -16876,10 +16886,10 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 					branding: {
 						type: "object",
 						fields: {
-							name: text$6(32),
-							subtitle: text$6(32),
-							tagline: text$6(48, 0),
-							taglineSub: text$6(64, 0),
+							name: text$12(32),
+							subtitle: text$12(32),
+							tagline: text$12(48, 0),
+							taglineSub: text$12(64, 0),
 							background: {
 								type: "enum",
 								values: ["skyline", "wet-drive"]
@@ -17049,7 +17059,7 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 					primeFinish: DEFAULT_PRIME_TIME.finish
 				},
 				sections: {
-					label: text$6(48),
+					label: text$12(48),
 					type: {
 						type: "text",
 						max: 32,
@@ -17078,7 +17088,7 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 					salary: 0
 				}] },
 				sections: {
-					label: text$6(48),
+					label: text$12(48),
 					grades
 				}
 			},
@@ -17092,7 +17102,7 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 					allowNegative: !1
 				},
 				sections: {
-					label: text$6(48),
+					label: text$12(48),
 					start: spec.int(0, 1e8),
 					allowNegative: bool
 				}
@@ -17102,10 +17112,10 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 				sync: "all",
 				labelPath: "description",
 				sections: {
-					resource: text$6(64),
-					description: text$6(120, 0),
-					defaultKey: text$6(32, 0),
-					mapper: text$6(32),
+					resource: text$12(64),
+					description: text$12(120, 0),
+					defaultKey: text$12(32, 0),
+					mapper: text$12(32),
 					key: {
 						type: "text",
 						min: 0,
@@ -17888,7 +17898,7 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 const first = (value) => Array.isArray(value) ? value[0] : value, isTrue = (value) => first(value) === !0, number = (value, fallback = 0) => {
 	let v = first(value);
 	return typeof v == "number" && Number.isFinite(v) ? v : fallback;
-}, text$5 = (value, fallback) => typeof value == "string" ? value : fallback, metadata = (value) => isRecord(value) ? { ...value } : {};
+}, text$11 = (value, fallback) => typeof value == "string" ? value : fallback, metadata = (value) => isRecord(value) ? { ...value } : {};
 function rows(value) {
 	return (Array.isArray(value) ? value : isRecord(value) ? Object.values(value) : []).filter(isRecord);
 }
@@ -17912,13 +17922,13 @@ function definition(raw, name, imageOf) {
 	if (!isRecord(raw)) return null;
 	let image = typeof raw.image == "string" ? raw.image : "";
 	return {
-		name: text$5(raw.name, name),
+		name: text$11(raw.name, name),
 		label: label(raw.label, name),
 		weight: number(raw.weight),
 		unique: raw.unique === !0 || raw.stack === !1,
 		close: (raw.close ?? raw.shouldClose) !== !1,
 		description: label(raw.description, ""),
-		image: /^(https?|nui):\/\//.test(image) ? image : imageOf?.(text$5(raw.name, name), image)
+		image: /^(https?|nui):\/\//.test(image) ? image : imageOf?.(text$11(raw.name, name), image)
 	};
 }
 function definitions(raw, imageOf) {
@@ -17931,82 +17941,192 @@ function definitions(raw, imageOf) {
 	return out;
 }
 // resource/server/inventory/adapters/ai-inventory.ts
-const RESOURCE$5 = "ai-inventory", inv = resourceExport(RESOURCE$5), imageOf = (_name, image) => image ? `nui://${RESOURCE$5}/dist/web/images/${image}` : void 0, aiInventory = {
-	resource: RESOURCE$5,
+const RESOURCE$17 = "ai-inventory", inv$1 = resourceExport(RESOURCE$17), imageOf = (_name, image) => image ? `nui://${RESOURCE$17}/dist/web/images/${image}` : void 0, aiInventory = {
+	resource: RESOURCE$17,
 	version: "0.1.0",
-	addItem: (ref, item, count, metadata, slot) => inv.AddItem(ref, item, count, metadata, slot) === !0,
-	removeItem: (ref, item, count, metadata, slot) => inv.RemoveItem(ref, item, count, metadata, slot) === !0,
-	getItemCount: (ref, item, metadata) => Number(inv.GetItemCount(ref, item, metadata)) || 0,
-	canCarryItem: (ref, item, count, metadata) => inv.CanCarryItem(ref, item, count, metadata) === !0,
+	addItem: (ref, item, count, metadata, slot) => inv$1.AddItem(ref, item, count, metadata, slot) === !0,
+	removeItem: (ref, item, count, metadata, slot) => inv$1.RemoveItem(ref, item, count, metadata, slot) === !0,
+	getItemCount: (ref, item, metadata) => Number(inv$1.GetItemCount(ref, item, metadata)) || 0,
+	canCarryItem: (ref, item, count, metadata) => inv$1.CanCarryItem(ref, item, count, metadata) === !0,
 	getItems: (ref) => {
-		let list = inv.GetItems(ref);
+		let list = inv$1.GetItems(ref);
 		return Array.isArray(list) ? list.filter(isRecord).flatMap((row) => stack(row, (name) => name) ?? []) : [];
 	},
-	clearInventory: (ref) => inv.ClearInventory(ref),
-	registerStash: (stash) => inv.RegisterStash(stash.name, stash.label, stash.slots, stash.maxWeight, stash.jobs),
-	openInventory: (source, ref) => inv.OpenInventory(source, ref) === !0,
-	getItemDefinition: (name) => definition(inv.Items(name), name, imageOf),
-	getItemDefinitions: () => definitions(inv.Items(), imageOf),
+	clearInventory: (ref) => inv$1.ClearInventory(ref),
+	registerStash: (stash) => inv$1.RegisterStash(stash.name, stash.label, stash.slots, stash.maxWeight, stash.jobs),
+	openInventory: (source, ref) => inv$1.OpenInventory(source, ref) === !0,
+	getItemDefinition: (name) => definition(inv$1.Items(name), name, imageOf),
+	getItemDefinitions: () => definitions(inv$1.Items(), imageOf),
 	getWeight: (source) => {
-		let w = inv.GetWeight(source);
+		let w = inv$1.GetWeight(source);
 		return isRecord(w) && typeof w.weight == "number" && typeof w.maxWeight == "number" ? {
 			weight: w.weight,
 			maxWeight: w.maxWeight
 		} : null;
 	},
-	registerUsableItem: (name, handler) => inv.RegisterUsableItem(name, handler)
+	registerUsableItem: (name, handler) => inv$1.RegisterUsableItem(name, handler)
 };
 on("ai-inventory:usedItem", (source, name, _slot, _metadata, status) => {
 	emit(CORE.itemUsedEvent, source, name, isRecord(status) ? status : null);
 });
-// resource/server/inventory/adapters/ox_inventory.ts
-const oxImage = (name, image) => `nui://ox_inventory/web/images/${image || `${name}.png`}`, RESOURCE$4 = "ox_inventory", call$2 = (name, ...args) => callExport(RESOURCE$4, name, ...args), oxInventory = {
-	resource: RESOURCE$4,
+// resource/server/inventory/adapters/codem-inventory.ts
+const RESOURCE$16 = "codem-inventory", call$7 = (name, ...args) => callExport(RESOURCE$16, name, ...args), codemImage = (name, image) => `nui://${RESOURCE$16}/html/itemimages/${image || `${name}.png`}`, stacksOf$4 = (ref) => rows(typeof ref == "number" ? call$7("GetInventory", players.get(ref)?.citizenid, ref) : call$7("GetStashItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []), codemInventory = {
+	resource: RESOURCE$16,
+	version: "",
+	addItem: (ref, item, count, metadata, slot) => typeof ref == "number" && isTrue(call$7("AddItem", ref, item, count, slot, metadata)),
+	removeItem: (ref, item, count, _metadata, slot) => typeof ref == "number" && isTrue(call$7("RemoveItem", ref, item, count, slot)),
+	getItemCount: (ref, item) => typeof ref == "number" ? number(call$7("GetItemsTotalAmount", ref, item)) : stacksOf$4(ref).reduce((sum, s) => s.name === item ? sum + s.count : sum, 0),
+	canCarryItem: () => !0,
+	getItems: stacksOf$4,
+	clearInventory: (ref) => void (typeof ref == "number" ? call$7("ClearInventory", ref) : call$7("UpdateStash", ref, {})),
+	registerStash: () => void 0,
+	openInventory: () => !1,
+	getItemDefinition: (name) => {
+		let list = call$7("GetItemList");
+		return isRecord(list) ? definition(list[name], name, codemImage) : null;
+	},
+	getItemDefinitions: () => definitions(call$7("GetItemList"), codemImage)
+}, RESOURCE$15 = "core_inventory", call$6 = (name, ...args) => callExport(RESOURCE$15, name, ...args), inv = (ref) => typeof ref == "number" ? ref : `stash-${ref}`, labels = new Map();
+function stacksOf$3(ref) {
+	let data = call$6("getInventory", inv(ref)), content = isRecord(data) ? data.content : void 0;
+	return (Array.isArray(content) ? content.map((row, i) => [String(i + 1), row]) : isRecord(content) ? Object.entries(content) : []).flatMap(([slot, row]) => isRecord(row) ? stack({
+		slot,
+		...row
+	}, (name) => name) ?? [] : []);
+}
+const coreInventory = {
+	resource: RESOURCE$15,
+	version: "",
+	addItem: (ref, item, count, metadata) => isTrue(call$6("addItem", inv(ref), item, count, metadata)),
+	removeItem: (ref, item, count) => isTrue(call$6("removeItem", inv(ref), item, count)),
+	getItemCount: (ref, item) => number(call$6("getItemCount", inv(ref), item)),
+	canCarryItem: (ref, item, count, metadata) => isTrue(call$6("canCarry", inv(ref), item, count, metadata)),
+	getItems: stacksOf$3,
+	clearInventory: (ref) => void call$6("clearInventory", inv(ref)),
+	registerStash: (stash) => void labels.set(stash.name, stash.label),
+	openInventory: (source, ref) => (typeof ref == "number" ? call$6("openOtherPlayerInventory", source, ref) : call$6("openInventory", source, inv(ref), "stash", labels.get(ref) ?? ref, void 0, !0), !0),
+	getItemDefinition: (name) => {
+		let list = call$6("getItemsList");
+		return isRecord(list) ? definition(list[name], name) : null;
+	},
+	getItemDefinitions: () => definitions(call$6("getItemsList"))
+}, RESOURCE$14 = "jaksam_inventory", call$5 = (name, ...args) => callExport(RESOURCE$14, name, ...args), item$1 = (raw, name) => isRecord(raw) ? definition({
+	...raw,
+	stack: raw.stackable !== !1
+}, name) : null, jaksamInventory = {
+	resource: RESOURCE$14,
+	version: "",
+	addItem: (ref, name, count, metadata, slot) => isTrue(call$5("addItem", ref, name, count, metadata, slot)),
+	removeItem: (ref, name, count, metadata, slot) => isTrue(call$5("removeItem", ref, name, count, metadata, slot)),
+	getItemCount: (ref, name, metadata) => number(call$5("getTotalItemAmount", ref, name, metadata)),
+	canCarryItem: (ref, name, count) => isTrue(call$5("canCarryItem", ref, name, count)),
+	getItems: (ref) => {
+		let inv = call$5("getInventory", ref);
+		return rows(isRecord(inv) ? inv.items : void 0).flatMap((row) => stack(row, (name) => name) ?? []);
+	},
+	clearInventory: (ref) => void call$5("clearInventory", ref),
+	registerStash: (stash) => void call$5("registerStash", {
+		id: stash.name,
+		label: stash.label,
+		maxWeight: stash.maxWeight,
+		maxSlots: stash.slots
+	}),
+	openInventory: () => !1,
+	getItemDefinition: (name) => item$1(call$5("getStaticItem", name), name),
+	getItemDefinitions: () => {
+		let list = call$5("getStaticItemsList"), out = {};
+		if (isRecord(list)) for (let [name, raw] of Object.entries(list)) {
+			let def = item$1(raw, name);
+			def && (out[name] = def);
+		}
+		return out;
+	}
+}, RESOURCE$13 = "origen_inventory", call$4 = (name, ...args) => callExport(RESOURCE$13, name, ...args), stacksOf$2 = (ref) => rows(call$4("getInventoryItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []), origenInventory = {
+	resource: RESOURCE$13,
+	version: "",
+	addItem: (ref, item, count, metadata, slot) => isTrue(call$4("addItem", ref, item, count, metadata, slot)),
+	removeItem: (ref, item, count, metadata, slot) => isTrue(call$4("removeItem", ref, item, count, metadata, slot)),
+	getItemCount: (ref, item, metadata) => number(call$4("getItemCount", ref, item, metadata)),
+	canCarryItem: (ref, item, count) => isTrue(call$4("canCarryItem", ref, item, count)),
+	getItems: stacksOf$2,
+	clearInventory: (ref) => {
+		for (let s of stacksOf$2(ref)) call$4("removeItem", ref, s.name, s.count, void 0, s.slot);
+	},
+	registerStash: (stash) => void call$4("RegisterStash", stash.name, stash.label, stash.slots, stash.maxWeight),
+	openInventory: () => !1,
+	getItemDefinition: (name) => definition(call$4("Items", name), name),
+	getItemDefinitions: () => definitions(call$4("Items"))
+}, oxImage = (name, image) => `nui://ox_inventory/web/images/${image || `${name}.png`}`, RESOURCE$12 = "ox_inventory", call$3 = (name, ...args) => callExport(RESOURCE$12, name, ...args), oxInventory = {
+	resource: RESOURCE$12,
 	version: "2.48.1",
-	addItem: (ref, item, count, metadata, slot) => isTrue(call$2("AddItem", ref, item, count, metadata, slot)),
-	removeItem: (ref, item, count, metadata, slot) => isTrue(call$2("RemoveItem", ref, item, count, metadata, slot)),
-	getItemCount: (ref, item, metadata) => number(call$2("GetItemCount", ref, item, metadata)),
-	canCarryItem: (ref, item, count, metadata) => isTrue(call$2("CanCarryItem", ref, item, count, metadata)),
-	getItems: (ref) => rows(call$2("GetInventoryItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []),
-	clearInventory: (ref) => void call$2("ClearInventory", ref),
-	registerStash: (stash) => void call$2("RegisterStash", stash.name, stash.label, stash.slots, stash.maxWeight, void 0, stash.jobs.length ? Object.fromEntries(stash.jobs.map((job) => [job, 0])) : void 0),
-	openInventory: (source, ref) => first(call$2("forceOpenInventory", source, typeof ref == "number" ? "player" : "stash", ref)) != null,
-	getItemDefinition: (name) => definition(call$2("Items", name), name, oxImage),
-	getItemDefinitions: () => definitions(call$2("Items"), oxImage),
+	addItem: (ref, item, count, metadata, slot) => isTrue(call$3("AddItem", ref, item, count, metadata, slot)),
+	removeItem: (ref, item, count, metadata, slot) => isTrue(call$3("RemoveItem", ref, item, count, metadata, slot)),
+	getItemCount: (ref, item, metadata) => number(call$3("GetItemCount", ref, item, metadata)),
+	canCarryItem: (ref, item, count, metadata) => isTrue(call$3("CanCarryItem", ref, item, count, metadata)),
+	getItems: (ref) => rows(call$3("GetInventoryItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []),
+	clearInventory: (ref) => void call$3("ClearInventory", ref),
+	registerStash: (stash) => void call$3("RegisterStash", stash.name, stash.label, stash.slots, stash.maxWeight, void 0, stash.jobs.length ? Object.fromEntries(stash.jobs.map((job) => [job, 0])) : void 0),
+	openInventory: (source, ref) => first(call$3("forceOpenInventory", source, typeof ref == "number" ? "player" : "stash", ref)) != null,
+	getItemDefinition: (name) => definition(call$3("Items", name), name, oxImage),
+	getItemDefinitions: () => definitions(call$3("Items"), oxImage),
 	getWeight: (source) => {
-		let inv = first(call$2("GetInventory", source));
+		let inv = first(call$3("GetInventory", source));
 		return isRecord(inv) && typeof inv.weight == "number" && typeof inv.maxWeight == "number" ? {
 			weight: inv.weight,
 			maxWeight: inv.maxWeight
 		} : null;
 	}
-}, RESOURCE$3 = "qb-inventory", call$1 = (name, ...args) => callExport(RESOURCE$3, name, ...args);
+}, RESOURCE$11 = "qb-inventory", call$2 = (name, ...args) => callExport(RESOURCE$11, name, ...args);
 function itemsOf$1(ref) {
 	if (typeof ref == "string") {
-		let inventory = call$1("GetInventory", ref);
+		let inventory = call$2("GetInventory", ref);
 		return isRecord(inventory) ? inventory.items : void 0;
 	}
 	let player = callExport("qb-core", "GetPlayer", ref);
 	return isRecord(player) && isRecord(player.PlayerData) ? player.PlayerData.items : void 0;
 }
-const stacksOf = (ref) => rows(itemsOf$1(ref)).flatMap((row) => stack(row, (name) => name) ?? []), qbInventory = {
-	resource: RESOURCE$3,
+const stacksOf$1 = (ref) => rows(itemsOf$1(ref)).flatMap((row) => stack(row, (name) => name) ?? []), qbInventory = {
+	resource: RESOURCE$11,
 	version: "2.2.3",
-	addItem: (ref, item, count, metadata, slot) => isTrue(call$1("AddItem", ref, item, count, slot, metadata)),
-	removeItem: (ref, item, count, _metadata, slot) => isTrue(call$1("RemoveItem", ref, item, count, slot)),
-	getItemCount: (ref, item) => typeof ref == "number" ? number(call$1("GetItemCount", ref, item)) : stacksOf(ref).reduce((sum, s) => s.name === item ? sum + s.count : sum, 0),
-	canCarryItem: (ref, item, count) => isTrue(call$1("CanAddItem", ref, item, count)),
-	getItems: stacksOf,
-	clearInventory: (ref) => void call$1(typeof ref == "number" ? "ClearInventory" : "ClearStash", ref),
-	registerStash: (stash) => void call$1("CreateInventory", stash.name, {
+	addItem: (ref, item, count, metadata, slot) => isTrue(call$2("AddItem", ref, item, count, slot, metadata)),
+	removeItem: (ref, item, count, _metadata, slot) => isTrue(call$2("RemoveItem", ref, item, count, slot)),
+	getItemCount: (ref, item) => typeof ref == "number" ? number(call$2("GetItemCount", ref, item)) : stacksOf$1(ref).reduce((sum, s) => s.name === item ? sum + s.count : sum, 0),
+	canCarryItem: (ref, item, count) => isTrue(call$2("CanAddItem", ref, item, count)),
+	getItems: stacksOf$1,
+	clearInventory: (ref) => void call$2(typeof ref == "number" ? "ClearInventory" : "ClearStash", ref),
+	registerStash: (stash) => void call$2("CreateInventory", stash.name, {
 		label: stash.label,
 		maxweight: stash.maxWeight,
 		slots: stash.slots
 	}),
-	openInventory: (source, ref) => (call$1(typeof ref == "number" ? "OpenInventoryById" : "OpenInventory", source, ref), !0),
+	openInventory: (source, ref) => (call$2(typeof ref == "number" ? "OpenInventoryById" : "OpenInventory", source, ref), !0),
 	getItemDefinition: () => null,
 	getItemDefinitions: () => ({})
-}, RESOURCE$2 = "tgiann-inventory", call = (name, ...args) => callExport(RESOURCE$2, name, ...args);
+}, RESOURCE$10 = "qs-inventory", call$1 = (name, ...args) => callExport(RESOURCE$10, name, ...args), qsImage = (name, image) => `nui://${RESOURCE$10}/html/images/${image || `${name}.png`}`, stashes = new Map(), stashId = (name) => `Stash_${name}`, notRefused = (value) => first(value) !== !1, stacksOf = (ref) => rows(typeof ref == "number" ? call$1("GetInventory", ref) : call$1("GetStashItems", stashId(ref))).flatMap((row) => stack(row, (name) => name) ?? []), qsInventory = {
+	resource: RESOURCE$10,
+	version: "",
+	addItem: (ref, item, count, metadata, slot) => {
+		if (typeof ref == "number") return isTrue(call$1("AddItem", ref, item, count, slot, metadata));
+		let stash = stashes.get(ref);
+		return notRefused(call$1("AddItemIntoStash", stashId(ref), item, count, slot, metadata ?? {}, stash?.slots, stash?.maxWeight));
+	},
+	removeItem: (ref, item, count, metadata, slot) => typeof ref == "number" ? isTrue(call$1("RemoveItem", ref, item, count, slot, metadata)) : notRefused(call$1("RemoveItemIntoStash", stashId(ref), item, count)),
+	getItemCount: (ref, item) => typeof ref == "number" ? number(call$1("GetItemTotalAmount", ref, item)) : stacksOf(ref).reduce((sum, s) => s.name === item ? sum + s.count : sum, 0),
+	canCarryItem: (ref, item, count) => isTrue(typeof ref == "number" ? call$1("CanCarryItem", ref, item, count) : call$1("StashCanCarryItem", stashId(ref), item, count)),
+	getItems: stacksOf,
+	clearInventory: (ref) => void (typeof ref == "number" ? call$1("ClearInventory", ref) : call$1("ClearOtherInventory", "stash", stashId(ref))),
+	registerStash: (stash) => void stashes.set(stash.name, stash),
+	openInventory: (source, ref) => {
+		if (typeof ref == "number") return callExport("qb-inventory", "OpenInventoryById", source, ref), !0;
+		let stash = stashes.get(ref);
+		return stash ? (call$1("RegisterStash", source, stash.name, stash.slots, stash.maxWeight, stash.label), !0) : !1;
+	},
+	getItemDefinition: (name) => {
+		let list = call$1("GetItemList");
+		return isRecord(list) ? definition(list[name], name, qsImage) : null;
+	},
+	getItemDefinitions: () => definitions(call$1("GetItemList"), qsImage)
+}, RESOURCE$9 = "tgiann-inventory", call = (name, ...args) => callExport(RESOURCE$9, name, ...args);
 function item(name) {
 	try {
 		return call("Items", name);
@@ -18017,7 +18137,7 @@ function item(name) {
 const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetInventoryItems", ref), INVENTORIES = [
 	aiInventory,
 	{
-		resource: RESOURCE$2,
+		resource: RESOURCE$9,
 		version: "2.4.1",
 		addItem: (ref, name, count, metadata, slot) => isTrue(call("AddItem", ref, name, count, slot, metadata)),
 		removeItem: (ref, name, count, metadata, slot) => isTrue(call("RemoveItem", ref, name, count, slot, metadata)),
@@ -18034,10 +18154,22 @@ const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetIn
 		registerStash: (stash) => void call("RegisterStash", stash.name, stash.label, stash.slots, stash.maxWeight, void 0, stash.jobs.length ? stash.jobs : void 0),
 		openInventory: (source, ref) => (typeof ref == "number" ? call("ForceOpenInventoryById", source, ref) : call("ForceOpenInventory", source, "stash", ref), !0),
 		getItemDefinition: (name) => definition(item(name), name),
-		getItemDefinitions: () => definitions(call("Items"))
+		getItemDefinitions: () => definitions(call("Items")),
+		getWeight: (source) => {
+			let data = first(call("GetPlayerInventoryData", source));
+			return !isRecord(data) || typeof data.maxWeight != "number" ? null : {
+				weight: data.maxWeight - number(call("GetFreeWeight", source)),
+				maxWeight: data.maxWeight
+			};
+		}
 	},
 	oxInventory,
-	qbInventory
+	qbInventory,
+	qsInventory,
+	codemInventory,
+	coreInventory,
+	origenInventory,
+	jaksamInventory
 ], keys = resourceExport("ai-vehiclekeys"), aiVehicleKeys = {
 	resource: "ai-vehiclekeys",
 	give: (source, t) => keys.GiveKeys(source, t.plate),
@@ -18066,7 +18198,8 @@ const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetIn
 }, qbxVehicleKeys = {
 	resource: "qbx_vehiclekeys",
 	give: (source, t) => void (t.vehicle !== null && callExport("qbx_vehiclekeys", "GiveKeys", source, t.vehicle)),
-	remove: (source, t) => void (t.vehicle !== null && callExport("qbx_vehiclekeys", "RemoveKeys", source, t.vehicle))
+	remove: (source, t) => void (t.vehicle !== null && callExport("qbx_vehiclekeys", "RemoveKeys", source, t.vehicle)),
+	has: (source, t) => t.vehicle === null || callExport("qbx_vehiclekeys", "HasKeys", source, t.vehicle) === !0
 }, renewedVehicleKeys = {
 	resource: "Renewed-Vehiclekeys",
 	give: (source, t) => void callExport("Renewed-Vehiclekeys", "addKey", source, t.plate),
@@ -18095,7 +18228,8 @@ const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetIn
 	{
 		resource: "wasabi_carlock",
 		give: (source, t) => void callExport("wasabi_carlock", "GiveKey", source, t.plate),
-		remove: (source, t) => void callExport("wasabi_carlock", "RemoveKey", source, t.plate)
+		remove: (source, t) => void callExport("wasabi_carlock", "RemoveKey", source, t.plate),
+		has: (source, t) => callExport("wasabi_carlock", "HasKey", source, t.plate) === !0
 	},
 	renewedVehicleKeys,
 	mrNewbVehicleKeys,
@@ -18120,55 +18254,180 @@ const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetIn
 		"mk_vehiclekeys",
 		"mm_carkeys",
 		"p_carkeys",
-		"rd_vehiclekeys"
+		"rd_vehiclekeys",
+		"t1ger_keys"
 	].map(clientKeys)
 ], alerts = resourceExport("ai-policealert"), aiPoliceAlert = {
 	resource: "ai-policealert",
 	alert: (alert) => alerts.DispatchAlert(alert)
-}, RESOURCE$1 = "tgiann-policealert", DISPATCH_SYSTEMS = [{
-	resource: RESOURCE$1,
-	version: "2.10.0",
-	answersPoliceAlert: !0,
+}, cdDispatch = {
+	resource: "cd_dispatch",
 	alert: (a) => {
-		let jobs = a.jobs ?? ["police"], custom = a.message ? [{
-			labelLeft: a.message,
-			labelRight: "",
-			icon: "circle-info"
-		}] : void 0, common = {
-			label: a.title,
-			code: a.code,
-			icon: a.icon,
+		let title = a.code ? `${a.code} - ${a.title}` : a.title, high = a.priority === "high";
+		emitNet("cd_dispatch:AddNotification", -1, {
+			job_table: a.jobs ?? ["police"],
 			coords: a.coords,
-			duration: a.duration,
-			bgAnimate: a.priority === "high",
-			blip: a.blip?.sprite
-		};
-		a.source === void 0 ? callExport(RESOURCE$1, "SendCustomAlert", {
-			...common,
-			duration: a.duration ?? 5,
-			sound: { active: !0 },
-			information: { custom }
-		}, jobs) : callExport(RESOURCE$1, "Alert", a.source, {
-			...common,
-			jobs,
-			custom
+			title,
+			message: a.message ?? "",
+			flash: +!!high,
+			unique_id: String(Math.floor(Math.random() * 1e7)),
+			sound: high ? 2 : 1,
+			blip: a.coords ? {
+				sprite: a.blip?.sprite ?? 161,
+				scale: a.blip?.scale ?? 1.2,
+				colour: a.blip?.color ?? 3,
+				flashes: high,
+				text: title,
+				time: a.duration ? Math.max(1, Math.round(a.duration / 60)) : 5,
+				radius: 0
+			} : void 0
 		});
 	}
-}, aiPoliceAlert], APPEARANCE_SYSTEMS = [{
-	resource: "tgiann-clothing",
-	version: "4.1.0",
-	load: async (charId) => {
-		let citizenid = players.byCharacter(charId)?.citizenid ?? await mysql.scalar("SELECT citizenid FROM ai_core_characters WHERE id = ?", [charId]);
-		if (!citizenid) return null;
-		let row = await mysql.single("SELECT model, skin FROM tgiann_skin WHERE citizenid = ?", [citizenid]);
-		if (!row?.skin) return null;
-		let skin = JSON.parse(row.skin), model = Number(row.model ?? skin.pedModel);
-		return Number.isInteger(model) && model !== 0 ? {
-			model: model | 0,
-			data: skin
-		} : null;
+}, coreDispatch = {
+	resource: "core_dispatch",
+	alert: (a) => callExport("core_dispatch", "addCall", a.code ?? "", a.title, a.message ? [{
+		icon: "fa-circle-info",
+		info: a.message
+	}] : [], a.coords, a.jobs ?? ["police"], (a.duration ?? 5) * 1e3, a.blip?.sprite ?? 156, a.blip?.color ?? 1, a.priority === "high")
+}, lbTablet = {
+	resource: "lb-tablet",
+	alert: (a) => callExport("lb-tablet", "AddDispatch", {
+		priority: a.priority === "high" ? "high" : "medium",
+		code: a.code ?? "",
+		title: a.title,
+		description: a.message ?? a.title,
+		location: a.coords ? {
+			label: a.message ?? a.title,
+			coords: {
+				x: a.coords.x,
+				y: a.coords.y
+			}
+		} : void 0,
+		time: a.duration ?? 300,
+		job: a.jobs ?? ["police"],
+		blip: a.blip ? {
+			sprite: a.blip.sprite,
+			color: a.blip.color,
+			size: a.blip.scale,
+			label: a.title
+		} : void 0
+	})
+}, lindenOutlawAlert = {
+	resource: "linden_outlawalert",
+	version: "2.7.1",
+	alert: (a) => emit("wf-alerts:svNotify", {
+		coords: a.coords,
+		dispatchData: {
+			displayCode: a.code ?? "",
+			description: a.title,
+			isImportant: +(a.priority === "high"),
+			recipientList: a.jobs ?? ["police"],
+			length: a.duration ? a.duration * 1e3 : void 0,
+			infoM: a.message ? "fa-info-circle" : void 0,
+			info: a.message,
+			blipSprite: a.blip?.sprite ?? 161,
+			blipColour: a.blip?.color ?? 84,
+			blipScale: a.blip?.scale ?? 1.5
+		}
+	})
+}, psDispatch = {
+	resource: "ps-dispatch",
+	version: "2.2.2",
+	alert: (a) => emit("ps-dispatch:server:notify", {
+		message: a.message ? `${a.title} - ${a.message}` : a.title,
+		codeName: "NONE",
+		code: a.code ?? "10-80",
+		icon: `fas fa-${a.icon ?? "question"}`,
+		priority: a.priority === "high" ? 1 : 2,
+		coords: a.coords ?? {
+			x: 0,
+			y: 0,
+			z: 0
+		},
+		alertTime: a.duration,
+		jobs: a.jobs ?? ["leo"],
+		alert: {
+			radius: 0,
+			sprite: a.blip?.sprite ?? 1,
+			color: a.blip?.color ?? 1,
+			scale: a.blip?.scale ?? .5,
+			length: 2,
+			sound: "Lose_1st",
+			sound2: "GTAO_FM_Events_Soundset",
+			offset: !1,
+			flash: a.priority === "high"
+		}
+	})
+}, rcoreDispatch = {
+	resource: "rcore_dispatch",
+	alert: (a) => {
+		let text = a.message ? `${a.title} - ${a.message}` : a.title;
+		emit("rcore_dispatch:server:sendAlert", {
+			code: a.code ?? "",
+			default_priority: a.priority === "high" ? "high" : "medium",
+			coords: a.coords,
+			job: a.jobs ?? ["police"],
+			text,
+			type: "alerts",
+			blip_time: a.duration,
+			blip: a.blip ? {
+				sprite: a.blip.sprite,
+				colour: a.blip.color,
+				scale: a.blip.scale,
+				text: a.title,
+				flashes: a.priority === "high"
+			} : void 0
+		});
 	}
-}, {
+}, RESOURCE$8 = "tgiann-policealert", DISPATCH_SYSTEMS = [
+	{
+		resource: RESOURCE$8,
+		version: "2.10.0",
+		answersPoliceAlert: !0,
+		alert: (a) => {
+			let jobs = a.jobs ?? ["police"], custom = a.message ? [{
+				labelLeft: a.message,
+				labelRight: "",
+				icon: "circle-info"
+			}] : void 0, common = {
+				label: a.title,
+				code: a.code,
+				icon: a.icon,
+				coords: a.coords,
+				duration: a.duration,
+				bgAnimate: a.priority === "high",
+				blip: a.blip?.sprite
+			};
+			a.source === void 0 ? callExport(RESOURCE$8, "SendCustomAlert", {
+				...common,
+				duration: a.duration ?? 5,
+				sound: { active: !0 },
+				information: { custom }
+			}, jobs) : callExport(RESOURCE$8, "Alert", a.source, {
+				...common,
+				jobs,
+				custom
+			});
+		}
+	},
+	psDispatch,
+	cdDispatch,
+	rcoreDispatch,
+	coreDispatch,
+	lindenOutlawAlert,
+	lbTablet,
+	{
+		resource: "wasabi_mdt",
+		alert: (a) => callExport("wasabi_mdt", "CreateDispatch", {
+			title: a.title,
+			description: a.message,
+			code: a.code,
+			coords: a.coords,
+			priority: a.priority === "high" ? 5 : 1
+		})
+	},
+	aiPoliceAlert
+], aiAppearance = {
 	resource: "ai-appearance",
 	load: async (charId) => {
 		let row = await mysql.single("SELECT model, data FROM ai_appearance_characters WHERE char_id = ?", [charId]);
@@ -18177,7 +18436,114 @@ const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetIn
 			data: JSON.parse(row.data)
 		};
 	}
-}];
+};
+// resource/server/appearance/citizen.ts
+async function citizenidOf(charId) {
+	return players.byCharacter(charId)?.citizenid ?? await mysql.scalar("SELECT citizenid FROM ai_core_characters WHERE id = ?", [charId]) ?? null;
+}
+function modelOf(value) {
+	return typeof value == "number" ? Number.isInteger(value) && value !== 0 ? value | 0 : null : typeof value != "string" || value === "" ? null : /^-?\d+$/.test(value) ? Number(value) | 0 : GetHashKey(value);
+}
+// resource/server/appearance/adapters/bl_appearance.ts
+const blAppearance = {
+	resource: "bl_appearance",
+	version: "1.3.5",
+	load: async (charId) => {
+		let citizenid = await citizenidOf(charId);
+		if (!citizenid) return null;
+		let row = await mysql.single("SELECT skin, clothes, tattoos FROM appearance WHERE id = ?", [citizenid]);
+		if (!row?.skin) return null;
+		let skin = JSON.parse(row.skin), clothes = row.clothes ? JSON.parse(row.clothes) : {};
+		if (!isRecord(skin)) return null;
+		let model = modelOf(skin.model);
+		if (model === null) return null;
+		let tattoos = row.tattoos ? JSON.parse(row.tattoos) : [];
+		return {
+			model,
+			data: {
+				...skin,
+				...isRecord(clothes) ? clothes : {},
+				tattoos
+			}
+		};
+	}
+}, crmAppearance = {
+	resource: "crm-appearance",
+	version: "",
+	load: async (charId) => {
+		let citizenid = await citizenidOf(charId);
+		if (!citizenid) return null;
+		let row = await mysql.single("SELECT model, skin FROM playerskins WHERE citizenid = ? AND active = 1", [citizenid]), model = modelOf(row?.model);
+		return row?.skin && model !== null ? {
+			model,
+			data: JSON.parse(row.skin)
+		} : null;
+	}
+}, illeniumAppearance = {
+	resource: "illenium-appearance",
+	version: "5.7.0",
+	load: async (charId) => {
+		let citizenid = await citizenidOf(charId);
+		if (!citizenid) return null;
+		let skin = await mysql.scalar("SELECT skin FROM playerskins WHERE citizenid = ? AND active = 1", [citizenid]);
+		if (!skin) return null;
+		let data = JSON.parse(skin);
+		if (!isRecord(data)) return null;
+		let model = modelOf(data.model ?? "mp_m_freemode_01");
+		return model === null ? null : {
+			model,
+			data
+		};
+	}
+}, qbClothing = {
+	resource: "qb-clothing",
+	version: "1.2.0",
+	load: async (charId) => {
+		let citizenid = await citizenidOf(charId);
+		if (!citizenid) return null;
+		let row = await mysql.single("SELECT model, skin FROM playerskins WHERE citizenid = ? AND active = 1", [citizenid]), model = modelOf(row?.model);
+		return row?.skin && model !== null ? {
+			model,
+			data: JSON.parse(row.skin)
+		} : null;
+	}
+}, RESOURCE$7 = "rcore_clothing", APPEARANCE_SYSTEMS = [
+	{
+		resource: "tgiann-clothing",
+		version: "4.1.0",
+		load: async (charId) => {
+			let citizenid = await citizenidOf(charId);
+			if (!citizenid) return null;
+			let row = await mysql.single("SELECT model, skin FROM tgiann_skin WHERE citizenid = ?", [citizenid]);
+			if (!row?.skin) return null;
+			let skin = JSON.parse(row.skin), model = Number(row.model ?? skin.pedModel);
+			return Number.isInteger(model) && model !== 0 ? {
+				model: model | 0,
+				data: skin
+			} : null;
+		}
+	},
+	illeniumAppearance,
+	qbClothing,
+	crmAppearance,
+	{
+		resource: RESOURCE$7,
+		version: "",
+		load: async (charId) => {
+			let citizenid = await citizenidOf(charId);
+			if (!citizenid) return null;
+			let found = callExport(RESOURCE$7, "getSkinByIdentifier", citizenid);
+			if (!isRecord(found) || found.skin == null) return null;
+			let model = modelOf(found.ped_model);
+			return model === null ? null : {
+				model,
+				data: found.skin
+			};
+		}
+	},
+	blAppearance,
+	aiAppearance
+];
 // resource/server/content/index.ts
 function readUpdates(u) {
 	let ignore = Array.isArray(u.ignore) ? u.ignore : [];
@@ -18313,12 +18679,12 @@ const FILE$1 = "commands", PARAM_TYPES = new Set([
 	"playerId",
 	"string",
 	"longString"
-]), text$4 = (value, max) => typeof value == "string" ? value.slice(0, max) : "", names = (value) => Array.isArray(value) ? value.filter((n) => typeof n == "string" && /^[\w.:-]{1,64}$/.test(n)).map((n) => n.toLowerCase()) : [];
+]), text$10 = (value, max) => typeof value == "string" ? value.slice(0, max) : "", names = (value) => Array.isArray(value) ? value.filter((n) => typeof n == "string" && /^[\w.:-]{1,64}$/.test(n)).map((n) => n.toLowerCase()) : [];
 function readParam(value) {
 	return !isRecord(value) || typeof value.name != "string" || typeof value.type != "string" || !PARAM_TYPES.has(value.type) ? null : {
-		name: text$4(value.name, 32),
+		name: text$10(value.name, 32),
 		type: value.type,
-		help: text$4(value.help, 120),
+		help: text$10(value.help, 120),
 		optional: value.optional === !0
 	};
 }
@@ -18329,7 +18695,7 @@ function readInfo(value) {
 	let params = Array.isArray(value.params) ? value.params.map(readParam).filter((p) => p !== null) : [], aces = Array.isArray(value.aces) ? value.aces.filter((a) => typeof a == "string" && /^[\w.:-]{1,64}$/.test(a)) : null;
 	return {
 		names: list,
-		help: text$4(value.help, 200),
+		help: text$10(value.help, 200),
 		params,
 		aces
 	};
@@ -18404,15 +18770,15 @@ registerExport("RegisterCommands", (_resource, list) => {
 	infos.length !== list.length && log$3.warn(`${resource}: ${list.length - infos.length} command(s) with an invalid description skipped`), commandRegistry.register(resource, infos);
 }), on("onResourceStop", () => commandRegistry.refreshSoon()), on("onServerResourceStart", () => commandRegistry.refreshSoon());
 // resource/server/admin/external.ts
-const ID = /^[a-z0-9_.-]{2,48}$/i, text$3 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, pageUrl = (v) => typeof v == "string" && v.startsWith("https://") ? v.slice(0, 300) : void 0;
+const ID = /^[a-z0-9_.-]{2,48}$/i, text$9 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, pageUrl = (v) => typeof v == "string" && v.startsWith("https://") ? v.slice(0, 300) : void 0;
 function toPanel(id, v, resource) {
-	let command = text$3(v.command, 64)?.replace(/^\//, ""), url = pageUrl(v.url), label = text$3(v.label, 48);
+	let command = text$9(v.command, 64)?.replace(/^\//, ""), url = pageUrl(v.url), label = text$9(v.label, 48);
 	return !label || !command && !url ? null : {
 		id,
 		resource,
 		label,
-		icon: text$3(v.icon, 32),
-		description: text$3(v.description, 160),
+		icon: text$9(v.icon, 32),
+		description: text$9(v.description, 160),
 		command,
 		url
 	};
@@ -18444,7 +18810,7 @@ const externalPanels = new class {
 		let records = panel.get("externalPanels");
 		return isRecord(records) ? Object.entries(records).flatMap(([id, v]) => {
 			if (!isRecord(v)) return [];
-			let resource = text$3(v.resource, 64) ?? "";
+			let resource = text$9(v.resource, 64) ?? "";
 			if (resource && GetResourceState(resource) !== "started") return [];
 			let found = toPanel(`panel:${id}`, v, resource);
 			return found ? [found] : [];
@@ -18528,10 +18894,10 @@ const FILE = "keybinds", NAME = /^[\w.-]{1,64}$/, KEYBOARD = new Set([
 	"MOUSE_EXTRABTN5",
 	"IOM_WHEEL_UP",
 	"IOM_WHEEL_DOWN"
-]), text$2 = (value, max) => typeof value == "string" && value.length <= max ? value : null;
+]), text$8 = (value, max) => typeof value == "string" && value.length <= max ? value : null;
 function readKeybind(value) {
 	if (!isRecord(value)) return null;
-	let resource = text$2(value.resource, 64), name = text$2(value.name, 64), description = text$2(value.description, 120), defaultKey = text$2(value.defaultKey, 32), mapper = text$2(value.mapper, 32), hint = value.hint === "foot" || value.hint === "vehicle" || value.hint === "always" ? value.hint : void 0;
+	let resource = text$8(value.resource, 64), name = text$8(value.name, 64), description = text$8(value.description, 120), defaultKey = text$8(value.defaultKey, 32), mapper = text$8(value.mapper, 32), hint = value.hint === "foot" || value.hint === "vehicle" || value.hint === "always" ? value.hint : void 0;
 	return !resource || !name || !NAME.test(name) || description === null || defaultKey === null || !mapper ? null : {
 		resource,
 		name,
@@ -18917,50 +19283,177 @@ const gameThread = () => new Promise((resolve) => setImmediate(resolve)), versio
 	}
 }();
 setTimeout(() => versions.checkAll(), 15e3), every(CHECK_EVERY_MS, () => versions.checkAll(), { name: "versions" }), on("onServerResourceStart", (resource) => setTimeout(() => void versions.check(resource), 5e3)), panel.onChange("settings", () => versions.checkAll()), registerExport("GetUpdates", () => versions.list());
-// resource/server/phone/adapters/lb-phone.ts
-const phone$1 = (name, ...args) => callExport("lb-phone", name, ...args), text$1 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, lbPhone = {
-	resource: "lb-phone",
-	number: (source) => text$1(phone$1("GetEquippedPhoneNumber", source)),
+// resource/server/phone/adapters/17mov_Phone.ts
+const RESOURCE$6 = "17mov_Phone", phone$7 = (name, ...args) => callExport(RESOURCE$6, name, ...args), text$7 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, mov17Phone = {
+	resource: RESOURCE$6,
+	number: (source) => text$7(phone$7("GetNumberFromPlayer", source)),
 	sourceOf: (number) => {
-		let s = phone$1("GetSourceFromNumber", number);
+		let s = phone$7("GetPlayerSrcFromActiveNumber", number);
 		return typeof s == "number" ? s : null;
 	},
-	hasPhone: (source) => phone$1("HasPhoneItem", source) === !0,
-	mail: (to, m) => phone$1("SendMail", {
+	hasPhone: (source) => text$7(phone$7("GetNumberFromPlayer", source)) !== null,
+	mail: (to, m) => (phone$7("Email_SendEmailByNumber", to, m.sender, m.subject, m.message, void 0, !0), !0),
+	message: (from, to, body) => {
+		let result = phone$7("Messages_SendMessageToNumber", to, body, from);
+		return isRecord(result) && result.success === !0;
+	},
+	notify: (source, n) => (phone$7("SendNotificationToSrc", source, {
+		app: "SYSTEM",
+		title: n.title,
+		message: n.message
+	}), !0)
+}, RESOURCE$5 = "gksphone", phone$6 = (name, ...args) => callExport(RESOURCE$5, name, ...args), text$6 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, sourceOf = (number) => {
+	let s = Number(phone$6("GetSourceByPhone", number));
+	return Number.isInteger(s) && s > 0 ? s : null;
+}, gksPhone = {
+	resource: RESOURCE$5,
+	number: (source) => text$6(phone$6("GetPhoneBySource", source)),
+	sourceOf,
+	hasPhone: (source) => text$6(phone$6("GetPhoneBySource", source)) !== null,
+	mail: (to, m) => {
+		let source = sourceOf(to);
+		return source !== null && (phone$6("SendNewMail", source, {
+			sender: m.sender,
+			subject: m.subject,
+			message: m.message
+		}), !0);
+	},
+	message: (from, to, body) => {
+		let result = phone$6("SendMessage", from, to, body);
+		return isRecord(result) && result.status === !0;
+	},
+	notify: (source, n) => (phone$6("sendNotification", source, {
+		title: n.title,
+		message: n.message,
+		duration: 5e3
+	}), !0)
+}, RESOURCE$4 = "high-phone", phone$5 = (name, ...args) => callExport(RESOURCE$4, name, ...args), text$5 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, highPhone = {
+	resource: RESOURCE$4,
+	number: (source) => text$5(phone$5("getPlayerPhoneNumber", source)),
+	sourceOf: (number) => {
+		let player = phone$5("getPlayerByPhone", number);
+		return isRecord(player) && typeof player.id == "number" ? player.id : null;
+	},
+	hasPhone: (source) => isRecord(phone$5("getPlayerPhone", source)),
+	mail: () => !1,
+	message: (from, to, body) => (phone$5("sendMessage", {
+		sender: from,
+		recipient: to,
+		content: body
+	}), !0),
+	notify: (source, n) => (phone$5("sendNotification", source, {
+		application: n.app ? { name: n.app } : void 0,
+		title: n.title,
+		content: n.message,
+		duration: 5e3
+	}), !0)
+}, phone$4 = (name, ...args) => callExport("lb-phone", name, ...args), text$4 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, lbPhone = {
+	resource: "lb-phone",
+	number: (source) => text$4(phone$4("GetEquippedPhoneNumber", source)),
+	sourceOf: (number) => {
+		let s = phone$4("GetSourceFromNumber", number);
+		return typeof s == "number" ? s : null;
+	},
+	hasPhone: (source) => phone$4("HasPhoneItem", source) === !0,
+	mail: (to, m) => phone$4("SendMail", {
 		to,
 		sender: m.sender,
 		subject: m.subject,
 		message: m.message
 	}) !== !1,
-	message: (from, to, body) => phone$1("SendMessage", from, to, body) !== !1,
+	message: (from, to, body) => phone$4("SendMessage", from, to, body) !== !1,
+	notify: (source, n) => phone$4("SendNotification", source, {
+		app: n.app,
+		title: n.title,
+		content: n.message
+	}) != null
+}, RESOURCE$3 = "qs-smartphone", phone$3 = (name, ...args) => callExport(RESOURCE$3, name, ...args), text$3 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, live = (v) => v != null && v !== !1, qsSmartphone = {
+	resource: RESOURCE$3,
+	number: (source) => text$3(phone$3("GetCurrentPhoneNumber", source)),
+	sourceOf: () => null,
+	hasPhone: (source) => live(phone$3("getPhoneScopeIdentifier", source)),
+	mail: () => !1,
+	message: (from, to, body) => {
+		let result = phone$3("SendNewMessageFromApp", {
+			targetPhone: to,
+			appLabel: from,
+			message: body
+		});
+		return isRecord(result) && result.ok === !0;
+	},
+	notify: (source, n) => phone$3("sendPhoneNotification", source, {
+		appId: n.app,
+		title: n.title,
+		text: n.message
+	}) !== !1
+}, RESOURCE$2 = "roadphone", phone$2 = (name, ...args) => callExport(RESOURCE$2, name, ...args), text$2 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, roadPhone = {
+	resource: RESOURCE$2,
+	number: (source) => text$2(phone$2("GetPhoneNumberBySource", source)),
+	sourceOf: (number) => {
+		let s = phone$2("getSourceFromPhone", number);
+		return typeof s == "number" ? s : null;
+	},
+	hasPhone: (source) => phone$2("hasPhone", source) === !0,
+	mail: () => !1,
+	message: (from, to, body) => phone$2("sendMessage", from, to, body) === !0,
+	notify: (source, n) => (phone$2("PhoneNotifyPlayer", source, {
+		title: n.title,
+		message: n.message,
+		app: n.app
+	}), !0)
+}, phone$1 = (name, ...args) => callExport("tgiann-phone", name, ...args), text$1 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, tgiannPhone = {
+	resource: "tgiann-phone",
+	version: "2.0.0-b8",
+	number: (source) => text$1(phone$1("GetPhoneNumber", source)),
+	sourceOf: (number) => {
+		let s = phone$1("GetSourceByNumber", number);
+		return typeof s == "number" ? s : null;
+	},
+	hasPhone: (source) => phone$1("HasPhone", source) === !0,
+	mail: (to, m) => phone$1("SendMail", {
+		to,
+		from: m.sender,
+		subject: m.subject,
+		message: m.message
+	}) !== !1,
+	message: (from, to, body) => phone$1("SendSms", from, to, { body }) !== !1,
 	notify: (source, n) => phone$1("SendNotification", source, {
 		app: n.app,
 		title: n.title,
 		content: n.message
 	}) != null
-}, phone = (name, ...args) => callExport("tgiann-phone", name, ...args), text = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, phones = new AdapterPicker({
+}, RESOURCE$1 = "yseries", phone = (name, ...args) => callExport(RESOURCE$1, name, ...args), text = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, phones = new AdapterPicker({
 	category: "phone",
-	adapters: [{
-		resource: "tgiann-phone",
-		number: (source) => text(phone("GetPhoneNumber", source)),
-		sourceOf: (number) => {
-			let s = phone("GetSourceByNumber", number);
-			return typeof s == "number" ? s : null;
+	adapters: [
+		tgiannPhone,
+		lbPhone,
+		gksPhone,
+		mov17Phone,
+		{
+			resource: RESOURCE$1,
+			number: (source) => text(phone("GetPhoneNumberBySourceId", source)),
+			sourceOf: (number) => {
+				let s = Number(phone("GetPlayerSourceIdByPhoneNumber", number));
+				return Number.isInteger(s) && s > 0 ? s : null;
+			},
+			hasPhone: (source) => text(phone("GetPhoneNumberBySourceId", source)) !== null,
+			mail: (to, m) => phone("SendMail", {
+				title: m.subject,
+				sender: m.sender,
+				senderDisplayName: m.sender,
+				content: m.message
+			}, "phoneNumber", to) != null,
+			message: (from, to, body) => phone("SendMessageTo", from, to, body) != null,
+			notify: (source, n) => phone("SendNotification", {
+				app: n.app,
+				title: n.title,
+				text: n.message
+			}, "source", source) === !0
 		},
-		hasPhone: (source) => phone("HasPhone", source) === !0,
-		mail: (to, m) => phone("SendMail", {
-			to,
-			from: m.sender,
-			subject: m.subject,
-			message: m.message
-		}) !== !1,
-		message: (from, to, body) => phone("SendSms", from, to, { body }) !== !1,
-		notify: (source, n) => phone("SendNotification", source, {
-			app: n.app,
-			title: n.title,
-			content: n.message
-		}) != null
-	}, lbPhone],
+		highPhone,
+		roadPhone,
+		qsSmartphone
+	],
 	log: log$3
 }), toMail = (v) => isRecord(v) && typeof v.subject == "string" && typeof v.message == "string" ? {
 	sender: typeof v.sender == "string" ? v.sender : "",
@@ -20011,47 +20504,105 @@ const death = resourceExport("ai-death"), aiDeath = {
 	revive: (source) => death.Revive(source) === !0,
 	heal: (source) => death.Heal(source),
 	isDead: (source) => death.IsDead(source) === !0
-}, dead$1 = new PlayerState("dead", stateBoolean), isDead$3 = (source) => dead$1.get(source) === !0, arsAmbulance = {
+}, dead$3 = new PlayerState("dead", stateBoolean), isDead$8 = (source) => dead$3.get(source) === !0, arsAmbulance = {
 	resource: "ars_ambulancejob",
 	revive: (source) => {
-		let was = isDead$3(source);
+		let was = isDead$8(source);
 		return emitNet("ars_ambulancejob:healPlayer", source, { revive: !0 }), was;
 	},
 	heal: (source) => emitNet("ars_ambulancejob:healPlayer", source, { heal: !0 }),
-	isDead: isDead$3
-}, dead = new PlayerState("isDead", stateBoolean), isDead$2 = (source) => dead.get(source) === !0, esxAmbulance = {
+	isDead: isDead$8
+}, isDead$7 = (source) => players.get(source)?.getMeta("isdead") === !0, brutalAmbulance = {
+	resource: "brutal_ambulancejob",
+	version: "1.3.1",
+	revive: (source) => {
+		let was = isDead$7(source);
+		return emitNet("brutal_ambulancejob:revive", source), was;
+	},
+	heal: () => void 0,
+	isDead: isDead$7
+}, dead$2 = new PlayerState("isDead", stateBoolean), isDead$6 = (source) => dead$2.get(source) === !0, esxAmbulance = {
 	resource: "esx_ambulancejob",
 	revive: (source) => {
-		let was = isDead$2(source);
+		let was = isDead$6(source);
 		return emitNet("esx_ambulancejob:revive", source), was;
 	},
 	heal: (source) => emitNet("esx_ambulancejob:heal", source, "big", !0),
-	isDead: isDead$2
-}, isDead$1 = (source) => {
+	isDead: isDead$6
+}, body = new PlayerState("BodyDamage", (v) => isRecord(v) ? v.isDead === !0 || v.inLastStand === !0 : void 0), muted = new PlayerState("isDead", stateBoolean), isDead$5 = (source) => body.get(source) === !0 || muted.get(source) === !0, ospAmbulance = {
+	resource: "osp_ambulance",
+	version: "2.0.5",
+	revive: (source) => {
+		let was = isDead$5(source);
+		return emitNet("hospital:client:Revive", source, !0), was;
+	},
+	heal: (source) => {
+		isDead$5(source) || emitNet("hospital:client:Revive", source, !0);
+	},
+	isDead: isDead$5
+}, isDead$4 = (source) => {
 	let player = players.get(source);
 	return player?.getMeta("isdead") === !0 || player?.getMeta("inlaststand") === !0;
 }, qbAmbulance = {
 	resource: "qb-ambulancejob",
 	revive: (source) => {
-		let was = isDead$1(source);
+		let was = isDead$4(source);
 		return emitNet("hospital:client:Revive", source), was;
 	},
 	heal: (source) => emitNet("hospital:client:HealInjuries", source, "full"),
-	isDead: isDead$1
-}, deathState = new PlayerState("qbx_medical:deathState", stateNumber), isDead = (source) => (deathState.get(source) ?? 1) >= 2, MEDICAL_SYSTEMS = [
-	aiDeath,
-	{
-		resource: "qbx_medical",
-		revive: (source) => {
-			let was = isDead(source);
-			return callExport("qbx_medical", "Revive", source), was;
-		},
-		heal: (source) => void callExport("qbx_medical", "Heal", source),
-		isDead
+	isDead: isDead$4
+}, deathState$1 = new PlayerState("qbx_medical:deathState", stateNumber), isDead$3 = (source) => (deathState$1.get(source) ?? 1) >= 2, qbxMedical = {
+	resource: "qbx_medical",
+	revive: (source) => {
+		let was = isDead$3(source);
+		return callExport("qbx_medical", "Revive", source), was;
 	},
+	heal: (source) => void callExport("qbx_medical", "Heal", source),
+	isDead: isDead$3
+}, dead$1 = new PlayerState("isDead", stateBoolean), isDead$2 = (source) => dead$1.get(source) === !0, setAlive = (source) => callExport("tgiann-ambulance", "SetPlayerAlive", source, {
+	isAdmin: !0,
+	healBodyDamage: !0
+}), tgiannAmbulance = {
+	resource: "tgiann-ambulance",
+	revive: (source) => {
+		let was = isDead$2(source);
+		return setAlive(source), was;
+	},
+	heal: (source) => {
+		isDead$2(source) || setAlive(source);
+	},
+	isDead: isDead$2
+}, dead = new PlayerState("dead", (v) => v === "dead" || v === "laststand" || v !== !1 && void 0), isDead$1 = (source) => dead.get(source) === !0, wasabiAmbulance = {
+	resource: "wasabi_ambulance",
+	revive: (source) => {
+		let was = isDead$1(source);
+		return callExport("wasabi_ambulance", "RevivePlayer", source), was;
+	},
+	heal: () => void 0,
+	isDead: isDead$1
+}, V2 = "wasabi_ambulance_v2", deathState = new PlayerState("wasabi:deathState", stateNumber), isDead = (source) => (deathState.get(source) ?? 0) >= 1, MEDICAL_SYSTEMS = [
+	aiDeath,
+	qbxMedical,
 	arsAmbulance,
 	qbAmbulance,
-	esxAmbulance
+	esxAmbulance,
+	tgiannAmbulance,
+	{
+		resource: V2,
+		revive: (source) => {
+			let was = isDead(source);
+			return callExport(V2, "RevivePlayer", source), was;
+		},
+		heal: (source) => void callExport(V2, "ApplyHeal", source, {
+			health: 200,
+			injuries: "all",
+			limbHealth: 100
+		}),
+		isDead
+	},
+	wasabiAmbulance,
+	ospAmbulance,
+	brutalAmbulance
 ], activeMedical = new GlobalKey(CORE.medicalStateKey, stateString), medical = new AdapterPicker({
 	category: "medical",
 	adapters: MEDICAL_SYSTEMS,
@@ -20375,6 +20926,11 @@ function builtIn() {
 	for (let a of INVENTORIES) a.resource !== "ai-inventory" && out.push({
 		keep: a.resource,
 		remove: ["ai-inventory"],
+		from: "ai-core"
+	});
+	for (let a of APPEARANCE_SYSTEMS) a.resource !== "ai-appearance" && out.push({
+		keep: a.resource,
+		remove: ["ai-appearance"],
 		from: "ai-core"
 	});
 	for (let a of KEY_SYSTEMS) a.resource !== "ai-vehiclekeys" && out.push({
@@ -21070,7 +21626,7 @@ every(settings.saveIntervalMinutes * 6e4, () => saveNow("interval"), { name: "sa
 // resource/server/jobs/primeTime/adapters/tgiann-policealert.ts
 const RESOURCE = "tgiann-policealert", PRIME_TIME_SYSTEMS = [{
 	resource: RESOURCE,
-	version: "2.9.0",
+	version: "2.10.0",
 	isPrimeTime: (job) => callExport(RESOURCE, "IsPrimeTime", job) === !0
 }];
 // resource/server/jobs/primeTime/index.ts
@@ -21286,66 +21842,133 @@ scopes.start(), registerExport("GetPlayersInScope", (source) => typeof source ==
 	};
 	emitNet("ai-core:client:setupWelcome", source, welcome);
 });
-// resource/server/world.ts
+// resource/server/world/adapter.ts
 const toTime = (hour, minute) => typeof hour == "number" ? {
 	hour,
 	minute: typeof minute == "number" ? minute : 0
-} : null, QB = "qb-weathersync", qb = {
+} : null, readTime = (value) => Array.isArray(value) ? toTime(value[0], value[1]) : isRecord(value) ? toTime(value.hour, value.minute) : null, AV = "av_weather", ZONES = [
+	"santos",
+	"sandy",
+	"paleto",
+	"cayo"
+], zone = (name) => {
+	let z = callExport(AV, "getZone", name);
+	return isRecord(z) ? z : null;
+}, getTime = () => {
+	let t = callExport(AV, "getTime");
+	return isRecord(t) ? toTime(t.hour, t.minutes) : null;
+}, avWeather = {
+	resource: AV,
+	getWeather: () => {
+		let w = zone("santos")?.weather;
+		return typeof w == "string" ? w : null;
+	},
+	setWeather: (type) => {
+		let set = !1;
+		for (let name of ZONES) {
+			let z = zone(name);
+			z && (callExport(AV, "updateZone", name, type, z.freeze === !0), set = !0);
+		}
+		return set;
+	},
+	getTime,
+	setTime: (hour, minute) => (callExport(AV, "updateTime", hour, minute, !1, !0), !0),
+	setBlackout: (on) => (callExport(AV, "setBlackout", on), !0),
+	freezeTime: (on) => {
+		let t = getTime();
+		return t ? (callExport(AV, "updateTime", t.hour, t.minute, on, !0), !0) : !1;
+	}
+}, CD = "cd_easytime", cdData = () => {
+	let d = callExport(CD, "GetAllData");
+	return isRecord(d) ? d : null;
+}, cdEasytime = {
+	resource: CD,
+	getWeather: () => {
+		let w = cdData()?.weather;
+		return typeof w == "string" ? w : null;
+	},
+	setWeather: (type) => callExport(CD, "SetWeather", type) === !0,
+	getTime: () => {
+		let d = cdData();
+		return d ? toTime(d.hours, d.mins) : null;
+	},
+	setTime: (hour, minute) => callExport(CD, "SetTime", hour, minute) === !0
+}, QB = "qb-weathersync", qbWeathersync = {
 	resource: QB,
 	getWeather: () => {
 		let w = callExport(QB, "getWeatherState");
 		return typeof w == "string" ? w : null;
 	},
 	setWeather: (type) => callExport(QB, "setWeather", type) !== !1,
-	getTime: () => {
-		let t = callExport(QB, "getTime");
-		return isRecord(t) ? toTime(t.hour, t.minute) : null;
-	},
+	getTime: () => readTime(callExport(QB, "getTime")),
 	setTime: (hour, minute) => callExport(QB, "setTime", hour, minute) !== !1,
 	setBlackout: (on) => callExport(QB, "setBlackout", on) !== !1,
 	freezeTime: (on) => callExport(QB, "setTimeFreeze", on) !== !1
-}, CD = "cd_easytime", cdData = () => {
-	let d = callExport(CD, "GetAllData");
-	return isRecord(d) ? d : null;
 }, weather = new AdapterPicker({
 	category: "weather",
-	adapters: [{
-		resource: CD,
-		getWeather: () => {
-			let w = cdData()?.weather;
-			return typeof w == "string" ? w : null;
+	adapters: [
+		{
+			...qbWeathersync,
+			resource: "Renewed-Weathersync",
+			version: "1.1.8"
 		},
-		setWeather: (type) => callExport(CD, "SetWeather", type) === !0,
-		getTime: () => {
-			let d = cdData();
-			return d ? toTime(d.hours, d.mins) : null;
-		},
-		setTime: (hour, minute) => callExport(CD, "SetTime", hour, minute) === !0
-	}, qb],
+		avWeather,
+		cdEasytime,
+		qbWeathersync
+	],
 	log: log$3,
 	noneText: "no weather script runs: time and weather calls answer null"
 });
 registerExport("GetWeather", () => weather.call("GetWeather", (a) => a.getWeather(), null)), registerExport("SetWeather", (type) => typeof type == "string" && weather.call("SetWeather", (a) => a.setWeather(type.toUpperCase()), !1)), registerExport("GetTime", () => weather.call("GetTime", (a) => a.getTime(), null)), registerExport("SetTime", (hour, minute) => typeof hour == "number" && weather.call("SetTime", (a) => a.setTime(Math.floor(hour) % 24, typeof minute == "number" ? Math.floor(minute) % 60 : 0), !1)), registerExport("SetBlackout", (on) => weather.call("SetBlackout", (a) => a.setBlackout?.(on === !0) ?? !1, !1)), registerExport("FreezeTime", (on) => weather.call("FreezeTime", (a) => a.freezeTime?.(on === !0) ?? !1, !1));
-// resource/server/prison.ts
-const AI = "ai-prison", prison = new AdapterPicker({
+// resource/server/prison/adapters/ai-prison.ts
+const AI = "ai-prison", aiPrison = {
+	resource: AI,
+	jail: (source, minutes, by) => callExport(AI, "JailPlayer", source, minutes, by) === !0,
+	release: (source) => callExport(AI, "ReleasePlayer", source) === !0,
+	timeLeft: (source) => Number(callExport(AI, "GetJailTime", source)) || 0
+}, qbPrison = {
+	resource: "qb-prison",
+	jail: (source, minutes) => {
+		let player = players.get(source);
+		return player ? (player.setMeta("injail", minutes), emitNet("prison:client:Enter", source, minutes), !0) : !1;
+	},
+	release: (source) => {
+		let player = players.get(source);
+		return player ? (player.setMeta("injail", 0), emitNet("prison:client:UnjailPerson", source), !0) : !1;
+	},
+	timeLeft: (source) => Number(players.get(source)?.getMeta("injail")) || 0
+}, RC = "rcore_prison", rcorePrison = {
+	resource: RC,
+	jail: (source, minutes, by) => isOnline(source) ? (callExport(RC, "Jail", source, minutes, null, by > 0 ? by : null), !0) : !1,
+	release: (source) => callExport(RC, "IsPrisoner", source) === !0 && (callExport(RC, "Unjail", source), !0),
+	timeLeft: (source) => {
+		let data = callExport(RC, "GetPrisonerData", source);
+		return isRecord(data) && Number(data.jail_time) || 0;
+	}
+}, TP = "tgiann-policejob", tgiannPolicejob = {
+	resource: TP,
+	version: "1.7.0",
+	jail: (source, minutes, by) => (callExport(TP, "SendToJail", source, minutes, null, by > 0 ? by : null), !0),
+	release: (source) => callExport(TP, "ReleaseFromJail", source) !== !1,
+	timeLeft: (source) => {
+		let jailed = callExport(TP, "IsPlayerJailed", source);
+		return Array.isArray(jailed) && typeof jailed[1] == "number" ? jailed[1] : 0;
+	}
+}, jailTime = new PlayerState("jailTime", stateNumber), timeLeft = (source) => jailTime.get(source) ?? 0, prison = new AdapterPicker({
 	category: "prison",
-	adapters: [{
-		resource: AI,
-		jail: (source, minutes, by) => callExport(AI, "JailPlayer", source, minutes, by) === !0,
-		release: (source) => callExport(AI, "ReleasePlayer", source) === !0,
-		timeLeft: (source) => Number(callExport(AI, "GetJailTime", source)) || 0
-	}, {
-		resource: "qb-prison",
-		jail: (source, minutes) => {
-			let player = players.get(source);
-			return player ? (player.setMeta("injail", minutes), emitNet("prison:client:Enter", source, minutes), !0) : !1;
+	adapters: [
+		aiPrison,
+		qbPrison,
+		rcorePrison,
+		{
+			resource: "xt-prison",
+			version: "1.4.8",
+			jail: (source, minutes) => isOnline(source) ? (emitNet("prison:client:Enter", source, minutes), !0) : !1,
+			release: (source) => timeLeft(source) <= 0 ? !1 : (emitNet("prison:client:UnjailPerson", source), !0),
+			timeLeft
 		},
-		release: (source) => {
-			let player = players.get(source);
-			return player ? (player.setMeta("injail", 0), emitNet("prison:client:UnjailPerson", source), !0) : !1;
-		},
-		timeLeft: (source) => Number(players.get(source)?.getMeta("injail")) || 0
-	}],
+		tgiannPolicejob
+	],
 	log: log$3,
 	noneText: "no prison script runs: jail calls answer false"
 });

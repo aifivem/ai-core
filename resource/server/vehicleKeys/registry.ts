@@ -27,6 +27,7 @@ export const CLIENT_KEY_SYSTEMS = [
   "mm_carkeys",
   "p_carkeys",
   "rd_vehiclekeys",
+  "t1ger_keys",
 ] as const;
 
 /**

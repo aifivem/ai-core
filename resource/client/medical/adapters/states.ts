@@ -3,6 +3,7 @@ import {
   PlayerState,
   stateBoolean,
   stateNumber,
+  stateString,
 } from "@aicore-fivem/lib/client";
 import { PLAYER_BAGS, type MedicalClientAdapter } from "@aicore-fivem/shared";
 
@@ -42,4 +43,22 @@ export const esxAmbulance = stateAdapter(
   "esx_ambulancejob",
   new PlayerState("isDead", stateBoolean),
   (v) => v === true,
+);
+/** tgiann-ambulance: its server sets `isDead` (down or dead), the ESX key. */
+export const tgiannAmbulance = stateAdapter(
+  "tgiann-ambulance",
+  new PlayerState("isDead", stateBoolean),
+  (v) => v === true,
+);
+/** wasabi_ambulance (v1): `dead` is `"dead"` or `"laststand"` while down. */
+export const wasabiAmbulance = stateAdapter(
+  "wasabi_ambulance",
+  new PlayerState("dead", stateString),
+  (v) => v === "dead" || v === "laststand",
+);
+/** wasabi_ambulance_v2: 0 alive, 1 last stand, 2 dead (its default key). */
+export const wasabiAmbulanceV2 = stateAdapter(
+  "wasabi_ambulance_v2",
+  new PlayerState("wasabi:deathState", stateNumber),
+  (v) => (v ?? 0) >= 1,
 );

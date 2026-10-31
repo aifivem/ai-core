@@ -1,6 +1,15 @@
 import { callExport } from "@aicore-fivem/lib/server";
+import { isRecord } from "@aicore-fivem/lib/shared";
 import type { InventoryAdapter, InventoryRef } from "@aicore-fivem/shared";
-import { definition, definitions, isTrue, number, rows, stack } from "../parse";
+import {
+  definition,
+  definitions,
+  first,
+  isTrue,
+  number,
+  rows,
+  stack,
+} from "../parse";
 
 /**
  * tgiann-inventory (server/exports.lua, shared/shared.lua of 2.4.1). Stacks are `{ slot, name, amount, info }`
@@ -66,4 +75,13 @@ export const tgiannInventory: InventoryAdapter = {
   },
   getItemDefinition: (name) => definition(item(name), name),
   getItemDefinitions: () => definitions(call("Items")),
+  // `GetPlayerInventoryData` answers the limit, `GetFreeWeight` what is left of it.
+  getWeight: (source) => {
+    const data = first(call("GetPlayerInventoryData", source));
+    if (!isRecord(data) || typeof data.maxWeight !== "number") return null;
+    return {
+      weight: data.maxWeight - number(call("GetFreeWeight", source)),
+      maxWeight: data.maxWeight,
+    };
+  },
 };

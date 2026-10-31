@@ -350,5 +350,14 @@
     "key": "",
     "hintWhen": "",
     "hint": ""
+  },
+  "smallresources_sit_getup": {
+    "resource": "ai-smallresources",
+    "description": "Stand up from a seat",
+    "defaultKey": "X",
+    "mapper": "keyboard",
+    "key": "",
+    "hintWhen": "",
+    "hint": ""
   }
 }
