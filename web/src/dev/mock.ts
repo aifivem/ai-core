@@ -86,7 +86,7 @@ export async function mockFetch(
   data?: unknown,
 ): Promise<unknown> {
   await new Promise((resolve) => setTimeout(resolve, 300));
-  // Views of the in-game UIs (admin, prompts, menu, notifications) preview without the character screen.
+  // Views of the in-game UIs (admin, item picker, keys) preview without the character screen.
   const params = new URLSearchParams(window.location.search);
   if (name === "ready")
     return [

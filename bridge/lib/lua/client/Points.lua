@@ -69,7 +69,7 @@ function Point:sync(mode)
     local text = mode == 'prompt' and self.inside and self:allowed() and readLabel(self.options.label) or nil
     if text == self.shown then return end
     self.shown = text
-    if text then exports['ai-core']:ShowPrompt(self.promptId, text) else exports['ai-core']:HidePrompt(self.promptId) end
+    if text then exports['ai-lib']:ShowPrompt(self.promptId, text) else exports['ai-lib']:HidePrompt(self.promptId) end
 end
 
 function Point:targetOption()
@@ -159,7 +159,7 @@ function Points:remove(id)
     self.points[id] = nil
     byPrompt[point.promptId] = nil
     self:detach(point)
-    if point.shown then exports['ai-core']:HidePrompt(point.promptId) end
+    if point.shown then exports['ai-lib']:HidePrompt(point.promptId) end
     if point.blip then RemoveBlip(point.blip) end
     if point.ped then point.ped:remove() end
     local model = self.models[id]
@@ -263,7 +263,7 @@ watcher = aiLib.every(CHECK_MS, function()
     if not any then watcher:set(false) end
 end, { active = false, name = 'points' })
 
-AddEventHandler('ai-core:client:promptPressed', function(owner, id)
+AddEventHandler('ai-lib:client:promptPressed', function(owner, id)
     if owner ~= resource then return end
     local point = byPrompt[id]
     if point then point:press() else aiLib.ModelPoints.press(id) end

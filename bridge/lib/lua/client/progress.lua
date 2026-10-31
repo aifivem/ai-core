@@ -23,7 +23,7 @@ local DISABLED = {
 ---@type { canCancel: boolean, cancelled: boolean }|nil
 local running = nil
 
-AddEventHandler('ai-core:client:cancelProgress', function()
+AddEventHandler('ai-lib:client:cancelProgress', function()
     if running and running.canCancel then running.cancelled = true end
 end)
 
@@ -65,7 +65,7 @@ local function run(options)
         end
     end
     if #blocked > 0 then aiLib.controls.disable('progress', blocked) end
-    exports['ai-core']:ShowProgress(options.label, options.duration)
+    exports['ai-lib']:ShowProgress(options.label, options.duration)
     local finish = GetGameTimer() + options.duration
     local done = true
     while GetGameTimer() < finish do
@@ -78,7 +78,7 @@ local function run(options)
     if anim then StopAnimTask(ped, anim.dict, anim.clip, 1.0) elseif options.scenario then ClearPedTasks(ped) end
     if options.freeze then FreezeEntityPosition(ped, false) end
     if #blocked > 0 then aiLib.controls.enable('progress') end
-    exports['ai-core']:HideProgress()
+    exports['ai-lib']:HideProgress()
     running = nil
     return done
 end

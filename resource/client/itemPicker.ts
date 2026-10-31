@@ -49,7 +49,7 @@ registerExport("OpenItemPicker", (id: unknown, request: unknown) => {
   void triggerServerCallback(ITEM_PICKER_CALLBACK, [target])
     .catch(() => null)
     .then((raw) =>
-      dialogs.open("items", resource, id, {
+      dialogs.open(resource, id, {
         title,
         ...toData(raw),
         texts: {

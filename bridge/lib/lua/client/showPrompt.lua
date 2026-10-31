@@ -2,5 +2,5 @@
 ---@param id string
 ---@param text string
 return function(id, text)
-    exports['ai-core']:ShowPrompt(id, text)
+    exports['ai-lib']:ShowPrompt(id, text)
 end

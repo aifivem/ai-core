@@ -4,5 +4,5 @@
 ---@param kind? 'info'|'success'|'warning'|'error'
 ---@param duration? integer ms
 return function(src, text, kind, duration)
-    TriggerClientEvent('ai-core:client:notify', src, { text = text, kind = kind or 'info', duration = duration })
+    TriggerClientEvent('ai-lib:client:notify', src, { text = text, kind = kind or 'info', duration = duration })
 end

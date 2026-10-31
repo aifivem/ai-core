@@ -55,7 +55,7 @@ end
 local function show(point, text)
     if text == point.shown then return end
     point.shown = text
-    if text then exports['ai-core']:ShowPrompt(point.promptId, text) else exports['ai-core']:HidePrompt(point.promptId) end
+    if text then exports['ai-lib']:ShowPrompt(point.promptId, text) else exports['ai-lib']:HidePrompt(point.promptId) end
 end
 
 ---@param point table

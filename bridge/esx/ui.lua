@@ -638,7 +638,7 @@ end
 function ESX.ShowAdvancedNotification(sender, subject, msg, _textureDict, _iconType)
     local text = clean(msg)
     if subject and subject ~= '' then text = ('%s: %s'):format(clean(subject), text) end
-    exports['ai-core']:Notify({ title = sender and clean(sender) or nil, text = text, kind = 'info' })
+    exports['ai-lib']:Notify({ title = sender and clean(sender) or nil, text = text, kind = 'info' })
 end
 
 ---@param msg string

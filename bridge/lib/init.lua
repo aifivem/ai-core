@@ -92,6 +92,8 @@ end
 ---@field requestPtfxAsset fun(asset: string, timeout?: integer): string? client
 ---@field onClientCallback fun(name: string, handler: (fun(source: integer, ...: any): any), options?: AiLibClientInputOptions) server
 ---@field triggerClientCallback fun(name: string, source: integer, args?: any[], timeout?: integer): (any), (string?) server
+---@field progressFor fun(source: integer, options: table): boolean server: ai-lib's progress bar on the player's client, timed by the server (waits)
+---@field minigameFor fun(source: integer, options: table): string server: ai-lib's minigame on the player's client ('won' | 'lost' | 'broken', waits)
 ---@field addCommand fun(name: string|string[], options: table, handler: (fun(source: integer, args: table, raw: string))) server
 ---@field spawnVehicle fun(options: AiLibSpawnVehicleOptions): integer? server
 ---@field playersNear fun(source: integer, radius: number): integer[] server

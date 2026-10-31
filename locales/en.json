@@ -368,7 +368,6 @@
   "ADMIN_H_START": "What a new character has in this account.",
   "ADMIN_F_NEGATIVE": "Can go below zero",
   "ADMIN_H_NEGATIVE": "On: spending is allowed with an empty account (debt).",
-  "KEYBIND_INTERACT": "Interact with the prompt on screen",
   "ADMIN_TAB_KEYBINDS": "Keybinds",
   "ADMIN_TAB_KEYBINDS_DESC": "The key every script's action starts on; players can still change theirs in GTA settings.",
   "ADMIN_C_KEYBIND": "Keybind",
@@ -586,7 +585,6 @@
   "ADMIN_PLAYERS_ERR_INVENTORY": "The inventory could not be opened.",
   "BRIDGE_CONFIRM": "Confirm",
   "BRIDGE_INPUT_NOT_ALLOWED": "That input is not allowed.",
-  "KEYBIND_CANCEL_PROGRESS": "Cancel the running action",
   "ADMIN_C_SPAWN_CHOICE": "Choose where to appear",
   "ADMIN_C_SPAWN_CHOICE_DESC": "After picking a character the player chooses the last location or one of these points.",
   "ADMIN_F_SPAWN_CHOOSE": "Let players choose",
@@ -597,10 +595,5 @@
   "ADMIN_P_SPAWN_LABEL": "Legion Square",
   "SPAWN_CHOOSE_TITLE": "Where do you want to appear?",
   "SPAWN_LAST_LOCATION": "Last location",
-  "ADMIN_UPDATE_OPEN": "View release",
-  "MINIGAME_MOVE": "Move the pick",
-  "MINIGAME_TURN": "Turn the lock",
-  "MINIGAME_PRESS": "Press on the green",
-  "MINIGAME_CANCEL": "Give up",
-  "MINIGAME_PICKS": "Picks"
+  "ADMIN_UPDATE_OPEN": "View release"
 }

@@ -17,26 +17,11 @@ export const NuiMessage = {
   adminRecommendation: "adminRecommendation",
   /** data: PlayersDelta (`adminPlayers.ts`), a change on the open Players screen. */
   adminPlayers: "adminPlayers",
-  /** data: { key, text, button }, a prompt appears (or its text changes) on the right. */
-  promptShow: "promptShow",
-  /** data: key */
-  promptHide: "promptHide",
-  /** data: Notification */
-  notify: "notify",
-  /** data: { label, duration }, the progress bar starts. */
-  progressShow: "progressShow",
-  progressHide: "progressHide",
-  /** data: MenuRequest */
-  menuOpen: "menuOpen",
-  /** data: InputRequest */
-  inputOpen: "inputOpen",
   /** data: { binds: KeyboardBind[], texts }, the keys screen opens. */
   keyboardOpen: "keyboardOpen",
   keyboardClose: "keyboardClose",
   /** data: { title, items: PickerItem[] } */
   itemsOpen: "itemsOpen",
-  /** data: MinigameRequest & { texts }, a skill check or lockpick starts (answered with `dialogAnswer`). */
-  minigameOpen: "minigameOpen",
   dialogClose: "dialogClose",
   /** data: SetupWelcome & { texts }, the setup guide is not finished: the welcome card shows. */
   setupWelcome: "setupWelcome",
@@ -74,12 +59,8 @@ export const NuiCallback = {
   adminZoneDraw: "adminZoneDraw",
   /** (data: { command }) -> true: closes ai-core's panel and runs another script's panel command. */
   adminRunCommand: "adminRunCommand",
-  /** ({ value }) -> true, the menu pick (item id) or input values; null when closed. */
+  /** ({ value }) -> true, the item picker's list; null when closed. */
   dialogAnswer: "dialogAnswer",
-  /** ({ id }) -> true, the pointer or focus moved onto a menu item. */
-  dialogHover: "dialogHover",
-  /** ({ id, checked }) -> true, a switch row of the menu was flipped (the menu stays open). */
-  dialogToggle: "dialogToggle",
   /** () -> true, the keys screen closed. */
   keyboardClose: "keyboardClose",
   /** ({ openPanel: boolean }) -> true, the welcome card closed (an admin may open the panel from it). */

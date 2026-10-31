@@ -1,15 +1,15 @@
 -- ai-core's framework bridge, client UI: the framework menus, text prompts and progress bars of ESX and QB drawn by
--- ai-core's own menu / input dialog, prompts and progress bar (no NUI of the bridge's own). The frameworks' menus
--- stack (a sub menu over its parent) while ai-core shows one dialog at a time: the bridge keeps the stack and shows
+-- ai-lib's shared menu / input dialog, prompts and progress bar (no NUI of the bridge's own). The frameworks' menus
+-- stack (a sub menu over its parent) while ai-lib shows one dialog at a time: the bridge keeps the stack and shows
 -- its top; a menu that stays open after a pick is shown again.
 
 local RESOURCE = GetCurrentResourceName()
-local core = exports['ai-core']
+local ui = exports['ai-lib']
 
 ---@class BridgeDialog
 ---@field kind 'menu'|'input'
 ---@field owner string the resource that opened it (closed silently when that resource stops)
----@field build fun(): table the ai-core `MenuRequest` / `InputRequest`, built when it is shown
+---@field build fun(): table the ai-lib `MenuRequest` / `InputRequest`, built when it is shown
 ---@field answer fun(value: any) the picked item id / the input values; nil when the player closed it
 
 ---@class BridgeUI
@@ -34,14 +34,14 @@ function BridgeUI.call(fn, ...)
     return ok and result or nil
 end
 
---- Framework text made plain for ai-core's UI: HTML tags and GTA colour codes (`~r~`) removed.
+--- Framework text made plain for ai-lib's UI: HTML tags and GTA colour codes (`~r~`) removed.
 ---@param text any
 ---@return string
 function BridgeUI.clean(text)
     return aiLib.stripGameText(text)
 end
 
---- A Font Awesome class list (`fas fa-scroll`) as ai-core's icon name (`scroll`); nil without one.
+--- A Font Awesome class list (`fas fa-scroll`) as ai-lib's menu icon name (`scroll`); nil without one.
 ---@param icon any
 ---@return string|nil
 function BridgeUI.icon(icon)
@@ -67,7 +67,7 @@ end
 local stack = {}
 ---@type { dialog: BridgeDialog, id: integer }|nil
 local shown = nil
--- Request ids far above ai-core's own lib menus (they answer on the same events with the same resource name).
+-- Request ids far above the ai-core resource's own lib menus (they answer on the same events with the same resource name).
 local nextId = 0x40000000
 
 local function render()
@@ -76,13 +76,13 @@ local function render()
     if not top then
         if shown then
             shown = nil
-            core:CloseDialog()
+            ui:CloseDialog()
         end
         return
     end
     nextId = nextId + 1
     shown = { dialog = top, id = nextId }
-    if top.kind == 'menu' then core:OpenMenu(nextId, top.build()) else core:OpenInput(nextId, top.build()) end
+    if top.kind == 'menu' then ui:OpenMenu(nextId, top.build()) else ui:OpenInput(nextId, top.build()) end
 end
 
 ---@param dialog BridgeDialog
@@ -137,8 +137,8 @@ local function onResult(owner, id, value)
         if not shown and not IsNuiFocused() then render() end
     end)
 end
-AddEventHandler('ai-core:client:menuResult', onResult)
-AddEventHandler('ai-core:client:inputResult', onResult)
+AddEventHandler('ai-lib:client:menuResult', onResult)
+AddEventHandler('ai-lib:client:inputResult', onResult)
 
 -- Text prompts -------------------------------------------------------------------------------------------------------
 
@@ -153,24 +153,24 @@ local promptHandlers = {}
 ---@param owner string
 function BridgeUI.showText(id, text, owner)
     promptOwners[id] = owner
-    core:ShowPrompt('bridge:' .. id, BridgeUI.clean(text))
+    ui:ShowPrompt('bridge:' .. id, BridgeUI.clean(text))
 end
 
 ---@param id string
 function BridgeUI.hideText(id)
     if not promptOwners[id] then return end
     promptOwners[id] = nil
-    core:HidePrompt('bridge:' .. id)
+    ui:HidePrompt('bridge:' .. id)
 end
 
---- Runs `fn` when the player presses ai-core's interaction key while the bridge's prompt `id` is on top.
+--- Runs `fn` when the player presses ai-lib's interaction key while the bridge's prompt `id` is on top.
 ---@param id string
 ---@param fn fun()
 function BridgeUI.onPrompt(id, fn)
     promptHandlers[id] = fn
 end
 
-AddEventHandler('ai-core:client:promptPressed', function(owner, id)
+AddEventHandler('ai-lib:client:promptPressed', function(owner, id)
     if owner ~= RESOURCE or type(id) ~= 'string' then return end
     local handler = promptHandlers[id:match('^bridge:(.+)$') or '']
     if handler then handler() end
@@ -193,8 +193,8 @@ end)
 ---@type { options: BridgeProgressOptions, silent: boolean }|nil
 local running = nil
 
---- Runs a timed action with ai-lib's progress (ai-core's bar; the frameworks' progress bars); false while one runs.
---- The cancel key is ai-core's (`aicore_cancel_progress`), the same one every resource's progress uses.
+--- Runs a timed action with ai-lib's progress (its bar; the frameworks' progress bars); false while one runs.
+--- The cancel key is ai-lib's (`aicore_cancel_progress`), the same one every resource's progress uses.
 ---@param options BridgeProgressOptions
 ---@return boolean
 function BridgeUI.progress(options)
@@ -240,7 +240,7 @@ AddEventHandler('onClientResourceStop', function(resource)
     end
     if shown and shown.dialog.owner == resource then
         shown = nil
-        core:CloseDialog()
+        ui:CloseDialog()
     end
     render()
     for id, owner in pairs(promptOwners) do

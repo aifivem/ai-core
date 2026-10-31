@@ -13,13 +13,13 @@ local function answer(owner, id, value)
     listening[id] = nil
     entry:resolve(value)
 end
-AddEventHandler('ai-core:client:menuResult', answer)
-AddEventHandler('ai-core:client:inputResult', answer)
-AddEventHandler('ai-core:client:menuHover', function(owner, id, item)
+AddEventHandler('ai-lib:client:menuResult', answer)
+AddEventHandler('ai-lib:client:inputResult', answer)
+AddEventHandler('ai-lib:client:menuHover', function(owner, id, item)
     local l = owner == resource and listening[id]
     if l and l.onHover then l.onHover(item) end
 end)
-AddEventHandler('ai-core:client:menuToggle', function(owner, id, item, checked)
+AddEventHandler('ai-lib:client:menuToggle', function(owner, id, item, checked)
     local l = owner == resource and listening[id]
     if l and l.onToggle then l.onToggle(item, checked) end
 end)
@@ -57,7 +57,7 @@ local menu = {}
 ---@param listeners? AiLibMenuListeners
 ---@return string?
 function menu.show(request, listeners)
-    local picked = ask(function(id) exports['ai-core']:OpenMenu(id, request) end, listeners)
+    local picked = ask(function(id) exports['ai-lib']:OpenMenu(id, request) end, listeners)
     return type(picked) == 'string' and picked or nil
 end
 
@@ -66,7 +66,7 @@ end
 ---@param request { title: string, confirm: string, fields: table[] }
 ---@return table<string, string|number>?
 function menu.input(request)
-    local values = ask(function(id) exports['ai-core']:OpenInput(id, request) end)
+    local values = ask(function(id) exports['ai-lib']:OpenInput(id, request) end)
     return type(values) == 'table' and values or nil
 end
 
@@ -113,7 +113,7 @@ function menu.skillCheck(difficulty, keys)
     end
     if #keyList == 0 then keyList = { 'e' } end
     local ok = ask(function(id)
-        exports['ai-core']:OpenMinigame(id, { kind = 'skillCheck', stages = stages, keys = keyList })
+        exports['ai-lib']:OpenMinigame(id, { kind = 'skillCheck', stages = stages, keys = keyList })
     end)
     return ok == true
 end
@@ -125,7 +125,7 @@ end
 function menu.lockpick(options)
     options = options or {}
     local result = ask(function(id)
-        exports['ai-core']:OpenMinigame(id, {
+        exports['ai-lib']:OpenMinigame(id, {
             kind = 'lockpick',
             pins = math.min(6, math.max(1, math.floor(options.pins or 1))),
             area = LOCKPICK_AREAS[options.difficulty or 'medium'] or LOCKPICK_AREAS.medium,
