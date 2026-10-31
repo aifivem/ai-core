@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/aifivem/ai-core/compare/v0.2.0...v0.3.0) (2026-10-31)
+
+
+### New Features
+
+* **player:** save ped health with the character and set it again at spawn ([488991a](https://github.com/aifivem/ai-core/commit/488991a00b60b59b0c9cb0e4371c3dab432acc33))
+* **stress:** RefillNeeds fills hunger and thirst through the active HUD ([e06d94c](https://github.com/aifivem/ai-core/commit/e06d94c86700ac4a63660283aa297fc8066c7fb8))
+* **vrp:** present as vRP 1, 2 and 3 (provide vrp, v1 API, v2/v3 extension sandbox, menus on ai-lib, panel permission mapping) ([87cfb76](https://github.com/aifivem/ai-core/commit/87cfb76a732c71d573288fcf685a5ec41c92718f))
+
+
+### Bug Fixes
+
+* **inventory:** no version warning for ai-inventory after its own releases ([8d03efc](https://github.com/aifivem/ai-core/commit/8d03efc997c6e90af24752b8ca299ed24f23fc4d))
+
 ## [0.2.0](https://github.com/aifivem/ai-core/compare/v0.1.0...v0.2.0) (2026-10-31)
 
 
