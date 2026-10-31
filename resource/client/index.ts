@@ -1,6 +1,6 @@
 import { onServerEvent } from "@aicore-fivem/lib/client";
 import { createLogger, waitFor } from "@aicore-fivem/lib/shared";
-import { CORE } from "@aicore-fivem/shared";
+import { CORE, NUI_LAYER } from "@aicore-fivem/shared";
 import "./definitions";
 import "./keybinds";
 import "./keyHints";
@@ -25,6 +25,9 @@ import "./setup";
 import "./spawnChoice";
 import { openCharacters } from "./characters";
 import { announceUnloaded } from "./playerState";
+
+// Stacking among NUI pages (`NUI_LAYER`): set at start, not left to load order.
+SetNuiZindex(NUI_LAYER.screen);
 
 const log = createLogger("ai-core");
 
