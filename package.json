@@ -10,7 +10,8 @@
   "repository": "github:TGIANN/ai-core",
   "type": "module",
   "fxDependencies": [
-    "/onesync"
+    "/onesync",
+    "/server:38039"
   ],
   "scripts": {
     "lint": "oxlint --ignore-pattern \"dist/**\" --ignore-pattern \"web/postcss-*.js\"",

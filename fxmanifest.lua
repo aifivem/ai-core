@@ -38,6 +38,7 @@ ui_page 'dist/web/index.html'
 
 dependencies {
 	'/onesync',
+	'/server:38039',
 }
 
 files {
