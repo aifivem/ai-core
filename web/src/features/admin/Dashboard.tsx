@@ -19,6 +19,7 @@ import { KIND_KEYS } from "./GlobalSearch";
 import { buildIndex, search } from "./searchIndex";
 import { iconOf } from "./icons";
 import { Recommendations } from "./Recommendations";
+import { openRecommendationPage } from "./recommendationActions";
 
 const text = (
   panel: AdminPanelSnapshot,
@@ -113,9 +114,20 @@ function Updates({
             <span className="rounded-full bg-tgi-green-15 px-[0.9vh] py-[0.3vh] text-[1.15vh] font-semibold text-tgi-green tabular-nums">
               {t("ADMIN_UPDATE_TO", u.current, u.latest)}
             </span>
-            <span className="min-w-0 flex-1 truncate text-right font-mono text-[1.15vh] text-text-3 select-text">
-              {u.url}
-            </span>
+            <span className="min-w-0 flex-1" />
+            <button
+              type="button"
+              title={u.url}
+              onClick={() => openRecommendationPage(u.url)}
+              className="flex h-[3vh] shrink-0 items-center gap-[0.6vh] rounded-full bg-control px-[1.2vh] text-[1.2vh] font-medium text-text-2 transition-colors duration-150 hover:bg-control-hover hover:text-text"
+            >
+              <FontAwesomeIcon
+                icon={faArrowUpRightFromSquare}
+                className="text-[1vh]"
+                aria-hidden
+              />
+              {t("ADMIN_UPDATE_OPEN")}
+            </button>
           </div>
         ))}
       </div>
@@ -145,13 +157,13 @@ function ExternalCard({
       <div className="flex min-w-0 flex-1 flex-col gap-[0.4vh]">
         <span
           title={panel.label}
-          className="truncate text-[1.6vh] leading-[1.3] font-semibold"
+          className="line-clamp-2 text-[1.6vh] leading-[1.3] font-semibold"
         >
           {panel.label}
         </span>
         <span
           title={panel.description ?? panel.resource}
-          className="truncate text-[1.2vh] text-text-3"
+          className="line-clamp-2 text-[1.2vh] leading-[1.5] text-text-3"
         >
           {panel.description ?? panel.resource}
         </span>

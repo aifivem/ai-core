@@ -596,5 +596,6 @@
   "ADMIN_F_SPAWN_LABEL": "Name",
   "ADMIN_P_SPAWN_LABEL": "Legion Square",
   "SPAWN_CHOOSE_TITLE": "Where do you want to appear?",
-  "SPAWN_LAST_LOCATION": "Last location"
+  "SPAWN_LAST_LOCATION": "Last location",
+  "ADMIN_UPDATE_OPEN": "View release"
 }
