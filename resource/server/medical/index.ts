@@ -22,7 +22,7 @@ import { wasabiAmbulanceV2 } from "./adapters/wasabi_ambulance_v2";
  * Every supported death / ambulance script in detection order: the first running one answers. ai-death comes first
  * because it `provide`s qbx_medical. A new death script = one adapter file and one line here.
  */
-const MEDICAL_SYSTEMS: readonly MedicalAdapter[] = [
+export const MEDICAL_SYSTEMS: readonly MedicalAdapter[] = [
   aiDeath,
   qbxMedical,
   arsAmbulance,

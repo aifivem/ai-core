@@ -19,7 +19,9 @@ const oxImage: ImageOf = (name, image) =>
 /**
  * ox_inventory (modules/inventory/server.lua, server.lua, modules/items/server.lua of 2.48.1). `AddItem` /
  * `RemoveItem` answer `success, response`. Usable items: ox_inventory calls the framework (`ESX.UseItem`,
- * Qbox `CanUseItem`), which ai-core's bridge answers.
+ * Qbox `CanUseItem`), which ai-core's bridge answers. Shops (modules/shops/server.lua): `RegisterShop(type, { name,
+ * inventory })` without locations; its server cannot force a shop open, its client net event
+ * `ox_inventory:openInventory ('shop', { type })` opens one.
  */
 
 const RESOURCE = "ox_inventory";
@@ -73,5 +75,16 @@ export const oxInventory: InventoryAdapter = {
       typeof inv.maxWeight === "number"
       ? { weight: inv.weight, maxWeight: inv.maxWeight }
       : null;
+  },
+  registerShop: (shop) =>
+    void call("RegisterShop", shop.name, {
+      name: shop.label,
+      inventory: shop.items.map((p) => ({ name: p.name, price: p.price })),
+    }),
+  openShop: (source, name) => {
+    TriggerClientEvent("ox_inventory:openInventory", source, "shop", {
+      type: name,
+    });
+    return true;
   },
 };

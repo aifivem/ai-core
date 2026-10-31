@@ -76,7 +76,13 @@ function readFinite(value) {
 function readInt(value, min, max) {
 	return Number.isInteger(value) && value >= min && value <= max ? value : null;
 }
-const readId = (value) => readInt(value, 1, 2147483647), oneArg = (read) => ([value]) => {
+const readId = (value) => readInt(value, 1, 2147483647);
+function readText(value, max) {
+	if (typeof value != "string") return null;
+	let text = value.trim();
+	return text ? text.slice(0, max) : null;
+}
+const oneArg = (read) => ([value]) => {
 	let parsed = read(value);
 	return parsed === null ? null : [parsed];
 };
@@ -114,8 +120,11 @@ function readVec4(value) {
 		heading
 	};
 }
-// ../../../packages/lib/src/shared/vec.ts
-const flatDistance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), normalizePlate = (plate) => plate.trim().toUpperCase(), isPublic = (rule) => rule.jobs.length === 0 && rule.gangs.length === 0, isObject = (value) => typeof value == "object" && !!value && !Array.isArray(value);
+// ../../../packages/lib/src/shared/action.ts
+const fail$1 = (error) => ({
+	ok: !1,
+	error
+}), flatDistance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), normalizePlate = (plate) => plate.trim().toUpperCase(), isPublic = (rule) => rule.jobs.length === 0 && rule.gangs.length === 0, isObject = (value) => typeof value == "object" && !!value && !Array.isArray(value);
 function readRecords(raw, readOne) {
 	let out = new Map();
 	if (!isObject(raw)) return out;
@@ -314,6 +323,12 @@ const CORE = {
 	pvpStateKey: "ai:pvp",
 	medicalStateKey: "ai:medical",
 	clientDeadEvent: "ai-core:client:dead",
+	mdtStateKey: "ai:mdt",
+	billsEvent: "ai-core:client:bills",
+	payBillCallback: "ai-core:payBill",
+	clientSeatbeltEvent: "ai-core:client:seatbelt",
+	stressRelayEvent: "ai-core:client:stress",
+	notifyStateKey: "ai:notify",
 	charactersCallback: "ai-core:characters",
 	createCharacterCallback: "ai-core:createCharacter",
 	deleteCharacterCallback: "ai-core:deleteCharacter",
@@ -373,15 +388,15 @@ const KEY_PURPOSES = [
 function toKeyPurpose(value) {
 	return KEY_PURPOSES.find((p) => p === value) ?? "temporary";
 }
-const text$13 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, finite$1 = (v) => typeof v == "number" && Number.isFinite(v), obj = (v) => typeof v == "object" && v && !Array.isArray(v) ? v : null;
+const text$14 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, finite$1 = (v) => typeof v == "number" && Number.isFinite(v), obj = (v) => typeof v == "object" && v && !Array.isArray(v) ? v : null;
 function toDispatchAlert(value) {
-	let v = obj(value), title = text$13(v?.title, 80);
+	let v = obj(value), title = text$14(v?.title, 80);
 	if (!v || !title) return null;
 	let c = obj(v.coords), b = obj(v.blip), jobs = Array.isArray(v.jobs) ? v.jobs.filter((j) => typeof j == "string" && j.length <= 32).slice(0, 10) : [];
 	return {
-		code: text$13(v.code, 12),
+		code: text$14(v.code, 12),
 		title,
-		message: text$13(v.message, 160),
+		message: text$14(v.message, 160),
 		coords: c && finite$1(c.x) && finite$1(c.y) && finite$1(c.z) ? {
 			x: c.x,
 			y: c.y,
@@ -395,9 +410,67 @@ function toDispatchAlert(value) {
 			scale: finite$1(b.scale) ? Math.min(3, Math.max(.1, b.scale)) : void 0
 		} : void 0,
 		duration: finite$1(v.duration) ? Math.min(3600, Math.max(1, Math.round(v.duration))) : void 0,
-		icon: text$13(v.icon, 40),
+		icon: text$14(v.icon, 40),
 		priority: v.priority === "high" ? "high" : "normal"
 	};
+}
+// ../../../packages/shared/src/billing.ts
+const text$13 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, id$2 = (v) => typeof v == "number" && Number.isInteger(v) && v > 0 ? v : void 0;
+function toBillRequest(value) {
+	if (typeof value != "object" || !value || Array.isArray(value)) return null;
+	let v = value, to = id$2(v.to), label = text$13(v.label, 80), amount = v.amount;
+	if (to === void 0 || !label || typeof amount != "number" || !Number.isSafeInteger(amount) || amount < 1 || amount > 1e7) return null;
+	let from = id$2(v.from), job = typeof v.job == "string" && /^[a-z0-9_]{2,32}$/.test(v.job) ? v.job : void 0;
+	return job === void 0 && from === void 0 || from === to ? null : {
+		to,
+		amount,
+		label,
+		from,
+		job
+	};
+}
+// ../../../packages/shared/src/mdt.ts
+const KINDS = [
+	"fine",
+	"warrant",
+	"arrest",
+	"jail"
+], id$1 = (v) => typeof v == "number" && Number.isInteger(v) && v > 0 ? v : void 0, whole$1 = (v, max) => typeof v == "number" && Number.isSafeInteger(v) && v > 0 && v <= max ? v : void 0;
+function toMdtRecord(value) {
+	if (typeof value != "object" || !value || Array.isArray(value)) return null;
+	let v = value, target = id$1(v.target), title = typeof v.title == "string" && v.title.trim() ? v.title.trim().slice(0, 120) : void 0;
+	return !KINDS.includes(String(v.kind)) || target === void 0 || !title ? null : {
+		kind: v.kind,
+		target,
+		by: id$1(v.by),
+		title,
+		amount: whole$1(v.amount, 1e7),
+		minutes: whole$1(v.minutes, 1e5)
+	};
+}
+// ../../../packages/shared/src/ems.ts
+function toDistressCall(value) {
+	if (typeof value != "object" || !value || Array.isArray(value)) return null;
+	let v = value, jobs = Array.isArray(v.jobs) ? v.jobs.filter((j) => typeof j == "string" && j.length <= 32).slice(0, 10) : [];
+	return jobs.length ? {
+		jobs,
+		message: typeof v.message == "string" && v.message.trim() ? v.message.trim().slice(0, 160) : void 0
+	} : null;
+}
+function toGaragedVehicles(raw) {
+	if (!Array.isArray(raw)) return null;
+	let list = [];
+	for (let v of raw) {
+		if (typeof v != "object" || !v) continue;
+		let r = v;
+		typeof r.plate == "string" && list.push({
+			plate: r.plate,
+			model: typeof r.model == "string" ? r.model : null,
+			garage: typeof r.garage == "string" ? r.garage : null,
+			impounded: r.impounded === !0
+		});
+	}
+	return list;
 }
 // ../../../packages/shared/src/admin.ts
 const ADMIN = {
@@ -411,6 +484,12 @@ const ADMIN = {
 	recommendationEvent: "ai-core:admin:recommendation",
 	worldEvent: (resource) => `${resource}:admin:world`,
 	worldChangesCallback: (resource) => `${resource}:admin:worldChanges`
+}, VEHICLE_BAGS = {
+	owned: "ai:owned",
+	id: "ai:vid",
+	props: "ai:props",
+	setup: "ai:setup",
+	fuel: "fuel"
 }, WEATHERS = [
 	"EXTRASUNNY",
 	"CLEAR",
@@ -445,7 +524,8 @@ const LIB_UI = {
 	progressForCallback: "ai-lib:progressFor",
 	progressForCancelEvent: "ai-lib:client:progressForCancel",
 	minigameForCallback: "ai-lib:minigameFor",
-	zoneEvent: "ai-lib:client:zone"
+	zoneEvent: "ai-lib:client:zone",
+	modelPointEvent: "ai-lib:client:modelPoint"
 }, named = new Set();
 function registerExport(name, handler) {
 	named.add(name), globalThis.exports(name, handler);
@@ -498,7 +578,7 @@ function entityCoords(entity) {
 		z
 	};
 }
-const coordsOf = (source) => entityCoords(GetPlayerPed(String(source))), core$18 = resourceExport(CORE.resource), log$10 = createLogger(GetCurrentResourceName()), isAdmin = (ace = ADMIN.ace) => (source) => !!IsPlayerAceAllowed(String(source), ace) || `not allowed (${ace})`, hasCharacter = () => (source) => core$18.GetCharacter(source) !== null || "no character loaded", gates = new Set();
+const coordsOf = (source) => entityCoords(GetPlayerPed(String(source))), core$26 = resourceExport(CORE.resource), log$10 = createLogger(GetCurrentResourceName()), isAdmin = (ace = ADMIN.ace) => (source) => !!IsPlayerAceAllowed(String(source), ace) || `not allowed (${ace})`, hasCharacter = () => (source) => core$26.GetCharacter(source) !== null || "no character loaded", gates = new Set();
 on("playerDropped", () => {
 	let source = Number(globalThis.source);
 	for (let gate of gates) gate.release(source);
@@ -606,7 +686,7 @@ function toPatch(value) {
 		default: return null;
 	}
 }
-const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$17 = resourceExport(CORE.resource), ERR = {
+const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$25 = resourceExport(CORE.resource), ERR = {
 	type: "ADMIN_ERR_TYPE",
 	range: "ADMIN_ERR_RANGE",
 	length: "ADMIN_ERR_LENGTH",
@@ -620,7 +700,7 @@ const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(va
 		if (cached && Date.now() - cached.at < 2e3) return cached.values.size > 0 ? cached.values : null;
 		let list = [];
 		try {
-			list = core$17.GetLookupValues(source);
+			list = core$25.GetLookupValues(source);
 		} catch {}
 		let values = new Set(Array.isArray(list) ? list.filter((v) => typeof v == "string") : []);
 		return this.lists.set(source, {
@@ -885,7 +965,7 @@ function writeSchema(resource, name, text, log) {
 	(0, node_fs_promises.mkdir)(dir, { recursive: !0 }).then(() => (0, node_fs_promises.writeFile)(`${dir}/${name}.schema.json`, text, "utf8")).catch((error) => log.error(`writing ${resource}/${path} failed`, error));
 }
 // ../../../packages/lib/src/server/admin/panel.ts
-const core$16 = resourceExport(CORE.resource);
+const core$24 = resourceExport(CORE.resource);
 var AdminPanel = class {
 	schema;
 	data = new Map();
@@ -904,7 +984,7 @@ var AdminPanel = class {
 		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelData", () => this.dataSnapshot()), registerExport("AdminPanelSummary", () => this.summary()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges), { rate: {
 			count: 4,
 			windowMs: 1e4
-		} }), setImmediate(() => core$16.RegisterAdminPanel(this.resource));
+		} }), setImmediate(() => core$24.RegisterAdminPanel(this.resource));
 	}
 	get(file) {
 		return this.data.get(file) ?? {};
@@ -1018,7 +1098,7 @@ var AdminPanel = class {
 		let spec = this.schema.files[file], data = this.get(file), value = key === void 0 ? data : data[key] ?? null;
 		this.dataFiles.get(file)?.write(data), this.views.changed(file, key, value);
 		for (let handler of this.handlers.get(file) ?? []) handler(key, value);
-		if (core$16.AdminPanelChanged({
+		if (core$24.AdminPanelChanged({
 			resource: this.resource,
 			file,
 			key,
@@ -1059,7 +1139,7 @@ function notify(source, text, kind = "info", duration) {
 }
 resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/online.ts
-const core$14 = resourceExport(CORE.resource);
+const core$22 = resourceExport(CORE.resource);
 function reindex(index, source, before, after) {
 	for (let name of before) {
 		let set = index.get(name);
@@ -1087,11 +1167,11 @@ var OnlinePlayers = class {
 				gangs: [],
 				gangNames: [],
 				duty: null
-			}), this.setJobs(source, core$14.GetJobs(source) ?? []), this.setGangs(source, core$14.GetGangs(source) ?? []), this.setDuty(source, core$14.GetDutyJob(source));
+			}), this.setJobs(source, core$22.GetJobs(source) ?? []), this.setGangs(source, core$22.GetGangs(source) ?? []), this.setDuty(source, core$22.GetDutyJob(source));
 		};
 		on(CORE.playerLoadedEvent, load), on(CORE.playerUnloadedEvent, (source) => this.drop(source)), on(CORE.jobsChangedEvent, (source, jobs) => this.setJobs(source, jobs)), on(CORE.gangsChangedEvent, (source, gangs) => this.setGangs(source, gangs)), on(CORE.dutyChangedEvent, (source, job) => this.setDuty(source, job));
-		for (let source of core$14.GetLoadedSources()) {
-			let character = core$14.GetCharacter(source);
+		for (let source of core$22.GetLoadedSources()) {
+			let character = core$22.GetCharacter(source);
 			character && load(source, character);
 		}
 	}
@@ -1188,7 +1268,23 @@ var OnlinePlayers = class {
 	}
 };
 const EMPTY$1 = new Set();
-new OnlinePlayers(), resourceExport(CORE.resource), resourceExport(CORE.resource), createLogger(GetCurrentResourceName());
+new OnlinePlayers(), resourceExport(CORE.resource), resourceExport(CORE.resource);
+// ../../../packages/lib/src/server/vehicle.ts
+function entityFromNet(netId, type) {
+	if (readId(netId) === null) return 0;
+	let entity = NetworkGetEntityFromNetworkId(netId);
+	return !entity || !DoesEntityExist(entity) ? 0 : type === void 0 || GetEntityType(entity) === type ? entity : 0;
+}
+const vehicleFromNet = (netId) => entityFromNet(netId, 2);
+function vehicleNearPlayer(source, netId, options = {}) {
+	let vehicle = vehicleFromNet(netId);
+	if (!vehicle) return 0;
+	let ped = GetPlayerPed(String(source));
+	if (options.driver) return GetPedInVehicleSeat(vehicle, -1) === ped ? vehicle : 0;
+	let [px = 0, py = 0, pz = 0] = GetEntityCoords(ped), [vx = 0, vy = 0, vz = 0] = GetEntityCoords(vehicle);
+	return Math.hypot(vx - px, vy - py, vz - pz) <= (options.metres ?? 5) ? vehicle : 0;
+}
+resourceExport(CORE.resource), createLogger(GetCurrentResourceName());
 const dropped = new Set();
 let listening$2 = !1;
 function onDropped(fn) {
@@ -1235,7 +1331,7 @@ on(CORE.playerUnloadedEvent, (source) => {
 	settle && settle(!1);
 });
 // ../../../packages/lib/src/server/definitions.ts
-const core$11 = resourceExport("ai-core");
+const core$18 = resourceExport("ai-core");
 new class {
 	jobs = new Map();
 	gangs = new Map();
@@ -1246,11 +1342,11 @@ new class {
 	}
 	job(name) {
 		let def = this.jobs.get(name);
-		return def === void 0 && this.jobs.set(name, def = core$11.GetJobDefinition(name) ?? null), def;
+		return def === void 0 && this.jobs.set(name, def = core$18.GetJobDefinition(name) ?? null), def;
 	}
 	gang(name) {
 		let def = this.gangs.get(name);
-		return def === void 0 && this.gangs.set(name, def = core$11.GetGangDefinition(name) ?? null), def;
+		return def === void 0 && this.gangs.set(name, def = core$18.GetGangDefinition(name) ?? null), def;
 	}
 }();
 // ../../../packages/lib/src/server/command.ts
@@ -16049,7 +16145,7 @@ var GlobalGroup$1 = class extends Mirror {
 		GlobalState.set(this.prefix + id, value ?? null, !0), this.put(id, value);
 	}
 };
-resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource);
+resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/index.ts
 function isOnline(source) {
 	return !!GetPlayerName(String(source));
@@ -16797,7 +16893,60 @@ const hourField = (path, label) => ({
 			])]
 		}
 	]
-}, RECOMMENDATIONS_SECTION = {
+}, LAYERS$1 = [
+	{
+		key: "billing",
+		icon: "file-invoice-dollar",
+		name: "BILLING"
+	},
+	{
+		key: "banking",
+		icon: "building-columns",
+		name: "BANKING"
+	},
+	{
+		key: "mdt",
+		icon: "tablet-screen-button",
+		name: "MDT"
+	},
+	{
+		key: "ems",
+		icon: "kit-medical",
+		name: "EMS"
+	}
+], servicesSections = (choices) => Object.fromEntries(LAYERS$1.map(({ key }) => [key, {
+	type: "enum",
+	values: ["auto", ...choices[key] ?? []]
+}])), SERVICES_DEFAULTS = {
+	billing: "auto",
+	banking: "auto",
+	mdt: "auto",
+	ems: "auto"
+}, servicesCards = (choices) => LAYERS$1.map(({ key, icon, name }) => ({
+	icon,
+	title: `ADMIN_C_${name}`,
+	desc: `ADMIN_C_${name}_DESC`,
+	fields: [{
+		widget: "select",
+		path: key,
+		label: `ADMIN_F_${name}`,
+		hint: `ADMIN_H_${name}`,
+		options: [{
+			value: "auto",
+			label: "ADMIN_O_INVENTORY_AUTO"
+		}, ...(choices[key] ?? []).map((value) => ({
+			value,
+			label: value
+		}))]
+	}]
+})), NOTIFY_SYSTEMS = [
+	{ resource: LIB_UI.resource },
+	{ resource: "tgiann-lumihud" },
+	{ resource: "okokNotify" },
+	{ resource: "ox_lib" },
+	{ resource: "mythic_notify" },
+	{ resource: "brutal_notify" }
+], RECOMMENDATIONS_SECTION = {
 	type: "object",
 	fields: { dismissed: {
 		type: "names",
@@ -16870,7 +17019,7 @@ const hourField = (path, label) => ({
 		label: "ADMIN_F_BOSS"
 	}
 ];
-function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = [], clothingSystems = []) {
+function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = [], clothingSystems = [], fuelSystems = [], doorSystems = [], garageSystems = [], services = {}) {
 	let accountOptions = accounts.map((value) => ({
 		value,
 		label: value
@@ -16975,6 +17124,23 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 						type: "enum",
 						values: ["auto", ...clothingSystems]
 					},
+					...servicesSections(services),
+					fuel: {
+						type: "enum",
+						values: ["auto", ...fuelSystems]
+					},
+					doorlock: {
+						type: "enum",
+						values: ["auto", ...doorSystems]
+					},
+					garages: {
+						type: "enum",
+						values: ["auto", ...garageSystems]
+					},
+					notify: {
+						type: "enum",
+						values: NOTIFY_SYSTEMS.map((s) => s.resource)
+					},
 					interaction: {
 						type: "enum",
 						values: ["prompt", "target"]
@@ -17030,6 +17196,11 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 					vehicleKeys: "auto",
 					dispatch: "auto",
 					appearance: "auto",
+					...SERVICES_DEFAULTS,
+					fuel: "auto",
+					doorlock: "auto",
+					garages: "auto",
+					notify: "ai-lib",
 					interaction: "prompt",
 					pvp: !0,
 					refuseOnConflict: !0,
@@ -17364,6 +17535,76 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 								value,
 								label: value
 							}))]
+						}]
+					},
+					...servicesCards(services),
+					{
+						icon: "gas-pump",
+						title: "ADMIN_C_FUEL",
+						desc: "ADMIN_C_FUEL_DESC",
+						fields: [{
+							widget: "select",
+							path: "fuel",
+							label: "ADMIN_F_FUEL",
+							hint: "ADMIN_H_FUEL",
+							options: [{
+								value: "auto",
+								label: "ADMIN_O_INVENTORY_AUTO"
+							}, ...fuelSystems.map((value) => ({
+								value,
+								label: value
+							}))]
+						}]
+					},
+					{
+						icon: "door-closed",
+						title: "ADMIN_C_DOORLOCK",
+						desc: "ADMIN_C_DOORLOCK_DESC",
+						fields: [{
+							widget: "select",
+							path: "doorlock",
+							label: "ADMIN_F_DOORLOCK",
+							hint: "ADMIN_H_DOORLOCK",
+							options: [{
+								value: "auto",
+								label: "ADMIN_O_INVENTORY_AUTO"
+							}, ...doorSystems.map((value) => ({
+								value,
+								label: value
+							}))]
+						}]
+					},
+					{
+						icon: "warehouse",
+						title: "ADMIN_C_GARAGES",
+						desc: "ADMIN_C_GARAGES_DESC",
+						fields: [{
+							widget: "select",
+							path: "garages",
+							label: "ADMIN_F_GARAGES",
+							hint: "ADMIN_H_GARAGES",
+							options: [{
+								value: "auto",
+								label: "ADMIN_O_INVENTORY_AUTO"
+							}, ...garageSystems.map((value) => ({
+								value,
+								label: value
+							}))]
+						}]
+					},
+					{
+						icon: "bell",
+						title: "ADMIN_C_NOTIFY",
+						desc: "ADMIN_C_NOTIFY_DESC",
+						fields: [{
+							widget: "select",
+							path: "notify",
+							label: "ADMIN_F_NOTIFY",
+							hint: "ADMIN_H_NOTIFY",
+							options: NOTIFY_SYSTEMS.map(({ resource }) => ({
+								value: resource,
+								label: resource
+							}))
 						}]
 					},
 					{
@@ -17895,8 +18136,8 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 	};
 }
 // resource/server/inventory/parse.ts
-const first = (value) => Array.isArray(value) ? value[0] : value, isTrue = (value) => first(value) === !0, number = (value, fallback = 0) => {
-	let v = first(value);
+const first$1 = (value) => Array.isArray(value) ? value[0] : value, isTrue = (value) => first$1(value) === !0, number = (value, fallback = 0) => {
+	let v = first$1(value);
 	return typeof v == "number" && Number.isFinite(v) ? v : fallback;
 }, text$11 = (value, fallback) => typeof value == "string" ? value : fallback, metadata = (value) => isRecord(value) ? { ...value } : {};
 function rows(value) {
@@ -17941,8 +18182,8 @@ function definitions(raw, imageOf) {
 	return out;
 }
 // resource/server/inventory/adapters/ai-inventory.ts
-const RESOURCE$17 = "ai-inventory", inv$1 = resourceExport(RESOURCE$17), imageOf = (_name, image) => image ? `nui://${RESOURCE$17}/dist/web/images/${image}` : void 0, aiInventory = {
-	resource: RESOURCE$17,
+const RESOURCE$26 = "ai-inventory", inv$1 = resourceExport(RESOURCE$26), imageOf = (_name, image) => image ? `nui://${RESOURCE$26}/dist/web/images/${image}` : void 0, aiInventory = {
+	resource: RESOURCE$26,
 	version: "0.1.0",
 	addItem: (ref, item, count, metadata, slot) => inv$1.AddItem(ref, item, count, metadata, slot) === !0,
 	removeItem: (ref, item, count, metadata, slot) => inv$1.RemoveItem(ref, item, count, metadata, slot) === !0,
@@ -17964,14 +18205,16 @@ const RESOURCE$17 = "ai-inventory", inv$1 = resourceExport(RESOURCE$17), imageOf
 			maxWeight: w.maxWeight
 		} : null;
 	},
-	registerUsableItem: (name, handler) => inv$1.RegisterUsableItem(name, handler)
+	registerUsableItem: (name, handler) => inv$1.RegisterUsableItem(name, handler),
+	registerShop: (shop) => inv$1.RegisterShop(shop.name, shop.label, shop.items),
+	openShop: (source, name) => inv$1.OpenShop(source, name) === !0
 };
 on("ai-inventory:usedItem", (source, name, _slot, _metadata, status) => {
 	emit(CORE.itemUsedEvent, source, name, isRecord(status) ? status : null);
 });
 // resource/server/inventory/adapters/codem-inventory.ts
-const RESOURCE$16 = "codem-inventory", call$7 = (name, ...args) => callExport(RESOURCE$16, name, ...args), codemImage = (name, image) => `nui://${RESOURCE$16}/html/itemimages/${image || `${name}.png`}`, stacksOf$4 = (ref) => rows(typeof ref == "number" ? call$7("GetInventory", players.get(ref)?.citizenid, ref) : call$7("GetStashItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []), codemInventory = {
-	resource: RESOURCE$16,
+const RESOURCE$25 = "codem-inventory", call$7 = (name, ...args) => callExport(RESOURCE$25, name, ...args), codemImage = (name, image) => `nui://${RESOURCE$25}/html/itemimages/${image || `${name}.png`}`, stacksOf$4 = (ref) => rows(typeof ref == "number" ? call$7("GetInventory", players.get(ref)?.citizenid, ref) : call$7("GetStashItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []), codemInventory = {
+	resource: RESOURCE$25,
 	version: "",
 	addItem: (ref, item, count, metadata, slot) => typeof ref == "number" && isTrue(call$7("AddItem", ref, item, count, slot, metadata)),
 	removeItem: (ref, item, count, _metadata, slot) => typeof ref == "number" && isTrue(call$7("RemoveItem", ref, item, count, slot)),
@@ -17986,7 +18229,7 @@ const RESOURCE$16 = "codem-inventory", call$7 = (name, ...args) => callExport(RE
 		return isRecord(list) ? definition(list[name], name, codemImage) : null;
 	},
 	getItemDefinitions: () => definitions(call$7("GetItemList"), codemImage)
-}, RESOURCE$15 = "core_inventory", call$6 = (name, ...args) => callExport(RESOURCE$15, name, ...args), inv = (ref) => typeof ref == "number" ? ref : `stash-${ref}`, labels = new Map();
+}, RESOURCE$24 = "core_inventory", call$6 = (name, ...args) => callExport(RESOURCE$24, name, ...args), inv = (ref) => typeof ref == "number" ? ref : `stash-${ref}`, labels = new Map();
 function stacksOf$3(ref) {
 	let data = call$6("getInventory", inv(ref)), content = isRecord(data) ? data.content : void 0;
 	return (Array.isArray(content) ? content.map((row, i) => [String(i + 1), row]) : isRecord(content) ? Object.entries(content) : []).flatMap(([slot, row]) => isRecord(row) ? stack({
@@ -17995,7 +18238,7 @@ function stacksOf$3(ref) {
 	}, (name) => name) ?? [] : []);
 }
 const coreInventory = {
-	resource: RESOURCE$15,
+	resource: RESOURCE$24,
 	version: "",
 	addItem: (ref, item, count, metadata) => isTrue(call$6("addItem", inv(ref), item, count, metadata)),
 	removeItem: (ref, item, count) => isTrue(call$6("removeItem", inv(ref), item, count)),
@@ -18010,11 +18253,11 @@ const coreInventory = {
 		return isRecord(list) ? definition(list[name], name) : null;
 	},
 	getItemDefinitions: () => definitions(call$6("getItemsList"))
-}, RESOURCE$14 = "jaksam_inventory", call$5 = (name, ...args) => callExport(RESOURCE$14, name, ...args), item$1 = (raw, name) => isRecord(raw) ? definition({
+}, RESOURCE$23 = "jaksam_inventory", call$5 = (name, ...args) => callExport(RESOURCE$23, name, ...args), item$1 = (raw, name) => isRecord(raw) ? definition({
 	...raw,
 	stack: raw.stackable !== !1
 }, name) : null, jaksamInventory = {
-	resource: RESOURCE$14,
+	resource: RESOURCE$23,
 	version: "",
 	addItem: (ref, name, count, metadata, slot) => isTrue(call$5("addItem", ref, name, count, metadata, slot)),
 	removeItem: (ref, name, count, metadata, slot) => isTrue(call$5("removeItem", ref, name, count, metadata, slot)),
@@ -18041,8 +18284,8 @@ const coreInventory = {
 		}
 		return out;
 	}
-}, RESOURCE$13 = "origen_inventory", call$4 = (name, ...args) => callExport(RESOURCE$13, name, ...args), stacksOf$2 = (ref) => rows(call$4("getInventoryItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []), origenInventory = {
-	resource: RESOURCE$13,
+}, RESOURCE$22 = "origen_inventory", call$4 = (name, ...args) => callExport(RESOURCE$22, name, ...args), stacksOf$2 = (ref) => rows(call$4("getInventoryItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []), origenInventory = {
+	resource: RESOURCE$22,
 	version: "",
 	addItem: (ref, item, count, metadata, slot) => isTrue(call$4("addItem", ref, item, count, metadata, slot)),
 	removeItem: (ref, item, count, metadata, slot) => isTrue(call$4("removeItem", ref, item, count, metadata, slot)),
@@ -18056,8 +18299,8 @@ const coreInventory = {
 	openInventory: () => !1,
 	getItemDefinition: (name) => definition(call$4("Items", name), name),
 	getItemDefinitions: () => definitions(call$4("Items"))
-}, oxImage = (name, image) => `nui://ox_inventory/web/images/${image || `${name}.png`}`, RESOURCE$12 = "ox_inventory", call$3 = (name, ...args) => callExport(RESOURCE$12, name, ...args), oxInventory = {
-	resource: RESOURCE$12,
+}, oxImage = (name, image) => `nui://ox_inventory/web/images/${image || `${name}.png`}`, RESOURCE$21 = "ox_inventory", call$3 = (name, ...args) => callExport(RESOURCE$21, name, ...args), oxInventory = {
+	resource: RESOURCE$21,
 	version: "2.48.1",
 	addItem: (ref, item, count, metadata, slot) => isTrue(call$3("AddItem", ref, item, count, metadata, slot)),
 	removeItem: (ref, item, count, metadata, slot) => isTrue(call$3("RemoveItem", ref, item, count, metadata, slot)),
@@ -18066,17 +18309,25 @@ const coreInventory = {
 	getItems: (ref) => rows(call$3("GetInventoryItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []),
 	clearInventory: (ref) => void call$3("ClearInventory", ref),
 	registerStash: (stash) => void call$3("RegisterStash", stash.name, stash.label, stash.slots, stash.maxWeight, void 0, stash.jobs.length ? Object.fromEntries(stash.jobs.map((job) => [job, 0])) : void 0),
-	openInventory: (source, ref) => first(call$3("forceOpenInventory", source, typeof ref == "number" ? "player" : "stash", ref)) != null,
+	openInventory: (source, ref) => first$1(call$3("forceOpenInventory", source, typeof ref == "number" ? "player" : "stash", ref)) != null,
 	getItemDefinition: (name) => definition(call$3("Items", name), name, oxImage),
 	getItemDefinitions: () => definitions(call$3("Items"), oxImage),
 	getWeight: (source) => {
-		let inv = first(call$3("GetInventory", source));
+		let inv = first$1(call$3("GetInventory", source));
 		return isRecord(inv) && typeof inv.weight == "number" && typeof inv.maxWeight == "number" ? {
 			weight: inv.weight,
 			maxWeight: inv.maxWeight
 		} : null;
-	}
-}, RESOURCE$11 = "qb-inventory", call$2 = (name, ...args) => callExport(RESOURCE$11, name, ...args);
+	},
+	registerShop: (shop) => void call$3("RegisterShop", shop.name, {
+		name: shop.label,
+		inventory: shop.items.map((p) => ({
+			name: p.name,
+			price: p.price
+		}))
+	}),
+	openShop: (source, name) => (TriggerClientEvent("ox_inventory:openInventory", source, "shop", { type: name }), !0)
+}, RESOURCE$20 = "qb-inventory", call$2 = (name, ...args) => callExport(RESOURCE$20, name, ...args);
 function itemsOf$1(ref) {
 	if (typeof ref == "string") {
 		let inventory = call$2("GetInventory", ref);
@@ -18086,7 +18337,7 @@ function itemsOf$1(ref) {
 	return isRecord(player) && isRecord(player.PlayerData) ? player.PlayerData.items : void 0;
 }
 const stacksOf$1 = (ref) => rows(itemsOf$1(ref)).flatMap((row) => stack(row, (name) => name) ?? []), qbInventory = {
-	resource: RESOURCE$11,
+	resource: RESOURCE$20,
 	version: "2.2.3",
 	addItem: (ref, item, count, metadata, slot) => isTrue(call$2("AddItem", ref, item, count, slot, metadata)),
 	removeItem: (ref, item, count, _metadata, slot) => isTrue(call$2("RemoveItem", ref, item, count, slot)),
@@ -18102,8 +18353,8 @@ const stacksOf$1 = (ref) => rows(itemsOf$1(ref)).flatMap((row) => stack(row, (na
 	openInventory: (source, ref) => (call$2(typeof ref == "number" ? "OpenInventoryById" : "OpenInventory", source, ref), !0),
 	getItemDefinition: () => null,
 	getItemDefinitions: () => ({})
-}, RESOURCE$10 = "qs-inventory", call$1 = (name, ...args) => callExport(RESOURCE$10, name, ...args), qsImage = (name, image) => `nui://${RESOURCE$10}/html/images/${image || `${name}.png`}`, stashes = new Map(), stashId = (name) => `Stash_${name}`, notRefused = (value) => first(value) !== !1, stacksOf = (ref) => rows(typeof ref == "number" ? call$1("GetInventory", ref) : call$1("GetStashItems", stashId(ref))).flatMap((row) => stack(row, (name) => name) ?? []), qsInventory = {
-	resource: RESOURCE$10,
+}, RESOURCE$19 = "qs-inventory", call$1 = (name, ...args) => callExport(RESOURCE$19, name, ...args), qsImage = (name, image) => `nui://${RESOURCE$19}/html/images/${image || `${name}.png`}`, stashes = new Map(), stashId = (name) => `Stash_${name}`, notRefused = (value) => first$1(value) !== !1, stacksOf = (ref) => rows(typeof ref == "number" ? call$1("GetInventory", ref) : call$1("GetStashItems", stashId(ref))).flatMap((row) => stack(row, (name) => name) ?? []), qsInventory = {
+	resource: RESOURCE$19,
 	version: "",
 	addItem: (ref, item, count, metadata, slot) => {
 		if (typeof ref == "number") return isTrue(call$1("AddItem", ref, item, count, slot, metadata));
@@ -18126,7 +18377,7 @@ const stacksOf$1 = (ref) => rows(itemsOf$1(ref)).flatMap((row) => stack(row, (na
 		return isRecord(list) ? definition(list[name], name, qsImage) : null;
 	},
 	getItemDefinitions: () => definitions(call$1("GetItemList"), qsImage)
-}, RESOURCE$9 = "tgiann-inventory", call = (name, ...args) => callExport(RESOURCE$9, name, ...args);
+}, RESOURCE$18 = "tgiann-inventory", call = (name, ...args) => callExport(RESOURCE$18, name, ...args);
 function item(name) {
 	try {
 		return call("Items", name);
@@ -18137,7 +18388,7 @@ function item(name) {
 const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetInventoryItems", ref), INVENTORIES = [
 	aiInventory,
 	{
-		resource: RESOURCE$9,
+		resource: RESOURCE$18,
 		version: "2.4.1",
 		addItem: (ref, name, count, metadata, slot) => isTrue(call("AddItem", ref, name, count, slot, metadata)),
 		removeItem: (ref, name, count, metadata, slot) => isTrue(call("RemoveItem", ref, name, count, slot, metadata)),
@@ -18156,12 +18407,18 @@ const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetIn
 		getItemDefinition: (name) => definition(item(name), name),
 		getItemDefinitions: () => definitions(call("Items")),
 		getWeight: (source) => {
-			let data = first(call("GetPlayerInventoryData", source));
+			let data = first$1(call("GetPlayerInventoryData", source));
 			return !isRecord(data) || typeof data.maxWeight != "number" ? null : {
 				weight: data.maxWeight - number(call("GetFreeWeight", source)),
 				maxWeight: data.maxWeight
 			};
-		}
+		},
+		registerShop: (shop) => void call("RegisterShop", shop.name, shop.items.map((p) => ({
+			name: p.name,
+			price: p.price,
+			type: "item"
+		})), { label: shop.label }),
+		openShop: (source, name) => (call("OpenShop", source, name), !0)
 	},
 	oxInventory,
 	qbInventory,
@@ -18289,8 +18546,9 @@ const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetIn
 		icon: "fa-circle-info",
 		info: a.message
 	}] : [], a.coords, a.jobs ?? ["police"], (a.duration ?? 5) * 1e3, a.blip?.sprite ?? 156, a.blip?.color ?? 1, a.priority === "high")
-}, lbTablet = {
+}, lbTablet$1 = {
 	resource: "lb-tablet",
+	besideOurs: !0,
 	alert: (a) => callExport("lb-tablet", "AddDispatch", {
 		priority: a.priority === "high" ? "high" : "medium",
 		code: a.code ?? "",
@@ -18379,9 +18637,9 @@ const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetIn
 			} : void 0
 		});
 	}
-}, RESOURCE$8 = "tgiann-policealert", DISPATCH_SYSTEMS = [
+}, RESOURCE$17 = "tgiann-policealert", DISPATCH_SYSTEMS = [
 	{
-		resource: RESOURCE$8,
+		resource: RESOURCE$17,
 		version: "2.10.0",
 		answersPoliceAlert: !0,
 		alert: (a) => {
@@ -18398,12 +18656,12 @@ const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetIn
 				bgAnimate: a.priority === "high",
 				blip: a.blip?.sprite
 			};
-			a.source === void 0 ? callExport(RESOURCE$8, "SendCustomAlert", {
+			a.source === void 0 ? callExport(RESOURCE$17, "SendCustomAlert", {
 				...common,
 				duration: a.duration ?? 5,
 				sound: { active: !0 },
 				information: { custom }
-			}, jobs) : callExport(RESOURCE$8, "Alert", a.source, {
+			}, jobs) : callExport(RESOURCE$17, "Alert", a.source, {
 				...common,
 				jobs,
 				custom
@@ -18415,9 +18673,10 @@ const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetIn
 	rcoreDispatch,
 	coreDispatch,
 	lindenOutlawAlert,
-	lbTablet,
+	lbTablet$1,
 	{
 		resource: "wasabi_mdt",
+		besideOurs: !0,
 		alert: (a) => callExport("wasabi_mdt", "CreateDispatch", {
 			title: a.title,
 			description: a.message,
@@ -18507,7 +18766,7 @@ const blAppearance = {
 			data: JSON.parse(row.skin)
 		} : null;
 	}
-}, RESOURCE$7 = "rcore_clothing", APPEARANCE_SYSTEMS = [
+}, RESOURCE$16 = "rcore_clothing", APPEARANCE_SYSTEMS = [
 	{
 		resource: "tgiann-clothing",
 		version: "4.1.0",
@@ -18527,12 +18786,12 @@ const blAppearance = {
 	qbClothing,
 	crmAppearance,
 	{
-		resource: RESOURCE$7,
+		resource: RESOURCE$16,
 		version: "",
 		load: async (charId) => {
 			let citizenid = await citizenidOf(charId);
 			if (!citizenid) return null;
-			let found = callExport(RESOURCE$7, "getSkinByIdentifier", citizenid);
+			let found = callExport(RESOURCE$16, "getSkinByIdentifier", citizenid);
 			if (!isRecord(found) || found.skin == null) return null;
 			let model = modelOf(found.ped_model);
 			return model === null ? null : {
@@ -18543,7 +18802,322 @@ const blAppearance = {
 	},
 	blAppearance,
 	aiAppearance
-];
+], fuelBag = new EntityState(VEHICLE_BAGS.fuel, stateNumber), pendingBag = new EntityState("ai:fuelSet", stateNumber), bagFuel = (resource, version) => ({
+	resource,
+	...version ? { version } : {},
+	get: (vehicle) => fuelBag.get(vehicle) ?? null,
+	set: (vehicle, level) => fuelBag.set(vehicle, level)
+}), aiFuel = bagFuel("ai-fuel"), clientFuel = (resource, version) => ({
+	resource,
+	...version ? { version } : {},
+	mirrored: !0,
+	get: (vehicle) => fuelBag.get(vehicle) ?? null,
+	set: (vehicle, level) => {
+		fuelBag.set(vehicle, level), pendingBag.set(vehicle, level);
+	}
+}), FUEL_SYSTEMS = [
+	aiFuel,
+	bagFuel("ox_fuel", "1.5.4"),
+	{
+		resource: "Renewed-Fuel",
+		get: (vehicle) => fuelBag.get(vehicle) ?? null,
+		set: (vehicle, level) => void callExport("Renewed-Fuel", "SetFuel", vehicle, level)
+	},
+	{
+		resource: "codem-xfuelv2",
+		get: (vehicle) => fuelBag.get(vehicle) ?? null,
+		set: (vehicle, level) => void callExport("codem-xfuelv2", "SetFuel", vehicle, level)
+	},
+	...[
+		["LegacyFuel", "1.3"],
+		["cdn-fuel", "2.1.9"],
+		["ps-fuel", "1.0.2"],
+		["lc_fuel", "1.2.4"],
+		["okokGasStation"],
+		["x-fuel"],
+		["qs-fuelstations"]
+	].map(([resource, version]) => clientFuel(resource, version))
+], doors = resourceExport("ai-doorlock"), aiDoorlock = {
+	resource: "ai-doorlock",
+	setLocked: (id, locked) => (doors.SetDoorState(id, locked), !0),
+	isLocked: (id) => doors.IsLocked(id) === !0
+};
+// resource/server/doorlock/adapters/carrier.ts
+function carrier(by) {
+	if (by !== null && players.get(by)) return by;
+	for (let player of players.all()) return player.source;
+	return null;
+}
+// resource/server/doorlock/adapters/cd_doorlock.ts
+const cdDoorlock = {
+	resource: "cd_doorlock",
+	setLocked: (id, locked, by) => {
+		let source = carrier(by);
+		return source !== null && (emitNet("cd_doorlock:SetDoorState_uniqueid", source, locked, id), !0);
+	},
+	isLocked: () => null
+};
+// resource/server/doorlock/adapters/ox_doorlock.ts
+function door(id) {
+	let raw = /^\d+$/.test(id) ? callExport("ox_doorlock", "getDoor", Number(id)) : callExport("ox_doorlock", "getDoorFromName", id);
+	return isRecord(raw) && typeof raw.id == "number" ? {
+		id: raw.id,
+		locked: raw.state === 1
+	} : null;
+}
+// resource/server/doorlock/registry.ts
+const DOORLOCK_SYSTEMS = [
+	aiDoorlock,
+	{
+		resource: "tgiann-doorlock",
+		version: "3.2.2",
+		setLocked: (id, locked) => callExport("tgiann-doorlock", "SetDoorLocked", id, locked) === !0,
+		isLocked: (id) => {
+			let state = callExport("tgiann-doorlock", "GetDoorLocked", id);
+			return typeof state == "boolean" ? state : null;
+		}
+	},
+	{
+		resource: "ox_doorlock",
+		version: "1.23.0",
+		setLocked: (id, locked) => {
+			let found = door(id);
+			return found !== null && callExport("ox_doorlock", "setDoorState", found.id, +!!locked) === !0;
+		},
+		isLocked: (id) => door(id)?.locked ?? null
+	},
+	{
+		resource: "qb-doorlock",
+		version: "2.0.0",
+		setLocked: (id, locked, by) => {
+			let source = carrier(by);
+			return source !== null && (emit("qb-doorlock:server:updateState", id, locked, !1, !1, !0, !1, !1, source), !0);
+		},
+		isLocked: () => null
+	},
+	cdDoorlock,
+	{
+		resource: "rcore_doorlock",
+		setLocked: (id, locked) => callExport("rcore_doorlock", "changeDoorState", id, +!!locked) === !0,
+		isLocked: () => null
+	}
+], garages$1 = resourceExport("ai-garages"), aiGarages = {
+	resource: "ai-garages",
+	impound: (vehicle) => garages$1.ImpoundVehicle(vehicle) === !0,
+	store: (vehicle, _plate, garage) => garage !== null && garages$1.StoreVehicle(vehicle, garage) === !0,
+	stored: (source) => Promise.resolve(toGaragedVehicles(garages$1.GetStoredVehicles(source)))
+};
+// resource/server/garages/adapters/client.ts
+function clientGarage(resource, actions) {
+	let send = (source, action, vehicle, garage) => emitNet("ai-core:client:garages", source, action, vehicle ? NetworkGetNetworkIdFromEntity(vehicle) : null, garage);
+	return {
+		resource,
+		...actions.open && { open: (source, garage) => (send(source, "open", 0, garage), !0) },
+		...actions.store && { store: (vehicle, _plate, garage, by) => by !== null && (send(by, "store", vehicle, garage), !0) },
+		...actions.impound && { impound: (vehicle, _plate, by) => by !== null && (send(by, "impound", vehicle, null), !0) }
+	};
+}
+// resource/server/garages/adapters/tgiann-garage.ts
+const tgiannGarage = {
+	resource: "tgiann-garage",
+	open: (source) => (emitNet("tgiann-garage:open", source), !0)
+}, RESOURCE$15 = "tgiann-realparking";
+function row(v) {
+	if (!isRecord(v) || typeof v.plate != "string" || v.state === "out") return null;
+	let props = isRecord(v.properties) ? v.properties : {};
+	return {
+		plate: v.plate,
+		model: typeof props.model == "string" ? props.model : null,
+		garage: typeof v.garageKey == "string" ? v.garageKey : null,
+		impounded: v.state === "impounded"
+	};
+}
+// resource/server/garages/registry.ts
+const GARAGE_SYSTEMS = [
+	aiGarages,
+	{
+		resource: RESOURCE$15,
+		version: "2.14.0",
+		impound: (_vehicle, plate) => {
+			let answer = callExport(RESOURCE$15, "ImpoundVehicle", plate, { deleteVehicle: !0 });
+			return (Array.isArray(answer) ? answer[0] : answer) === !0;
+		},
+		stored: async (source) => {
+			let citizenid = players.get(source)?.citizenid;
+			if (citizenid === void 0) return null;
+			let rows = await callExport(RESOURCE$15, "GetPlayerVehicleDetails", citizenid);
+			return Array.isArray(rows) ? rows.flatMap((v) => {
+				let vehicle = row(v);
+				return vehicle ? [vehicle] : [];
+			}) : null;
+		}
+	},
+	tgiannGarage,
+	clientGarage("jg-advancedgarages", {
+		open: !0,
+		store: !0,
+		impound: !0
+	}),
+	clientGarage("cd_garage", { impound: !0 })
+], first = (raw) => Array.isArray(raw) ? raw[0] : raw;
+function accepted(resource, raw) {
+	return raw instanceof Promise ? (raw.then((value) => {
+		first(value) || log$3.warn(`${resource} refused a bill`);
+	}, (error) => log$3.error(`${resource} bill failed`, error)), !0) : !!first(raw);
+}
+function listOf(raw, read, done) {
+	let answer = (value) => {
+		let rows = first(value);
+		done(Array.isArray(rows) ? read(rows) : null);
+	};
+	raw instanceof Promise ? raw.then(answer, (error) => {
+		log$3.error("reading bills failed", error), done(null);
+	}) : answer(raw);
+}
+// resource/server/billing/adapters/codem-billing.ts
+const RESOURCE$14 = "codem-billing", codemBilling = {
+	resource: RESOURCE$14,
+	send: (b) => b.job !== void 0 && b.from !== void 0 && accepted(RESOURCE$14, callExport(RESOURCE$14, "createBilling", b.from, b.to, b.amount, b.label, b.job))
+}, RESOURCE$13 = "esx_billing", esxBilling = {
+	resource: RESOURCE$13,
+	version: "1.0",
+	send: (b) => accepted(RESOURCE$13, callExport(RESOURCE$13, "BillPlayer", b.to, b.fromCitizenid ?? "server", b.job ? `society_${b.job}` : b.fromCitizenid, b.label, b.amount))
+}, RESOURCE$12 = "okokBilling", okokBilling = {
+	resource: RESOURCE$12,
+	send: (b) => accepted(RESOURCE$12, callExport(RESOURCE$12, "CreateInvoice", b.to, b.amount, b.label, b.job ?? b.from)),
+	unpaid: (source, _citizenid, done) => listOf(callExport(RESOURCE$12, "getInvoices", source), (rows) => rows.flatMap((r) => isRecord(r) && r.status !== "paid" && typeof r.amount == "number" ? [{
+		id: String(r.ref_id ?? r.id),
+		label: String(r.reason ?? ""),
+		amount: r.amount + (typeof r.fees == "number" ? r.fees : 0),
+		sender: String(r.sender ?? "")
+	}] : []), done),
+	pay: (source, id) => first(callExport(RESOURCE$12, "payReference", source, id)) !== !1
+}, RESOURCE$11 = "qs-billing", qsBilling = {
+	resource: RESOURCE$11,
+	send: (b) => b.job !== void 0 && accepted(RESOURCE$11, callExport(RESOURCE$11, "ServerCreateInvoice", b.to, b.label, b.label, b.amount, !0, !1, !1, !1, b.job))
+}, RESOURCE$10 = "tgiann-phone", tgiannPhoneBilling = {
+	resource: RESOURCE$10,
+	version: "2.0.0-b8",
+	send: (b) => {
+		let sender = b.job ? {
+			type: "job",
+			id: b.job,
+			label: b.jobLabel ?? b.job
+		} : {
+			type: "player",
+			id: b.fromCitizenid,
+			label: b.fromName
+		};
+		return sender.id ? accepted(RESOURCE$10, callExport(RESOURCE$10, "CreateInvoice", {
+			sender,
+			issuer: b.from,
+			target: {
+				kind: "source",
+				value: b.to
+			},
+			items: [{
+				label: b.label,
+				price: b.amount,
+				quantity: 1
+			}],
+			vat: !1
+		})) : !1;
+	},
+	unpaid: (_source, citizenid, done) => listOf(callExport(RESOURCE$10, "GetUnpaidInvoices", citizenid), (rows) => rows.flatMap((r) => isRecord(r) && typeof r.amount == "number" ? [{
+		id: String(r.ref ?? r.id),
+		label: String(r.label ?? ""),
+		amount: r.amount,
+		sender: String(r.sender ?? "")
+	}] : []), done)
+}, RESOURCE$9 = "wasabi_billing", BILLING_SCRIPTS = [
+	tgiannPhoneBilling,
+	okokBilling,
+	{
+		resource: RESOURCE$9,
+		send: (b) => b.from !== void 0 && accepted(RESOURCE$9, callExport(RESOURCE$9, "CreateInvoice", b.from, b.toCitizenid, b.amount, b.label, b.job ? "society" : "personal", "personal")),
+		pay: (source, id) => first(callExport(RESOURCE$9, "PayInvoiceByReference", source, id)) === !0
+	},
+	codemBilling,
+	qsBilling,
+	esxBilling
+], BILLING_CHOICES = [...BILLING_SCRIPTS.map((a) => a.resource), "ai-core"], aiBanking = {
+	resource: "ai-banking",
+	societyBalance: () => null
+};
+// resource/server/banking/answer.ts
+function balanceOf(raw) {
+	let value = Array.isArray(raw) ? raw[0] : raw;
+	return typeof value == "number" && Number.isFinite(value) ? value : null;
+}
+// resource/server/banking/adapters/balanceOnly.ts
+function balanceReader(resource, exportName, extra = [], version) {
+	return {
+		resource,
+		version,
+		societyBalance: (job) => balanceOf(callExport(resource, exportName, job, ...extra))
+	};
+}
+const qbBanking = balanceReader("qb-banking", "GetAccountBalance", [], "2.0.0"), okokBanking = balanceReader("okokBanking", "GetAccount"), fdBanking = balanceReader("fd_banking", "GetAccount"), wasabiBanking = balanceReader("wasabi_banking", "GetAccountBalance", ["society"]), kartikBanking = balanceReader("kartik-banking", "GetAccountMoney"), tggBanking = balanceReader("tgg-banking", "GetSocietyAccountMoney"), renewedBanking = {
+	resource: "Renewed-Banking",
+	version: "2.1.4",
+	societyBalance: (job) => balanceOf(callExport("Renewed-Banking", "getAccountMoney", job)),
+	open: (source) => (emitNet("Renewed-Banking:client:openBankUI", source, { atm: !1 }), !0)
+}, RESOURCE$8 = "tgiann-bank";
+function ibanOf(job) {
+	let raw = callExport(RESOURCE$8, "GetJobIbanFromName", job);
+	return typeof raw == "string" && raw ? raw : null;
+}
+// resource/server/banking/registry.ts
+const BANKING_SYSTEMS = [
+	aiBanking,
+	{
+		resource: RESOURCE$8,
+		version: "2.9.1",
+		societyBalance: (job) => ibanOf(job) === null ? null : balanceOf(callExport(RESOURCE$8, "GetJobAccountBalance", job)),
+		watchDeposits: (names, deposited) => {
+			let jobs = new Map();
+			for (let job of names) {
+				let iban = ibanOf(job);
+				iban && jobs.set(iban, job);
+			}
+			callExport(RESOURCE$8, "RemoveHooks"), jobs.size && callExport(RESOURCE$8, "RegisterHook", "balanceChanged", (payload) => {
+				if (!isRecord(payload) || typeof payload.delta != "number") return;
+				let job = typeof payload.iban == "string" ? jobs.get(payload.iban) : void 0;
+				job && payload.delta > 0 && deposited(job, Math.floor(payload.delta));
+			}, { ibanFilter: Object.fromEntries([...jobs.keys()].map((i) => [i, !0])) });
+		},
+		take: (job, amount) => balanceOf(callExport(RESOURCE$8, "RemoveJobMoney", job, amount)) !== null
+	},
+	renewedBanking,
+	qbBanking,
+	okokBanking,
+	fdBanking,
+	wasabiBanking,
+	kartikBanking,
+	tggBanking
+], RESOURCE$7 = "lb-tablet", lbTablet = {
+	resource: RESOURCE$7,
+	record: (e) => {
+		if (e.kind !== "jail" || e.minutes === void 0) return !1;
+		let answer = callExport(RESOURCE$7, "LogMDTJailed", "police", e.targetCitizenid, e.byCitizenid, e.title, e.minutes * 60);
+		return answer instanceof Promise || answer !== !1 && answer != null;
+	}
+}, openOnly = (resource) => ({ resource }), MDT_SYSTEMS = [
+	openOnly("tgiann-mdt"),
+	lbTablet,
+	openOnly("ps-mdt"),
+	openOnly("wasabi_mdt")
+], EMS_SCRIPTS = [{
+	resource: "tgiann-policealert",
+	version: "2.10.0",
+	available: (jobs) => {
+		let raw = callExport("tgiann-policealert", "GetAvailablePersonalCount", [...jobs]);
+		return typeof raw == "number" && raw > 0 ? raw : 0;
+	}
+}, {
+	resource: "wasabi_ambulance_v2",
+	distress: (source) => (callExport("wasabi_ambulance_v2", "addToDistress", source), !0)
+}], EMS_CHOICES = [...EMS_SCRIPTS.map((a) => a.resource), "ai-core"];
 // resource/server/content/index.ts
 function readUpdates(u) {
 	let ignore = Array.isArray(u.ignore) ? u.ignore : [];
@@ -18588,6 +19162,14 @@ function readSettings(raw) {
 		vehicleKeys: str(s.vehicleKeys, "auto", 32),
 		dispatch: str(s.dispatch, "auto", 32),
 		appearance: str(s.appearance, "auto", 32),
+		billing: str(s.billing, "auto", 32),
+		banking: str(s.banking, "auto", 32),
+		mdt: str(s.mdt, "auto", 32),
+		ems: str(s.ems, "auto", 32),
+		fuel: str(s.fuel, "auto", 32),
+		doorlock: str(s.doorlock, "auto", 32),
+		garages: str(s.garages, "auto", 32),
+		notify: str(s.notify, "ai-lib", 32),
 		interaction: s.interaction === "target" ? "target" : "prompt",
 		pvp: bool$1(s.pvp, !0),
 		refuseOnConflict: bool$1(s.refuseOnConflict, !0),
@@ -18654,7 +19236,12 @@ function follow(file, target, read) {
 		key !== void 0 && (value === null ? target.delete(key) : ID_PATTERN.test(key) && target.set(key, read(record(value))));
 	});
 }
-const panel = new AdminPanel(coreSchema(Object.keys(record(new DataFile(ResourceName, "accounts", log$3).read())), INVENTORIES.map((adapter) => adapter.resource), KEY_SYSTEMS.map((adapter) => adapter.resource), DISPATCH_SYSTEMS.map((adapter) => adapter.resource), APPEARANCE_SYSTEMS.map((adapter) => adapter.resource))), settings = readSettings(panel.get("settings"));
+const panel = new AdminPanel(coreSchema(Object.keys(record(new DataFile(ResourceName, "accounts", log$3).read())), INVENTORIES.map((adapter) => adapter.resource), KEY_SYSTEMS.map((adapter) => adapter.resource), DISPATCH_SYSTEMS.map((adapter) => adapter.resource), APPEARANCE_SYSTEMS.map((adapter) => adapter.resource), FUEL_SYSTEMS.map((adapter) => adapter.resource), DOORLOCK_SYSTEMS.map((adapter) => adapter.resource), GARAGE_SYSTEMS.map((adapter) => adapter.resource), {
+	billing: BILLING_CHOICES,
+	banking: BANKING_SYSTEMS.map((adapter) => adapter.resource),
+	mdt: MDT_SYSTEMS.map((adapter) => adapter.resource),
+	ems: EMS_CHOICES
+})), settings = readSettings(panel.get("settings"));
 panel.onChange("settings", (_key, value) => Object.assign(settings, readSettings(value)));
 const accountTypes = entries(panel.get("accounts"), readAccount), jobs = entries(panel.get("jobs"), readJob), gangs = entries(panel.get("gangs"), readGang);
 follow("accounts", accountTypes, readAccount), follow("jobs", jobs, readJob), follow("gangs", gangs, readGang);
@@ -19023,6 +19610,7 @@ var InventoryLayer = class {
 	log;
 	usable = new Map();
 	stashes = new Map();
+	shops = new Map();
 	picker;
 	constructor(adapters, choice, log, announce) {
 		this.log = log, this.picker = new AdapterPicker({
@@ -19045,6 +19633,12 @@ var InventoryLayer = class {
 	registerStash(stash) {
 		this.stashes.set(stash.name, stash), this.call("RegisterStash", (a) => a.registerStash(stash), void 0);
 	}
+	registerShop(shop) {
+		this.shops.set(shop.name, shop), this.call("RegisterShop", (a) => a.registerShop?.(shop), void 0);
+	}
+	openShop(source, name) {
+		return this.shops.has(name) ? this.call("OpenShop", (a) => a.openShop?.(source, name) ?? !1, !1) : !1;
+	}
 	registerUsableItem(name, handler) {
 		this.usable.set(name, handler), this.call("RegisterUsableItem", (a) => a.registerUsableItem?.(name, this.dispatcher(name)), void 0);
 	}
@@ -19062,6 +19656,7 @@ var InventoryLayer = class {
 	}
 	handOver() {
 		for (let stash of this.stashes.values()) this.call("RegisterStash", (a) => a.registerStash(stash), void 0);
+		for (let shop of this.shops.values()) this.call("RegisterShop", (a) => a.registerShop?.(shop), void 0);
 		for (let name of this.usable.keys()) this.call("RegisterUsableItem", (a) => a.registerUsableItem?.(name, this.dispatcher(name)), void 0);
 	}
 	dispatcher(name) {
@@ -19121,6 +19716,30 @@ registerExport("GetItemCount", count), registerExport("HasItem", (inv, item, nee
 }), registerExport("OpenInventory", (source, inv) => {
 	let r = ref(inv);
 	return typeof source == "number" && r !== null && inventory.call("OpenInventory", (a) => a.openInventory(source, r), !1);
+});
+function products(v) {
+	if (!Array.isArray(v)) return [];
+	let list = [];
+	for (let row of v.slice(0, 200)) {
+		if (!isRecord(row)) continue;
+		let item = name(row.name), price = row.price;
+		item !== null && typeof price == "number" && Number.isInteger(price) && price >= 0 && list.push({
+			name: item,
+			price
+		});
+	}
+	return list;
+}
+registerExport("RegisterShop", (id, label, items) => {
+	let n = name(id), list = products(items);
+	n !== null && list.length !== 0 && inventory.registerShop({
+		name: n,
+		label: typeof label == "string" && label !== "" ? label : n,
+		items: list
+	});
+}), registerExport("OpenShop", (source, shop) => {
+	let n = name(shop);
+	return typeof source == "number" && n !== null && inventory.openShop(source, n);
 }), registerExport("RegisterUsableItem", (item, handler) => {
 	let n = name(item);
 	n !== null && typeof handler == "function" && inventory.registerUsableItem(n, handler);
@@ -20876,8 +21495,181 @@ async function upsertUser(identity) {
 		charSlots: row.char_slots
 	};
 }
+// resource/server/prison/adapters/ai-prison.ts
+const AI = "ai-prison", aiPrison = {
+	resource: AI,
+	jail: (source, minutes, by) => callExport(AI, "JailPlayer", source, minutes, by) === !0,
+	release: (source) => callExport(AI, "ReleasePlayer", source) === !0,
+	timeLeft: (source) => Number(callExport(AI, "GetJailTime", source)) || 0
+}, qbPrison = {
+	resource: "qb-prison",
+	jail: (source, minutes) => {
+		let player = players.get(source);
+		return player ? (player.setMeta("injail", minutes), emitNet("prison:client:Enter", source, minutes), !0) : !1;
+	},
+	release: (source) => {
+		let player = players.get(source);
+		return player ? (player.setMeta("injail", 0), emitNet("prison:client:UnjailPerson", source), !0) : !1;
+	},
+	timeLeft: (source) => Number(players.get(source)?.getMeta("injail")) || 0
+}, RC = "rcore_prison", rcorePrison = {
+	resource: RC,
+	jail: (source, minutes, by) => isOnline(source) ? (callExport(RC, "Jail", source, minutes, null, by > 0 ? by : null), !0) : !1,
+	release: (source) => callExport(RC, "IsPrisoner", source) === !0 && (callExport(RC, "Unjail", source), !0),
+	timeLeft: (source) => {
+		let data = callExport(RC, "GetPrisonerData", source);
+		return isRecord(data) && Number(data.jail_time) || 0;
+	}
+}, TP = "tgiann-policejob", tgiannPolicejob = {
+	resource: TP,
+	besideOurs: !0,
+	version: "1.7.0",
+	jail: (source, minutes, by) => (callExport(TP, "SendToJail", source, minutes, null, by > 0 ? by : null), !0),
+	release: (source) => callExport(TP, "ReleaseFromJail", source) !== !1,
+	timeLeft: (source) => {
+		let jailed = callExport(TP, "IsPlayerJailed", source);
+		return Array.isArray(jailed) && typeof jailed[1] == "number" ? jailed[1] : 0;
+	}
+}, jailTime = new PlayerState("jailTime", stateNumber), timeLeft = (source) => jailTime.get(source) ?? 0, PRISONS = [
+	aiPrison,
+	qbPrison,
+	rcorePrison,
+	{
+		resource: "xt-prison",
+		version: "1.4.8",
+		jail: (source, minutes) => isOnline(source) ? (emitNet("prison:client:Enter", source, minutes), !0) : !1,
+		release: (source) => timeLeft(source) <= 0 ? !1 : (emitNet("prison:client:UnjailPerson", source), !0),
+		timeLeft
+	},
+	tgiannPolicejob
+], prison = new AdapterPicker({
+	category: "prison",
+	adapters: PRISONS,
+	log: log$3,
+	noneText: "no prison script runs: jail calls answer false"
+});
+registerExport("JailPlayer", (source, minutes, by) => typeof source == "number" && typeof minutes == "number" && minutes > 0 && prison.call("JailPlayer", (a) => a.jail(source, minutes, typeof by == "number" ? by : 0), !1)), registerExport("ReleasePlayer", (source) => typeof source == "number" && prison.call("ReleasePlayer", (a) => a.release(source), !1)), registerExport("GetJailTime", (source) => typeof source == "number" ? prison.call("GetJailTime", (a) => a.timeLeft(source), 0) : 0);
+// resource/server/world/adapter.ts
+const toTime = (hour, minute) => typeof hour == "number" ? {
+	hour,
+	minute: typeof minute == "number" ? minute : 0
+} : null, readTime = (value) => Array.isArray(value) ? toTime(value[0], value[1]) : isRecord(value) ? toTime(value.hour, value.minute) : null, AV = "av_weather", ZONES = [
+	"santos",
+	"sandy",
+	"paleto",
+	"cayo"
+], zone = (name) => {
+	let z = callExport(AV, "getZone", name);
+	return isRecord(z) ? z : null;
+}, getTime = () => {
+	let t = callExport(AV, "getTime");
+	return isRecord(t) ? toTime(t.hour, t.minutes) : null;
+}, avWeather = {
+	resource: AV,
+	getWeather: () => {
+		let w = zone("santos")?.weather;
+		return typeof w == "string" ? w : null;
+	},
+	setWeather: (type) => {
+		let set = !1;
+		for (let name of ZONES) {
+			let z = zone(name);
+			z && (callExport(AV, "updateZone", name, type, z.freeze === !0), set = !0);
+		}
+		return set;
+	},
+	getTime,
+	setTime: (hour, minute) => (callExport(AV, "updateTime", hour, minute, !1, !0), !0),
+	setBlackout: (on) => (callExport(AV, "setBlackout", on), !0),
+	freezeTime: (on) => {
+		let t = getTime();
+		return t ? (callExport(AV, "updateTime", t.hour, t.minute, on, !0), !0) : !1;
+	}
+}, CD = "cd_easytime", cdData = () => {
+	let d = callExport(CD, "GetAllData");
+	return isRecord(d) ? d : null;
+}, cdEasytime = {
+	resource: CD,
+	getWeather: () => {
+		let w = cdData()?.weather;
+		return typeof w == "string" ? w : null;
+	},
+	setWeather: (type) => callExport(CD, "SetWeather", type) === !0,
+	getTime: () => {
+		let d = cdData();
+		return d ? toTime(d.hours, d.mins) : null;
+	},
+	setTime: (hour, minute) => callExport(CD, "SetTime", hour, minute) === !0
+}, QB = "qb-weathersync", qbWeathersync = {
+	resource: QB,
+	getWeather: () => {
+		let w = callExport(QB, "getWeatherState");
+		return typeof w == "string" ? w : null;
+	},
+	setWeather: (type) => callExport(QB, "setWeather", type) !== !1,
+	getTime: () => readTime(callExport(QB, "getTime")),
+	setTime: (hour, minute) => callExport(QB, "setTime", hour, minute) !== !1,
+	setBlackout: (on) => callExport(QB, "setBlackout", on) !== !1,
+	freezeTime: (on) => callExport(QB, "setTimeFreeze", on) !== !1
+}, WEATHER_SYSTEMS = [
+	{
+		...qbWeathersync,
+		resource: "Renewed-Weathersync",
+		version: "1.1.8"
+	},
+	avWeather,
+	cdEasytime,
+	qbWeathersync
+], weather = new AdapterPicker({
+	category: "weather",
+	adapters: WEATHER_SYSTEMS,
+	log: log$3,
+	noneText: "no weather script runs: time and weather calls answer null"
+});
+registerExport("GetWeather", () => weather.call("GetWeather", (a) => a.getWeather(), null)), registerExport("SetWeather", (type) => typeof type == "string" && weather.call("SetWeather", (a) => a.setWeather(type.toUpperCase()), !1)), registerExport("GetTime", () => weather.call("GetTime", (a) => a.getTime(), null)), registerExport("SetTime", (hour, minute) => typeof hour == "number" && weather.call("SetTime", (a) => a.setTime(Math.floor(hour) % 24, typeof minute == "number" ? Math.floor(minute) % 60 : 0), !1)), registerExport("SetBlackout", (on) => weather.call("SetBlackout", (a) => a.setBlackout?.(on === !0) ?? !1, !1)), registerExport("FreezeTime", (on) => weather.call("FreezeTime", (a) => a.freezeTime?.(on === !0) ?? !1, !1));
 // resource/server/connection/conflicts.ts
-const log$2 = createLogger("ai-core"), STAND_INS = {
+const LAYERS = [
+	{
+		ours: "ai-inventory",
+		adapters: INVENTORIES
+	},
+	{
+		ours: "ai-appearance",
+		adapters: APPEARANCE_SYSTEMS
+	},
+	{
+		ours: "ai-vehiclekeys",
+		adapters: KEY_SYSTEMS
+	},
+	{
+		ours: "ai-policealert",
+		adapters: DISPATCH_SYSTEMS
+	},
+	{
+		ours: "ai-death",
+		adapters: MEDICAL_SYSTEMS
+	},
+	{
+		ours: "ai-prison",
+		adapters: PRISONS
+	},
+	{
+		ours: "ai-weathersync",
+		adapters: WEATHER_SYSTEMS
+	},
+	{
+		ours: "ai-fuel",
+		adapters: FUEL_SYSTEMS
+	},
+	{
+		ours: "ai-doorlock",
+		adapters: DOORLOCK_SYSTEMS
+	},
+	{
+		ours: "ai-garages",
+		adapters: GARAGE_SYSTEMS
+	}
+], log$2 = createLogger("ai-core"), STAND_INS = {
 	"ai-appearance": ["tgiann-clothing"],
 	"ai-banking": ["qb-banking", "Renewed-Banking"],
 	"ai-chat": ["chat"],
@@ -20889,6 +21681,21 @@ const log$2 = createLogger("ai-core"), STAND_INS = {
 	"ai-vehicles": ["qbx_vehicles"],
 	"ai-voice": ["pma-voice"],
 	"ai-weathersync": ["qb-weathersync"]
+}, CLIENT_LAYERS = {
+	"ai-radialmenu": ["tgiann-radialmenu", "codem-supreme-radialmenu"],
+	"ai-hud": [
+		"tgiann-lumihud",
+		"tgiann-hudv2",
+		"tgiann-modern-hud",
+		"tgiann-statushud",
+		"jg-hud",
+		"0r-hud-v3",
+		"codem-supreme-hud",
+		"Codem-BlackHUDV2",
+		"wais-hudv6",
+		"qb-hud",
+		"ps-hud"
+	]
 }, NEVER_NEXT_TO = {
 	"ai-core": [
 		"es_extended",
@@ -20923,19 +21730,14 @@ function builtIn() {
 		remove: names,
 		from: "ai-core"
 	});
-	for (let a of INVENTORIES) a.resource !== "ai-inventory" && out.push({
-		keep: a.resource,
-		remove: ["ai-inventory"],
+	for (let [ours, names] of Object.entries(CLIENT_LAYERS)) for (let name of names) out.push({
+		keep: name,
+		remove: [ours],
 		from: "ai-core"
 	});
-	for (let a of APPEARANCE_SYSTEMS) a.resource !== "ai-appearance" && out.push({
+	for (let { ours, adapters } of LAYERS) for (let a of adapters) a.resource !== ours && !a.besideOurs && out.push({
 		keep: a.resource,
-		remove: ["ai-appearance"],
-		from: "ai-core"
-	});
-	for (let a of KEY_SYSTEMS) a.resource !== "ai-vehiclekeys" && out.push({
-		keep: a.resource,
-		remove: ["ai-vehiclekeys"],
+		remove: [ours],
 		from: "ai-core"
 	});
 	return out;
@@ -21748,7 +22550,7 @@ registerExport("GetPlayerData", (src) => players.get(src)?.snapshot() ?? null), 
 	return !player || typeof key != "string" ? !1 : (player.setMeta(key, value), !0);
 }), registerExport("GetBranding", () => ({ ...settings.branding })), registerExport("GetJobDefinitions", () => Object.fromEntries(jobs)), registerExport("GetGangDefinitions", () => Object.fromEntries(gangs)), registerExport("GetJobDefinition", (job) => typeof job == "string" ? jobs.get(job) ?? null : null), registerExport("GetGangDefinition", (gang) => typeof gang == "string" ? gangs.get(gang) ?? null : null), registerExport("GetAccountTypes", () => Object.fromEntries(accountTypes)), registerExport("GetSharedMoney", (ownerType, ownerId, account) => sharedAccounts.get(ownerType, ownerId, account)?.balance ?? null), registerExport("AddSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("RemoveSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(-amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("TransferMoney", (from, to, amount, reason, fee) => transferMoney(from, to, amount, reasonOf(reason), fee ?? 0));
 // resource/server/vehicleKeys/index.ts
-const activeKeys = new GlobalKey("ai:vehicleKeys", stateString), layer$1 = new AdapterPicker({
+const activeKeys = new GlobalKey("ai:vehicleKeys", stateString), layer$3 = new AdapterPicker({
 	category: "vehicle keys",
 	adapters: KEY_SYSTEMS,
 	log: log$3,
@@ -21756,7 +22558,7 @@ const activeKeys = new GlobalKey("ai:vehicleKeys", stateString), layer$1 = new A
 	noneText: "no vehicle key system runs: every player counts as holding every key",
 	onSwitch: (next) => activeKeys.set(next?.resource)
 });
-panel.onChange("settings", () => layer$1.setChoice(settings.vehicleKeys));
+panel.onChange("settings", () => layer$3.setChoice(settings.vehicleKeys));
 function target(vehicle) {
 	if (typeof vehicle == "string") {
 		let plate = normalizePlate(vehicle);
@@ -21774,13 +22576,13 @@ function target(vehicle) {
 }
 registerExport("GiveVehicleKeys", (source, vehicle, purpose) => {
 	let t = target(vehicle);
-	typeof source == "number" && t && layer$1.call("give", (a) => a.give(source, t, toKeyPurpose(purpose)), void 0);
+	typeof source == "number" && t && layer$3.call("give", (a) => a.give(source, t, toKeyPurpose(purpose)), void 0);
 }), registerExport("RemoveVehicleKeys", (source, vehicle) => {
 	let t = target(vehicle);
-	typeof source == "number" && t && layer$1.call("remove", (a) => a.remove(source, t), void 0);
+	typeof source == "number" && t && layer$3.call("remove", (a) => a.remove(source, t), void 0);
 }), registerExport("HasVehicleKeys", (source, vehicle) => {
 	let t = target(vehicle);
-	return typeof source != "number" || !t ? !1 : layer$1.call("has", (a) => !a.has || a.has(source, t), !0);
+	return typeof source != "number" || !t ? !1 : layer$3.call("has", (a) => !a.has || a.has(source, t), !0);
 });
 // resource/server/interaction.ts
 const style = new GlobalKey(CORE.interactionStateKey, stateString), publish$1 = () => style.set(settings.interaction);
@@ -21842,137 +22644,6 @@ scopes.start(), registerExport("GetPlayersInScope", (source) => typeof source ==
 	};
 	emitNet("ai-core:client:setupWelcome", source, welcome);
 });
-// resource/server/world/adapter.ts
-const toTime = (hour, minute) => typeof hour == "number" ? {
-	hour,
-	minute: typeof minute == "number" ? minute : 0
-} : null, readTime = (value) => Array.isArray(value) ? toTime(value[0], value[1]) : isRecord(value) ? toTime(value.hour, value.minute) : null, AV = "av_weather", ZONES = [
-	"santos",
-	"sandy",
-	"paleto",
-	"cayo"
-], zone = (name) => {
-	let z = callExport(AV, "getZone", name);
-	return isRecord(z) ? z : null;
-}, getTime = () => {
-	let t = callExport(AV, "getTime");
-	return isRecord(t) ? toTime(t.hour, t.minutes) : null;
-}, avWeather = {
-	resource: AV,
-	getWeather: () => {
-		let w = zone("santos")?.weather;
-		return typeof w == "string" ? w : null;
-	},
-	setWeather: (type) => {
-		let set = !1;
-		for (let name of ZONES) {
-			let z = zone(name);
-			z && (callExport(AV, "updateZone", name, type, z.freeze === !0), set = !0);
-		}
-		return set;
-	},
-	getTime,
-	setTime: (hour, minute) => (callExport(AV, "updateTime", hour, minute, !1, !0), !0),
-	setBlackout: (on) => (callExport(AV, "setBlackout", on), !0),
-	freezeTime: (on) => {
-		let t = getTime();
-		return t ? (callExport(AV, "updateTime", t.hour, t.minute, on, !0), !0) : !1;
-	}
-}, CD = "cd_easytime", cdData = () => {
-	let d = callExport(CD, "GetAllData");
-	return isRecord(d) ? d : null;
-}, cdEasytime = {
-	resource: CD,
-	getWeather: () => {
-		let w = cdData()?.weather;
-		return typeof w == "string" ? w : null;
-	},
-	setWeather: (type) => callExport(CD, "SetWeather", type) === !0,
-	getTime: () => {
-		let d = cdData();
-		return d ? toTime(d.hours, d.mins) : null;
-	},
-	setTime: (hour, minute) => callExport(CD, "SetTime", hour, minute) === !0
-}, QB = "qb-weathersync", qbWeathersync = {
-	resource: QB,
-	getWeather: () => {
-		let w = callExport(QB, "getWeatherState");
-		return typeof w == "string" ? w : null;
-	},
-	setWeather: (type) => callExport(QB, "setWeather", type) !== !1,
-	getTime: () => readTime(callExport(QB, "getTime")),
-	setTime: (hour, minute) => callExport(QB, "setTime", hour, minute) !== !1,
-	setBlackout: (on) => callExport(QB, "setBlackout", on) !== !1,
-	freezeTime: (on) => callExport(QB, "setTimeFreeze", on) !== !1
-}, weather = new AdapterPicker({
-	category: "weather",
-	adapters: [
-		{
-			...qbWeathersync,
-			resource: "Renewed-Weathersync",
-			version: "1.1.8"
-		},
-		avWeather,
-		cdEasytime,
-		qbWeathersync
-	],
-	log: log$3,
-	noneText: "no weather script runs: time and weather calls answer null"
-});
-registerExport("GetWeather", () => weather.call("GetWeather", (a) => a.getWeather(), null)), registerExport("SetWeather", (type) => typeof type == "string" && weather.call("SetWeather", (a) => a.setWeather(type.toUpperCase()), !1)), registerExport("GetTime", () => weather.call("GetTime", (a) => a.getTime(), null)), registerExport("SetTime", (hour, minute) => typeof hour == "number" && weather.call("SetTime", (a) => a.setTime(Math.floor(hour) % 24, typeof minute == "number" ? Math.floor(minute) % 60 : 0), !1)), registerExport("SetBlackout", (on) => weather.call("SetBlackout", (a) => a.setBlackout?.(on === !0) ?? !1, !1)), registerExport("FreezeTime", (on) => weather.call("FreezeTime", (a) => a.freezeTime?.(on === !0) ?? !1, !1));
-// resource/server/prison/adapters/ai-prison.ts
-const AI = "ai-prison", aiPrison = {
-	resource: AI,
-	jail: (source, minutes, by) => callExport(AI, "JailPlayer", source, minutes, by) === !0,
-	release: (source) => callExport(AI, "ReleasePlayer", source) === !0,
-	timeLeft: (source) => Number(callExport(AI, "GetJailTime", source)) || 0
-}, qbPrison = {
-	resource: "qb-prison",
-	jail: (source, minutes) => {
-		let player = players.get(source);
-		return player ? (player.setMeta("injail", minutes), emitNet("prison:client:Enter", source, minutes), !0) : !1;
-	},
-	release: (source) => {
-		let player = players.get(source);
-		return player ? (player.setMeta("injail", 0), emitNet("prison:client:UnjailPerson", source), !0) : !1;
-	},
-	timeLeft: (source) => Number(players.get(source)?.getMeta("injail")) || 0
-}, RC = "rcore_prison", rcorePrison = {
-	resource: RC,
-	jail: (source, minutes, by) => isOnline(source) ? (callExport(RC, "Jail", source, minutes, null, by > 0 ? by : null), !0) : !1,
-	release: (source) => callExport(RC, "IsPrisoner", source) === !0 && (callExport(RC, "Unjail", source), !0),
-	timeLeft: (source) => {
-		let data = callExport(RC, "GetPrisonerData", source);
-		return isRecord(data) && Number(data.jail_time) || 0;
-	}
-}, TP = "tgiann-policejob", tgiannPolicejob = {
-	resource: TP,
-	version: "1.7.0",
-	jail: (source, minutes, by) => (callExport(TP, "SendToJail", source, minutes, null, by > 0 ? by : null), !0),
-	release: (source) => callExport(TP, "ReleaseFromJail", source) !== !1,
-	timeLeft: (source) => {
-		let jailed = callExport(TP, "IsPlayerJailed", source);
-		return Array.isArray(jailed) && typeof jailed[1] == "number" ? jailed[1] : 0;
-	}
-}, jailTime = new PlayerState("jailTime", stateNumber), timeLeft = (source) => jailTime.get(source) ?? 0, prison = new AdapterPicker({
-	category: "prison",
-	adapters: [
-		aiPrison,
-		qbPrison,
-		rcorePrison,
-		{
-			resource: "xt-prison",
-			version: "1.4.8",
-			jail: (source, minutes) => isOnline(source) ? (emitNet("prison:client:Enter", source, minutes), !0) : !1,
-			release: (source) => timeLeft(source) <= 0 ? !1 : (emitNet("prison:client:UnjailPerson", source), !0),
-			timeLeft
-		},
-		tgiannPolicejob
-	],
-	log: log$3,
-	noneText: "no prison script runs: jail calls answer false"
-});
-registerExport("JailPlayer", (source, minutes, by) => typeof source == "number" && typeof minutes == "number" && minutes > 0 && prison.call("JailPlayer", (a) => a.jail(source, minutes, typeof by == "number" ? by : 0), !1)), registerExport("ReleasePlayer", (source) => typeof source == "number" && prison.call("ReleasePlayer", (a) => a.release(source), !1)), registerExport("GetJailTime", (source) => typeof source == "number" ? prison.call("GetJailTime", (a) => a.timeLeft(source), 0) : 0);
 // resource/server/dispatch/index.ts
 const dispatch = new AdapterPicker({
 	category: "dispatch",
@@ -22044,8 +22715,188 @@ addCommand("aicore_alert", {
 	});
 	log$3.info(sent ? `test alert sent through ${dispatch.active?.resource}` : "no alert system runs");
 });
+// resource/server/billing/builtin.ts
+const PAY_FROM = ["bank", "cash"], bills = new Map();
+let nextId = 1;
+const view = (list) => list.map(({ id, label, amount, sender }) => ({
+	id,
+	label,
+	amount,
+	sender
+}));
+function showBills(source) {
+	let charId = players.get(source)?.charId, list = charId === void 0 ? void 0 : bills.get(charId);
+	list?.length && emitNet(CORE.billsEvent, source, view(list));
+}
+function payBill(source, id) {
+	let payer = players.get(source), list = payer && bills.get(payer.charId), bill = list?.find((b) => b.id === id);
+	if (!payer || !list || !bill) return "BILL_ERR_GONE";
+	let to, payee;
+	if (bill.job) to = {
+		owner: "job",
+		id: bill.job,
+		account: "bank"
+	};
+	else {
+		if (payee = bill.fromCharId === void 0 ? void 0 : players.byCharacter(bill.fromCharId)?.source, payee === void 0) return "BILL_ERR_SENDER_AWAY";
+		to = {
+			source: payee,
+			account: "bank"
+		};
+	}
+	let reason = `bill:${bill.job ?? "player"}`;
+	return PAY_FROM.some((account) => transferMoney({
+		source,
+		account
+	}, to, bill.amount, reason)) ? (list.splice(list.indexOf(bill), 1), list.length || bills.delete(payer.charId), notify(source, Locale("BILL_PAID", bill.amount, bill.label), "success"), payee !== void 0 && notify(payee, Locale("BILL_PAID_TO_YOU", payer.fullName, bill.amount), "success"), null) : "BILL_ERR_MONEY";
+}
+const builtinBilling = {
+	resource: "ai-core",
+	send: (b) => {
+		let target = players.get(b.to);
+		if (!target) return !1;
+		let fromCharId = b.from === void 0 ? void 0 : players.get(b.from)?.charId;
+		if (!b.job && fromCharId === void 0) return !1;
+		let list = bills.get(target.charId) ?? [];
+		return list.length >= 20 ? !1 : (list.push({
+			id: String(nextId++),
+			label: b.label,
+			amount: b.amount,
+			sender: b.jobLabel ?? b.fromName ?? "",
+			job: b.job,
+			fromCharId: b.job ? void 0 : fromCharId
+		}), bills.set(target.charId, list), showBills(b.to), !0);
+	},
+	unpaid: (source, _citizenid, done) => {
+		let charId = players.get(source)?.charId;
+		done(view(charId !== void 0 && bills.get(charId) || []));
+	},
+	pay: (source, id) => payBill(source, id) === null
+};
+onClientCallback(CORE.payBillCallback, {
+	args: oneArg((v) => readText(v, 16)),
+	lock: !0
+}, (source, id) => {
+	let error = payBill(source, id);
+	return error ? fail$1(error) : { ok: !0 };
+}), on(CORE.playerLoadedEvent, (source) => showBills(source));
+// resource/server/billing/index.ts
+const billing = new AdapterPicker({
+	category: "billing",
+	adapters: [...BILLING_SCRIPTS, builtinBilling],
+	log: log$3,
+	choice: settings.billing
+});
+panel.onChange("settings", () => billing.setChoice(settings.billing));
+function resolve(bill) {
+	let to = players.get(bill.to), from = bill.from === void 0 ? void 0 : players.get(bill.from);
+	if (!to || bill.from !== void 0 && !from) return null;
+	let job = bill.job === void 0 ? void 0 : jobs.get(bill.job);
+	return bill.job !== void 0 && !job ? null : {
+		...bill,
+		toCitizenid: to.citizenid,
+		fromCitizenid: from?.citizenid,
+		fromName: from?.fullName,
+		jobLabel: job?.label
+	};
+}
+function sendBill(bill) {
+	let send = resolve(bill);
+	return send !== null && billing.call("send", (a) => a.send(send), !1);
+}
+registerExport("GetBillingSystem", () => billing.active?.resource ?? null), registerExport("SendBill", (raw) => {
+	let bill = toBillRequest(raw);
+	return bill !== null && sendBill(bill);
+}), registerExport("GetUnpaidBills", (source, done) => {
+	if (typeof done != "function") return;
+	let answer = (bills) => {
+		try {
+			Reflect.apply(done, void 0, [bills]);
+		} catch (error) {
+			log$3.error("an unpaid bills callback failed", error);
+		}
+	}, player = typeof source == "number" ? players.get(source) : void 0, adapter = billing.active;
+	if (!player || !adapter?.unpaid) return answer(null);
+	billing.call("unpaid", (a) => a.unpaid?.(player.source, player.citizenid, answer), void 0);
+}), registerExport("PayBill", (source, id) => typeof source == "number" && typeof id == "string" && players.get(source) !== void 0 && billing.call("pay", (a) => a.pay?.(source, id) ?? !1, !1));
+// resource/server/banking/index.ts
+const banking = new AdapterPicker({
+	category: "banking",
+	adapters: BANKING_SYSTEMS,
+	log: log$3,
+	choice: settings.banking,
+	noneText: "no banking script runs: job money stays in ai-core only",
+	onSwitch: (next) => watch(next)
+});
+panel.onChange("settings", () => banking.setChoice(settings.banking)), panel.onChange("jobs", (key, value) => {
+	key !== void 0 && value !== null && watch(banking.active);
+});
+function watch(adapter) {
+	adapter?.watchDeposits && adapter.watchDeposits([...jobs.keys()], (job, amount) => setImmediate(() => forward(adapter, job, amount)));
+}
+function forward(adapter, job, amount) {
+	if (banking.active !== adapter || amount <= 0) return;
+	let account = sharedAccounts.get("job", job, "bank");
+	if (account) {
+		if (!banking.call("take", (a) => a.take?.(job, amount) ?? !1, !1)) return log$3.warn(`${adapter.resource}: could not move ${amount} of ${job} into ai-core`);
+		account.change(amount, `banking:${adapter.resource}`).ok || log$3.error(`${adapter.resource}: ${amount} taken from ${job} but not added`);
+	}
+}
+registerExport("GetBankingSystem", () => banking.active?.resource ?? null), registerExport("OpenBank", (source) => typeof source == "number" && players.get(source) !== void 0 && banking.call("open", (a) => a.open?.(source) ?? !1, !1)), registerExport("GetBankSocietyBalance", (job) => typeof job == "string" ? banking.call("societyBalance", (a) => a.societyBalance(job), null) : null);
+// resource/server/mdt/index.ts
+const activeMdt = new GlobalKey(CORE.mdtStateKey, stateString), mdt = new AdapterPicker({
+	category: "MDT",
+	adapters: MDT_SYSTEMS,
+	log: log$3,
+	choice: settings.mdt,
+	noneText: "no MDT runs: police records are not written",
+	onSwitch: (next) => activeMdt.set(next?.resource)
+});
+panel.onChange("settings", () => mdt.setChoice(settings.mdt));
+function addRecord(record) {
+	let target = players.get(record.target), by = record.by === void 0 ? void 0 : players.get(record.by);
+	return target ? mdt.call("record", (a) => a.record?.({
+		...record,
+		targetCitizenid: target.citizenid,
+		targetName: target.fullName,
+		byCitizenid: by?.citizenid,
+		byName: by?.fullName
+	}) ?? !1, !1) : !1;
+}
+registerExport("GetMdtSystem", () => mdt.active?.resource ?? null), registerExport("AddMdtRecord", (raw) => {
+	let record = toMdtRecord(raw);
+	return record !== null && addRecord(record);
+});
+// resource/server/ems/index.ts
+const builtinEms = {
+	resource: "ai-core",
+	available: (jobs) => jobs.reduce((sum, job) => sum + dutyCount(job), 0),
+	distress: (source, call) => sendAlert({
+		code: "10-52",
+		title: Locale("EMS_DISTRESS_TITLE"),
+		message: call.message,
+		jobs: call.jobs,
+		source,
+		icon: "kit-medical",
+		priority: "high"
+	})
+}, ems = new AdapterPicker({
+	category: "EMS",
+	adapters: [...EMS_SCRIPTS, builtinEms],
+	log: log$3,
+	choice: settings.ems
+});
+panel.onChange("settings", () => ems.setChoice(settings.ems));
+const jobList = (v) => Array.isArray(v) ? v.filter((j) => typeof j == "string").slice(0, 10) : [];
+registerExport("GetEmsSystem", () => ems.active?.resource ?? null), registerExport("GetAvailableMedics", (raw) => {
+	let jobs = jobList(raw);
+	return ems.call("available", (a) => (a.available ?? builtinEms.available)(jobs), builtinEms.available(jobs));
+}), registerExport("SendDistress", (source, raw) => {
+	let call = toDistressCall(raw);
+	return typeof source != "number" || !isOnline(source) || !call ? !1 : ems.call("distress", (a) => (a.distress ?? builtinEms.distress)(source, call), !1);
+});
 // resource/server/appearance/index.ts
-const activeAppearance = new GlobalKey("ai:appearance", stateString), layer = new AdapterPicker({
+const activeAppearance = new GlobalKey("ai:appearance", stateString), layer$2 = new AdapterPicker({
 	category: "appearance",
 	adapters: APPEARANCE_SYSTEMS,
 	log: log$3,
@@ -22053,9 +22904,9 @@ const activeAppearance = new GlobalKey("ai:appearance", stateString), layer = ne
 	noneText: "no clothing script runs: peds wear default clothes",
 	onSwitch: (next) => activeAppearance.set(next?.resource)
 });
-panel.onChange("settings", () => layer.setChoice(settings.appearance));
+panel.onChange("settings", () => layer$2.setChoice(settings.appearance));
 async function loadLook(charId) {
-	let adapter = layer.active;
+	let adapter = layer$2.active;
 	if (!adapter) return null;
 	try {
 		return toCharacterAppearance(await adapter.load(charId));
@@ -22063,7 +22914,7 @@ async function loadLook(charId) {
 		return log$3.error(`${adapter.resource} look of #${charId} failed`, error), null;
 	}
 }
-registerExport("GetAppearanceSystem", () => layer.active?.resource ?? null), registerExport("GetCharacterAppearance", (charId, done) => {
+registerExport("GetAppearanceSystem", () => layer$2.active?.resource ?? null), registerExport("GetCharacterAppearance", (charId, done) => {
 	if (typeof done != "function") return;
 	let id = readId(charId);
 	(id === null ? Promise.resolve(null) : loadLook(id)).then((look) => {
@@ -22074,12 +22925,132 @@ registerExport("GetAppearanceSystem", () => layer.active?.resource ?? null), reg
 		}
 	});
 }), on(CORE.characterScreenEvent, (source, charIds) => {
-	layer.active && charIds.length !== 0 && Promise.all(charIds.map(async (id) => ({
+	layer$2.active && charIds.length !== 0 && Promise.all(charIds.map(async (id) => ({
 		id,
 		look: await loadLook(id)
 	}))).then((entries) => {
 		let looks = entries.filter((e) => e.look !== null);
 		looks.length && TriggerLatentClientEvent(CORE.characterLooksEvent, String(source), 5e4, looks);
+	});
+});
+// resource/server/stress/registry.ts
+const hud = resourceExport("ai-hud"), qbEvents = (resource, version) => ({
+	resource,
+	version,
+	add: (source, amount) => TriggerClientEvent(CORE.stressRelayEvent, source, amount)
+}), layer$1 = new AdapterPicker({
+	category: "stress",
+	adapters: [
+		qbEvents("tgiann-lumihud", "2.2.1"),
+		qbEvents("tgiann-hudv2"),
+		qbEvents("tgiann-modern-hud"),
+		qbEvents("qb-hud", "2.2.0"),
+		qbEvents("ps-hud", "2.1.2"),
+		{
+			resource: "ai-hud",
+			add: (source, amount) => hud.AddNeed(source, "stress", amount)
+		}
+	],
+	log: log$3,
+	noneText: "no HUD with stress runs: stress changes are dropped"
+});
+registerExport("GetStressSystem", () => layer$1.active?.resource ?? null), registerExport("AddStress", (source, amount) => typeof source != "number" || !Number.isInteger(source) || source <= 0 || typeof amount != "number" || !Number.isFinite(amount) || amount === 0 || Math.abs(amount) > 100 ? !1 : layer$1.call("add", (a) => (a.add(source, amount), !0), !1));
+// resource/server/notify/index.ts
+const activeNotify = new GlobalKey(CORE.notifyStateKey, stateString), layer = new AdapterPicker({
+	category: "notifications",
+	adapters: NOTIFY_SYSTEMS,
+	log: log$3,
+	choice: settings.notify,
+	noneText: "the picked notification UI does not run: ai-lib draws the cards",
+	onSwitch: (next) => activeNotify.set(next && next.resource !== LIB_UI.resource ? next.resource : void 0)
+});
+panel.onChange("settings", () => layer.setChoice(settings.notify));
+// resource/server/fuel/index.ts
+const activeFuel = new GlobalKey("ai:fuel", stateString), fuel = new AdapterPicker({
+	category: "fuel",
+	adapters: FUEL_SYSTEMS,
+	log: log$3,
+	choice: settings.fuel,
+	noneText: "no fuel script runs: fuel is only the vehicle's state bag",
+	onSwitch: (next) => activeFuel.set(next?.resource)
+});
+panel.onChange("settings", () => fuel.setChoice(settings.fuel));
+const isVehicle$1 = (v) => typeof v == "number" && DoesEntityExist(v) && GetEntityType(v) === 2;
+registerExport("GetFuelSystem", () => fuel.active?.resource ?? null), registerExport("GetVehicleFuel", (vehicle) => isVehicle$1(vehicle) ? fuel.call("get", (a) => a.get(vehicle), fuelBag.get(vehicle) ?? null) : null), registerExport("SetVehicleFuel", (vehicle, level) => {
+	let value = readFinite(level);
+	if (!isVehicle$1(vehicle) || value === null) return !1;
+	let clamped = Math.min(100, Math.max(0, value));
+	return fuel.active ? fuel.call("set", (a) => (a.set(vehicle, clamped), !0), !1) : (fuelBag.set(vehicle, clamped), !0);
+}), onClientEvent("ai-core:fuelReport", {
+	args: ([netId, level]) => {
+		let id = readId(netId), value = readFinite(level);
+		return id !== null && value !== null && value >= 0 && value <= 100 ? [id, value] : null;
+	},
+	rate: {
+		count: 2,
+		windowMs: 1e3
+	}
+}, (source, netId, level) => {
+	if (!fuel.active?.mirrored) return;
+	let vehicle = vehicleNearPlayer(source, netId, { metres: 30 });
+	if (!vehicle) return;
+	fuelBag.set(vehicle, level);
+	let pending = pendingBag.get(vehicle);
+	pending !== void 0 && Math.abs(pending - level) < 1 && pendingBag.set(vehicle, void 0);
+});
+// resource/server/doorlock/index.ts
+const doorlock = new AdapterPicker({
+	category: "door lock",
+	adapters: DOORLOCK_SYSTEMS,
+	log: log$3,
+	choice: settings.doorlock,
+	noneText: "no door lock script runs: door lock calls do nothing"
+});
+panel.onChange("settings", () => doorlock.setChoice(settings.doorlock));
+const doorId = (v) => typeof v == "number" && Number.isInteger(v) ? String(v) : readText(v, 128);
+registerExport("GetDoorlockSystem", () => doorlock.active?.resource ?? null), registerExport("SetDoorLocked", (id, locked, by) => {
+	let door = doorId(id);
+	if (door === null || typeof locked != "boolean") return !1;
+	let player = typeof by == "number" && isOnline(by) ? by : null;
+	return doorlock.call("setLocked", (a) => a.setLocked(door, locked, player), !1);
+}), registerExport("IsDoorLocked", (id) => {
+	let door = doorId(id);
+	return door === null ? null : doorlock.call("isLocked", (a) => a.isLocked(door), null);
+});
+// resource/server/garages/index.ts
+const activeGarages = new GlobalKey("ai:garages", stateString), garages = new AdapterPicker({
+	category: "garages",
+	adapters: GARAGE_SYSTEMS,
+	log: log$3,
+	choice: settings.garages,
+	noneText: "no garage script runs: impounded vehicles are deleted",
+	onSwitch: (next) => activeGarages.set(next?.resource)
+});
+panel.onChange("settings", () => garages.setChoice(settings.garages));
+const isVehicle = (v) => typeof v == "number" && DoesEntityExist(v) && GetEntityType(v) === 2, player = (v) => typeof v == "number" && isOnline(v) ? v : null, garageId = (v) => v == null ? null : readText(v, 64);
+registerExport("GetGarageSystem", () => garages.active?.resource ?? null), registerExport("ImpoundVehicle", (vehicle, by) => {
+	if (!isVehicle(vehicle)) return !1;
+	let plate = plateOf(vehicle);
+	return garages.call("impound", (a) => a.impound?.(vehicle, plate, player(by)) ?? !1, !1);
+}), registerExport("StoreVehicleInGarage", (vehicle, garage, by) => {
+	if (!isVehicle(vehicle)) return !1;
+	let plate = plateOf(vehicle);
+	return garages.call("store", (a) => a.store?.(vehicle, plate, garageId(garage), player(by)) ?? !1, !1);
+}), registerExport("OpenGarage", (source, garage) => {
+	let target = player(source);
+	return target !== null && garages.call("open", (a) => a.open?.(target, garageId(garage)) ?? !1, !1);
+}), registerExport("GetGaragedVehicles", (source, done) => {
+	if (typeof done != "function") return;
+	let reply = (list) => {
+		try {
+			done(list);
+		} catch (error) {
+			log$3.error("GetGaragedVehicles callback failed", error);
+		}
+	}, target = player(source), adapter = garages.active;
+	if (target === null || !adapter?.stored) return reply(null);
+	adapter.stored(target).then(reply, (error) => {
+		log$3.error(`${adapter.resource} stored vehicles failed`, error), reply(null);
 	});
 });
 // resource/server/devCommands.ts

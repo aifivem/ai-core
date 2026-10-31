@@ -12,7 +12,7 @@ import { renewedWeathersync } from "./adapters/Renewed-Weathersync";
  * cd_easytime come before qb-weathersync: both `provide` it (Renewed provides cd_easytime too, so it comes first).
  * A new weather script = one adapter file and one line here.
  */
-const WEATHER_SYSTEMS: readonly WeatherAdapter[] = [
+export const WEATHER_SYSTEMS: readonly WeatherAdapter[] = [
   renewedWeathersync,
   avWeather,
   cdEasytime,

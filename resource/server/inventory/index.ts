@@ -8,6 +8,7 @@ import {
   CORE,
   INVENTORY_STATE_KEY,
   type InventoryRef,
+  type ShopProduct,
   type UsableItemHandler,
 } from "@aicore-fivem/shared";
 import { panel, settings } from "../content";
@@ -162,6 +163,43 @@ registerExport("OpenInventory", (source: unknown, inv: unknown) => {
     r !== null &&
     inventory.call("OpenInventory", (a) => a.openInventory(source, r), false)
   );
+});
+/** Shop products from another resource: `{ name, price }` with a whole price of 0 or more, at most 200. */
+function products(v: unknown): ShopProduct[] {
+  if (!Array.isArray(v)) return [];
+  const list: ShopProduct[] = [];
+  for (const row of (v as unknown[]).slice(0, 200)) {
+    if (!isRecord(row)) continue;
+    const item = name(row.name);
+    const price = row.price;
+    if (
+      item !== null &&
+      typeof price === "number" &&
+      Number.isInteger(price) &&
+      price >= 0
+    )
+      list.push({ name: item, price });
+  }
+  return list;
+}
+registerExport(
+  "RegisterShop",
+  (id: unknown, label: unknown, items: unknown) => {
+    const n = name(id);
+    const list = products(items);
+    if (n === null || list.length === 0) return;
+    inventory.registerShop({
+      name: n,
+      label: typeof label === "string" && label !== "" ? label : n,
+      items: list,
+    });
+  },
+);
+registerExport("OpenShop", (source: unknown, shop: unknown) => {
+  const n = name(shop);
+  return typeof source === "number" && n !== null
+    ? inventory.openShop(source, n)
+    : false;
 });
 registerExport("RegisterUsableItem", (item: unknown, handler: unknown) => {
   const n = name(item);

@@ -9,6 +9,7 @@ const TP = "tgiann-policejob";
 
 export const tgiannPolicejob: PrisonAdapter = {
   resource: TP,
+  besideOurs: true,
   version: "1.7.0",
   jail: (source, minutes, by) => {
     callExport(TP, "SendToJail", source, minutes, null, by > 0 ? by : null);

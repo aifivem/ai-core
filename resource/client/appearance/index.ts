@@ -6,9 +6,12 @@ import {
 import { createLogger } from "@aicore-fivem/lib/shared";
 import {
   APPEARANCE_STATE_KEY,
+  CLOTHING_MENUS,
   toCharacterAppearance,
+  toJobOutfit,
   type AppearanceClientAdapter,
   type CharacterAppearance,
+  type ClothingMenu,
 } from "@aicore-fivem/shared";
 import { AdapterFollower } from "common/adapters";
 import { aiAppearance } from "./adapters/ai-appearance";
@@ -62,6 +65,32 @@ export function applyLook(ped: number, raw: unknown): boolean {
 
 registerExport("ApplyAppearance", (ped: unknown, look: unknown) =>
   typeof ped === "number" ? applyLook(ped, look) : false,
+);
+registerExport("OpenClothingMenu", (menu: unknown) =>
+  CLOTHING_MENUS.includes(menu as ClothingMenu)
+    ? layer.call(
+        "openMenu",
+        (a) => a.openMenu?.(menu as ClothingMenu) ?? false,
+        false,
+      )
+    : false,
+);
+registerExport("WearOutfit", (raw: unknown) => {
+  const outfit = toJobOutfit(raw);
+  return outfit
+    ? layer.call(
+        "wearOutfit",
+        (a) => (a.wearOutfit ? (a.wearOutfit(outfit), true) : false),
+        false,
+      )
+    : false;
+});
+registerExport("ReloadSkin", () =>
+  layer.call(
+    "reloadSkin",
+    (a) => (a.reloadSkin ? (a.reloadSkin(), true) : false),
+    false,
+  ),
 );
 registerExport(
   "GetPedAppearance",

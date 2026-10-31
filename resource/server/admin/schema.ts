@@ -5,6 +5,13 @@ import { DEFAULT_PRIME_TIME, PRIME_SOURCES } from "../content/primeTime";
 import { jobPrimeCard, primeTimeCard } from "./primeTimeSchema";
 import { sceneSection, sceneTab } from "./sceneSchema";
 import {
+  SERVICES_DEFAULTS,
+  servicesCards,
+  servicesSections,
+  type ServiceChoices,
+} from "./servicesSchema";
+import { NOTIFY_SYSTEMS } from "../notify/registry";
+import {
   DEFAULT_RECOMMENDATIONS,
   RECOMMENDATIONS_SECTION,
   recommendationsCard,
@@ -69,6 +76,10 @@ export function coreSchema(
   keySystems: string[] = [],
   alertSystems: string[] = [],
   clothingSystems: string[] = [],
+  fuelSystems: string[] = [],
+  doorSystems: string[] = [],
+  garageSystems: string[] = [],
+  services: ServiceChoices = {},
 ): PanelSchema {
   const accountOptions = accounts.map((value) => ({ value, label: value }));
   return {
@@ -139,6 +150,14 @@ export function coreSchema(
           vehicleKeys: { type: "enum", values: ["auto", ...keySystems] },
           dispatch: { type: "enum", values: ["auto", ...alertSystems] },
           appearance: { type: "enum", values: ["auto", ...clothingSystems] },
+          ...servicesSections(services),
+          fuel: { type: "enum", values: ["auto", ...fuelSystems] },
+          doorlock: { type: "enum", values: ["auto", ...doorSystems] },
+          garages: { type: "enum", values: ["auto", ...garageSystems] },
+          notify: {
+            type: "enum",
+            values: NOTIFY_SYSTEMS.map((s) => s.resource),
+          },
           interaction: { type: "enum", values: ["prompt", "target"] },
           pvp: { type: "bool" },
           refuseOnConflict: { type: "bool" },
@@ -184,6 +203,11 @@ export function coreSchema(
           vehicleKeys: "auto",
           dispatch: "auto",
           appearance: "auto",
+          ...SERVICES_DEFAULTS,
+          fuel: "auto",
+          doorlock: "auto",
+          garages: "auto",
+          notify: "ai-lib",
           interaction: "prompt",
           pvp: true,
           refuseOnConflict: true,
@@ -450,6 +474,75 @@ export function coreSchema(
                   { value: "auto", label: "ADMIN_O_INVENTORY_AUTO" },
                   ...clothingSystems.map((value) => ({ value, label: value })),
                 ],
+              },
+            ],
+          },
+          ...servicesCards(services),
+          {
+            icon: "gas-pump",
+            title: "ADMIN_C_FUEL",
+            desc: "ADMIN_C_FUEL_DESC",
+            fields: [
+              {
+                widget: "select",
+                path: "fuel",
+                label: "ADMIN_F_FUEL",
+                hint: "ADMIN_H_FUEL",
+                options: [
+                  { value: "auto", label: "ADMIN_O_INVENTORY_AUTO" },
+                  ...fuelSystems.map((value) => ({ value, label: value })),
+                ],
+              },
+            ],
+          },
+          {
+            icon: "door-closed",
+            title: "ADMIN_C_DOORLOCK",
+            desc: "ADMIN_C_DOORLOCK_DESC",
+            fields: [
+              {
+                widget: "select",
+                path: "doorlock",
+                label: "ADMIN_F_DOORLOCK",
+                hint: "ADMIN_H_DOORLOCK",
+                options: [
+                  { value: "auto", label: "ADMIN_O_INVENTORY_AUTO" },
+                  ...doorSystems.map((value) => ({ value, label: value })),
+                ],
+              },
+            ],
+          },
+          {
+            icon: "warehouse",
+            title: "ADMIN_C_GARAGES",
+            desc: "ADMIN_C_GARAGES_DESC",
+            fields: [
+              {
+                widget: "select",
+                path: "garages",
+                label: "ADMIN_F_GARAGES",
+                hint: "ADMIN_H_GARAGES",
+                options: [
+                  { value: "auto", label: "ADMIN_O_INVENTORY_AUTO" },
+                  ...garageSystems.map((value) => ({ value, label: value })),
+                ],
+              },
+            ],
+          },
+          {
+            icon: "bell",
+            title: "ADMIN_C_NOTIFY",
+            desc: "ADMIN_C_NOTIFY_DESC",
+            fields: [
+              {
+                widget: "select",
+                path: "notify",
+                label: "ADMIN_F_NOTIFY",
+                hint: "ADMIN_H_NOTIFY",
+                options: NOTIFY_SYSTEMS.map(({ resource }) => ({
+                  value: resource,
+                  label: resource,
+                })),
               },
             ],
           },

@@ -2,13 +2,7 @@
 -- option, as the owner picks in ai-core's panel (Interaction); the same `onPressed` runs either way.
 
 local resource = GetCurrentResourceName()
-local TARGET = 'ox_target'
----The resource answering the ox_target API: ai-target `provide`s it, but a provided name is not always reported started.
----@return string?
-local function targetResource()
-    if GetResourceState(TARGET) == 'started' then return TARGET end
-    if GetResourceState('ai-target') == 'started' then return 'ai-target' end
-end
+local targets = aiLib.targets
 local CHECK_MS = 500
 local groups = {}
 local byPrompt = {}
@@ -19,7 +13,7 @@ local watcher
 
 ---@return 'prompt'|'target'
 local function style()
-    return GlobalState['ai:interaction'] == 'target' and targetResource() ~= nil and 'target' or 'prompt'
+    return GlobalState['ai:interaction'] == 'target' and targets.active() ~= nil and 'target' or 'prompt'
 end
 
 ---The style one point uses: the owner's, unless the point asks for its own (`promptOnly`, `preferTarget`).
@@ -28,7 +22,7 @@ end
 ---@return 'prompt'|'target'
 local function pointStyle(options, mode)
     if options.promptOnly then return 'prompt' end
-    if options.preferTarget and targetResource() ~= nil then return 'target' end
+    if options.preferTarget and targets.active() ~= nil then return 'target' end
     return mode
 end
 
@@ -61,7 +55,7 @@ end
 ---@field options AiLibPointOptions
 ---@field inside boolean
 ---@field shown string?
----@field zone any
+---@field registration table? the target option while the point is on a target
 ---@field blip integer?
 ---@field ped AiLibLocalPed?
 local Point = {}
@@ -93,15 +87,16 @@ function Point:sync(mode)
     exports['ai-lib']:ShowPrompt(self.promptId, text, world and { x = c.x, y = c.y, z = c.z } or nil)
 end
 
+---@return AiLibTargetOption
 function Point:targetOption()
-    return { {
-        name = self.promptId,
+    return {
+        name = resource .. ':' .. self.promptId,
         label = readLabel(self.options.label),
         icon = self.options.icon,
         distance = self.options.radius or 2,
         canInteract = function() return self:allowed() end,
         onSelect = function() self:press() end,
-    } }
+    }
 end
 
 ---@param x number
@@ -160,14 +155,8 @@ function Points:add(id, options)
             scenario = ped.scenario,
             anim = ped.anim,
             distance = ped.distance,
-            onSpawn = function(entity)
-                if pointStyle(options, style()) == 'target' then
-                    exports[targetResource() or TARGET]:addLocalEntity(entity, point:targetOption())
-                end
-            end,
-            onDespawn = function(entity)
-                if targetResource() ~= nil then exports[targetResource() or TARGET]:removeLocalEntity(entity, point.promptId) end
-            end,
+            onSpawn = function() self:attach(point, style()) end,
+            onDespawn = function() self:detach(point) end,
         })
     end
     self:attach(point, style())
@@ -218,7 +207,7 @@ end
 function Points:refresh()
     local mode = style()
     for _, point in pairs(self.points) do
-        if pointStyle(point.options, mode) == 'target' and point.zone then
+        if point.registration then
             self:detach(point)
             self:attach(point, mode)
         end
@@ -228,27 +217,28 @@ end
 
 ---@private
 function Points:attach(point, mode)
-    if pointStyle(point.options, mode) ~= 'target' then return end
+    local target = targets.active()
+    if not target or point.registration or pointStyle(point.options, mode) ~= 'target' then return end
+    local option = point:targetOption()
     if point.ped then
-        if point.ped.entity ~= 0 then exports[targetResource() or TARGET]:addLocalEntity(point.ped.entity, point:targetOption()) end
+        local ped = point.ped.entity
+        if ped ~= 0 then
+            point.registration = targets.register(target,
+                function(a) a.addLocalEntity(ped, option) end,
+                function(a) a.removeLocalEntity(ped, option) end)
+        end
         return
     end
-    point.zone = exports[targetResource() or TARGET]:addSphereZone({
-        coords = point.options.coords,
-        radius = point.options.targetRadius or 1,
-        options = point:targetOption(),
-    })
+    local coords, radius = point.options.coords, point.options.targetRadius or 1
+    point.registration = targets.register(target,
+        function(a) return a.addSphere(coords, radius, option) end,
+        function(a, handle) a.removeZone(handle, option) end)
 end
 
 ---@private
 function Points:detach(point)
-    if targetResource() == nil then
-        point.zone = nil
-        return
-    end
-    if point.zone then exports[targetResource() or TARGET]:removeZone(point.zone) end
-    point.zone = nil
-    if point.ped and point.ped.entity ~= 0 then exports[targetResource() or TARGET]:removeLocalEntity(point.ped.entity, point.promptId) end
+    targets.unregister(point.registration)
+    point.registration = nil
 end
 
 local function restyleAll()
@@ -290,11 +280,6 @@ AddEventHandler('ai-lib:client:promptPressed', function(owner, id)
     if point then point:press() else aiLib.ModelPoints.press(id) end
 end)
 AddStateBagChangeHandler('ai:interaction', 'global', function() SetTimeout(0, restyleAll) end)
-AddEventHandler('onClientResourceStart', function(name)
-    if name == TARGET or name == 'ai-target' then SetTimeout(0, restyleAll) end
-end)
-AddEventHandler('onClientResourceStop', function(name)
-    if name == TARGET or name == 'ai-target' then SetTimeout(0, restyleAll) end
-end)
+targets.onChange(restyleAll)
 
 return Points

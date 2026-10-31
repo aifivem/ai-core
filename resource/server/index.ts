@@ -29,7 +29,17 @@ import "./phone";
 import "./dispatch";
 import "./dispatch/compat";
 import "./medical";
+import "./billing";
+import "./billing/builtin";
+import "./banking";
+import "./mdt";
+import "./ems";
 import "./appearance";
+import "./stress";
+import "./notify";
+import "./fuel";
+import "./doorlock";
+import "./garages";
 import "./buckets";
 import "./devCommands";
 

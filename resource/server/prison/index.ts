@@ -12,7 +12,7 @@ import { xtPrison } from "./adapters/xt-prison";
  * Every supported prison script in detection order: the first running one answers. tgiann-policejob is last: it is a
  * police job that may run next to a separate prison script. A new prison script = one adapter file and one line here.
  */
-const PRISONS: readonly PrisonAdapter[] = [
+export const PRISONS: readonly PrisonAdapter[] = [
   aiPrison,
   qbPrison,
   rcorePrison,

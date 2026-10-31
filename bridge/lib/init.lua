@@ -48,6 +48,7 @@ end
 ---@field Keybind AiLibKeybind client
 ---@field Points AiLibPoints client
 ---@field ModelPoints table client, internal (used by `Points:addModel`)
+---@field targets table client, internal: the target script adapters `Points` use (`lua/client/targets.lua`)
 ---@field Zones AiLibZones client
 ---@field LocalPed AiLibLocalPed client
 ---@field Blips AiLibBlips client (`Blips.create(options)` for a single blip)
@@ -76,7 +77,9 @@ end
 ---@field controls { disable: (fun(reason: string, controls: integer[], group?: integer)), disableAll: (fun(reason: string, except?: integer[])), enable: (fun(reason: string)) } client
 ---@field hud { hide: (fun(reason: string)), show: (fun(reason: string)), visible: (fun(): boolean) } client
 ---@field keyHints { show: (fun(id: string, hint: { label: string, keybind?: string, key?: string, icon?: string })), hide: (fun(id: string)) } client
----@field gestures { isHandsUp: (fun(): boolean), isPointing: (fun(): boolean), provider: (fun(): string?) } client
+---@field gestures { isHandsUp: (fun(): boolean), isPointing: (fun(): boolean), provider: (fun(): string?), playEmote: (fun(name: string): boolean), cancelEmote: (fun(): boolean), emoteProvider: (fun(): string?) } client
+---@field seatbelt { isOn: (fun(): boolean?), onChange: (fun(fn: fun(worn: boolean?))), provider: (fun(): string?) } client: the seat belt of whatever belt script runs
+---@field stress { gain: (fun(source: integer, amount: number): boolean), relieve: (fun(source: integer, amount: number): boolean), provider: (fun(): string?) } server: stress through whatever HUD keeps it
 ---@field radial { add: (fun(item: AiLibRadialItem)), remove: (fun(id: string)), refresh: fun() } client: wheel items through ai-core
 ---@field requestModel fun(model: string|integer, timeout?: integer): integer? client
 ---@field requestAnimDict fun(dict: string, timeout?: integer): string? client
@@ -99,12 +102,16 @@ end
 ---@field addCommand fun(name: string|string[], options: table, handler: (fun(source: integer, args: table, raw: string))) server
 ---@field spawnVehicle fun(options: AiLibSpawnVehicleOptions): integer? server
 ---@field playersNear fun(source: integer, radius: number): integer[] server
----@field inventory table client `openInventory`, `hasItem`, `currentWeapon`; server the item calls through ai-core
+---@field inventory table client `openInventory`, `hasItem`, `currentWeapon`; server the item calls through ai-core (and `registerShop`, `openShop`)
 ---@field vehicleKeys { give: (fun(source: integer, vehicle: integer|string, purpose?: string)), remove: (fun(source: integer, vehicle: integer|string)), has: (fun(source: integer, vehicle: integer|string): boolean) } server
 ---@field phone table server
 ---@field dispatch { alert: (fun(alert: AiLibDispatchAlert): boolean) } server: police alerts through ai-core's alert system
+---@field billing { send: (fun(bill: AiLibBill): boolean), unpaid: (fun(src: integer): table[]?), pay: (fun(src: integer, id: string): boolean), provider: (fun(): string?) } server: bills through ai-core (`unpaid` waits)
+---@field banking { open: (fun(src: integer): boolean), societyBalance: (fun(job: string): number?), provider: (fun(): string?) } server: the banking script through ai-core
+---@field mdt table client `open()`; server `record(record)`, `provider()`: police MDT through ai-core
+---@field ems { available: (fun(jobs: string[]): integer), distress: (fun(src: integer, call: table): boolean), provider: (fun(): string?) } server: free medics and distress calls through ai-core
 ---@field world table client `pauseSync` / `resumeSync`; server time and weather
----@field appearance table client `apply(ped, look)`, `read(ped)`; server `get(charId)` (waits), `provider()`: looks through ai-core's appearance layer
+---@field appearance table client `apply(ped, look)`, `read(ped)`, `openMenu(menu)`, `wearOutfit(outfit)`, `reloadSkin()`; server `get(charId)` (waits), `provider()`: looks through ai-core's appearance layer
 ---@diagnostic disable-next-line: lowercase-global
 aiLib = setmetatable({ side = side }, {
     __index = function(self, key)

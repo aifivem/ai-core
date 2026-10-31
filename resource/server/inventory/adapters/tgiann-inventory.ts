@@ -15,6 +15,7 @@ import {
  * tgiann-inventory (server/exports.lua, shared/shared.lua of 2.4.1). Stacks are `{ slot, name, amount, info }`
  * keyed by slot; `AddItem` / `RemoveItem` take `(inv, item, amount, slot, info)` and accept a stash name as `inv`.
  * Usable items: tgiann-inventory calls the framework (`ESX.UseItem` / QB `CanUseItem`), which ai-core's bridge answers.
+ * Shops: `RegisterShop(name, products, { label })` (products `{ name, price, type }`), `OpenShop(src, name)`.
  */
 
 const RESOURCE = "tgiann-inventory";
@@ -84,4 +85,12 @@ export const tgiannInventory: InventoryAdapter = {
       maxWeight: data.maxWeight,
     };
   },
+  registerShop: (shop) =>
+    void call(
+      "RegisterShop",
+      shop.name,
+      shop.items.map((p) => ({ name: p.name, price: p.price, type: "item" })),
+      { label: shop.label },
+    ),
+  openShop: (source, name) => (call("OpenShop", source, name), true),
 };

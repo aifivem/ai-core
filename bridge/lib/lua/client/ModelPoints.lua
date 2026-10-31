@@ -3,13 +3,8 @@
 -- two times a second, only while model points exist. Vehicle models scan the vehicle pool (the object scan never
 -- finds vehicles).
 
-local TARGET = 'ox_target'
----The resource answering the ox_target API: ai-target `provide`s it, but a provided name is not always reported started.
----@return string?
-local function targetResource()
-    if GetResourceState(TARGET) == 'started' then return TARGET end
-    if GetResourceState('ai-target') == 'started' then return 'ai-target' end
-end
+local targets = aiLib.targets
+local resource = GetCurrentResourceName()
 local SCAN_MS = 500
 -- Up to this many models a point asks GTA for the closest object of each; more models use the object index (one
 -- closest-object query per model and scan costs milliseconds with hundreds of models).
@@ -138,29 +133,36 @@ local scanner = aiLib.every(SCAN_MS, scan, { active = false, name = 'modelPoints
 ---@return 'prompt'|'target'
 local function pointStyle(options, mode)
     if options.promptOnly then return 'prompt' end
-    if options.preferTarget and targetResource() ~= nil then return 'target' end
+    if options.preferTarget and targets.active() ~= nil then return 'target' end
     return mode
 end
 
 ---@param point table
 ---@param mode 'prompt'|'target'
 local function attach(point, mode)
-    if pointStyle(point.options, mode) == 'target' then
+    local target = targets.active()
+    if target and pointStyle(point.options, mode) == 'target' then
+        ---@type AiLibTargetOption
         local option = {
-            name = point.promptId,
+            name = resource .. ':' .. point.promptId,
             label = point.options.label,
             icon = point.options.icon,
             distance = point.options.radius or 1.5,
             canInteract = function(entity) return allowed(point, entity) end,
-            onSelect = function(data) run(point, type(data) == 'table' and data.entity or 0) end,
+            onSelect = function(entity) run(point, entity) end,
         }
+        local models = point.options.models
         if point.global then
-            exports[targetResource() or TARGET]:addGlobalVehicle({ option })
+            point.registration = targets.register(target,
+                function(a) a.addGlobalVehicle(option) end,
+                function(a) a.removeGlobalVehicle(option) end)
         else
-            exports[targetResource() or TARGET]:addModel(point.options.models, { option })
+            point.registration = targets.register(target,
+                function(a) a.addModels(models, option) end,
+                function(a) a.removeModels(models, option) end)
         end
-        point.attached = true
-        return
+        -- Not ready yet (client still loading): a prompt until the target starts and restyles every point.
+        if point.registration then return end
     end
     scanning[point] = true
     if not scanner.running then
@@ -171,14 +173,8 @@ end
 
 ---@param point table
 local function detach(point)
-    if point.attached and targetResource() ~= nil then
-        if point.global then
-            exports[targetResource() or TARGET]:removeGlobalVehicle(point.promptId)
-        else
-            exports[targetResource() or TARGET]:removeModel(point.options.models, point.promptId)
-        end
-    end
-    point.attached = false
+    targets.unregister(point.registration)
+    point.registration = nil
     scanning[point] = nil
     if not next(scanning) then scanner:set(false) end
     show(point, nil)

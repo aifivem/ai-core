@@ -8,6 +8,7 @@ import type { DispatchAdapter } from "@aicore-fivem/shared";
  */
 export const wasabiMdt: DispatchAdapter = {
   resource: "wasabi_mdt",
+  besideOurs: true,
   alert: (a) =>
     callExport("wasabi_mdt", "CreateDispatch", {
       title: a.title,

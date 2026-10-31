@@ -48,6 +48,8 @@ export const aiInventory: InventoryAdapter = {
       : null;
   },
   registerUsableItem: (name, handler) => inv.RegisterUsableItem(name, handler),
+  registerShop: (shop) => inv.RegisterShop(shop.name, shop.label, shop.items),
+  openShop: (source, name) => inv.OpenShop(source, name) === true,
 };
 
 // ai-inventory's use event carries the needs an item gives; scripts listen to ai-core's event only.

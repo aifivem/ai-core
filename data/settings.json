@@ -202,5 +202,13 @@
     "dismissed": []
   },
   "primeTimeActive": "ai-core",
-  "pvp": true
+  "pvp": true,
+  "billing": "auto",
+  "banking": "auto",
+  "mdt": "auto",
+  "ems": "auto",
+  "fuel": "auto",
+  "doorlock": "auto",
+  "garages": "auto",
+  "notify": "ai-lib"
 }

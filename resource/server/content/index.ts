@@ -14,6 +14,13 @@ import { INVENTORIES } from "../inventory/registry";
 import { KEY_SYSTEMS } from "../vehicleKeys/registry";
 import { DISPATCH_SYSTEMS } from "../dispatch/registry";
 import { APPEARANCE_SYSTEMS } from "../appearance/registry";
+import { FUEL_SYSTEMS } from "../fuel/registry";
+import { DOORLOCK_SYSTEMS } from "../doorlock/registry";
+import { GARAGE_SYSTEMS } from "../garages/registry";
+import { BILLING_CHOICES } from "../billing/registry";
+import { BANKING_SYSTEMS } from "../banking/registry";
+import { MDT_SYSTEMS } from "../mdt/registry";
+import { EMS_CHOICES } from "../ems/registry";
 import { log } from "../log";
 import { bool, ID_PATTERN, int, record, str, vec4, type Vec4 } from "./parse";
 import { readScene } from "./scene";
@@ -52,6 +59,22 @@ export interface Settings {
   dispatch: string;
   /** `auto` or the resource name of the clothing script ai-core's appearance layer uses. */
   appearance: string;
+  /** `auto` or the resource name of the billing script ("ai-core" = its own bills) of ai-core's billing layer. */
+  billing: string;
+  /** `auto` or the resource name of the banking script ai-core's banking layer uses. */
+  banking: string;
+  /** `auto` or the resource name of the MDT ai-core's MDT layer uses. */
+  mdt: string;
+  /** `auto` or the resource name of the EMS source ("ai-core" = its own duty counts) of ai-core's EMS layer. */
+  ems: string;
+  /** `auto` or the resource name of the fuel script ai-core's fuel layer uses. */
+  fuel: string;
+  /** `auto` or the resource name of the door lock script ai-core's door lock layer uses. */
+  doorlock: string;
+  /** `auto` or the resource name of the garage script ai-core's garage layer uses. */
+  garages: string;
+  /** Where ai-lib's notification cards go: `ai-lib` (its own) or another notification UI's resource name. */
+  notify: string;
   /** How players use points of every script: the right-side prompt and its key, or the target eye (needs a target resource). */
   interaction: "prompt" | "target";
   /** Players can hurt each other (QB `PVP`). */
@@ -139,6 +162,14 @@ function readSettings(raw: unknown): Settings {
     vehicleKeys: str(s.vehicleKeys, "auto", 32),
     dispatch: str(s.dispatch, "auto", 32),
     appearance: str(s.appearance, "auto", 32),
+    billing: str(s.billing, "auto", 32),
+    banking: str(s.banking, "auto", 32),
+    mdt: str(s.mdt, "auto", 32),
+    ems: str(s.ems, "auto", 32),
+    fuel: str(s.fuel, "auto", 32),
+    doorlock: str(s.doorlock, "auto", 32),
+    garages: str(s.garages, "auto", 32),
+    notify: str(s.notify, "ai-lib", 32),
     interaction: s.interaction === "target" ? "target" : "prompt",
     pvp: bool(s.pvp, true),
     refuseOnConflict: bool(s.refuseOnConflict, true),
@@ -242,6 +273,15 @@ export const panel = new AdminPanel(
     KEY_SYSTEMS.map((adapter) => adapter.resource),
     DISPATCH_SYSTEMS.map((adapter) => adapter.resource),
     APPEARANCE_SYSTEMS.map((adapter) => adapter.resource),
+    FUEL_SYSTEMS.map((adapter) => adapter.resource),
+    DOORLOCK_SYSTEMS.map((adapter) => adapter.resource),
+    GARAGE_SYSTEMS.map((adapter) => adapter.resource),
+    {
+      billing: BILLING_CHOICES,
+      banking: BANKING_SYSTEMS.map((adapter) => adapter.resource),
+      mdt: MDT_SYSTEMS.map((adapter) => adapter.resource),
+      ems: EMS_CHOICES,
+    },
   ),
 );
 

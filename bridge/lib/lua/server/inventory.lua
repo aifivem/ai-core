@@ -16,4 +16,8 @@ return {
     ---`(source, { name, slot, count, metadata })`; returning false keeps the item.
     registerUsableItem = function(name, handler) return core:RegisterUsableItem(name, handler) end,
     getItemDefinition = function(name) return core:GetItemDefinition(name) end,
+    ---Kept by ai-core like stashes; `items` are `{ name, price }`.
+    registerShop = function(name, label, items) core:RegisterShop(name, label, items) end,
+    ---Opens a registered shop on the player's screen without range or access checks (check before).
+    openShop = function(src, name) return core:OpenShop(src, name) end,
 }

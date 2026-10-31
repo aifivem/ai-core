@@ -11,4 +11,15 @@ return {
     ---@param ped integer
     ---@return AiLibCharacterAppearance?
     read = function(ped) return core:GetPedAppearance(ped) end,
+    ---Opens the clothing script's menu for the player; false when it has none.
+    ---@param menu 'clothing'|'barber'|'outfits'
+    ---@return boolean
+    openMenu = function(menu) return core:OpenClothingMenu(menu) end,
+    ---Puts a job outfit on the player until `reloadSkin` (not saved). Pieces are `{ id, collection, index, texture }`.
+    ---@param outfit { components: table[], props: table[] }
+    ---@return boolean
+    wearOutfit = function(outfit) return core:WearOutfit(outfit) end,
+    ---Puts the player's saved look back on (takes a job outfit off).
+    ---@return boolean
+    reloadSkin = function() return core:ReloadSkin() end,
 }

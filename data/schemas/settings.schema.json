@@ -281,6 +281,104 @@
         "ai-appearance"
       ]
     },
+    "billing": {
+      "description": "Billing script: Automatic uses the first one that runs; without one, ai-core's own bills: the player pays from a list on screen and the money moves then.",
+      "enum": [
+        "auto",
+        "tgiann-phone",
+        "okokBilling",
+        "wasabi_billing",
+        "codem-billing",
+        "qs-billing",
+        "esx_billing",
+        "ai-core"
+      ]
+    },
+    "banking": {
+      "description": "Banking script: Automatic uses the first one that runs. Money paid into a banking script's own job account is moved into the job's ai-core account when the script reports it (tgiann-bank).",
+      "enum": [
+        "auto",
+        "ai-banking",
+        "tgiann-bank",
+        "Renewed-Banking",
+        "qb-banking",
+        "okokBanking",
+        "fd_banking",
+        "wasabi_banking",
+        "kartik-banking",
+        "tgg-banking"
+      ]
+    },
+    "mdt": {
+      "description": "MDT script: Automatic uses the first one that runs; without one nothing is written.",
+      "enum": [
+        "auto",
+        "tgiann-mdt",
+        "lb-tablet",
+        "ps-mdt",
+        "wasabi_mdt"
+      ]
+    },
+    "ems": {
+      "description": "EMS source: Automatic uses the first one that runs; what it does not answer, ai-core answers from its duty counts and the police alert system.",
+      "enum": [
+        "auto",
+        "tgiann-policealert",
+        "wasabi_ambulance_v2",
+        "ai-core"
+      ]
+    },
+    "fuel": {
+      "description": "Fuel script: Automatic uses the first one that runs; ai-fuel comes first.",
+      "enum": [
+        "auto",
+        "ai-fuel",
+        "ox_fuel",
+        "Renewed-Fuel",
+        "codem-xfuelv2",
+        "LegacyFuel",
+        "cdn-fuel",
+        "ps-fuel",
+        "lc_fuel",
+        "okokGasStation",
+        "x-fuel",
+        "qs-fuelstations"
+      ]
+    },
+    "doorlock": {
+      "description": "Door lock script: Automatic uses the first one that runs; ai-doorlock comes first.",
+      "enum": [
+        "auto",
+        "ai-doorlock",
+        "tgiann-doorlock",
+        "ox_doorlock",
+        "qb-doorlock",
+        "cd_doorlock",
+        "rcore_doorlock"
+      ]
+    },
+    "garages": {
+      "description": "Garage script: Automatic uses the first one that runs; ai-garages comes first.",
+      "enum": [
+        "auto",
+        "ai-garages",
+        "tgiann-realparking",
+        "tgiann-garage",
+        "jg-advancedgarages",
+        "cd_garage"
+      ]
+    },
+    "notify": {
+      "description": "Notification script: ai-lib shows its own cards. A script picked here is used while it runs; when it stops, ai-lib's cards come back.",
+      "enum": [
+        "ai-lib",
+        "tgiann-lumihud",
+        "okokNotify",
+        "ox_lib",
+        "mythic_notify",
+        "brutal_notify"
+      ]
+    },
     "interaction": {
       "description": "Interaction style: Prompt: a box on the right and the interaction key when close. Target: players hold the target key and pick the option on the point or NPC (needs a target script such as ai-target; without one the prompt is used).",
       "enum": [

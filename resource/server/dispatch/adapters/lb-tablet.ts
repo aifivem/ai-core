@@ -8,6 +8,7 @@ import type { DispatchAdapter } from "@aicore-fivem/shared";
  */
 export const lbTablet: DispatchAdapter = {
   resource: "lb-tablet",
+  besideOurs: true,
   alert: (a) =>
     callExport("lb-tablet", "AddDispatch", {
       priority: a.priority === "high" ? "high" : "medium",

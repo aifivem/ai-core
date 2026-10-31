@@ -2,6 +2,7 @@ import { isRecord, type Logger } from "@aicore-fivem/lib/shared";
 import { AdapterPicker } from "common/adapters";
 import type {
   InventoryAdapter,
+  ShopDefinition,
   StashDefinition,
   UsableItemHandler,
   UsedItem,
@@ -26,12 +27,13 @@ function toUsedItem(name: string, raw: unknown): UsedItem {
 
 /**
  * ai-core's inventory layer: picks the active inventory (the panel's choice, or the first running one in priority
- * order) and keeps the usable items and stashes scripts register, so an inventory that becomes active later (or
- * restarts) gets them all again.
+ * order) and keeps the usable items, stashes and shops scripts register, so an inventory that becomes active later
+ * (or restarts) gets them all again.
  */
 export class InventoryLayer {
   private readonly usable = new Map<string, UsableItemHandler>();
   private readonly stashes = new Map<string, StashDefinition>();
+  private readonly shops = new Map<string, ShopDefinition>();
   private readonly picker: AdapterPicker<InventoryAdapter>;
 
   /** `announce` tells the clients and the bridge which inventory answers now. */
@@ -69,6 +71,21 @@ export class InventoryLayer {
     this.call("RegisterStash", (a) => a.registerStash(stash), undefined);
   }
 
+  registerShop(shop: ShopDefinition): void {
+    this.shops.set(shop.name, shop);
+    this.call("RegisterShop", (a) => a.registerShop?.(shop), undefined);
+  }
+
+  /** Opens a kept shop; false when it is unknown or the inventory has no shops. */
+  openShop(source: number, name: string): boolean {
+    if (!this.shops.has(name)) return false;
+    return this.call(
+      "OpenShop",
+      (a) => a.openShop?.(source, name) ?? false,
+      false,
+    );
+  }
+
   registerUsableItem(name: string, handler: UsableItemHandler): void {
     this.usable.set(name, handler);
     this.call(
@@ -94,10 +111,12 @@ export class InventoryLayer {
     }
   }
 
-  /** Gives the inventory that just became active every kept stash and usable item. */
+  /** Gives the inventory that just became active every kept stash, shop and usable item. */
   private handOver(): void {
     for (const stash of this.stashes.values())
       this.call("RegisterStash", (a) => a.registerStash(stash), undefined);
+    for (const shop of this.shops.values())
+      this.call("RegisterShop", (a) => a.registerShop?.(shop), undefined);
     for (const name of this.usable.keys())
       this.call(
         "RegisterUsableItem",
