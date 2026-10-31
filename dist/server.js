@@ -1189,9 +1189,9 @@ var OnlinePlayers = class {
 const EMPTY$1 = new Set();
 new OnlinePlayers(), resourceExport(CORE.resource), resourceExport(CORE.resource), createLogger(GetCurrentResourceName());
 const dropped = new Set();
-let listening$1 = !1;
+let listening$2 = !1;
 function onDropped(fn) {
-	listening$1 || (listening$1 = !0, on("playerDropped", () => {
+	listening$2 || (listening$2 = !0, on("playerDropped", () => {
 		let source = Number(globalThis.source);
 		for (let handler of dropped) handler(source);
 	})), dropped.add(fn);
@@ -15713,10 +15713,10 @@ function caller() {
 	return invoking != null && invoking !== "" ? invoking : GetCurrentResourceName();
 }
 const stopHandlers = [];
-let listening = !1;
+let listening$1 = !1;
 function onAnyStop(handler) {
-	if (stopHandlers.push(handler), listening) return;
-	listening = !0;
+	if (stopHandlers.push(handler), listening$1) return;
+	listening$1 = !0;
 	let event = IsDuplicityVersion() ? "onResourceStop" : "onClientResourceStop";
 	on(event, (resource) => {
 		for (let stop of stopHandlers) stop(resource);
@@ -18574,8 +18574,20 @@ function guarded(adapter, what, fn, fallback, log) {
 	try {
 		return fn(adapter);
 	} catch (error) {
-		return log.error(`${adapter.resource} ${what} failed`, error), fallback;
+		return String(error).includes("No such export") || log.error(`${adapter.resource} ${what} failed`, error), fallback;
 	}
+}
+const pickers = new Set();
+let listening = !1;
+function listen() {
+	if (listening) return;
+	listening = !0;
+	let started = IsDuplicityVersion() ? "onServerResourceStart" : "onClientResourceStart";
+	on(started, (resource) => {
+		for (let picker of pickers) picker.resourceStarted(resource);
+	}), on("onResourceStop", (resource) => {
+		for (let picker of pickers) picker.resourceStopped(resource);
+	});
 }
 var AdapterPicker = class {
 	options;
@@ -18585,9 +18597,7 @@ var AdapterPicker = class {
 	names;
 	handlers = [];
 	constructor(options) {
-		this.options = options, this.choice = options.choice ?? "auto", this.names = new Set(options.adapters.map((a) => a.resource)), options.onSwitch && this.handlers.push(options.onSwitch);
-		let started = IsDuplicityVersion() ? "onServerResourceStart" : "onClientResourceStart";
-		on(started, (resource) => this.started(resource)), on("onResourceStop", (resource) => this.stopped(resource)), this.select();
+		this.options = options, this.choice = options.choice ?? "auto", this.names = new Set(options.adapters.map((a) => a.resource)), options.onSwitch && this.handlers.push(options.onSwitch), pickers.add(this), listen(), this.select();
 	}
 	get active() {
 		return this.current;
@@ -18604,12 +18614,12 @@ var AdapterPicker = class {
 	call(what, fn, fallback) {
 		return guarded(this.current, what, fn, fallback, this.options.log);
 	}
-	started(resource) {
+	resourceStarted(resource) {
 		let names = [resource, ...provides(resource)];
 		for (let name of names) this.down.delete(name);
 		names.some((name) => this.names.has(name)) && this.select(names);
 	}
-	stopped(resource) {
+	resourceStopped(resource) {
 		let names = [resource, ...provides(resource)];
 		if (names.some((name) => this.names.has(name))) {
 			for (let name of names) this.down.add(name);

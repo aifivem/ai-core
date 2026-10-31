@@ -48,9 +48,31 @@ function guarded<A extends Adapter, T>(
   try {
     return fn(adapter);
   } catch (error) {
-    log.error(`${adapter.resource} ${what} failed`, error);
+    // While clients load, a resource reads started before its scripts ran: its start event hands state over again.
+    if (!String(error).includes("No such export"))
+      log.error(`${adapter.resource} ${what} failed`, error);
     return fallback;
   }
+}
+
+/** Every picker of this resource, fed by one start and one stop listener (one pair per picker passes Node's limit). */
+const pickers = new Set<{
+  resourceStarted(resource: string): void;
+  resourceStopped(resource: string): void;
+}>();
+let listening = false;
+function listen(): void {
+  if (listening) return;
+  listening = true;
+  const started = IsDuplicityVersion()
+    ? "onServerResourceStart"
+    : "onClientResourceStart";
+  on(started, (resource: string) => {
+    for (const picker of pickers) picker.resourceStarted(resource);
+  });
+  on("onResourceStop", (resource: string) => {
+    for (const picker of pickers) picker.resourceStopped(resource);
+  });
 }
 
 /**
@@ -70,11 +92,8 @@ export class AdapterPicker<A extends Adapter> {
     this.choice = options.choice ?? "auto";
     this.names = new Set(options.adapters.map((a) => a.resource));
     if (options.onSwitch) this.handlers.push(options.onSwitch);
-    const started = IsDuplicityVersion()
-      ? "onServerResourceStart"
-      : "onClientResourceStart";
-    on(started, (resource: string) => this.started(resource));
-    on("onResourceStop", (resource: string) => this.stopped(resource));
+    pickers.add(this);
+    listen();
     this.select();
   }
 
@@ -103,13 +122,15 @@ export class AdapterPicker<A extends Adapter> {
     return guarded(this.current, what, fn, fallback, this.options.log);
   }
 
-  private started(resource: string): void {
+  /** A resource started (the shared listener calls it). */
+  resourceStarted(resource: string): void {
     const names = [resource, ...provides(resource)];
     for (const name of names) this.down.delete(name);
     if (names.some((name) => this.names.has(name))) this.select(names);
   }
 
-  private stopped(resource: string): void {
+  /** A resource is stopping (the shared listener calls it). */
+  resourceStopped(resource: string): void {
     const names = [resource, ...provides(resource)];
     if (!names.some((name) => this.names.has(name))) return;
     for (const name of names) this.down.add(name);
