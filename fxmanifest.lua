@@ -1,6 +1,6 @@
 name 'ai-core'
 author 'TGIANN'
-version '0.1.0' -- x-release-please-version
+version '0.2.0' -- x-release-please-version
 license 'GPL-3.0-only'
 description 'ai-core framework: players, characters, money, jobs, permissions, admin panel'
 repository 'https://github.com/aifivem/ai-core'
