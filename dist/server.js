@@ -22664,6 +22664,10 @@ var Wallet = class {
 		let value = this.row.metadata.armor;
 		return typeof value == "number" && Number.isFinite(value) ? Math.min(100, Math.max(0, Math.round(value))) : 0;
 	}
+	health() {
+		let value = this.row.metadata.health;
+		return typeof value == "number" && Number.isFinite(value) && value > 100 ? Math.round(value) : 0;
+	}
 	saveData() {
 		let ped = GetPlayerPed(String(this.source));
 		if (ped && DoesEntityExist(ped)) {
@@ -22676,6 +22680,8 @@ var Wallet = class {
 			};
 			let armour = GetPedArmour(ped);
 			armour !== this.row.metadata.armor && this.setMeta("armor", armour);
+			let health = GetEntityHealth(ped);
+			health !== this.row.metadata.health && this.setMeta("health", health);
 		}
 		let lastDuty = this.jobs.last();
 		return lastDuty !== this.row.metadata.lastDutyJob && this.setMeta("lastDutyJob", lastDuty), {
@@ -22809,7 +22815,8 @@ async function loadNow(source, charId) {
 		selecting.delete(source), players.add(player), enterWorldBucket(source), player.sendSnapshot();
 		let base = {
 			model: row.sex === "female" ? "mp_f_freemode_01" : "mp_m_freemode_01",
-			armour: player.armour()
+			armour: player.armour(),
+			health: player.health()
 		}, points = settings.spawn.choose ? settings.spawn.points : [];
 		if (points.length === 0) emitNet(CORE.spawnEvent, source, {
 			...player.spawnPosition(),

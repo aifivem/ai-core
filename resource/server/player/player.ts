@@ -164,7 +164,18 @@ export class Player {
       : 0;
   }
 
-  /** What the periodic flush writes: the ped's position and armour (server copies) and the metadata bag. */
+  /**
+   * Saved ped health (metadata `health`), set again at spawn; 0 when none is saved or it is 100 or below (GTA's dead
+   * line: a downed character comes back down through the death script's `isdead`, never by spawning dead).
+   */
+  health(): number {
+    const value = this.row.metadata.health;
+    return typeof value === "number" && Number.isFinite(value) && value > 100
+      ? Math.round(value)
+      : 0;
+  }
+
+  /** What the periodic flush writes: the ped's position, armour and health (server copies) and the metadata bag. */
   saveData(): CharacterSave {
     const ped = GetPlayerPed(String(this.source));
     if (ped && DoesEntityExist(ped)) {
@@ -172,6 +183,8 @@ export class Player {
       this.row.position = { x, y, z, heading: GetEntityHeading(ped) };
       const armour = GetPedArmour(ped);
       if (armour !== this.row.metadata.armor) this.setMeta("armor", armour);
+      const health = GetEntityHealth(ped);
+      if (health !== this.row.metadata.health) this.setMeta("health", health);
     }
     const lastDuty = this.jobs.last();
     if (lastDuty !== this.row.metadata.lastDutyJob)

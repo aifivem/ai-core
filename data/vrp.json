@@ -6,8 +6,46 @@
     "adminPrefix": true,
     "playerPrefix": true
   },
-  "permissions": [],
+  "permissions": [
+    {
+      "admin": false,
+      "everyone": false,
+      "gang": "",
+      "grade": 0,
+      "group": "",
+      "job": "",
+      "onDuty": true,
+      "permission": "mission.delivery.food",
+      "who": "everyone"
+    },
+    {
+      "admin": false,
+      "everyone": false,
+      "gang": "",
+      "grade": 0,
+      "group": "",
+      "job": "",
+      "onDuty": true,
+      "permission": "mission.repair.satellite_dishes",
+      "who": "everyone"
+    },
+    {
+      "admin": false,
+      "everyone": false,
+      "gang": "",
+      "grade": 0,
+      "group": "",
+      "job": "",
+      "onDuty": true,
+      "permission": "mission.repair.wind_turbines",
+      "who": "everyone"
+    }
+  ],
   "groups": [],
   "items": [],
-  "seen": []
+  "seen": [
+    "mission.delivery.food",
+    "mission.repair.satellite_dishes",
+    "mission.repair.wind_turbines"
+  ]
 }

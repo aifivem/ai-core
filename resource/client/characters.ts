@@ -165,10 +165,10 @@ RegisterNuiCallback(NuiCallback.remove, (data: unknown, cb: NuiReply) => {
 });
 
 /** The server loaded a character: out of the screen and into the world at its spawn. */
-/** The spawn point the server sends: finite coordinates, a model name and the armour (0-100). */
+/** The spawn point the server sends: finite coordinates, a model name, the armour (0-100) and the health (0 = full). */
 function toSpawn(value: unknown): [SpawnPoint] | null {
   if (!isRecord(value) || typeof value.model !== "string") return null;
-  const { x, y, z, heading, armour } = value;
+  const { x, y, z, heading, armour, health } = value;
   const finite = (n: unknown): n is number =>
     typeof n === "number" && Number.isFinite(n);
   return finite(x) && finite(y) && finite(z) && finite(heading)
@@ -180,6 +180,7 @@ function toSpawn(value: unknown): [SpawnPoint] | null {
           heading,
           model: value.model,
           armour: finite(armour) ? Math.min(100, Math.max(0, armour)) : 0,
+          health: finite(health) && health > 100 ? health : 0,
         },
       ]
     : null;
@@ -220,7 +221,7 @@ onServerEvent(
       FreezeEntityPosition(ped, false);
       SetEntityInvincible(ped, false);
       SetEntityVisible(ped, true, false);
-      spawnArmour.apply(ped, spawn.armour);
+      spawnArmour.apply(ped, spawn.armour, spawn.health);
       hudHidden.set(SCREEN_HUD_REASON, false, CORE.resource);
       void fadeIn(500);
       screen = null;

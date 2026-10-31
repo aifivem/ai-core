@@ -359,5 +359,14 @@
     "key": "",
     "hintWhen": "",
     "hint": ""
+  },
+  "death_distress": {
+    "resource": "ai-death",
+    "description": "Call a doctor while down",
+    "defaultKey": "G",
+    "mapper": "keyboard",
+    "key": "",
+    "hintWhen": "",
+    "hint": ""
   }
 }

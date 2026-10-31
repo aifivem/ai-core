@@ -181,6 +181,7 @@ async function loadNow(
     const base = {
       model: row.sex === "female" ? "mp_f_freemode_01" : "mp_m_freemode_01",
       armour: player.armour(),
+      health: player.health(),
     };
     const points = settings.spawn.choose ? settings.spawn.points : [];
     if (points.length === 0)
