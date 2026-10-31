@@ -36,8 +36,10 @@ end
 ---@field callAction fun(name: string, args?: any[], options: { fallback: string, timeout?: integer, silent?: boolean }): table? client: runs an action, notifies the translated refusal, returns the ok reply or nil
 ---@field notify fun(...: any) client `(text, kind?, duration?)`; server `(source, text, kind?, duration?)`
 ---@field progress AiLibProgress client: `aiLib.progress(options)` waits (true = ran out), `progress.cancel()`, `progress.isRunning()`
----@field menu { show: (fun(request: table, listeners?: table): string?), input: (fun(request: table): table?), itemPicker: (fun(request: { title: string, target?: integer }): table?) } client
+---@field menu { show: (fun(request: table, listeners?: table): string?), input: (fun(request: table): table?), itemPicker: (fun(request: { title: string, target?: integer }): table?), skillCheck: (fun(difficulty: string|table, keys?: string[]): boolean), lockpick: (fun(options?: table): string) } client
 ---@field itemPicker fun(request: { title: string, target?: integer }): table? client, admin tools: the taken list or nil
+---@field skillCheck fun(difficulty: string|table, keys?: string[]): boolean client: ai-core's skill check, waits (true = every stage hit)
+---@field lockpick fun(options?: { difficulty?: string, pins?: integer, picks?: integer }): string client: ai-core's lockpick, waits ('opened' | 'broken' | 'cancelled')
 ---@field input fun(request: table): table? client
 ---@field showPrompt fun(id: string, text: string) client
 ---@field hidePrompt fun(id: string) client

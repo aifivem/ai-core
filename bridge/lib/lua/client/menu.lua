@@ -80,4 +80,60 @@ function menu.itemPicker(request)
     return type(list) == 'table' and list or nil
 end
 
+-- Same presets as `SKILL_STAGES` / `LOCKPICK_AREAS` in @aicore-fivem/shared.
+local SKILL_STAGES = {
+    easy = { area = 50, speed = 0.6 },
+    medium = { area = 40, speed = 0.85 },
+    hard = { area = 25, speed = 1 },
+}
+local LOCKPICK_AREAS = { easy = 18, medium = 11, hard = 6 }
+
+local function stageOf(d)
+    if type(d) == 'table' then
+        local area = math.min(180, math.max(5, tonumber(d.areaSize) or 50))
+        local mult = math.min(5, math.max(0.2, tonumber(d.speedMultiplier) or 1))
+        return { area = area, speed = SKILL_STAGES.easy.speed * mult }
+    end
+    return SKILL_STAGES[d] or SKILL_STAGES.easy
+end
+
+---ai-core's skill check and waits (call from a thread): true when every stage was hit, false on a miss, a wrong key
+---or Escape. `difficulty` is `'easy' | 'medium' | 'hard'`, ox_lib's `{ areaSize, speedMultiplier }` or a list of them;
+---each stage shows one of `keys` (default `{ 'e' }`).
+---@param difficulty string|table
+---@param keys? string[]
+---@return boolean
+function menu.skillCheck(difficulty, keys)
+    local list = (type(difficulty) == 'table' and difficulty[1] ~= nil) and difficulty or { difficulty }
+    local stages = {}
+    for i = 1, math.min(#list, 20) do stages[i] = stageOf(list[i]) end
+    local keyList = {}
+    for _, k in ipairs(keys or {}) do
+        if type(k) == 'string' and k:match('^%w$') then keyList[#keyList + 1] = k:lower() end
+    end
+    if #keyList == 0 then keyList = { 'e' } end
+    local ok = ask(function(id)
+        exports['ai-core']:OpenMinigame(id, { kind = 'skillCheck', stages = stages, keys = keyList })
+    end)
+    return ok == true
+end
+
+---ai-core's lockpick and waits (call from a thread): `'opened'`, `'broken'` (the last pick broke: take the item) or
+---`'cancelled'`. A / D move the pick, W turns the lock.
+---@param options? { difficulty?: 'easy'|'medium'|'hard', pins?: integer, picks?: integer }
+---@return 'opened'|'broken'|'cancelled'
+function menu.lockpick(options)
+    options = options or {}
+    local result = ask(function(id)
+        exports['ai-core']:OpenMinigame(id, {
+            kind = 'lockpick',
+            pins = math.min(6, math.max(1, math.floor(options.pins or 1))),
+            area = LOCKPICK_AREAS[options.difficulty or 'medium'] or LOCKPICK_AREAS.medium,
+            picks = math.min(10, math.max(1, math.floor(options.picks or 1))),
+        })
+    end)
+    if result == 'opened' or result == 'broken' then return result end
+    return 'cancelled'
+end
+
 return menu

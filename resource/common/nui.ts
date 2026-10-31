@@ -35,6 +35,8 @@ export const NuiMessage = {
   keyboardClose: "keyboardClose",
   /** data: { title, items: PickerItem[] } */
   itemsOpen: "itemsOpen",
+  /** data: MinigameRequest & { texts }, a skill check or lockpick starts (answered with `dialogAnswer`). */
+  minigameOpen: "minigameOpen",
   dialogClose: "dialogClose",
   /** data: SetupWelcome & { texts }, the setup guide is not finished: the welcome card shows. */
   setupWelcome: "setupWelcome",

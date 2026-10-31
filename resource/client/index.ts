@@ -13,6 +13,8 @@ import "./notify";
 import "./menu";
 import "./dialogClose";
 import "./itemPicker";
+import "./minigame";
+import "./progressFor";
 import "./keyboard";
 import "./inventory";
 import "./vehicleKeys";

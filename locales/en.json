@@ -597,5 +597,10 @@
   "ADMIN_P_SPAWN_LABEL": "Legion Square",
   "SPAWN_CHOOSE_TITLE": "Where do you want to appear?",
   "SPAWN_LAST_LOCATION": "Last location",
-  "ADMIN_UPDATE_OPEN": "View release"
+  "ADMIN_UPDATE_OPEN": "View release",
+  "MINIGAME_MOVE": "Move the pick",
+  "MINIGAME_TURN": "Turn the lock",
+  "MINIGAME_PRESS": "Press on the green",
+  "MINIGAME_CANCEL": "Give up",
+  "MINIGAME_PICKS": "Picks"
 }

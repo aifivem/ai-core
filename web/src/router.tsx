@@ -9,6 +9,7 @@ import { AdminRoot } from "./features/admin/AdminRoot";
 import { Prompts } from "./features/prompts/Prompts";
 import { Notifications } from "./features/notify/Notifications";
 import { Dialogs } from "./features/dialogs/Dialogs";
+import { Minigames } from "./features/dialogs/Minigames";
 import { ItemPicker } from "./features/dialogs/ItemPicker";
 import { Keyboard } from "./features/keyboard/Keyboard";
 import { Welcome } from "./features/setup/Welcome";
@@ -24,6 +25,7 @@ const rootRoute = createRootRoute({
       <Prompts />
       <Notifications />
       <Dialogs />
+      <Minigames />
       <ItemPicker />
       <Keyboard />
       <AdminRoot />

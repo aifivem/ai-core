@@ -41,7 +41,11 @@ function toInput(v: unknown): InputRequest | null {
   if (!isRecord(v) || typeof v.title !== "string" || !Array.isArray(v.fields))
     return null;
   const fields: InputField[] = v.fields.flatMap((f): InputField[] => {
-    if (!isRecord(f) || typeof f.name !== "string" || typeof f.label !== "string")
+    if (
+      !isRecord(f) ||
+      typeof f.name !== "string" ||
+      typeof f.label !== "string"
+    )
       return [];
     const placeholder =
       typeof f.placeholder === "string" ? f.placeholder : undefined;
@@ -101,11 +105,12 @@ export const pauseGuard = new PauseGuard();
  * The menu and input dialog every resource opens through lib `menu` / `input`: one at a time; opening a new one answers
  * the previous request with null. The answer goes back to the asking resource as a local event.
  */
-type DialogKind = "menu" | "input" | "items";
+type DialogKind = "menu" | "input" | "items" | "minigame";
 const OPEN_MESSAGE: Record<DialogKind, string> = {
   menu: NuiMessage.menuOpen,
   input: NuiMessage.inputOpen,
   items: NuiMessage.itemsOpen,
+  minigame: NuiMessage.minigameOpen,
 };
 
 class Dialogs {
@@ -118,7 +123,8 @@ class Dialogs {
   open(kind: DialogKind, resource: string, id: number, data: unknown): void {
     this.answer(null);
     this.current = { kind, resource, id };
-    SetNuiFocus(true, true);
+    // Minigames are played with the keyboard only: no cursor over the game.
+    SetNuiFocus(true, kind !== "minigame");
     SendNUIMessage({ action: OPEN_MESSAGE[kind], data });
   }
 

@@ -89,9 +89,16 @@ export async function mockFetch(
   // Views of the in-game UIs (admin, prompts, menu, notifications) preview without the character screen.
   const params = new URLSearchParams(window.location.search);
   if (name === "ready")
-    return ["admin", "prompt", "menu", "notify", "items", "keys"].includes(
-      params.get("view") ?? "",
-    )
+    return [
+      "admin",
+      "prompt",
+      "menu",
+      "notify",
+      "items",
+      "keys",
+      "skillcheck",
+      "lockpick",
+    ].includes(params.get("view") ?? "")
       ? null
       : { screen: MOCK_SCREEN, texts: en, scene: params.has("scene") };
   if (name === "remove")
