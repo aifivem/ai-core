@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useAppSelector } from "../../../store";
+import { loadPanelData } from "../actions";
 
 export type Kind = "job" | "gang";
 
@@ -35,13 +36,18 @@ function readDefs(file: unknown): Map<string, Def> {
 
 /**
  * Job, gang and account names as the admin reads them: ai-core's own panel data (jobs and gangs with their grades,
- * kept current by the panel's deltas) and the account lookup list.
+ * kept current by the panel's deltas) and the account lookup list. ai-core's records are not in the open summary,
+ * so the first user loads them.
  */
 export function useDefs() {
-  const data = useAppSelector(
-    (state) =>
-      state.admin.panels.find((p) => p.resource === "ai-core")?.data ?? NO_DATA,
+  const panel = useAppSelector((state) =>
+    state.admin.panels.find((p) => p.resource === "ai-core"),
   );
+  const data = panel?.data ?? NO_DATA;
+  const unloaded = panel?.loaded === false;
+  useEffect(() => {
+    if (unloaded) void loadPanelData("ai-core");
+  }, [unloaded]);
   const accounts = useAppSelector((state) => state.admin.lookups.account);
   return useMemo(() => {
     const defs = { job: readDefs(data.jobs), gang: readDefs(data.gangs) };

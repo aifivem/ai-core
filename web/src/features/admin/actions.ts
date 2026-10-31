@@ -51,26 +51,40 @@ const toResult = (value: unknown): AdminResult => {
 
 /** Scripts whose panel data is being asked for (one request each). */
 const loading = new Set<string>();
+/** Failed requests in a row per script: the next try waits 2 s, 4 s, ... up to 30 s. */
+const failures = new Map<string, number>();
 
 /** Asks for a script's whole panel data once, when the admin opens it (the open summary has only settings and labels). */
 export async function loadPanelData(resource: string): Promise<void> {
-  const panel = store
-    .getState()
-    .admin.panels.find((p) => p.resource === resource);
-  if (!panel || panel.loaded !== false || loading.has(resource)) return;
+  const state = store.getState().admin;
+  const panel = state.panels.find((p) => p.resource === resource);
+  if (!state.open || !panel || panel.loaded !== false || loading.has(resource))
+    return;
   loading.add(resource);
+  let ok = false;
   try {
     const data: unknown = await fetchNui(
       NuiCallback.adminPanelData,
       { resource },
       { mockData: null },
     );
-    if (typeof data === "object" && data !== null && !Array.isArray(data))
+    ok = typeof data === "object" && data !== null && !Array.isArray(data);
+    if (ok)
       store.dispatch(
         panelLoaded({ resource, data: data as Record<string, unknown> }),
       );
   } finally {
     loading.delete(resource);
+    if (ok) failures.delete(resource);
+    else {
+      // The opening effect never runs again for an unloaded panel: try again later while the panel is open.
+      const count = (failures.get(resource) ?? 0) + 1;
+      failures.set(resource, count);
+      setTimeout(
+        () => void loadPanelData(resource),
+        Math.min(30_000, 1000 * 2 ** count),
+      );
+    }
   }
 }
 

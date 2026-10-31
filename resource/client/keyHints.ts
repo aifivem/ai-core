@@ -112,8 +112,7 @@ on("onClientResourceStop", (resource: string) => hints.drop(resource));
 
 registerExport("ShowKeyHint", (id: unknown, hint: unknown) => {
   const request = toRequest(hint);
-  if (typeof id === "string" && request)
-    hints.show(caller(), id, request);
+  if (typeof id === "string" && request) hints.show(caller(), id, request);
 });
 registerExport("HideKeyHint", (id: unknown) => {
   if (typeof id === "string") hints.hide(caller(), id);

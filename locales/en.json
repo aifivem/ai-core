@@ -606,5 +606,12 @@
   "ADMIN_P_ACCESS_GANGS": "No gang",
   "ADMIN_F_ACCESS_ON_DUTY": "Only on duty",
   "ADMIN_H_ACCESS_ON_DUTY": "Job members must be on duty in that job.",
-  "ADMIN_LOADING": "Loading..."
+  "ADMIN_LOADING": "Loading...",
+  "ADMIN_C_PVP": "Player versus player",
+  "ADMIN_C_PVP_DESC": "Whether players can shoot and hit each other.",
+  "ADMIN_F_PVP": "Players can hurt each other",
+  "ADMIN_H_PVP": "Off: weapons and fists do no harm between players (NPCs still take damage). /togglepvp flips it in game.",
+  "COMMAND_TOGGLEPVP": "Turn player versus player damage on or off",
+  "NOTIFY_PVP_ON": "PvP is on: players can hurt each other.",
+  "NOTIFY_PVP_OFF": "PvP is off: players cannot hurt each other."
 }

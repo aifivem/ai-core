@@ -27,7 +27,8 @@ onServerCallback(CORE.vehicleTypeCallback, (model) => {
  */
 function applyOnOwner(netId: number, apply: (vehicle: number) => void): void {
   void waitForEntity(netId, 5000).then((vehicle) => {
-    if (vehicle && NetworkGetEntityOwner(vehicle) === PlayerId()) apply(vehicle);
+    if (vehicle && NetworkGetEntityOwner(vehicle) === PlayerId())
+      apply(vehicle);
   });
 }
 new EntityState(

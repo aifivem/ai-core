@@ -308,6 +308,7 @@ const CORE = {
 	clientDefinitionsEvent: "ai-core:client:definitions",
 	vehicleTypeCallback: "ai-core:vehicleType",
 	interactionStateKey: "ai:interaction",
+	pvpStateKey: "ai:pvp",
 	charactersCallback: "ai-core:characters",
 	createCharacterCallback: "ai-core:createCharacter",
 	deleteCharacterCallback: "ai-core:deleteCharacter",
@@ -884,7 +885,7 @@ var AdminPanel = class {
 	constructor(schema) {
 		this.schema = schema;
 		for (let [name, spec] of Object.entries(schema.files)) this.load(name, spec);
-		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelSummary", () => this.summary()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges), { rate: {
+		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelData", () => this.dataSnapshot()), registerExport("AdminPanelSummary", () => this.summary()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges), { rate: {
 			count: 4,
 			windowMs: 1e4
 		} }), setImmediate(() => core$16.RegisterAdminPanel(this.resource));
@@ -912,8 +913,11 @@ var AdminPanel = class {
 			resource: this.resource,
 			schema: this.schema,
 			texts: loadLocaleTexts(),
-			data: clone(Object.fromEntries(this.data))
+			data: this.dataSnapshot()
 		};
+	}
+	dataSnapshot() {
+		return clone(Object.fromEntries(this.data));
 	}
 	summary() {
 		let data = {}, index = {};
@@ -16378,7 +16382,7 @@ const PRIME_TIME_SYSTEM_NAMES = ["tgiann-policealert"], PRIME_SOURCES = [
 	"ai-core",
 	...PRIME_TIME_SYSTEM_NAMES
 ], DEFAULT_PRIME_TIME = {
-	enabled: !1,
+	enabled: !0,
 	source: "auto",
 	offPrimeMultiplier: .5,
 	start: 18,
@@ -16894,6 +16898,7 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 						type: "enum",
 						values: ["prompt", "target"]
 					},
+					pvp: { type: "bool" },
 					refuseOnConflict: { type: "bool" },
 					setupDone: { type: "bool" },
 					updates: {
@@ -16945,6 +16950,7 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 					dispatch: "auto",
 					appearance: "auto",
 					interaction: "prompt",
+					pvp: !0,
 					refuseOnConflict: !0,
 					setupDone: !1,
 					updates: {
@@ -17295,6 +17301,17 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 								value: "target",
 								label: "ADMIN_O_INTERACTION_TARGET"
 							}]
+						}]
+					},
+					{
+						icon: "gun",
+						title: "ADMIN_C_PVP",
+						desc: "ADMIN_C_PVP_DESC",
+						fields: [{
+							widget: "switch",
+							path: "pvp",
+							label: "ADMIN_F_PVP",
+							hint: "ADMIN_H_PVP"
 						}]
 					},
 					{
@@ -18135,6 +18152,7 @@ function readSettings(raw) {
 		dispatch: str(s.dispatch, "auto", 32),
 		appearance: str(s.appearance, "auto", 32),
 		interaction: s.interaction === "target" ? "target" : "prompt",
+		pvp: bool$1(s.pvp, !0),
 		refuseOnConflict: bool$1(s.refuseOnConflict, !0),
 		updates: readUpdates(record(s.updates)),
 		setupDone: bool$1(s.setupDone, !1),
@@ -18973,7 +18991,14 @@ var AdminHost = class {
 		};
 	}
 	data(source, resource) {
-		return !this.watchers.has(source) || !this.resources.has(resource) ? null : this.call(resource)?.AdminPanelSnapshot() ?? null;
+		if (!this.watchers.has(source) || !this.resources.has(resource)) return null;
+		let panel = this.call(resource);
+		if (!panel) return null;
+		try {
+			return panel.AdminPanelData();
+		} catch {
+			return panel.AdminPanelSnapshot().data;
+		}
 	}
 	close(source) {
 		this.watchers.delete(source);
@@ -19039,7 +19064,7 @@ recommendations.onChange((delta) => adminHost.recommendationChanged(delta)), reg
 		windowMs: 5e3
 	},
 	args: ([resource]) => typeof resource == "string" && resource.length <= 64 ? [resource] : null
-}, (source, resource) => adminHost.data(source, resource)?.data ?? null), onClientCallback(ADMIN.applyCallback, {
+}, (source, resource) => adminHost.data(source, resource)), onClientCallback(ADMIN.applyCallback, {
 	guards: [isAdmin()],
 	rate: {
 		count: 30,
@@ -21110,8 +21135,22 @@ registerExport("GiveVehicleKeys", (source, vehicle, purpose) => {
 	return typeof source != "number" || !t ? !1 : layer$1.call("has", (a) => !a.has || a.has(source, t), !0);
 });
 // resource/server/interaction.ts
-const style = new GlobalKey(CORE.interactionStateKey, stateString), publish = () => style.set(settings.interaction);
-publish(), panel.onChange("settings", publish);
+const style = new GlobalKey(CORE.interactionStateKey, stateString), publish$1 = () => style.set(settings.interaction);
+publish$1(), panel.onChange("settings", publish$1);
+// resource/server/pvp.ts
+const pvp = new GlobalKey(CORE.pvpStateKey, stateBoolean), publish = () => pvp.set(settings.pvp);
+publish(), panel.onChange("settings", publish), addCommand("togglepvp", {
+	help: Locale("COMMAND_TOGGLEPVP"),
+	restricted: !0
+}, (source) => {
+	let on = !settings.pvp;
+	panel.commit("settings", void 0, {
+		...panel.get("settings"),
+		pvp: on
+	});
+	let text = Locale(on ? "NOTIFY_PVP_ON" : "NOTIFY_PVP_OFF");
+	source > 0 ? notify(source, text, "success") : console.log(text);
+});
 // resource/server/scopes.ts
 const posOf = (source) => {
 	let [x = 0, y = 0, z = 0] = GetEntityCoords(GetPlayerPed(String(source)));

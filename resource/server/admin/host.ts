@@ -63,10 +63,17 @@ class AdminHost {
   }
 
   /** One script's whole panel data (the admin opened it); null when it does not run. */
-  data(source: number, resource: string): AdminPanelSnapshot | null {
+  data(source: number, resource: string): Record<string, unknown> | null {
     if (!this.watchers.has(source) || !this.resources.has(resource))
       return null;
-    return this.call(resource)?.AdminPanelSnapshot() ?? null;
+    const panel = this.call(resource);
+    if (!panel) return null;
+    try {
+      return panel.AdminPanelData();
+    } catch {
+      // A script built with a lib older than `AdminPanelData`.
+      return panel.AdminPanelSnapshot().data;
+    }
   }
 
   close(source: number): void {
@@ -152,7 +159,7 @@ onClientCallback(
     args: ([resource]) =>
       typeof resource === "string" && resource.length <= 64 ? [resource] : null,
   },
-  (source, resource) => adminHost.data(source, resource)?.data ?? null,
+  (source, resource) => adminHost.data(source, resource),
 );
 onClientCallback(
   ADMIN.applyCallback,

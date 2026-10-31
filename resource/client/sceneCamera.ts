@@ -1,4 +1,5 @@
-import { every, TickLoop, type Job } from "@aicore-fivem/lib/client";
+import { every, ScriptCamera, type Job } from "@aicore-fivem/lib/client";
+import type { Vec3 } from "@aicore-fivem/lib/shared";
 import type { SceneSpot } from "@aicore-fivem/shared";
 
 const MOVE_MS = 500;
@@ -7,66 +8,50 @@ const SHAKE = 0.15;
 const RAD = Math.PI / 180;
 
 /** Camera position for a spot seen from `heading` (degrees): in front of that heading, raised by the height slope. */
-function cameraAt(spot: SceneSpot, heading: number): [number, number, number] {
+function cameraAt(spot: SceneSpot, heading: number): Vec3 {
   const pitch = Math.atan(spot.camHeight);
   const flat = spot.camDistance * Math.cos(pitch);
-  return [
-    spot.ped.x - Math.sin(heading * RAD) * flat,
-    spot.ped.y + Math.cos(heading * RAD) * flat,
-    spot.ped.z + spot.targetHeight + spot.camDistance * Math.sin(pitch),
-  ];
+  return {
+    x: spot.ped.x - Math.sin(heading * RAD) * flat,
+    y: spot.ped.y + Math.cos(heading * RAD) * flat,
+    z: spot.ped.z + spot.targetHeight + spot.camDistance * Math.sin(pitch),
+  };
 }
 
 /**
  * The character screen camera: frames one spot, glides to another when the pick changes, sways slowly, and blurs
- * the background when the spot asks for it. Each move is a new camera interpolated from the old one.
+ * the background when the spot asks for it.
  */
 export class SceneCamera {
-  private camera: number | null = null;
-  /** Cameras still interpolating away; destroyed after the move or on `destroy`. */
-  private readonly retired = new Set<number>();
+  private readonly camera = new ScriptCamera();
   private sway: ReturnType<typeof setTimeout> | null = null;
   private swayJob: Job | null = null;
-  private readonly dof = new TickLoop(() => SetUseHiDof());
 
   /** Frames `spot` at once (`instant`) or with a short glide from the current shot. */
   frame(spot: SceneSpot, fov: number, instant: boolean): void {
     const base = spot.ped.heading + spot.camAngle;
-    const [x, y, z] = cameraAt(spot, base);
-    const cam = CreateCamWithParams(
-      "DEFAULT_SCRIPTED_CAMERA",
-      x,
-      y,
-      z,
-      0,
-      0,
-      0,
-      fov,
-      false,
-      2,
-    );
-    PointCamAtCoord(
-      cam,
-      spot.ped.x,
-      spot.ped.y,
-      spot.ped.z + spot.targetHeight,
-    );
-    ShakeCam(cam, "HAND_SHAKE", SHAKE);
-    this.blur(cam, spot);
-    const old = this.camera;
-    this.camera = cam;
-    if (old === null || instant) {
-      if (old !== null) DestroyCam(old, false);
-      SetCamActive(cam, true);
-      RenderScriptCams(true, false, 0, true, true);
+    const at = cameraAt(spot, base);
+    const target = {
+      x: spot.ped.x,
+      y: spot.ped.y,
+      z: spot.ped.z + spot.targetHeight,
+    };
+    const blur = spot.blur
+      ? {
+          near: spot.blurNear,
+          far: spot.blurFar,
+          strength: spot.blurStrength / 100,
+        }
+      : null;
+    if (instant || !this.camera.active) {
+      this.camera.start(at, { pointAt: target, fov });
+      this.camera.shake("HAND_SHAKE", SHAKE);
+      this.camera.blur(blur);
     } else {
-      SetCamActiveWithInterp(cam, old, MOVE_MS, 1, 1);
-      this.retired.add(old);
-      setTimeout(() => {
-        if (this.retired.delete(old)) DestroyCam(old, false);
-      }, MOVE_MS + 150);
+      this.camera.blur(blur);
+      this.camera.glideTo(at, { pointAt: target, fov }, MOVE_MS);
     }
-    SetFocusPosAndVel(x, y, z, 0, 0, 0);
+    SetFocusPosAndVel(at.x, at.y, at.z, 0, 0, 0);
     this.startSway(spot, fov, base, instant ? 0 : MOVE_MS);
   }
 
@@ -81,10 +66,10 @@ export class SceneCamera {
     if (spot.sway <= 0) return;
     let side = 1;
     const leg = (): void => {
-      if (this.camera === null) return;
-      const [x, y, z] = cameraAt(spot, base + side * spot.sway);
-      SetCamParams(this.camera, x, y, z, 0, 0, 0, fov, SWAY_MS, 0, 0, 2);
-      SetFocusPosAndVel(x, y, z, 0, 0, 0);
+      if (!this.camera.active) return;
+      const at = cameraAt(spot, base + side * spot.sway);
+      this.camera.move(at, { fov }, SWAY_MS);
+      SetFocusPosAndVel(at.x, at.y, at.z, 0, 0, 0);
       side = -side;
     };
     this.sway = setTimeout(() => {
@@ -101,26 +86,10 @@ export class SceneCamera {
     this.swayJob = null;
   }
 
-  /** Depth of field needs `SetUseHiDof` every frame, so the tick runs only while a blurred spot is framed. */
-  private blur(cam: number, spot: SceneSpot): void {
-    SetCamUseShallowDofMode(cam, spot.blur);
-    if (spot.blur) {
-      SetCamNearDof(cam, spot.blurNear);
-      SetCamFarDof(cam, spot.blurFar);
-      SetCamDofStrength(cam, spot.blurStrength / 100);
-    }
-    this.dof.set(spot.blur);
-  }
-
   destroy(): void {
     this.stopSway();
-    this.dof.set(false);
-    if (this.camera === null) return;
-    RenderScriptCams(false, false, 0, true, true);
-    DestroyCam(this.camera, false);
-    for (const cam of this.retired) DestroyCam(cam, false);
-    this.retired.clear();
-    this.camera = null;
+    if (!this.camera.active) return;
+    this.camera.stop();
     ClearFocus();
   }
 }

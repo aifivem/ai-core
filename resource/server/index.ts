@@ -19,6 +19,7 @@ import "./exports";
 import "./inventory";
 import "./vehicleKeys";
 import "./interaction";
+import "./pvp";
 import "./scopes";
 import "./versions";
 import "./setup";

@@ -54,6 +54,8 @@ export interface Settings {
   appearance: string;
   /** How players use points of every script: the right-side prompt and its key, or the target eye (needs a target resource). */
   interaction: "prompt" | "target";
+  /** Players can hurt each other (QB `PVP`). */
+  pvp: boolean;
   /** Refuse connecting players while an unneeded script runs next to the one that replaces it. */
   refuseOnConflict: boolean;
   /** GitHub release check of every script with a `repository` line; `ignore` = resources never checked. */
@@ -138,6 +140,7 @@ function readSettings(raw: unknown): Settings {
     dispatch: str(s.dispatch, "auto", 32),
     appearance: str(s.appearance, "auto", 32),
     interaction: s.interaction === "target" ? "target" : "prompt",
+    pvp: bool(s.pvp, true),
     refuseOnConflict: bool(s.refuseOnConflict, true),
     updates: readUpdates(record(s.updates)),
     setupDone: bool(s.setupDone, false),

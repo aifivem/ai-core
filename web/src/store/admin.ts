@@ -8,6 +8,7 @@ import type {
   RecommendationDelta,
   UpdateInfo,
 } from "@aicore-fivem/shared";
+import { getAt } from "../features/admin/path";
 
 /** A field's save state, shown next to its label. */
 export type FieldState =
@@ -67,10 +68,7 @@ function put(panels: AdminPanelSnapshot[], delta: AdminDelta): void {
   if (panel.loaded === false && delta.key !== undefined) {
     const labels = (panel.index ??= {})[delta.file] ?? {};
     const path = panel.schema.files[delta.file]?.labelPath;
-    const label =
-      path && typeof delta.value === "object" && delta.value !== null
-        ? Reflect.get(delta.value, path)
-        : undefined;
+    const label = path ? getAt(delta.value, path) : undefined;
     if (delta.value === null) delete labels[delta.key];
     else
       labels[delta.key] =

@@ -270,6 +270,10 @@
         "target"
       ]
     },
+    "pvp": {
+      "description": "Players can hurt each other: Off: weapons and fists do no harm between players (NPCs still take damage). /togglepvp flips it in game.",
+      "type": "boolean"
+    },
     "refuseOnConflict": {
       "description": "Refuse players while both run: Nobody can join while an unneeded script is started next to its replacement; the refusal and the console say which one to remove.",
       "type": "boolean"

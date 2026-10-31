@@ -25,7 +25,7 @@ export interface PrimeTimeSettings extends PrimeHours {
 }
 
 export const DEFAULT_PRIME_TIME: PrimeTimeSettings = {
-  enabled: false,
+  enabled: true,
   source: "auto",
   offPrimeMultiplier: 0.5,
   start: 18,

@@ -140,6 +140,7 @@ export function coreSchema(
           dispatch: { type: "enum", values: ["auto", ...alertSystems] },
           appearance: { type: "enum", values: ["auto", ...clothingSystems] },
           interaction: { type: "enum", values: ["prompt", "target"] },
+          pvp: { type: "bool" },
           refuseOnConflict: { type: "bool" },
           setupDone: { type: "bool" },
           updates: {
@@ -184,6 +185,7 @@ export function coreSchema(
           dispatch: "auto",
           appearance: "auto",
           interaction: "prompt",
+          pvp: true,
           refuseOnConflict: true,
           setupDone: false,
           updates: { check: true, ignore: [] },
@@ -465,6 +467,19 @@ export function coreSchema(
                   { value: "prompt", label: "ADMIN_O_INTERACTION_PROMPT" },
                   { value: "target", label: "ADMIN_O_INTERACTION_TARGET" },
                 ],
+              },
+            ],
+          },
+          {
+            icon: "gun",
+            title: "ADMIN_C_PVP",
+            desc: "ADMIN_C_PVP_DESC",
+            fields: [
+              {
+                widget: "switch",
+                path: "pvp",
+                label: "ADMIN_F_PVP",
+                hint: "ADMIN_H_PVP",
               },
             ],
           },

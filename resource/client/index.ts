@@ -19,6 +19,7 @@ import "./gestures";
 import "./appearance";
 import "./radial";
 import "./world";
+import "./pvp";
 import "./setup";
 import "./spawnChoice";
 import { openCharacters } from "./characters";

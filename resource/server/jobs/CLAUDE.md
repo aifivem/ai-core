@@ -22,7 +22,7 @@ With multiple off, a character has exactly one job / at most one gang, and givin
 
 Owner decision (ported from the owner's Qbox server): salaries can drop outside a job's prime time (busy hours). Details and the tgiann-policealert part: `docs/compat/prime-time.md`.
 
-- Settings `primeTime` (Job and gang rules tab): `enabled` (salary cut on/off), `offPrimeMultiplier` (0-1), `source` (`auto` / `ai-core` / a script of `primeTime/registry.ts`), default `start` / `finish` hours. Job records: `primeOwn` + `primeStart` / `primeFinish` (own window). Grades: `offPrimePayment` (0 = not set).
+- Settings `primeTime` (Job and gang rules tab): `enabled` (salary cut on/off, on by default: owner decision), `offPrimeMultiplier` (0-1), `source` (`auto` / `ai-core` / a script of `primeTime/registry.ts`), default `start` / `finish` hours. Job records: `primeOwn` + `primeStart` / `primeFinish` (own window). Grades: `offPrimePayment` (0 = not set).
 - Paycheck with `enabled`, outside the on-duty job's prime time: the grade's `offPrimePayment` when set, else `floor(salary x offPrimeMultiplier)`; the job account (with `fromJobAccount`) pays what the player gets. One prime time answer per job per run.
 - `primeTime/` decides: `auto` = the first running script of the registry (one adapter file each, called through `callExport`), else ai-core's hours; a picked script that is stopped = prime all day (full salary, as the original). Hours are server local whole hours; `start > finish` runs past midnight, `start = finish` is all day.
 - The active source is written into the settings as `primeTimeActive` (read-only `info` row in the panel; written only when it changes: at start, on a settings change, when a registry script starts or stops).

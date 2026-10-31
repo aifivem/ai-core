@@ -126,10 +126,20 @@ end
 -- One scan job for the resource, two times a second, only while model points in prompt mode exist.
 local scanner = aiLib.every(SCAN_MS, scan, { active = false, name = 'modelPoints' })
 
+---Points with `promptOnly` / `preferTarget` keep their own style (same rule as `Points`).
+---@param options { promptOnly?: boolean, preferTarget?: boolean }
+---@param mode 'prompt'|'target'
+---@return 'prompt'|'target'
+local function pointStyle(options, mode)
+    if options.promptOnly then return 'prompt' end
+    if options.preferTarget and GetResourceState(TARGET) == 'started' then return 'target' end
+    return mode
+end
+
 ---@param point table
 ---@param mode 'prompt'|'target'
 local function attach(point, mode)
-    if mode == 'target' then
+    if pointStyle(point.options, mode) == 'target' then
         local option = {
             name = point.promptId,
             label = point.options.label,

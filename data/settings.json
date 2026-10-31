@@ -191,7 +191,7 @@
   "setupDone": true,
   "dispatch": "auto",
   "primeTime": {
-    "enabled": false,
+    "enabled": true,
     "source": "auto",
     "offPrimeMultiplier": 0.5,
     "start": 18,
@@ -201,5 +201,6 @@
   "recommendations": {
     "dismissed": []
   },
-  "primeTimeActive": "ai-core"
+  "primeTimeActive": "ai-core",
+  "pvp": true
 }

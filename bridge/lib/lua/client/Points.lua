@@ -16,6 +16,16 @@ local function style()
     return GlobalState['ai:interaction'] == 'target' and GetResourceState(TARGET) == 'started' and 'target' or 'prompt'
 end
 
+---The style one point uses: the owner's, unless the point asks for its own (`promptOnly`, `preferTarget`).
+---@param options { promptOnly?: boolean, preferTarget?: boolean }
+---@param mode 'prompt'|'target'
+---@return 'prompt'|'target'
+local function pointStyle(options, mode)
+    if options.promptOnly then return 'prompt' end
+    if options.preferTarget and GetResourceState(TARGET) == 'started' then return 'target' end
+    return mode
+end
+
 ---@param value string|fun(): string
 local function readLabel(value)
     if type(value) ~= 'function' then return value end
@@ -31,6 +41,8 @@ end
 ---@field height? number a cylinder: metres up and down from `coords`
 ---@field targetRadius? number target mode: size of the aim spot (default 1)
 ---@field promptOnly? boolean always a prompt (actions done from a vehicle)
+---@field preferTarget? boolean a target option whenever a target resource runs, whatever the owner picked (seats)
+---@field world? boolean|fun(): vector3 as a prompt: drawn over `coords` (or the point the function gives when it shows) in the world instead of the right-hand list (doors)
 ---@field canShow? fun(): boolean
 ---@field onPressed fun()
 ---@field onEnter? fun()
@@ -65,11 +77,14 @@ end
 
 ---@param mode 'prompt'|'target'
 function Point:sync(mode)
-    if self.options.promptOnly then mode = 'prompt' end
+    mode = pointStyle(self.options, mode)
     local text = mode == 'prompt' and self.inside and self:allowed() and readLabel(self.options.label) or nil
     if text == self.shown then return end
     self.shown = text
-    if text then exports['ai-lib']:ShowPrompt(self.promptId, text) else exports['ai-lib']:HidePrompt(self.promptId) end
+    if not text then return exports['ai-lib']:HidePrompt(self.promptId) end
+    local world, c = self.options.world, self.options.coords
+    if type(world) == 'function' then c = world() end
+    exports['ai-lib']:ShowPrompt(self.promptId, text, world and { x = c.x, y = c.y, z = c.z } or nil)
 end
 
 function Point:targetOption()
@@ -140,7 +155,7 @@ function Points:add(id, options)
             anim = ped.anim,
             distance = ped.distance,
             onSpawn = function(entity)
-                if style() == 'target' and not options.promptOnly then
+                if pointStyle(options, style()) == 'target' then
                     exports[TARGET]:addLocalEntity(entity, point:targetOption())
                 end
             end,
@@ -197,7 +212,7 @@ end
 function Points:refresh()
     local mode = style()
     for _, point in pairs(self.points) do
-        if mode == 'target' and point.zone then
+        if pointStyle(point.options, mode) == 'target' and point.zone then
             self:detach(point)
             self:attach(point, mode)
         end
@@ -207,7 +222,7 @@ end
 
 ---@private
 function Points:attach(point, mode)
-    if mode ~= 'target' or point.options.promptOnly then return end
+    if pointStyle(point.options, mode) ~= 'target' then return end
     if point.ped then
         if point.ped.entity ~= 0 then exports[TARGET]:addLocalEntity(point.ped.entity, point:targetOption()) end
         return

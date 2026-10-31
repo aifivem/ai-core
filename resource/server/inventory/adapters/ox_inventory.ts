@@ -64,8 +64,7 @@ export const oxInventory: InventoryAdapter = {
         ref,
       ),
     ) != null,
-  getItemDefinition: (name) =>
-    definition(call("Items", name), name, oxImage),
+  getItemDefinition: (name) => definition(call("Items", name), name, oxImage),
   getItemDefinitions: () => definitions(call("Items"), oxImage),
   getWeight: (source) => {
     const inv = first(call("GetInventory", source));
