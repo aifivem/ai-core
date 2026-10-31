@@ -3,6 +3,12 @@
 
 local resource = GetCurrentResourceName()
 local TARGET = 'ox_target'
+---The resource answering the ox_target API: ai-target `provide`s it, but a provided name is not always reported started.
+---@return string?
+local function targetResource()
+    if GetResourceState(TARGET) == 'started' then return TARGET end
+    if GetResourceState('ai-target') == 'started' then return 'ai-target' end
+end
 local CHECK_MS = 500
 local groups = {}
 local byPrompt = {}
@@ -13,7 +19,7 @@ local watcher
 
 ---@return 'prompt'|'target'
 local function style()
-    return GlobalState['ai:interaction'] == 'target' and GetResourceState(TARGET) == 'started' and 'target' or 'prompt'
+    return GlobalState['ai:interaction'] == 'target' and targetResource() ~= nil and 'target' or 'prompt'
 end
 
 ---The style one point uses: the owner's, unless the point asks for its own (`promptOnly`, `preferTarget`).
@@ -22,7 +28,7 @@ end
 ---@return 'prompt'|'target'
 local function pointStyle(options, mode)
     if options.promptOnly then return 'prompt' end
-    if options.preferTarget and GetResourceState(TARGET) == 'started' then return 'target' end
+    if options.preferTarget and targetResource() ~= nil then return 'target' end
     return mode
 end
 
@@ -156,11 +162,11 @@ function Points:add(id, options)
             distance = ped.distance,
             onSpawn = function(entity)
                 if pointStyle(options, style()) == 'target' then
-                    exports[TARGET]:addLocalEntity(entity, point:targetOption())
+                    exports[targetResource() or TARGET]:addLocalEntity(entity, point:targetOption())
                 end
             end,
             onDespawn = function(entity)
-                if GetResourceState(TARGET) == 'started' then exports[TARGET]:removeLocalEntity(entity, point.promptId) end
+                if targetResource() ~= nil then exports[targetResource() or TARGET]:removeLocalEntity(entity, point.promptId) end
             end,
         })
     end
@@ -224,10 +230,10 @@ end
 function Points:attach(point, mode)
     if pointStyle(point.options, mode) ~= 'target' then return end
     if point.ped then
-        if point.ped.entity ~= 0 then exports[TARGET]:addLocalEntity(point.ped.entity, point:targetOption()) end
+        if point.ped.entity ~= 0 then exports[targetResource() or TARGET]:addLocalEntity(point.ped.entity, point:targetOption()) end
         return
     end
-    point.zone = exports[TARGET]:addSphereZone({
+    point.zone = exports[targetResource() or TARGET]:addSphereZone({
         coords = point.options.coords,
         radius = point.options.targetRadius or 1,
         options = point:targetOption(),
@@ -236,13 +242,13 @@ end
 
 ---@private
 function Points:detach(point)
-    if GetResourceState(TARGET) ~= 'started' then
+    if targetResource() == nil then
         point.zone = nil
         return
     end
-    if point.zone then exports[TARGET]:removeZone(point.zone) end
+    if point.zone then exports[targetResource() or TARGET]:removeZone(point.zone) end
     point.zone = nil
-    if point.ped and point.ped.entity ~= 0 then exports[TARGET]:removeLocalEntity(point.ped.entity, point.promptId) end
+    if point.ped and point.ped.entity ~= 0 then exports[targetResource() or TARGET]:removeLocalEntity(point.ped.entity, point.promptId) end
 end
 
 local function restyleAll()

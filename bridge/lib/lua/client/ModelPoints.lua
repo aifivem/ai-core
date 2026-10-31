@@ -4,6 +4,12 @@
 -- finds vehicles).
 
 local TARGET = 'ox_target'
+---The resource answering the ox_target API: ai-target `provide`s it, but a provided name is not always reported started.
+---@return string?
+local function targetResource()
+    if GetResourceState(TARGET) == 'started' then return TARGET end
+    if GetResourceState('ai-target') == 'started' then return 'ai-target' end
+end
 local SCAN_MS = 500
 -- Up to this many models a point asks GTA for the closest object of each; more models use the object index (one
 -- closest-object query per model and scan costs milliseconds with hundreds of models).
@@ -132,7 +138,7 @@ local scanner = aiLib.every(SCAN_MS, scan, { active = false, name = 'modelPoints
 ---@return 'prompt'|'target'
 local function pointStyle(options, mode)
     if options.promptOnly then return 'prompt' end
-    if options.preferTarget and GetResourceState(TARGET) == 'started' then return 'target' end
+    if options.preferTarget and targetResource() ~= nil then return 'target' end
     return mode
 end
 
@@ -149,9 +155,9 @@ local function attach(point, mode)
             onSelect = function(data) run(point, type(data) == 'table' and data.entity or 0) end,
         }
         if point.global then
-            exports[TARGET]:addGlobalVehicle({ option })
+            exports[targetResource() or TARGET]:addGlobalVehicle({ option })
         else
-            exports[TARGET]:addModel(point.options.models, { option })
+            exports[targetResource() or TARGET]:addModel(point.options.models, { option })
         end
         point.attached = true
         return
@@ -165,11 +171,11 @@ end
 
 ---@param point table
 local function detach(point)
-    if point.attached and GetResourceState(TARGET) == 'started' then
+    if point.attached and targetResource() ~= nil then
         if point.global then
-            exports[TARGET]:removeGlobalVehicle(point.promptId)
+            exports[targetResource() or TARGET]:removeGlobalVehicle(point.promptId)
         else
-            exports[TARGET]:removeModel(point.options.models, point.promptId)
+            exports[targetResource() or TARGET]:removeModel(point.options.models, point.promptId)
         end
     end
     point.attached = false
