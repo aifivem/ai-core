@@ -1,15 +1,31 @@
 import { resourceExport } from "@aicore-fivem/lib/server";
 import { CORE } from "@aicore-fivem/shared";
+import { players } from "../player/registry";
 
-/** One HUD that keeps players' stress (ai-core's stress layer). */
+/** One HUD that keeps players' stress, hunger and thirst (ai-core's stress layer). */
 export interface StressAdapter {
   resource: string;
   version?: string;
   /** Adds stress (a negative amount relieves it). */
   add(source: number, amount: number): void;
+  /** Hunger and thirst to full. */
+  refill(source: number): void;
 }
 
 const hud = resourceExport("ai-hud");
+
+/**
+ * QB's way (qb-ambulancejob's revive): the metadata keys, then `hud:client:UpdateNeeds` for the HUD on the client.
+ * Also the fallback without any HUD, so the next HUD reads full needs.
+ */
+export function refillMetadata(source: number): boolean {
+  const player = players.get(source);
+  if (!player) return false;
+  player.setMeta("hunger", 100);
+  player.setMeta("thirst", 100);
+  TriggerClientEvent("hud:client:UpdateNeeds", source, 100, 100);
+  return true;
+}
 
 /**
  * QB's stress API (`hud:server:GainStress` / `RelieveStress`) takes the player from the event's source, so the
@@ -20,6 +36,7 @@ const qbEvents = (resource: string, version?: string): StressAdapter => ({
   version,
   add: (source, amount) =>
     TriggerClientEvent(CORE.stressRelayEvent, source, amount),
+  refill: (source) => void refillMetadata(source),
 });
 
 /**
@@ -36,5 +53,9 @@ export const STRESS_SYSTEMS: readonly StressAdapter[] = [
   {
     resource: "ai-hud",
     add: (source, amount) => hud.AddNeed(source, "stress", amount),
+    refill: (source) => {
+      hud.SetNeed(source, "hunger", 100);
+      hud.SetNeed(source, "thirst", 100);
+    },
   },
 ];

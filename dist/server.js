@@ -23584,10 +23584,16 @@ registerExport("GetAppearanceSystem", () => layer$2.active?.resource ?? null), r
 	});
 });
 // resource/server/stress/registry.ts
-const hud = resourceExport("ai-hud"), qbEvents = (resource, version) => ({
+const hud = resourceExport("ai-hud");
+function refillMetadata(source) {
+	let player = players.get(source);
+	return player ? (player.setMeta("hunger", 100), player.setMeta("thirst", 100), TriggerClientEvent("hud:client:UpdateNeeds", source, 100, 100), !0) : !1;
+}
+const qbEvents = (resource, version) => ({
 	resource,
 	version,
-	add: (source, amount) => TriggerClientEvent(CORE.stressRelayEvent, source, amount)
+	add: (source, amount) => TriggerClientEvent(CORE.stressRelayEvent, source, amount),
+	refill: (source) => void refillMetadata(source)
 }), layer$1 = new AdapterPicker({
 	category: "stress",
 	adapters: [
@@ -23598,13 +23604,16 @@ const hud = resourceExport("ai-hud"), qbEvents = (resource, version) => ({
 		qbEvents("ps-hud", "2.1.2"),
 		{
 			resource: "ai-hud",
-			add: (source, amount) => hud.AddNeed(source, "stress", amount)
+			add: (source, amount) => hud.AddNeed(source, "stress", amount),
+			refill: (source) => {
+				hud.SetNeed(source, "hunger", 100), hud.SetNeed(source, "thirst", 100);
+			}
 		}
 	],
 	log: log$3,
 	noneText: "no HUD with stress runs: stress changes are dropped"
 });
-registerExport("GetStressSystem", () => layer$1.active?.resource ?? null), registerExport("AddStress", (source, amount) => typeof source != "number" || !Number.isInteger(source) || source <= 0 || typeof amount != "number" || !Number.isFinite(amount) || amount === 0 || Math.abs(amount) > 100 ? !1 : layer$1.call("add", (a) => (a.add(source, amount), !0), !1));
+registerExport("GetStressSystem", () => layer$1.active?.resource ?? null), registerExport("AddStress", (source, amount) => typeof source != "number" || !Number.isInteger(source) || source <= 0 || typeof amount != "number" || !Number.isFinite(amount) || amount === 0 || Math.abs(amount) > 100 ? !1 : layer$1.call("add", (a) => (a.add(source, amount), !0), !1)), registerExport("RefillNeeds", (source) => typeof source != "number" || players.get(source) === void 0 ? !1 : layer$1.active ? layer$1.call("refill", (a) => (a.refill(source), !0), !1) : refillMetadata(source));
 // resource/server/notify/index.ts
 const activeNotify = new GlobalKey(CORE.notifyStateKey, stateString), layer = new AdapterPicker({
 	category: "notifications",
