@@ -114,8 +114,8 @@ function readVec4(value) {
 		heading
 	};
 }
-// ../../../packages/lib/src/shared/format.ts
-const normalizePlate = (plate) => plate.trim().toUpperCase(), isPublic = (rule) => rule.jobs.length === 0 && rule.gangs.length === 0, isObject = (value) => typeof value == "object" && !!value && !Array.isArray(value);
+// ../../../packages/lib/src/shared/vec.ts
+const flatDistance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), normalizePlate = (plate) => plate.trim().toUpperCase(), isPublic = (rule) => rule.jobs.length === 0 && rule.gangs.length === 0, isObject = (value) => typeof value == "object" && !!value && !Array.isArray(value);
 function readRecords(raw, readOne) {
 	let out = new Map();
 	if (!isObject(raw)) return out;
@@ -186,7 +186,10 @@ const spec = {
 		max,
 		...optional ? { optional } : {}
 	})
-};
+}, OFFSET = 16384, clampCell = (v) => Math.max(-16e3, Math.min(16e3, v)), gridCell = (x, y, size) => ({
+	cx: clampCell(Math.floor(x / size)),
+	cy: clampCell(Math.floor(y / size))
+}), cellKey = (cx, cy) => (clampCell(cx) + OFFSET) * 32768 + (clampCell(cy) + OFFSET);
 // ../../../packages/lib/src/shared/index.ts
 function isRecord(value) {
 	return typeof value == "object" && !!value && !Array.isArray(value);
@@ -309,6 +312,8 @@ const CORE = {
 	vehicleTypeCallback: "ai-core:vehicleType",
 	interactionStateKey: "ai:interaction",
 	pvpStateKey: "ai:pvp",
+	medicalStateKey: "ai:medical",
+	clientDeadEvent: "ai-core:client:dead",
 	charactersCallback: "ai-core:characters",
 	createCharacterCallback: "ai-core:createCharacter",
 	deleteCharacterCallback: "ai-core:deleteCharacter",
@@ -482,7 +487,17 @@ function loadLocaleTexts(resource = GetCurrentResourceName()) {
 	return texts;
 }
 // ../../../packages/lib/src/fivem/callbackNames.ts
-const requestEvent = (name) => `aicore:cb:${name}`, responseEvent = (resource) => `aicore:cbr:${resource}`, core$18 = resourceExport(CORE.resource), log$10 = createLogger(GetCurrentResourceName()), isAdmin = (ace = ADMIN.ace) => (source) => !!IsPlayerAceAllowed(String(source), ace) || `not allowed (${ace})`, hasCharacter = () => (source) => core$18.GetCharacter(source) !== null || "no character loaded", gates = new Set();
+const requestEvent = (name) => `aicore:cb:${name}`, responseEvent = (resource) => `aicore:cbr:${resource}`;
+// ../../../packages/lib/src/server/position.ts
+function entityCoords(entity) {
+	let [x = 0, y = 0, z = 0] = GetEntityCoords(entity);
+	return {
+		x,
+		y,
+		z
+	};
+}
+const coordsOf = (source) => entityCoords(GetPlayerPed(String(source))), core$18 = resourceExport(CORE.resource), log$10 = createLogger(GetCurrentResourceName()), isAdmin = (ace = ADMIN.ace) => (source) => !!IsPlayerAceAllowed(String(source), ace) || `not allowed (${ace})`, hasCharacter = () => (source) => core$18.GetCharacter(source) !== null || "no character loaded", gates = new Set();
 on("playerDropped", () => {
 	let source = Number(globalThis.source);
 	for (let gate of gates) gate.release(source);
@@ -1115,6 +1130,9 @@ var OnlinePlayers = class {
 	character(source) {
 		return this.start(), this.players.get(source)?.character ?? null;
 	}
+	charId(source) {
+		return this.start(), this.players.get(source)?.character.id;
+	}
 	name(source, options = {}) {
 		let c = this.character(source);
 		return c ? `${c.firstname} ${c.lastname}` : options.fallback === !1 ? "" : GetPlayerName(String(source));
@@ -1185,6 +1203,28 @@ var PlayerMap = class extends Map {
 			let value = this.get(source);
 			this.delete(source), options.onDrop?.(source, value);
 		});
+	}
+}, KeyWatchers = class {
+	byKey = new Map();
+	keys = new PlayerMap({ onDrop: (source, key) => this.leave(source, key) });
+	watch(source, key) {
+		this.stop(source), this.keys.set(source, key);
+		let set = this.byKey.get(key);
+		set || this.byKey.set(key, set = new Set()), set.add(source);
+	}
+	stop(source) {
+		let key = this.keys.get(source);
+		key !== void 0 && (this.keys.delete(source), this.leave(source, key));
+	}
+	of(key) {
+		return this.byKey.get(key);
+	}
+	keyOf(source) {
+		return this.keys.get(source);
+	}
+	leave(source, key) {
+		let set = this.byKey.get(key);
+		set && (set.delete(source), set.size === 0 && this.byKey.delete(key));
 	}
 };
 // ../../../packages/lib/src/server/progressFor.ts
@@ -15674,7 +15714,7 @@ function caller() {
 }
 const stopHandlers = [];
 let listening = !1;
-function onStop(handler) {
+function onAnyStop(handler) {
 	if (stopHandlers.push(handler), listening) return;
 	listening = !0;
 	let event = IsDuplicityVersion() ? "onResourceStop" : "onClientResourceStop";
@@ -15682,12 +15722,18 @@ function onStop(handler) {
 		for (let stop of stopHandlers) stop(resource);
 	});
 }
+function onStop(fn) {
+	let self = GetCurrentResourceName();
+	onAnyStop((resource) => {
+		resource === self && fn();
+	});
+}
 var ByResource = class {
 	options;
 	byOwner = new Map();
 	owners = new Map();
 	constructor(options = {}) {
-		this.options = options, onStop((resource) => this.dropResource(resource));
+		this.options = options, onAnyStop((resource) => this.dropResource(resource));
 	}
 	set(key, value, owner = caller()) {
 		let previous = this.owners.get(key);
@@ -15911,6 +15957,29 @@ var Mirror = class {
 	prune() {
 		for (let netId of this.values.keys()) DoesEntityExist(NetworkGetEntityFromNetworkId(netId)) || this.forget(netId);
 	}
+}, PlayerState$1 = class extends Mirror {
+	seen = new Set();
+	constructor(key, parse) {
+		super(key, parse), AddStateBagChangeHandler(key, "", (bag, _key, value) => {
+			if (!bag.startsWith("player:")) return;
+			let id = Number(bag.slice(7));
+			this.seen.add(id), this.store(id, value);
+		}), isServer && on("playerDropped", () => this.forget(Number(globalThis.source)));
+	}
+	get(serverId) {
+		if (!this.seen.has(serverId)) {
+			this.seen.add(serverId);
+			let raw = Player(serverId).state[this.key];
+			this.values.set(serverId, raw == null ? void 0 : this.parse(raw));
+		}
+		return this.values.get(serverId);
+	}
+	put(serverId, value) {
+		this.seen.add(serverId), this.apply(serverId, value);
+	}
+	forget(serverId) {
+		this.values.delete(serverId), this.seen.delete(serverId);
+	}
 }, GlobalKey$1 = class extends Mirror {
 	constructor(key, parse) {
 		super(key, parse);
@@ -15956,6 +16025,10 @@ var GlobalGroup$1 = class extends Mirror {
 }, EntityState = class extends EntityState$1 {
 	set(entity, value) {
 		DoesEntityExist(entity) && (Entity(entity).state.set(this.key, value ?? null, !0), this.put(entity, value));
+	}
+}, PlayerState = class extends PlayerState$1 {
+	set(source, value) {
+		Player(source).state.set(this.key, value ?? null, !0), this.put(source, value);
 	}
 }, GlobalKey = class extends GlobalKey$1 {
 	set(value) {
@@ -16278,9 +16351,7 @@ registerExport("Log", (channel, message, options) => {
 	writeLog(caller(), typeof channel == "string" ? channel : "log", message, isRecord(options) ? options : {});
 }), registerExport("LogChannels", (list) => {
 	isRecord(list) && channels.set(caller(), list);
-}), on("onResourceStop", (resource) => {
-	resource === ResourceName && flushFivemanage();
-});
+}), onStop(() => flushFivemanage());
 // resource/server/content/scene.ts
 const spot = (x, y, z, heading, anim, clip, cam) => ({
 	ped: {
@@ -18015,8 +18086,8 @@ const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetIn
 		},
 		has: (source, t) => {
 			if (t.vehicle !== null && inIgnition.get(t.vehicle)) return !0;
-			let plate = t.plate.toUpperCase();
-			return core.GetItems(source).some((s) => s.name === "car_key" && String(s.metadata.plate).toUpperCase() === plate);
+			let plate = normalizePlate(t.plate);
+			return core.GetItems(source).some((s) => s.name === "car_key" && normalizePlate(String(s.metadata.plate)) === plate);
 		}
 	},
 	qbxVehicleKeys,
@@ -18264,19 +18335,18 @@ function readInfo(value) {
 	};
 }
 const commandRegistry = new class {
-	byResource = new Map();
-	libNames = new Map();
+	libNames = new ByResource({ onDrop: (_resource, n, key) => {
+		key === n && panel.commit(FILE$1, n, null);
+	} });
 	plain = new Set();
-	grants = new Map();
+	grants = new ByResource({ onDrop: (_resource, grant) => ExecuteCommand(`remove_ace ${grant} allow`) });
 	timer = null;
 	warned = !1;
 	register(resource, list) {
-		let owned = this.byResource.get(resource) ?? new Set();
-		this.byResource.set(resource, owned);
 		for (let info of list) {
 			let [name, ...aliases] = info.names;
 			if (!name) continue;
-			for (let n of info.names) owned.add(n), this.libNames.set(n, name), this.plain.delete(n) && panel.commit(FILE$1, n, null);
+			for (let n of info.names) this.libNames.set(n, name, resource), this.plain.delete(n) && panel.commit(FILE$1, n, null);
 			this.grant(resource, info);
 			let row = {
 				name,
@@ -18290,20 +18360,11 @@ const commandRegistry = new class {
 			panel.commit(FILE$1, name, row);
 		}
 	}
-	drop(resource) {
-		for (let n of this.byResource.get(resource) ?? []) {
-			let key = this.libNames.get(n);
-			this.libNames.delete(n), key === n && panel.commit(FILE$1, n, null);
-		}
-		this.byResource.delete(resource);
-		for (let [principal, ace] of this.grants.get(resource) ?? []) ExecuteCommand(`remove_ace ${principal} ${ace} allow`);
-		this.grants.delete(resource), this.refreshSoon();
-	}
 	refreshPlain() {
 		let seen = new Set();
 		for (let command of GetRegisteredCommands()) {
 			let name = command.name.toLowerCase();
-			if (!command.resource || name.startsWith("+") || name.startsWith("-") || this.libNames.has(name) || seen.has(name) || (seen.add(name), this.plain.has(name))) continue;
+			if (!command.resource || name.startsWith("+") || name.startsWith("-") || this.libNames.get(name) !== void 0 || seen.has(name) || (seen.add(name), this.plain.has(name))) continue;
 			this.plain.add(name);
 			let row = {
 				name,
@@ -18324,8 +18385,6 @@ const commandRegistry = new class {
 		}, 1e3);
 	}
 	grant(resource, info) {
-		let list = this.grants.get(resource) ?? [];
-		this.grants.set(resource, list);
 		for (let principal of info.aces ?? []) if (!(principal === ADMIN.ace || principal.startsWith("command."))) {
 			if (!IsPrincipalAceAllowed("resource.ai-core", "command.add_ace")) {
 				this.warned || log$3.warn("permission.cfg lacks `add_ace resource.ai-core command.add_ace allow` (and remove_ace): commands restricted to a principal like group.admin work only through command.<name>"), this.warned = !0;
@@ -18333,16 +18392,17 @@ const commandRegistry = new class {
 			}
 			for (let name of info.names) {
 				let ace = `command.${name}`;
-				IsPrincipalAceAllowed(principal, ace) || (ExecuteCommand(`add_ace ${principal} ${ace} allow`), list.push([principal, ace]));
+				IsPrincipalAceAllowed(principal, ace) || (ExecuteCommand(`add_ace ${principal} ${ace} allow`), this.grants.set(`${principal} ${ace}`, !0, resource));
 			}
 		}
 	}
 }();
-registerExport("RegisterCommands", (resource, list) => {
-	if (typeof resource != "string" || !Array.isArray(list)) return;
+registerExport("RegisterCommands", (_resource, list) => {
+	let resource = caller();
+	if (!Array.isArray(list)) return;
 	let infos = list.map(readInfo).filter((i) => i !== null);
 	infos.length !== list.length && log$3.warn(`${resource}: ${list.length - infos.length} command(s) with an invalid description skipped`), commandRegistry.register(resource, infos);
-}), on("onResourceStop", (resource) => commandRegistry.drop(resource)), on("onServerResourceStart", () => commandRegistry.refreshSoon());
+}), on("onResourceStop", () => commandRegistry.refreshSoon()), on("onServerResourceStart", () => commandRegistry.refreshSoon());
 // resource/server/admin/external.ts
 const ID = /^[a-z0-9_.-]{2,48}$/i, text$3 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, pageUrl = (v) => typeof v == "string" && v.startsWith("https://") ? v.slice(0, 300) : void 0;
 function toPanel(id, v, resource) {
@@ -18967,18 +19027,15 @@ const recommendations = new class {
 recommendations.refresh(), on("onServerResourceStart", (resource) => recommendations.started(resource)), on("onResourceStop", (resource) => recommendations.stopped(resource)), phones.onSwitch(() => recommendations.refresh()), panel.onChange("settings", () => recommendations.refresh()), setTimeout(() => recommendations.print(), 15e3);
 // resource/server/admin/host.ts
 var AdminHost = class {
-	resources = new Set();
-	watchers = new Set();
+	resources = new ByResource();
+	watchers = new PlayerMap();
 	register(resource) {
-		this.resources.add(resource);
-	}
-	unregister(resource) {
-		this.resources.delete(resource);
+		this.resources.set(resource, !0, resource);
 	}
 	open(source) {
-		this.watchers.add(source);
+		this.watchers.set(source, !0);
 		let panels = [];
-		for (let resource of this.resources) {
+		for (let [resource] of this.resources.entries()) {
 			let panel = this.call(resource);
 			panel && panels.push(panel.AdminPanelSummary());
 		}
@@ -18991,7 +19048,7 @@ var AdminHost = class {
 		};
 	}
 	data(source, resource) {
-		if (!this.watchers.has(source) || !this.resources.has(resource)) return null;
+		if (!this.watchers.has(source) || !this.resources.get(resource)) return null;
 		let panel = this.call(resource);
 		if (!panel) return null;
 		try {
@@ -19004,7 +19061,7 @@ var AdminHost = class {
 		this.watchers.delete(source);
 	}
 	apply(source, resource, patch) {
-		let panel = this.resources.has(resource) ? this.call(resource) : null;
+		let panel = this.resources.get(resource) ? this.call(resource) : null;
 		if (!panel) return {
 			ok: !1,
 			error: "ADMIN_ERR_GONE"
@@ -19019,10 +19076,10 @@ var AdminHost = class {
 		}), result;
 	}
 	changed(delta) {
-		for (let source of this.watchers) emitNet(ADMIN.deltaEvent, source, delta);
+		for (let source of this.watchers.keys()) emitNet(ADMIN.deltaEvent, source, delta);
 	}
 	recommendationChanged(delta) {
-		for (let source of this.watchers) emitNet(ADMIN.recommendationEvent, source, delta);
+		for (let source of this.watchers.keys()) emitNet(ADMIN.recommendationEvent, source, delta);
 	}
 	call(resource) {
 		return GetResourceState(resource) === "started" ? globalThis.exports[resource] : null;
@@ -19040,9 +19097,7 @@ function describe(patch) {
 }
 const adminHost = new AdminHost();
 // resource/server/admin/items.ts
-recommendations.onChange((delta) => adminHost.recommendationChanged(delta)), registerExport("RegisterAdminPanel", (resource) => {
-	typeof resource == "string" && adminHost.register(resource);
-}), registerExport("AdminPanelChanged", (delta) => adminHost.changed(delta)), onClientCallback(ADMIN.openCallback, {
+recommendations.onChange((delta) => adminHost.recommendationChanged(delta)), registerExport("RegisterAdminPanel", () => adminHost.register(caller())), registerExport("AdminPanelChanged", (delta) => adminHost.changed(delta)), onClientCallback(ADMIN.openCallback, {
 	guards: [isAdmin()],
 	rate: {
 		count: 2,
@@ -19071,7 +19126,7 @@ recommendations.onChange((delta) => adminHost.recommendationChanged(delta)), reg
 		windowMs: 1e4
 	},
 	args: ([resource, patch]) => typeof resource == "string" ? [resource, patch] : null
-}, (source, resource, patch) => adminHost.apply(source, resource, patch)), onClientEvent(ADMIN.closeEvent, (source) => adminHost.close(source)), on("playerDropped", () => adminHost.close(Number(globalThis.source))), on("onResourceStop", (resource) => adminHost.unregister(resource)), onClientCallback("ai-core:admin:items", {
+}, (source, resource, patch) => adminHost.apply(source, resource, patch)), onClientEvent(ADMIN.closeEvent, (source) => adminHost.close(source)), onClientCallback("ai-core:admin:items", {
 	guards: [isAdmin()],
 	rate: {
 		count: 2,
@@ -19424,15 +19479,14 @@ function sendList(admin, delta) {
 	TriggerLatentClientEvent(ADMIN_PLAYERS.deltaEvent, admin, 25e4, delta);
 }
 const playerWatchers = new class {
-	list = new Set();
-	byChar = new Map();
-	charOf = new Map();
+	list = new PlayerMap();
+	chars = new KeyWatchers();
 	dirty = new Set();
 	gone = new Set();
 	timer = null;
 	rev = 0;
 	watchList(admin) {
-		this.list.add(admin);
+		this.list.set(admin, !0);
 		let rev = ++this.rev, put = [], sent = !1;
 		for (let player of players.all()) put.push(onlineRow(player)), put.length < 500 || (sendList(admin, {
 			kind: "rows",
@@ -19448,16 +19502,10 @@ const playerWatchers = new class {
 		});
 	}
 	watchChar(admin, charId) {
-		this.unwatchChar(admin), this.charOf.set(admin, charId);
-		let set = this.byChar.get(charId);
-		set || this.byChar.set(charId, set = new Set()), set.add(admin);
+		this.chars.watch(admin, charId);
 	}
 	unwatchChar(admin) {
-		let charId = this.charOf.get(admin);
-		if (charId === void 0) return;
-		this.charOf.delete(admin);
-		let set = this.byChar.get(charId);
-		set?.delete(admin), set?.size === 0 && this.byChar.delete(charId);
+		this.chars.stop(admin);
 	}
 	unwatchList(admin) {
 		this.list.delete(admin);
@@ -19466,7 +19514,7 @@ const playerWatchers = new class {
 		this.unwatchList(admin), this.unwatchChar(admin);
 	}
 	watching(charId) {
-		return this.byChar.has(charId);
+		return this.chars.of(charId) !== void 0;
 	}
 	put(source) {
 		this.list.size !== 0 && (this.gone.delete(source), this.dirty.add(source), this.schedule());
@@ -19490,7 +19538,7 @@ const playerWatchers = new class {
 		});
 	}
 	meta(charId, key, value) {
-		this.byChar.has(charId) && this.toChar(charId, {
+		this.watching(charId) && this.toChar(charId, {
 			kind: "meta",
 			charId,
 			key,
@@ -19510,7 +19558,7 @@ const playerWatchers = new class {
 		});
 	}
 	toChar(charId, delta) {
-		let set = this.byChar.get(charId);
+		let set = this.chars.of(charId);
 		if (set) for (let admin of set) emitNet(ADMIN_PLAYERS.deltaEvent, admin, delta);
 	}
 	schedule() {
@@ -19532,7 +19580,7 @@ const playerWatchers = new class {
 			remove: [...this.gone]
 		};
 		this.gone.clear();
-		for (let admin of this.list) sendList(admin, delta);
+		for (let admin of this.list.keys()) sendList(admin, delta);
 		this.dirty.size > 0 && this.schedule();
 	}
 }(), OK = { ok: !0 }, fail = (error) => ({
@@ -19769,12 +19817,8 @@ async function search(query, cursor, online) {
 // resource/server/admin/players/view.ts
 function pedPosition$1(source) {
 	let ped = GetPlayerPed(String(source));
-	if (!ped || !DoesEntityExist(ped)) return null;
-	let [x = 0, y = 0, z = 0] = GetEntityCoords(ped);
-	return {
-		x,
-		y,
-		z,
+	return !ped || !DoesEntityExist(ped) ? null : {
+		...entityCoords(ped),
 		heading: GetEntityHeading(ped)
 	};
 }
@@ -19952,25 +19996,65 @@ action("job", memberArgs, async (source, charId, job, grade) => {
 	}), result;
 });
 // resource/server/medical/adapters/ai-death.ts
-const death = resourceExport("ai-death"), medical = new AdapterPicker({
+const death = resourceExport("ai-death"), aiDeath = {
+	resource: "ai-death",
+	revive: (source) => death.Revive(source) === !0,
+	heal: (source) => death.Heal(source),
+	isDead: (source) => death.IsDead(source) === !0
+}, dead$1 = new PlayerState("dead", stateBoolean), isDead$3 = (source) => dead$1.get(source) === !0, arsAmbulance = {
+	resource: "ars_ambulancejob",
+	revive: (source) => {
+		let was = isDead$3(source);
+		return emitNet("ars_ambulancejob:healPlayer", source, { revive: !0 }), was;
+	},
+	heal: (source) => emitNet("ars_ambulancejob:healPlayer", source, { heal: !0 }),
+	isDead: isDead$3
+}, dead = new PlayerState("isDead", stateBoolean), isDead$2 = (source) => dead.get(source) === !0, esxAmbulance = {
+	resource: "esx_ambulancejob",
+	revive: (source) => {
+		let was = isDead$2(source);
+		return emitNet("esx_ambulancejob:revive", source), was;
+	},
+	heal: (source) => emitNet("esx_ambulancejob:heal", source, "big", !0),
+	isDead: isDead$2
+}, isDead$1 = (source) => {
+	let player = players.get(source);
+	return player?.getMeta("isdead") === !0 || player?.getMeta("inlaststand") === !0;
+}, qbAmbulance = {
+	resource: "qb-ambulancejob",
+	revive: (source) => {
+		let was = isDead$1(source);
+		return emitNet("hospital:client:Revive", source), was;
+	},
+	heal: (source) => emitNet("hospital:client:HealInjuries", source, "full"),
+	isDead: isDead$1
+}, deathState = new PlayerState("qbx_medical:deathState", stateNumber), isDead = (source) => (deathState.get(source) ?? 1) >= 2, MEDICAL_SYSTEMS = [
+	aiDeath,
+	{
+		resource: "qbx_medical",
+		revive: (source) => {
+			let was = isDead(source);
+			return callExport("qbx_medical", "Revive", source), was;
+		},
+		heal: (source) => void callExport("qbx_medical", "Heal", source),
+		isDead
+	},
+	arsAmbulance,
+	qbAmbulance,
+	esxAmbulance
+], activeMedical = new GlobalKey(CORE.medicalStateKey, stateString), medical = new AdapterPicker({
 	category: "medical",
-	adapters: [{
-		resource: "ai-death",
-		revive: (source) => death.Revive(source) === !0,
-		heal: (source) => death.Heal(source),
-		isDead: (source) => death.IsDead(source) === !0
-	}],
+	adapters: MEDICAL_SYSTEMS,
 	log: log$3,
-	noneText: "no death script runs: revive and heal do nothing"
+	noneText: "no death script runs: revive and heal do nothing",
+	onSwitch: (next) => activeMedical.set(next?.resource)
 }), online = (v) => typeof v == "number" && isOnline(v);
 registerExport("GetMedicalSystem", () => medical.active?.resource ?? null), registerExport("RevivePlayer", (source) => online(source) && medical.call("revive", (a) => a.revive(source), !1)), registerExport("HealPlayer", (source) => online(source) && medical.call("heal", (a) => (a.heal(source), !0), !1)), registerExport("IsPlayerDead", (source) => online(source) && medical.call("isDead", (a) => a.isDead(source), !1));
 // resource/server/admin/players/world.ts
 function pedPosition(source) {
-	let ped = GetPlayerPed(String(source)), [x = 0, y = 0, z = 0] = GetEntityCoords(ped);
+	let ped = GetPlayerPed(String(source));
 	return {
-		x,
-		y,
-		z,
+		...entityCoords(ped),
 		heading: GetEntityHeading(ped)
 	};
 }
@@ -20042,7 +20126,7 @@ action("goto", charOnly, async (source, charId) => {
 	playerWatchers.watchChar(source, charId);
 	let view = await loadView(charId);
 	return view || playerWatchers.unwatchChar(source), view;
-}), action("close", ([scope]) => scope === "char" || scope === "all" ? [scope] : null, (source, scope) => (scope === "all" ? playerWatchers.drop(source) : playerWatchers.unwatchChar(source), { ok: !0 })), on("playerDropped", () => playerWatchers.drop(Number(globalThis.source)));
+}), action("close", ([scope]) => scope === "char" || scope === "all" ? [scope] : null, (source, scope) => (scope === "all" ? playerWatchers.drop(source) : playerWatchers.unwatchChar(source), { ok: !0 }));
 const charOf = (source) => players.get(source)?.charId;
 on(CORE.playerLoadedEvent, (source, character) => {
 	playerWatchers.put(source), playerWatchers.watching(character.id) && loadView(character.id).then((view) => view && playerWatchers.view(view)).catch((error) => log$3.error(`admin view of #${character.id} failed`, error));
@@ -20972,9 +21056,7 @@ async function drainWrites() {
 function saveNow(why) {
 	saveAll().then(drainWrites).then(() => log$3.info(`saved ${players.size} characters (${why})`)).catch((error) => log$3.error(`save failed (${why})`, error));
 }
-every(settings.saveIntervalMinutes * 6e4, () => saveNow("interval"), { name: "save" }), on("txAdmin:events:serverShuttingDown", () => saveNow("shutdown")), on("onResourceStop", (resource) => {
-	resource === ResourceName && saveNow("resource stop");
-});
+every(settings.saveIntervalMinutes * 6e4, () => saveNow("interval"), { name: "save" }), on("txAdmin:events:serverShuttingDown", () => saveNow("shutdown")), onStop(() => saveNow("resource stop"));
 // resource/server/jobs/primeTime/adapters/tgiann-policealert.ts
 const RESOURCE = "tgiann-policealert", PRIME_TIME_SYSTEMS = [{
 	resource: RESOURCE,
@@ -21151,15 +21233,6 @@ publish(), panel.onChange("settings", publish), addCommand("togglepvp", {
 	let text = Locale(on ? "NOTIFY_PVP_ON" : "NOTIFY_PVP_OFF");
 	source > 0 ? notify(source, text, "success") : console.log(text);
 });
-// resource/server/scopes.ts
-const posOf = (source) => {
-	let [x = 0, y = 0, z = 0] = GetEntityCoords(GetPlayerPed(String(source)));
-	return {
-		x,
-		y,
-		z
-	};
-};
 var Scopes = class {
 	scopes = new Map();
 	link(a, b) {
@@ -21178,15 +21251,15 @@ var Scopes = class {
 		for (let i = 0; i < GetNumPlayerIndices(); i++) {
 			let source = Number(GetPlayerFromIndex(i)), entry = {
 				source,
-				p: posOf(source)
+				p: coordsOf(source)
 			};
 			all.push(entry);
-			let key = `${Math.floor(entry.p.x / 424)}:${Math.floor(entry.p.y / 424)}`, cell = cells.get(key);
+			let { cx, cy } = gridCell(entry.p.x, entry.p.y, 424), key = cellKey(cx, cy), cell = cells.get(key);
 			cell ? cell.push(entry) : cells.set(key, [entry]);
 		}
 		for (let { source, p } of all) {
-			let cx = Math.floor(p.x / 424), cy = Math.floor(p.y / 424);
-			for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let other of cells.get(`${cx + dx}:${cy + dy}`) ?? []) other.source !== source && Math.hypot(other.p.x - p.x, other.p.y - p.y) <= 424 && this.link(source, other.source);
+			let { cx, cy } = gridCell(p.x, p.y, 424);
+			for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let other of cells.get(cellKey(cx + dx, cy + dy)) ?? []) other.source !== source && flatDistance(other.p, p) <= 424 && this.link(source, other.source);
 		}
 	}
 	of(source) {
@@ -21278,15 +21351,7 @@ const dispatch = new AdapterPicker({
 panel.onChange("settings", () => dispatch.setChoice(settings.dispatch));
 function sendAlert(alert) {
 	let source = alert.source !== void 0 && isOnline(alert.source) ? alert.source : void 0, coords = alert.coords;
-	if (!coords && source !== void 0) {
-		let [x = 0, y = 0, z = 0] = GetEntityCoords(GetPlayerPed(String(source)));
-		coords = {
-			x,
-			y,
-			z
-		};
-	}
-	return dispatch.call("alert", (a) => (a.alert({
+	return !coords && source !== void 0 && (coords = coordsOf(source)), dispatch.call("alert", (a) => (a.alert({
 		...alert,
 		source,
 		coords

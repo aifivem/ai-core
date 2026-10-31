@@ -1,4 +1,4 @@
-import { isOnline, registerExport } from "@aicore-fivem/lib/server";
+import { coordsOf, isOnline, registerExport } from "@aicore-fivem/lib/server";
 import { toDispatchAlert, type DispatchAlert } from "@aicore-fivem/shared";
 import { AdapterPicker } from "common/adapters";
 import { panel, settings } from "../content";
@@ -26,10 +26,7 @@ export function sendAlert(alert: DispatchAlert): boolean {
       ? alert.source
       : undefined;
   let coords = alert.coords;
-  if (!coords && source !== undefined) {
-    const [x = 0, y = 0, z = 0] = GetEntityCoords(GetPlayerPed(String(source)));
-    coords = { x, y, z };
-  }
+  if (!coords && source !== undefined) coords = coordsOf(source);
   return dispatch.call(
     "alert",
     (a) => {

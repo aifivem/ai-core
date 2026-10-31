@@ -41,6 +41,14 @@ function progress.isRunning()
     return running ~= nil
 end
 
+-- ai-core's medical layer knows when the player is down in any death script (they keep a downed ped alive).
+local coreDown = false
+AddEventHandler('ai-core:client:dead', function(dead) coreDown = dead == true end)
+if GetResourceState('ai-core') == 'started' then
+    local ok, dead = pcall(function() return exports['ai-core']:IsDead() end)
+    coreDown = ok and dead == true
+end
+
 ---Runs a timed action; waits and returns true when it ran out, false when cancelled (death, a vehicle, the cancel key,
 ---`progress.cancel()`) or while another one of this resource runs. Checks ten times a second.
 ---@param options AiLibProgressOptions
@@ -69,7 +77,7 @@ local function run(options)
     local finish = GetGameTimer() + options.duration
     local done = true
     while GetGameTimer() < finish do
-        if own.cancelled or (not options.whileDead and IsEntityDead(cache.ped)) or (not options.allowVehicle and cache.vehicle) then
+        if own.cancelled or (not options.whileDead and (coreDown or IsEntityDead(cache.ped))) or (not options.allowVehicle and cache.vehicle) then
             done = false
             break
         end

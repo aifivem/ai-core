@@ -1,4 +1,9 @@
-import { ByResource, caller, registerExport } from "@aicore-fivem/lib/server";
+import {
+  ByResource,
+  caller,
+  onStop,
+  registerExport,
+} from "@aicore-fivem/lib/server";
 import { isRecord } from "@aicore-fivem/lib/shared";
 import type {
   LogChannel,
@@ -111,6 +116,4 @@ registerExport("LogChannels", (list: unknown) => {
     channels.set(caller(), list as Record<string, LogChannel>);
 });
 
-on("onResourceStop", (resource: string) => {
-  if (resource === ResourceName) flushFivemanage();
-});
+onStop(() => flushFivemanage());

@@ -1,8 +1,11 @@
 import {
   addCommand,
+  ByResource,
+  caller,
   isAdmin,
   onClientCallback,
   onClientEvent,
+  PlayerMap,
   registerExport,
 } from "@aicore-fivem/lib/server";
 import { isRecord } from "@aicore-fivem/lib/shared";
@@ -30,16 +33,13 @@ import { recommendations } from "../recommendations";
  * admins who have the panel open. The data itself is never stored or saved here.
  */
 class AdminHost {
-  private readonly resources = new Set<string>();
-  /** Admins with the panel open: they get every change as a delta. */
-  private readonly watchers = new Set<number>();
+  /** Resources with a panel, each its own entry (gone when it stops). */
+  private readonly resources = new ByResource<string, true>();
+  /** Admins with the panel open: they get every change as a delta (freed on drop). */
+  private readonly watchers = new PlayerMap<true>();
 
   register(resource: string): void {
-    this.resources.add(resource);
-  }
-
-  unregister(resource: string): void {
-    this.resources.delete(resource);
+    this.resources.set(resource, true, resource);
   }
 
   /**
@@ -47,9 +47,9 @@ class AdminHost {
    * accounts) and the other scripts' panels. A script's records come with `data` when the admin opens it.
    */
   open(source: number): AdminOpenData {
-    this.watchers.add(source);
+    this.watchers.set(source, true);
     const panels: AdminPanelSnapshot[] = [];
-    for (const resource of this.resources) {
+    for (const [resource] of this.resources.entries()) {
       const panel = this.call(resource);
       if (panel) panels.push(panel.AdminPanelSummary());
     }
@@ -64,7 +64,7 @@ class AdminHost {
 
   /** One script's whole panel data (the admin opened it); null when it does not run. */
   data(source: number, resource: string): Record<string, unknown> | null {
-    if (!this.watchers.has(source) || !this.resources.has(resource))
+    if (!this.watchers.has(source) || !this.resources.get(resource))
       return null;
     const panel = this.call(resource);
     if (!panel) return null;
@@ -81,7 +81,7 @@ class AdminHost {
   }
 
   apply(source: number, resource: string, patch: unknown): AdminResult {
-    const panel = this.resources.has(resource) ? this.call(resource) : null;
+    const panel = this.resources.get(resource) ? this.call(resource) : null;
     if (!panel) return { ok: false, error: "ADMIN_ERR_GONE" };
     const result = panel.AdminPanelApply(source, patch);
     if (result.ok)
@@ -93,12 +93,12 @@ class AdminHost {
   }
 
   changed(delta: AdminDelta): void {
-    for (const source of this.watchers)
+    for (const source of this.watchers.keys())
       emitNet(ADMIN.deltaEvent, source, delta);
   }
 
   recommendationChanged(delta: RecommendationDelta): void {
-    for (const source of this.watchers)
+    for (const source of this.watchers.keys())
       emitNet(ADMIN.recommendationEvent, source, delta);
   }
 
@@ -119,9 +119,8 @@ function describe(patch: unknown): string {
 export const adminHost = new AdminHost();
 recommendations.onChange((delta) => adminHost.recommendationChanged(delta));
 
-registerExport("RegisterAdminPanel", (resource: unknown) => {
-  if (typeof resource === "string") adminHost.register(resource);
-});
+// The argument (the caller's name) stays for older callers; the panel is the calling resource's.
+registerExport("RegisterAdminPanel", () => adminHost.register(caller()));
 registerExport("AdminPanelChanged", (delta: AdminDelta) =>
   adminHost.changed(delta),
 );
@@ -172,5 +171,3 @@ onClientCallback(
   (source, resource, patch) => adminHost.apply(source, resource, patch),
 );
 onClientEvent(ADMIN.closeEvent, (source) => adminHost.close(source));
-on("playerDropped", () => adminHost.close(Number(globalThis.source)));
-on("onResourceStop", (resource: string) => adminHost.unregister(resource));

@@ -1,4 +1,9 @@
-import { requestAnimDict, requestModel } from "@aicore-fivem/lib/client";
+import {
+  fadeIn,
+  fadeOut,
+  requestAnimDict,
+  requestModel,
+} from "@aicore-fivem/lib/client";
 import { createLogger, waitFor } from "@aicore-fivem/lib/shared";
 import {
   CORE,
@@ -64,7 +69,7 @@ export class SelectScene {
     scene: CharacterScene,
     characters: CharacterCard[],
   ): Promise<void> {
-    DoScreenFadeOut(0);
+    await fadeOut(0);
     this.leave();
     this.scene = scene;
     this.characters = characters;
@@ -82,7 +87,7 @@ export class SelectScene {
       ShutdownLoadingScreen();
       ShutdownLoadingScreenNui();
       hudHidden.set(SCREEN_HUD_REASON, true, CORE.resource);
-      DoScreenFadeIn(500);
+      void fadeIn(500);
     }
   }
 

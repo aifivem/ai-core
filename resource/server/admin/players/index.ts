@@ -72,8 +72,6 @@ action(
   },
 );
 
-on("playerDropped", () => playerWatchers.drop(Number(globalThis.source)));
-
 // Changes of loaded characters come from the mutators' own local events.
 const charOf = (source: number): number | undefined =>
   players.get(source)?.charId;

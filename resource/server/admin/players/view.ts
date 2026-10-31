@@ -4,12 +4,12 @@ import { accountTypes } from "../../content";
 import { loadGangs, loadJobs } from "../../jobs/repo";
 import { players } from "../../player/registry";
 import { storedBalances, userOf } from "./repo";
+import { entityCoords } from "@aicore-fivem/lib/server";
 
 function pedPosition(source: number): Position | null {
   const ped = GetPlayerPed(String(source));
   if (!ped || !DoesEntityExist(ped)) return null;
-  const [x = 0, y = 0, z = 0] = GetEntityCoords(ped);
-  return { x, y, z, heading: GetEntityHeading(ped) };
+  return { ...entityCoords(ped), heading: GetEntityHeading(ped) };
 }
 
 /**

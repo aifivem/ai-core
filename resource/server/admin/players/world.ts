@@ -1,4 +1,4 @@
-import { notify } from "@aicore-fivem/lib/server";
+import { entityCoords, notify } from "@aicore-fivem/lib/server";
 import { ADMIN_PLAYERS, type Position } from "common/adminPlayers";
 import { Locale } from "common";
 import { inventory } from "../../inventory";
@@ -14,8 +14,7 @@ import { playerWatchers } from "./watchers";
 
 function pedPosition(source: number): Position {
   const ped = GetPlayerPed(String(source));
-  const [x = 0, y = 0, z = 0] = GetEntityCoords(ped);
-  return { x, y, z, heading: GetEntityHeading(ped) };
+  return { ...entityCoords(ped), heading: GetEntityHeading(ped) };
 }
 
 const charOnly = ([charId]: unknown[]) => {

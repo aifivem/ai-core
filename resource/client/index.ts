@@ -20,6 +20,7 @@ import "./appearance";
 import "./radial";
 import "./world";
 import "./pvp";
+import "./medical";
 import "./setup";
 import "./spawnChoice";
 import { openCharacters } from "./characters";

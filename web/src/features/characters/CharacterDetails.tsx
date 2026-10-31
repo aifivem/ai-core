@@ -10,8 +10,9 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import type { CharacterCard } from "@aicore-fivem/shared";
 import { useLang } from "../../lib/lang";
+import { groupDigits } from "@aicore-fivem/lib/shared";
 
-const money = (value: number): string => `$${value.toLocaleString("en-US")}`;
+const money = (value: number): string => `$${groupDigits(value)}`;
 /** "1994-05-12" -> "12/05/1994". */
 const dateOf = (iso: string): string => iso.split("-").reverse().join("/");
 

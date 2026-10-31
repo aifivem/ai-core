@@ -1,12 +1,10 @@
+import { createLogger, isRecord, readId } from "@aicore-fivem/lib/shared";
 import {
-  createLogger,
-  isRecord,
-  readId,
-  waitFor,
-} from "@aicore-fivem/lib/shared";
-import {
+  fadeIn,
+  fadeOut,
   loadLocaleTexts,
   onServerEvent,
+  onStop,
   triggerServerCallback,
 } from "@aicore-fivem/lib/client";
 import {
@@ -17,7 +15,6 @@ import {
   type SpawnPoint,
 } from "@aicore-fivem/shared";
 import { NuiCallback, NuiMessage } from "common/nui";
-import { ResourceName } from "common";
 import {
   SCREEN_HUD_REASON,
   SelectScene,
@@ -124,9 +121,7 @@ onServerEvent(
   },
 );
 
-on("onResourceStop", (resource: string) => {
-  if (resource === ResourceName) scene.leave();
-});
+onStop(() => scene.leave());
 
 on(CORE.clientCharacterPortraitEvent, (id: unknown, url: unknown) => {
   if (
@@ -197,10 +192,7 @@ onServerEvent(
     try {
       // The screen is gone (CSS opacity, 200 ms) well before the game is black, then closes.
       SendNUIMessage({ action: NuiMessage.leaveCharacters });
-      DoScreenFadeOut(500);
-      await waitFor(() => IsScreenFadedOut() || undefined, 2000).catch(
-        () => undefined,
-      );
+      await fadeOut(500);
       closeCharacters();
       scene.leave();
       await setPlayerModel(spawn.model);
@@ -230,14 +222,14 @@ onServerEvent(
       SetEntityVisible(ped, true, false);
       spawnArmour.apply(ped, spawn.armour);
       hudHidden.set(SCREEN_HUD_REASON, false, CORE.resource);
-      DoScreenFadeIn(500);
+      void fadeIn(500);
       screen = null;
       portraits = {};
       scene.clearLooks();
       announceLoaded();
     } catch (error) {
       log.error("spawn failed", error);
-      DoScreenFadeIn(0);
+      void fadeIn(0);
     }
   },
 );

@@ -1,4 +1,10 @@
-import { registerExport } from "@aicore-fivem/lib/server";
+import { coordsOf, registerExport } from "@aicore-fivem/lib/server";
+import {
+  cellKey,
+  flatDistance,
+  gridCell,
+  type Vec3,
+} from "@aicore-fivem/lib/shared";
 
 /**
  * Who is in whose OneSync scope (~424 m), from `playerEnteredScope` / `playerLeftScope`. These events cost per player
@@ -6,13 +12,6 @@ import { registerExport } from "@aicore-fivem/lib/server";
  * scope when ai-core starts are found once from a scope-sized grid.
  */
 const SCOPE_RADIUS = 424;
-
-type Vec = { x: number; y: number; z: number };
-
-const posOf = (source: number): Vec => {
-  const [x = 0, y = 0, z = 0] = GetEntityCoords(GetPlayerPed(String(source)));
-  return { x, y, z };
-};
 
 class Scopes {
   private readonly scopes = new Map<number, Set<number>>();
@@ -41,26 +40,26 @@ class Scopes {
 
   /** The players in scope of each other right now: a grid of scope-sized cells, each player against 9 cells. */
   private seed(): void {
-    const cells = new Map<string, { source: number; p: Vec }[]>();
-    const all: { source: number; p: Vec }[] = [];
+    const cells = new Map<number, { source: number; p: Vec3 }[]>();
+    const all: { source: number; p: Vec3 }[] = [];
     for (let i = 0; i < GetNumPlayerIndices(); i++) {
       const source = Number(GetPlayerFromIndex(i));
-      const entry = { source, p: posOf(source) };
+      const entry = { source, p: coordsOf(source) };
       all.push(entry);
-      const key = `${Math.floor(entry.p.x / SCOPE_RADIUS)}:${Math.floor(entry.p.y / SCOPE_RADIUS)}`;
+      const { cx, cy } = gridCell(entry.p.x, entry.p.y, SCOPE_RADIUS);
+      const key = cellKey(cx, cy);
       const cell = cells.get(key);
       if (cell) cell.push(entry);
       else cells.set(key, [entry]);
     }
     for (const { source, p } of all) {
-      const cx = Math.floor(p.x / SCOPE_RADIUS);
-      const cy = Math.floor(p.y / SCOPE_RADIUS);
+      const { cx, cy } = gridCell(p.x, p.y, SCOPE_RADIUS);
       for (let dx = -1; dx <= 1; dx++)
         for (let dy = -1; dy <= 1; dy++)
-          for (const other of cells.get(`${cx + dx}:${cy + dy}`) ?? [])
+          for (const other of cells.get(cellKey(cx + dx, cy + dy)) ?? [])
             if (
               other.source !== source &&
-              Math.hypot(other.p.x - p.x, other.p.y - p.y) <= SCOPE_RADIUS
+              flatDistance(other.p, p) <= SCOPE_RADIUS
             )
               this.link(source, other.source);
     }

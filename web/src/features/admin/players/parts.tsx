@@ -9,6 +9,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import type { PlayersResult } from "../../../../../resource/common/adminPlayers";
 import { cn } from "../../../lib/utils";
+import { groupDigits } from "@aicore-fivem/lib/shared";
 
 export type T = (key: string, ...args: Array<string | number>) => string;
 
@@ -157,4 +158,4 @@ export function Note({
   );
 }
 
-export const formatMoney = (n: number): string => n.toLocaleString("en-US");
+export const formatMoney = (n: number): string => groupDigits(n);

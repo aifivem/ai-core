@@ -1,4 +1,4 @@
-import { registerExport } from "@aicore-fivem/lib/server";
+import { ByResource, caller, registerExport } from "@aicore-fivem/lib/server";
 import { isRecord } from "@aicore-fivem/lib/shared";
 import {
   ADMIN,
@@ -73,26 +73,27 @@ function readInfo(value: unknown): CommandInfo | null {
  * or stop (debounced).
  */
 class CommandRegistry {
-  /** resource -> its announced commands' names (every alias), for the stop. */
-  private readonly byResource = new Map<string, Set<string>>();
-  /** Every name and alias of a lib command -> its row key. */
-  private readonly libNames = new Map<string, string>();
+  /** Every name and alias of a lib command -> its row key, owned by the announcing resource (gone when it stops). */
+  private readonly libNames = new ByResource<string, string>({
+    onDrop: (_resource, n, key) => {
+      if (key === n) panel.commit(FILE, n, null);
+    },
+  });
   /** Keys of the plain rows. */
   private readonly plain = new Set<string>();
-  /** Principals granted `command.<name>` per resource, taken back when it stops. */
-  private readonly grants = new Map<string, Array<[string, string]>>();
+  /** `<principal> command.<name>` granted for a resource's command, taken back when it stops. */
+  private readonly grants = new ByResource<string, true>({
+    onDrop: (_resource, grant) => ExecuteCommand(`remove_ace ${grant} allow`),
+  });
   private timer: ReturnType<typeof setTimeout> | null = null;
   private warned = false;
 
   register(resource: string, list: CommandInfo[]): void {
-    const owned = this.byResource.get(resource) ?? new Set<string>();
-    this.byResource.set(resource, owned);
     for (const info of list) {
       const [name, ...aliases] = info.names;
       if (!name) continue;
       for (const n of info.names) {
-        owned.add(n);
-        this.libNames.set(n, name);
+        this.libNames.set(n, name, resource);
         if (this.plain.delete(n)) panel.commit(FILE, n, null);
       }
       this.grant(resource, info);
@@ -114,19 +115,6 @@ class CommandRegistry {
     }
   }
 
-  drop(resource: string): void {
-    for (const n of this.byResource.get(resource) ?? []) {
-      const key = this.libNames.get(n);
-      this.libNames.delete(n);
-      if (key === n) panel.commit(FILE, n, null);
-    }
-    this.byResource.delete(resource);
-    for (const [principal, ace] of this.grants.get(resource) ?? [])
-      ExecuteCommand(`remove_ace ${principal} ${ace} allow`);
-    this.grants.delete(resource);
-    this.refreshSoon();
-  }
-
   /** Re-reads the registered commands: adds the new plain ones, removes the gone ones. */
   refreshPlain(): void {
     const seen = new Set<string>();
@@ -140,7 +128,7 @@ class CommandRegistry {
         !command.resource ||
         name.startsWith("+") ||
         name.startsWith("-") ||
-        this.libNames.has(name) ||
+        this.libNames.get(name) !== undefined ||
         seen.has(name)
       )
         continue;
@@ -178,8 +166,6 @@ class CommandRegistry {
    * each listed principal `command.<name>`, which the lib's check accepts. Needs `command.add_ace` for ai-core.
    */
   private grant(resource: string, info: CommandInfo): void {
-    const list = this.grants.get(resource) ?? [];
-    this.grants.set(resource, list);
     for (const principal of info.aces ?? []) {
       if (principal === ADMIN.ace || principal.startsWith("command.")) continue;
       if (!IsPrincipalAceAllowed("resource.ai-core", "command.add_ace")) {
@@ -194,7 +180,7 @@ class CommandRegistry {
         const ace = `command.${name}`;
         if (IsPrincipalAceAllowed(principal, ace)) continue;
         ExecuteCommand(`add_ace ${principal} ${ace} allow`);
-        list.push([principal, ace]);
+        this.grants.set(`${principal} ${ace}`, true, resource);
       }
     }
   }
@@ -202,8 +188,10 @@ class CommandRegistry {
 
 export const commandRegistry = new CommandRegistry();
 
-registerExport("RegisterCommands", (resource: unknown, list: unknown) => {
-  if (typeof resource !== "string" || !Array.isArray(list)) return;
+// The first argument (the caller's name) stays for older callers; entries are owned by `caller()`.
+registerExport("RegisterCommands", (_resource: unknown, list: unknown) => {
+  const resource = caller();
+  if (!Array.isArray(list)) return;
   const infos = list.map(readInfo).filter((i): i is CommandInfo => i !== null);
   if (infos.length !== list.length)
     log.warn(
@@ -211,5 +199,6 @@ registerExport("RegisterCommands", (resource: unknown, list: unknown) => {
     );
   commandRegistry.register(resource, infos);
 });
-on("onResourceStop", (resource: string) => commandRegistry.drop(resource));
+// Plain commands of a stopped resource are gone too.
+on("onResourceStop", () => commandRegistry.refreshSoon());
 on("onServerResourceStart", () => commandRegistry.refreshSoon());

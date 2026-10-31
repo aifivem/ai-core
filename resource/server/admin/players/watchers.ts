@@ -6,6 +6,7 @@ import {
 } from "common/adminPlayers";
 import type { Player } from "../../player/player";
 import { players } from "../../player/registry";
+import { KeyWatchers, PlayerMap } from "@aicore-fivem/lib/server";
 
 /** One row of the online list. */
 export function onlineRow(player: Player): OnlineRow {
@@ -39,13 +40,14 @@ function sendList(admin: number, delta: PlayersDelta): void {
 
 /**
  * Admins with the Players screen open: the list watchers get the online rows that changed, a character's watchers
- * get that character's changes. The snapshot callbacks subscribe, the screen's close and `playerDropped` prune.
+ * get that character's changes. The snapshot callbacks subscribe, the screen's close prunes, a drop frees both.
  * Nothing is collected while nobody watches.
  */
 class PlayerWatchers {
-  private readonly list = new Set<number>();
-  private readonly byChar = new Map<number, Set<number>>();
-  private readonly charOf = new Map<number, number>();
+  /** Admins with the online list open (freed on drop). */
+  private readonly list = new PlayerMap<true>();
+  /** The character each admin has open (one each, freed on drop). */
+  private readonly chars = new KeyWatchers<number>();
   private readonly dirty = new Set<number>();
   private readonly gone = new Set<number>();
   private timer: ReturnType<typeof setTimeout> | null = null;
@@ -54,7 +56,7 @@ class PlayerWatchers {
 
   /** Subscribes an admin to the online list and sends it as `rows` chunks of one revision (at least one chunk). */
   watchList(admin: number): void {
-    this.list.add(admin);
+    this.list.set(admin, true);
     const rev = ++this.rev;
     let put: OnlineRow[] = [];
     let sent = false;
@@ -71,20 +73,11 @@ class PlayerWatchers {
 
   /** An admin watches one character at a time; opening another replaces it. */
   watchChar(admin: number, charId: number): void {
-    this.unwatchChar(admin);
-    this.charOf.set(admin, charId);
-    let set = this.byChar.get(charId);
-    if (!set) this.byChar.set(charId, (set = new Set()));
-    set.add(admin);
+    this.chars.watch(admin, charId);
   }
 
   unwatchChar(admin: number): void {
-    const charId = this.charOf.get(admin);
-    if (charId === undefined) return;
-    this.charOf.delete(admin);
-    const set = this.byChar.get(charId);
-    set?.delete(admin);
-    if (set?.size === 0) this.byChar.delete(charId);
+    this.chars.stop(admin);
   }
 
   unwatchList(admin: number): void {
@@ -97,7 +90,7 @@ class PlayerWatchers {
   }
 
   watching(charId: number): boolean {
-    return this.byChar.has(charId);
+    return this.chars.of(charId) !== undefined;
   }
 
   /** An online row changed or joined. */
@@ -125,7 +118,7 @@ class PlayerWatchers {
   }
 
   meta(charId: number, key: string, value: unknown): void {
-    if (this.byChar.has(charId))
+    if (this.watching(charId))
       this.toChar(charId, { kind: "meta", charId, key, value });
   }
 
@@ -138,7 +131,7 @@ class PlayerWatchers {
   }
 
   private toChar(charId: number, delta: PlayersDelta): void {
-    const set = this.byChar.get(charId);
+    const set = this.chars.of(charId);
     if (!set) return;
     for (const admin of set) emitNet(ADMIN_PLAYERS.deltaEvent, admin, delta);
   }
@@ -164,7 +157,7 @@ class PlayerWatchers {
       remove: [...this.gone],
     };
     this.gone.clear();
-    for (const admin of this.list) sendList(admin, delta);
+    for (const admin of this.list.keys()) sendList(admin, delta);
     if (this.dirty.size > 0) this.schedule();
   }
 }

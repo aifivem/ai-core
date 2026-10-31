@@ -1,7 +1,7 @@
 ---A loaded character's lifecycle from ai-core's events: `loaded(src, character)` also runs once (next tick) for every
----character already in the world when this resource (re)starts; `unloaded(src, charId)` on logout, character switch
----and drop (each `loaded` gets exactly one). No extra playerDropped handler is needed next to it.
----@param handlers { loaded?: fun(src: integer, character: table), unloaded?: fun(src: integer, charId: integer) }
+---character already in the world when this resource (re)starts; `unloaded(src, charId, reason)` on logout or character
+---switch (`'switch'`) and drop (`'dropped'`); each `loaded` gets exactly one. No extra playerDropped handler is needed.
+---@param handlers { loaded?: fun(src: integer, character: table), unloaded?: fun(src: integer, charId: integer, reason: 'dropped'|'switch') }
 return function(handlers)
     local resource = GetCurrentResourceName()
     ---@type table<integer, integer> src -> charId of each `loaded` delivered
@@ -15,25 +15,27 @@ return function(handlers)
         end
     end
 
-    local function finish(src, charId)
+    local function finish(src, charId, reason)
         if live[src] == nil then return end
         live[src] = nil
         if handlers.unloaded then
-            local ok, err = pcall(handlers.unloaded, src, charId)
+            local ok, err = pcall(handlers.unloaded, src, charId, reason)
             if not ok then print(('^1[%s] character unloaded handler failed for %s: %s^0'):format(resource, src, err)) end
         end
     end
 
     AddEventHandler('ai-core:playerLoaded', function(src, character)
-        if live[src] ~= nil then finish(src, live[src]) end
+        if live[src] ~= nil then finish(src, live[src], 'switch') end
         deliver(src, character)
     end)
-    AddEventHandler('ai-core:playerUnloaded', function(src, charId) finish(src, charId) end)
+    AddEventHandler('ai-core:playerUnloaded', function(src, charId, reason)
+        finish(src, charId, reason == 'dropped' and 'dropped' or 'switch')
+    end)
     -- ai-core unloads on drop itself; this only catches a drop whose unload never came (ai-core stopping).
     AddEventHandler('playerDropped', function()
         local src = source
         SetTimeout(0, function()
-            if live[src] ~= nil then finish(src, live[src]) end
+            if live[src] ~= nil then finish(src, live[src], 'dropped') end
         end)
     end)
     SetTimeout(0, function()

@@ -1,14 +1,32 @@
-import { isOnline, registerExport } from "@aicore-fivem/lib/server";
-import type { MedicalAdapter } from "@aicore-fivem/shared";
+import {
+  GlobalKey,
+  isOnline,
+  registerExport,
+  stateString,
+} from "@aicore-fivem/lib/server";
+import { CORE, type MedicalAdapter } from "@aicore-fivem/shared";
 import { AdapterPicker } from "common/adapters";
 import { log } from "../log";
 import { aiDeath } from "./adapters/ai-death";
+import { arsAmbulance } from "./adapters/ars_ambulancejob";
+import { esxAmbulance } from "./adapters/esx_ambulancejob";
+import { qbAmbulance } from "./adapters/qb-ambulancejob";
+import { qbxMedical } from "./adapters/qbx_medical";
 
 /**
  * Every supported death / ambulance script in detection order: the first running one answers. ai-death comes first
  * because it `provide`s qbx_medical. A new death script = one adapter file and one line here.
  */
-const MEDICAL_SYSTEMS: readonly MedicalAdapter[] = [aiDeath];
+const MEDICAL_SYSTEMS: readonly MedicalAdapter[] = [
+  aiDeath,
+  qbxMedical,
+  arsAmbulance,
+  qbAmbulance,
+  esxAmbulance,
+];
+
+/** The pick, for the client half (`client/medical`), which tells every resource when the local player is down. */
+const activeMedical = new GlobalKey(CORE.medicalStateKey, stateString);
 
 /**
  * ai-core's medical layer (lib `medical`): revive, heal and the down state through whatever death script runs, so
@@ -19,6 +37,7 @@ export const medical = new AdapterPicker({
   adapters: MEDICAL_SYSTEMS,
   log,
   noneText: "no death script runs: revive and heal do nothing",
+  onSwitch: (next) => activeMedical.set(next?.resource),
 });
 
 const online = (v: unknown): v is number =>

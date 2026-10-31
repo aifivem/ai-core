@@ -52,6 +52,8 @@ end
 ---@field LocalPed AiLibLocalPed client
 ---@field Blips AiLibBlips client (`Blips.create(options)` for a single blip)
 ---@field player table client: `coords`, `heading`, `distanceTo`, `freeze`, `teleport` (`ground = 'find'` or no z: ground under x / y), `playAnim`, `stopAnim`
+---@field playerPed fun(serverId: integer): integer client: a player's ped by server id (`cache.ped` for the local one), 0 when out of scope
+---@field waypoint fun(): { x: number, y: number }? client: the map waypoint
 ---@field nearestPlayer fun(metres: number, options?: { from?: vector3, filter?: fun(serverId: integer, ped: integer): boolean }): integer? client: closest other player's server id
 ---@field onShot fun(handler: fun(weapon: integer)) client: the frame the local ped fires (per-frame only while armed)
 ---@field fadeOut fun(ms?: integer) client
@@ -68,7 +70,7 @@ end
 ---@field vehicleFromNet fun(netId: any): integer server: the live vehicle behind a client's net id, or 0
 ---@field vehicleNearPlayer fun(source: integer, netId: any, options?: { metres?: number, driver?: boolean }): integer server
 ---@field nearestPlayerTo fun(source: integer, metres: number, filter?: fun(other: integer): boolean): integer? server
----@field onCharacter fun(handlers: { loaded?: fun(source: integer, character: table), unloaded?: fun(source: integer, charId: integer) }) server: also replays characters loaded before a restart
+---@field onCharacter fun(handlers: { loaded?: fun(source: integer, character: table), unloaded?: fun(source: integer, charId: integer, reason: 'dropped'|'switch') }) server: also replays characters loaded before a restart
 ---@field playersNearEntity fun(entity: integer, radius: number): integer[] server
 ---@field isAdmin fun(source: integer, ace?: string): boolean server
 ---@field controls { disable: (fun(reason: string, controls: integer[], group?: integer)), disableAll: (fun(reason: string, except?: integer[])), enable: (fun(reason: string)) } client
