@@ -41,6 +41,8 @@ export const NuiCallback = {
   remove: "remove",
   /** ({ resource, patch }) -> AdminResult */
   adminApply: "adminApply",
+  /** ({ resource }) -> the script's whole panel data or null (the admin opened that script). */
+  adminPanelData: "adminPanelData",
   /** () -> true, the panel closed. */
   adminClose: "adminClose",
   /** ({ action: PlayersAction, args }) -> the server callback's answer (snapshot, page or PlayersResult). */

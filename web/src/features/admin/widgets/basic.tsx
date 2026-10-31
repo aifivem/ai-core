@@ -126,6 +126,15 @@ function RecordsTextW({
   );
   const options = useMemo((): LookupOption[] => {
     const labelPath = panel?.schema.files[file]?.labelPath;
+    // Before the script's records arrive, its label index gives the same choices.
+    if (panel?.loaded === false)
+      return [
+        { value: "", label: t("ADMIN_NONE") },
+        ...Object.entries(panel.index?.[file] ?? {}).map(([key, label]) => ({
+          value: key,
+          label: label || key,
+        })),
+      ];
     const records = panel?.data[file];
     const list = Object.entries(
       typeof records === "object" && records !== null ? records : {},

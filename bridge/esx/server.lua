@@ -183,8 +183,8 @@ function ESX.GetJobs()
     for name, definition in pairs(Bridge.jobDefinitions()) do
         local grades = {}
         for i, grade in ipairs(definition.grades) do grades[tostring(i - 1)] = { grade = i - 1, name = grade.label:lower():gsub('%s+', '_'), label = grade.label, salary = grade.salary } end
-        -- ai-core has no free-to-join flag: only unemployed counts as not whitelisted (job centers list nothing else).
-        out[name] = { name = name, label = definition.label, whitelisted = name ~= 'unemployed', grades = grades }
+        -- The panel's "listed in the job center" switch: esx_joblisting shows exactly the jobs that are not whitelisted.
+        out[name] = { name = name, label = definition.label, whitelisted = definition.listed ~= true, grades = grades }
     end
     return out
 end

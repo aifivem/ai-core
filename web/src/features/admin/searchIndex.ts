@@ -87,6 +87,19 @@ function addTab(
         icon: card.icon,
       });
   if (spec?.kind !== "records") return;
+  if (panel.loaded === false) {
+    for (const [key, label] of Object.entries(panel.index?.[tab.file] ?? {}))
+      add({
+        ...base,
+        kind: "record",
+        key,
+        title: label || key,
+        where: `${script} / ${tabLabel}`,
+        detail: key,
+        icon: tab.icon,
+      });
+    return;
+  }
   const records = panel.data[tab.file];
   if (typeof records !== "object" || records === null) return;
   for (const [key, value] of Object.entries(records)) {

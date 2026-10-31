@@ -17,6 +17,7 @@ import {
   fieldState,
   focused,
   opened,
+  panelLoaded,
   picking,
 } from "../../store/admin";
 import { getAt, sectionWrite } from "./path";
@@ -47,6 +48,31 @@ const toResult = (value: unknown): AdminResult => {
     error: typeof error === "string" ? error : "ADMIN_ERR_BUSY",
   };
 };
+
+/** Scripts whose panel data is being asked for (one request each). */
+const loading = new Set<string>();
+
+/** Asks for a script's whole panel data once, when the admin opens it (the open summary has only settings and labels). */
+export async function loadPanelData(resource: string): Promise<void> {
+  const panel = store
+    .getState()
+    .admin.panels.find((p) => p.resource === resource);
+  if (!panel || panel.loaded !== false || loading.has(resource)) return;
+  loading.add(resource);
+  try {
+    const data: unknown = await fetchNui(
+      NuiCallback.adminPanelData,
+      { resource },
+      { mockData: null },
+    );
+    if (typeof data === "object" && data !== null && !Array.isArray(data))
+      store.dispatch(
+        panelLoaded({ resource, data: data as Record<string, unknown> }),
+      );
+  } finally {
+    loading.delete(resource);
+  }
+}
 
 export function goTo(resource: string, tab: string, key?: string): void {
   void router.navigate({

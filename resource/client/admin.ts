@@ -108,6 +108,17 @@ RegisterNuiCallback(NuiCallback.adminApply, (data: unknown, cb: NuiReply) => {
   );
 });
 
+RegisterNuiCallback(
+  NuiCallback.adminPanelData,
+  (data: unknown, cb: NuiReply) => {
+    if (!isRecord(data) || typeof data.resource !== "string") return cb(null);
+    triggerServerCallback(ADMIN.panelDataCallback, [data.resource]).then(
+      cb,
+      () => cb(null),
+    );
+  },
+);
+
 RegisterNuiCallback(NuiCallback.adminClose, (_data: unknown, cb: NuiReply) => {
   panel.hide();
   cb(true);

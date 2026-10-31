@@ -28,6 +28,10 @@
           "description": "On duty when hired: Players start this job on duty instead of off duty.",
           "type": "boolean"
         },
+        "listed": {
+          "description": "Listed in the job center: Anyone may take this job at a job center (ESX job listing). Off: only an admin or a boss hands it out.",
+          "type": "boolean"
+        },
         "grades": {
           "type": "array",
           "minItems": 1,

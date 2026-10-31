@@ -4,17 +4,21 @@
     "label": "Ballas",
     "grades": [
       {
-        "label": "Recruit"
+        "label": "Recruit",
+        "salary": 0
       },
       {
-        "label": "Enforcer"
+        "label": "Enforcer",
+        "salary": 0
       },
       {
-        "label": "Shot Caller"
+        "label": "Shot Caller",
+        "salary": 0
       },
       {
         "label": "Boss",
-        "boss": true
+        "boss": true,
+        "salary": 0
       }
     ]
   },
@@ -22,16 +26,108 @@
     "label": "Vagos",
     "grades": [
       {
-        "label": "Recruit"
+        "label": "Recruit",
+        "salary": 0
       },
       {
-        "label": "Enforcer"
+        "label": "Enforcer",
+        "salary": 0
       },
       {
-        "label": "Shot Caller"
+        "label": "Shot Caller",
+        "salary": 0
       },
       {
         "label": "Boss",
+        "boss": true,
+        "salary": 0
+      }
+    ]
+  },
+  "lostmc": {
+    "label": "The Lost MC",
+    "grades": [
+      {
+        "label": "Recruit",
+        "salary": 0
+      },
+      {
+        "label": "Enforcer",
+        "salary": 0
+      },
+      {
+        "label": "Shot Caller",
+        "salary": 0
+      },
+      {
+        "label": "Boss",
+        "salary": 0,
+        "boss": true
+      }
+    ]
+  },
+  "cartel": {
+    "label": "Cartel",
+    "grades": [
+      {
+        "label": "Recruit",
+        "salary": 0
+      },
+      {
+        "label": "Enforcer",
+        "salary": 0
+      },
+      {
+        "label": "Shot Caller",
+        "salary": 0
+      },
+      {
+        "label": "Boss",
+        "salary": 0,
+        "boss": true
+      }
+    ]
+  },
+  "families": {
+    "label": "Families",
+    "grades": [
+      {
+        "label": "Recruit",
+        "salary": 0
+      },
+      {
+        "label": "Enforcer",
+        "salary": 0
+      },
+      {
+        "label": "Shot Caller",
+        "salary": 0
+      },
+      {
+        "label": "Boss",
+        "salary": 0,
+        "boss": true
+      }
+    ]
+  },
+  "triads": {
+    "label": "Triads",
+    "grades": [
+      {
+        "label": "Recruit",
+        "salary": 0
+      },
+      {
+        "label": "Enforcer",
+        "salary": 0
+      },
+      {
+        "label": "Shot Caller",
+        "salary": 0
+      },
+      {
+        "label": "Boss",
+        "salary": 0,
         "boss": true
       }
     ]

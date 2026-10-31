@@ -347,6 +347,8 @@
   "ADMIN_PH_JOB_TYPE": "e.g. leo",
   "ADMIN_F_DEFAULT_DUTY": "On duty when hired",
   "ADMIN_H_DEFAULT_DUTY": "Players start this job on duty instead of off duty.",
+  "ADMIN_F_JOB_LISTED": "Listed in the job center",
+  "ADMIN_H_JOB_LISTED": "Anyone may take this job at a job center (ESX job listing). Off: only an admin or a boss hands it out.",
   "ADMIN_C_GRADES": "Ranks",
   "ADMIN_C_GRADES_DESC": "From the lowest to the highest rank. The salary is paid on every paycheck while on duty; the off prime salary replaces it outside prime time (0 = salary x the factor in Job and gang rules).",
   "ADMIN_C_GANG_GRADES_DESC": "From the lowest to the highest rank.",
@@ -595,5 +597,14 @@
   "ADMIN_P_SPAWN_LABEL": "Legion Square",
   "SPAWN_CHOOSE_TITLE": "Where do you want to appear?",
   "SPAWN_LAST_LOCATION": "Last location",
-  "ADMIN_UPDATE_OPEN": "View release"
+  "ADMIN_UPDATE_OPEN": "View release",
+  "ADMIN_F_ACCESS_JOBS": "Jobs",
+  "ADMIN_H_ACCESS_JOBS": "Only members of these jobs can use it. Leave jobs and gangs empty for everyone.",
+  "ADMIN_P_ACCESS_JOBS": "Everyone",
+  "ADMIN_F_ACCESS_GANGS": "Gangs",
+  "ADMIN_H_ACCESS_GANGS": "Members of these gangs can use it too.",
+  "ADMIN_P_ACCESS_GANGS": "No gang",
+  "ADMIN_F_ACCESS_ON_DUTY": "Only on duty",
+  "ADMIN_H_ACCESS_ON_DUTY": "Job members must be on duty in that job.",
+  "ADMIN_LOADING": "Loading..."
 }

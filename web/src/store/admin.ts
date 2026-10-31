@@ -63,6 +63,21 @@ type Data = Record<string, unknown>;
 function put(panels: AdminPanelSnapshot[], delta: AdminDelta): void {
   const panel = panels.find((p) => p.resource === delta.resource);
   if (!panel) return;
+  // A script whose records are not loaded yet keeps only their labels (the global search).
+  if (panel.loaded === false && delta.key !== undefined) {
+    const labels = (panel.index ??= {})[delta.file] ?? {};
+    const path = panel.schema.files[delta.file]?.labelPath;
+    const label =
+      path && typeof delta.value === "object" && delta.value !== null
+        ? Reflect.get(delta.value, path)
+        : undefined;
+    if (delta.value === null) delete labels[delta.key];
+    else
+      labels[delta.key] =
+        typeof label === "string" && label ? label : delta.key;
+    panel.index[delta.file] = labels;
+    return;
+  }
   if (delta.key === undefined) {
     if (typeof delta.value === "object" && delta.value !== null)
       panel.data[delta.file] = delta.value;
@@ -107,6 +122,18 @@ const admin = createSlice({
     closed(state) {
       state.open = false;
     },
+    /** A script's whole panel data arrived (the admin opened it). */
+    panelLoaded(
+      state,
+      action: PayloadAction<{ resource: string; data: Data }>,
+    ) {
+      const panel = state.panels.find(
+        (p) => p.resource === action.payload.resource,
+      );
+      if (!panel) return;
+      panel.data = action.payload.data;
+      panel.loaded = true;
+    },
     /** A server delta, or an optimistic local write (reverted with the old value on refusal). */
     changed(state, action: PayloadAction<AdminDelta>) {
       put(state.panels, action.payload);
@@ -131,6 +158,7 @@ const admin = createSlice({
 });
 
 export const {
+  panelLoaded,
   opened,
   closed,
   changed,

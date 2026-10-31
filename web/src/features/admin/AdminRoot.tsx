@@ -15,7 +15,7 @@ import { NuiMessage } from "../../../../resource/common/nui";
 import { mockAdminOpen } from "../../dev/adminMock";
 import { store, useAppSelector } from "../../store";
 import { changed } from "../../store/admin";
-import { closePanel, openPanel } from "./actions";
+import { closePanel, loadPanelData, openPanel } from "./actions";
 import { Dashboard } from "./Dashboard";
 import { Editor } from "./Editor";
 import { GlobalSearch } from "./GlobalSearch";
@@ -104,6 +104,12 @@ export function AdminRoot() {
   useNuiEvent(NuiMessage.adminOpen, onOpen, OPEN_OPTIONS);
   useNuiEvent(NuiMessage.adminDelta, onDelta);
   useNuiEvent(NuiMessage.adminRecommendation, onRecommendationDelta);
+
+  // A script's records come when the admin opens it (the open summary has only its settings and labels).
+  const unloaded = panel?.loaded === false;
+  useEffect(() => {
+    if (open && resource && unloaded) void loadPanelData(resource);
+  }, [open, resource, unloaded]);
 
   useEffect(() => {
     if (!open) return;
@@ -214,24 +220,37 @@ export function AdminRoot() {
                 }}
               />
             )}
-            {panel && tab && kind === "records" && tab.table && (
-              <TableView
-                key={`${panel.resource}/${tab.id}`}
-                panel={panel}
-                file={tab.file}
-                table={tab.table}
-                t={t}
-              />
+            {panel && tab && kind === "records" && panel.loaded === false && (
+              <p className="px-[0.4vh] text-[1.35vh] text-text-3">
+                {coreTexts.ADMIN_LOADING ?? ""}
+              </p>
             )}
-            {panel && tab && kind === "records" && !tab.table && (
-              <RecordsView
-                key={`${panel.resource}/${tab.id}`}
-                panel={panel}
-                tab={tab}
-                selected={key}
-                t={t}
-              />
-            )}
+            {panel &&
+              tab &&
+              kind === "records" &&
+              panel.loaded !== false &&
+              tab.table && (
+                <TableView
+                  key={`${panel.resource}/${tab.id}`}
+                  panel={panel}
+                  file={tab.file}
+                  table={tab.table}
+                  t={t}
+                />
+              )}
+            {panel &&
+              tab &&
+              kind === "records" &&
+              panel.loaded !== false &&
+              !tab.table && (
+                <RecordsView
+                  key={`${panel.resource}/${tab.id}`}
+                  panel={panel}
+                  tab={tab}
+                  selected={key}
+                  t={t}
+                />
+              )}
           </div>
         </main>
       </motion.div>

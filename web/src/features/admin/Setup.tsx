@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck } from "@fortawesome/free-solid-svg-icons";
 import { Button } from "../../components/ui/button";
 import { ScrollArea } from "../../components/ui/scroll-area";
 import { cn } from "../../lib/utils";
 import { useAppSelector } from "../../store";
-import { finishSetup } from "./actions";
+import { finishSetup, loadPanelData } from "./actions";
 import { EditorCtx } from "./context";
 import { Field } from "./Field";
 import { iconOf } from "./icons";
@@ -18,6 +18,11 @@ function GuideField({ field }: { field: SetupField }) {
   const t = usePanelLang(field.resource);
   const panels = useAppSelector((s) => s.admin.panels);
   const found = widgetOf(panels, field);
+  // A step on a records file needs that script's records (not in the open summary).
+  const unloaded = found?.panel.loaded === false && field.key !== undefined;
+  useEffect(() => {
+    if (unloaded) void loadPanelData(field.resource);
+  }, [unloaded, field.resource]);
   if (!found) return null;
   const data = found.panel.data[field.file];
   const record = field.key === undefined ? data : getAt(data, field.key);

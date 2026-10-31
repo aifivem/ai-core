@@ -198,6 +198,7 @@ export function coreSchema(
         newRecord: {
           type: "none",
           defaultDuty: false,
+          listed: false,
           grades: [{ label: "Member", salary: 0 }],
           primeOwn: false,
           primeStart: DEFAULT_PRIME_TIME.start,
@@ -207,6 +208,7 @@ export function coreSchema(
           label: text(48),
           type: { type: "text", max: 32, pattern: ID },
           defaultDuty: bool,
+          listed: { type: "bool", optional: true },
           grades,
           primeOwn: { type: "bool", optional: true },
           primeStart: optionalHour,
@@ -683,6 +685,12 @@ export function coreSchema(
                 path: "defaultDuty",
                 label: "ADMIN_F_DEFAULT_DUTY",
                 hint: "ADMIN_H_DEFAULT_DUTY",
+              },
+              {
+                widget: "switch",
+                path: "listed",
+                label: "ADMIN_F_JOB_LISTED",
+                hint: "ADMIN_H_JOB_LISTED",
               },
             ],
           },

@@ -4,6 +4,7 @@
     "label": "Civilian",
     "type": "none",
     "defaultDuty": true,
+    "listed": true,
     "grades": [
       {
         "label": "Freelancer",
@@ -15,6 +16,7 @@
     "label": "Police",
     "type": "leo",
     "defaultDuty": false,
+    "listed": false,
     "grades": [
       {
         "label": "Recruit",
@@ -43,6 +45,7 @@
     "label": "EMS",
     "type": "ems",
     "defaultDuty": false,
+    "listed": false,
     "grades": [
       {
         "label": "Recruit",
@@ -71,6 +74,7 @@
     "label": "Mechanic",
     "type": "mechanic",
     "defaultDuty": false,
+    "listed": false,
     "grades": [
       {
         "label": "Recruit",
@@ -86,6 +90,317 @@
       },
       {
         "label": "Owner",
+        "salary": 150,
+        "boss": true
+      }
+    ]
+  },
+  "bus": {
+    "label": "Bus",
+    "type": "none",
+    "defaultDuty": true,
+    "listed": false,
+    "grades": [
+      {
+        "label": "Driver",
+        "salary": 50
+      }
+    ]
+  },
+  "judge": {
+    "label": "Honorary",
+    "type": "none",
+    "defaultDuty": true,
+    "listed": false,
+    "grades": [
+      {
+        "label": "Judge",
+        "salary": 100
+      }
+    ]
+  },
+  "lawyer": {
+    "label": "Law Firm",
+    "type": "none",
+    "defaultDuty": true,
+    "listed": false,
+    "grades": [
+      {
+        "label": "Associate",
+        "salary": 50
+      }
+    ]
+  },
+  "reporter": {
+    "label": "Reporter",
+    "type": "none",
+    "defaultDuty": true,
+    "listed": false,
+    "grades": [
+      {
+        "label": "Journalist",
+        "salary": 50
+      }
+    ]
+  },
+  "trucker": {
+    "label": "Trucker",
+    "type": "none",
+    "defaultDuty": true,
+    "listed": false,
+    "grades": [
+      {
+        "label": "Driver",
+        "salary": 50
+      }
+    ]
+  },
+  "tow": {
+    "label": "Towing",
+    "type": "none",
+    "defaultDuty": true,
+    "listed": false,
+    "grades": [
+      {
+        "label": "Driver",
+        "salary": 50
+      }
+    ]
+  },
+  "garbage": {
+    "label": "Garbage",
+    "type": "none",
+    "defaultDuty": true,
+    "listed": false,
+    "grades": [
+      {
+        "label": "Collector",
+        "salary": 50
+      }
+    ]
+  },
+  "vineyard": {
+    "label": "Vineyard",
+    "type": "none",
+    "defaultDuty": true,
+    "listed": false,
+    "grades": [
+      {
+        "label": "Picker",
+        "salary": 50
+      }
+    ]
+  },
+  "hotdog": {
+    "label": "Hotdog",
+    "type": "none",
+    "defaultDuty": true,
+    "listed": false,
+    "grades": [
+      {
+        "label": "Sales",
+        "salary": 50
+      }
+    ]
+  },
+  "realestate": {
+    "label": "Real Estate",
+    "type": "none",
+    "defaultDuty": true,
+    "listed": false,
+    "grades": [
+      {
+        "label": "Recruit",
+        "salary": 50
+      },
+      {
+        "label": "House Sales",
+        "salary": 75
+      },
+      {
+        "label": "Business Sales",
+        "salary": 100
+      },
+      {
+        "label": "Broker",
+        "salary": 125
+      },
+      {
+        "label": "Manager",
+        "salary": 150,
+        "boss": true
+      }
+    ]
+  },
+  "taxi": {
+    "label": "Taxi",
+    "type": "none",
+    "defaultDuty": true,
+    "listed": false,
+    "grades": [
+      {
+        "label": "Recruit",
+        "salary": 50
+      },
+      {
+        "label": "Driver",
+        "salary": 75
+      },
+      {
+        "label": "Event Driver",
+        "salary": 100
+      },
+      {
+        "label": "Sales",
+        "salary": 125
+      },
+      {
+        "label": "Manager",
+        "salary": 150,
+        "boss": true
+      }
+    ]
+  },
+  "cardealer": {
+    "label": "Vehicle Dealer",
+    "type": "none",
+    "defaultDuty": true,
+    "listed": false,
+    "grades": [
+      {
+        "label": "Recruit",
+        "salary": 50
+      },
+      {
+        "label": "Showroom Sales",
+        "salary": 75
+      },
+      {
+        "label": "Business Sales",
+        "salary": 100
+      },
+      {
+        "label": "Finance",
+        "salary": 125
+      },
+      {
+        "label": "Manager",
+        "salary": 150,
+        "boss": true
+      }
+    ]
+  },
+  "mechanic2": {
+    "label": "LS Customs",
+    "type": "mechanic",
+    "defaultDuty": true,
+    "listed": false,
+    "grades": [
+      {
+        "label": "Recruit",
+        "salary": 50
+      },
+      {
+        "label": "Novice",
+        "salary": 75
+      },
+      {
+        "label": "Experienced",
+        "salary": 100
+      },
+      {
+        "label": "Advanced",
+        "salary": 125
+      },
+      {
+        "label": "Manager",
+        "salary": 150,
+        "boss": true
+      }
+    ]
+  },
+  "mechanic3": {
+    "label": "LS Customs",
+    "type": "mechanic",
+    "defaultDuty": true,
+    "listed": false,
+    "grades": [
+      {
+        "label": "Recruit",
+        "salary": 50
+      },
+      {
+        "label": "Novice",
+        "salary": 75
+      },
+      {
+        "label": "Experienced",
+        "salary": 100
+      },
+      {
+        "label": "Advanced",
+        "salary": 125
+      },
+      {
+        "label": "Manager",
+        "salary": 150,
+        "boss": true
+      }
+    ]
+  },
+  "beeker": {
+    "label": "Beeker's Garage",
+    "type": "mechanic",
+    "defaultDuty": true,
+    "listed": false,
+    "grades": [
+      {
+        "label": "Recruit",
+        "salary": 50
+      },
+      {
+        "label": "Novice",
+        "salary": 75
+      },
+      {
+        "label": "Experienced",
+        "salary": 100
+      },
+      {
+        "label": "Advanced",
+        "salary": 125
+      },
+      {
+        "label": "Manager",
+        "salary": 150,
+        "boss": true
+      }
+    ]
+  },
+  "bennys": {
+    "label": "Benny's Original Motor Works",
+    "type": "mechanic",
+    "defaultDuty": true,
+    "listed": false,
+    "grades": [
+      {
+        "label": "Recruit",
+        "salary": 50
+      },
+      {
+        "label": "Novice",
+        "salary": 75
+      },
+      {
+        "label": "Experienced",
+        "salary": 100
+      },
+      {
+        "label": "Advanced",
+        "salary": 125
+      },
+      {
+        "label": "Manager",
         "salary": 150,
         "boss": true
       }

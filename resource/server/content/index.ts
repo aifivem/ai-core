@@ -76,6 +76,8 @@ export interface Grade extends GradeDefinition {
 }
 /** `prime`: the job's own prime hours, null = the default hours. */
 export interface JobDef extends JobDefinition {
+  /** Listed in job centers: anyone may take it (ESX `whitelisted` = not listed). */
+  listed: boolean;
   grades: Grade[];
   prime: PrimeHours | null;
 }
@@ -202,6 +204,7 @@ const readJob = (v: Record<string, unknown>): JobDef => ({
   label: str(v.label, "Job"),
   type: str(v.type, "none", 32),
   defaultDuty: bool(v.defaultDuty, false),
+  listed: bool(v.listed, false),
   grades: readGrades(v.grades),
   prime: readJobPrime(v),
 });
@@ -260,6 +263,7 @@ if (!jobs.has(settings.jobs.unemployed)) {
     label: "Civilian",
     type: "none",
     defaultDuty: true,
+    listed: true,
     grades: readGrades([]),
     prime: null,
   });

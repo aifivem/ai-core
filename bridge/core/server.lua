@@ -31,6 +31,7 @@ local core = exports['ai-core']
 ---@field label string
 ---@field type string
 ---@field defaultDuty boolean
+---@field listed boolean listed in job centers (panel switch); ESX `whitelisted` is its opposite
 ---@field grades AiGrade[]
 
 ---@class BridgeMirror

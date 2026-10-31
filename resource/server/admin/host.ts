@@ -42,13 +42,16 @@ class AdminHost {
     this.resources.delete(resource);
   }
 
-  /** Every script's snapshot, the lookup lists (items, jobs, gangs, accounts) and the other scripts' panels. */
+  /**
+   * Every script's summary (schema, texts, settings, the records' labels), the lookup lists (items, jobs, gangs,
+   * accounts) and the other scripts' panels. A script's records come with `data` when the admin opens it.
+   */
   open(source: number): AdminOpenData {
     this.watchers.add(source);
     const panels: AdminPanelSnapshot[] = [];
     for (const resource of this.resources) {
       const panel = this.call(resource);
-      if (panel) panels.push(panel.AdminPanelSnapshot());
+      if (panel) panels.push(panel.AdminPanelSummary());
     }
     return {
       panels,
@@ -57,6 +60,13 @@ class AdminHost {
       updates: versions.list(),
       recommendations: recommendations.list(),
     };
+  }
+
+  /** One script's whole panel data (the admin opened it); null when it does not run. */
+  data(source: number, resource: string): AdminPanelSnapshot | null {
+    if (!this.watchers.has(source) || !this.resources.has(resource))
+      return null;
+    return this.call(resource)?.AdminPanelSnapshot() ?? null;
   }
 
   close(source: number): void {
@@ -133,6 +143,16 @@ addCommand(
   (source) => {
     if (source > 0) emitNet(ADMIN.showEvent, source);
   },
+);
+onClientCallback(
+  ADMIN.panelDataCallback,
+  {
+    guards: [isAdmin()],
+    rate: { count: 10, windowMs: 5000 },
+    args: ([resource]) =>
+      typeof resource === "string" && resource.length <= 64 ? [resource] : null,
+  },
+  (source, resource) => adminHost.data(source, resource)?.data ?? null,
 );
 onClientCallback(
   ADMIN.applyCallback,
