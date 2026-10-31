@@ -1,0 +1,201 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ai-core/data/vrp.json",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "This file's JSON Schema (for editors)."
+    },
+    "defaults": {
+      "type": "object",
+      "properties": {
+        "jobPrefix": {
+          "description": "Job permissions go to the job: A permission that starts with a job's name, like police.service, goes to members of that job.",
+          "type": "boolean"
+        },
+        "jobOnDuty": {
+          "description": "Only while on duty: Members get those job permissions only while they are on duty in that job.",
+          "type": "boolean"
+        },
+        "adminPrefix": {
+          "description": "admin. permissions go to admins: A permission that starts with admin., like admin.tickets, goes to players with admin rights (ai.admin).",
+          "type": "boolean"
+        },
+        "playerPrefix": {
+          "description": "player. permissions go to everyone: A permission that starts with player., like player.phone, goes to every player.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "jobPrefix",
+        "jobOnDuty",
+        "adminPrefix",
+        "playerPrefix"
+      ]
+    },
+    "permissions": {
+      "description": "Rules: Several rules may name the same permission: whoever matches any of them has it. A name ending in * covers every permission that starts with it.",
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "properties": {
+          "permission": {
+            "description": "Permission name",
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 100,
+            "pattern": "^([^\\s!]\\S*)?$"
+          },
+          "who": {
+            "description": "Who has it",
+            "enum": [
+              "job",
+              "gang",
+              "group",
+              "admin",
+              "everyone"
+            ]
+          },
+          "job": {
+            "description": "Job",
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 32
+          },
+          "gang": {
+            "description": "Gang",
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 32
+          },
+          "group": {
+            "description": "Group name",
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 64,
+            "pattern": "^\\S*$"
+          },
+          "grade": {
+            "description": "Lowest grade: This grade and every grade above it.",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30
+          },
+          "onDuty": {
+            "description": "Only on duty",
+            "type": "boolean"
+          },
+          "admin": {
+            "type": "boolean"
+          },
+          "everyone": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "permission",
+          "job",
+          "gang",
+          "group",
+          "grade",
+          "onDuty",
+          "admin",
+          "everyone"
+        ]
+      }
+    },
+    "groups": {
+      "description": "Groups: Giving a linked group sets that job or gang at that grade; checking it asks whether the character holds it.",
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "description": "Group name",
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 64,
+            "pattern": "^\\S*$"
+          },
+          "who": {
+            "description": "Means",
+            "enum": [
+              "job",
+              "gang",
+              "admin"
+            ]
+          },
+          "job": {
+            "description": "Job",
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 32
+          },
+          "gang": {
+            "description": "Gang",
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 32
+          },
+          "grade": {
+            "description": "Lowest grade: This grade and every grade above it.",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30
+          },
+          "admin": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "group",
+          "job",
+          "gang",
+          "grade",
+          "admin"
+        ]
+      }
+    },
+    "items": {
+      "description": "Items: Without a line, wbody|WEAPON_X means the weapon item and other a|b names mean b.",
+      "type": "array",
+      "maxItems": 2000,
+      "items": {
+        "type": "object",
+        "properties": {
+          "vrp": {
+            "description": "Name scripts use",
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 100,
+            "pattern": "^\\S*$"
+          },
+          "item": {
+            "description": "Inventory item",
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "vrp",
+          "item"
+        ]
+      }
+    },
+    "seen": {
+      "description": "Permission names: A new rule starts as admins only: pick who should have it in Permission rules.",
+      "type": "array",
+      "maxItems": 5000,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "maxLength": 100
+      }
+    }
+  },
+  "required": []
+}

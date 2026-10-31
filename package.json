@@ -47,7 +47,18 @@
     "bridge/qb/server.lua",
     "bridge/qbx/server.lua",
     "bridge/esx/server.lua",
-    "bridge/esx/shared.lua"
+    "bridge/esx/shared.lua",
+    "lib/utils.lua",
+    "bridge/vrp/server.lua",
+    "bridge/vrp/v1/base.lua",
+    "bridge/vrp/v1/money.lua",
+    "bridge/vrp/v1/groups.lua",
+    "bridge/vrp/v1/inventory.lua",
+    "bridge/vrp/v1/identity.lua",
+    "bridge/vrp/v1/map.lua",
+    "bridge/vrp/ui.lua",
+    "bridge/vrp/v2/shared.lua",
+    "bridge/vrp/v2/server.lua"
   ],
   "fxClientScripts": [
     "bridge/core/lib.lua",
@@ -61,7 +72,15 @@
     "bridge/esx/client.lua",
     "bridge/esx/shared.lua",
     "bridge/esx/game.lua",
-    "bridge/esx/ui.lua"
+    "bridge/esx/ui.lua",
+    "lib/utils.lua",
+    "bridge/vrp/client.lua",
+    "bridge/vrp/v1/client_base.lua",
+    "bridge/vrp/v1/client_map.lua",
+    "bridge/vrp/v1/client_state.lua",
+    "bridge/vrp/ui_client.lua",
+    "bridge/vrp/v2/shared.lua",
+    "bridge/vrp/v2/client.lua"
   ],
   "fxProvide": [
     "es_extended",
@@ -76,7 +95,8 @@
     "esx_menu_list",
     "qb-menu",
     "qb-input",
-    "progressbar"
+    "progressbar",
+    "vrp"
   ],
   "fxFiles": [
     "data/keybinds.json",
@@ -87,6 +107,11 @@
     "bridge/lib/lua/shared/*.lua",
     "shared/locale.lua",
     "imports.lua",
-    "locale.lua"
+    "locale.lua",
+    "lib/*.lua",
+    "cfg/*.lua",
+    "cfg/lang/*.lua",
+    "vRPShared.lua",
+    "client/vRP.lua"
   ]
 }

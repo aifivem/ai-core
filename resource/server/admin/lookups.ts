@@ -31,11 +31,22 @@ export function lookupOptions(source: LookupSource): LookupOption[] {
           ),
         ).map(([value, d]) => ({ value, label: d.label || value })),
       );
+    // Jobs and gangs carry their grade names for the panel's grade picker.
     case "job":
-      return sorted([...jobs].map(([value, d]) => ({ value, label: d.label })));
+      return sorted(
+        [...jobs].map(([value, d]) => ({
+          value,
+          label: d.label,
+          grades: d.grades.map((g) => g.label),
+        })),
+      );
     case "gang":
       return sorted(
-        [...gangs].map(([value, d]) => ({ value, label: d.label })),
+        [...gangs].map(([value, d]) => ({
+          value,
+          label: d.label,
+          grades: d.grades.map((g) => g.label),
+        })),
       );
     case "account":
       return sorted(

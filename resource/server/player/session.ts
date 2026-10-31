@@ -108,9 +108,11 @@ onClientCallback(
   (source, id): CharacterActionResult => {
     const options = choosing.get(source);
     const spawn = options?.[id];
-    if (!options || !spawn) return BUSY;
+    const player = players.get(source);
+    if (!options || !spawn || !player) return BUSY;
     choosing.delete(source);
     emitNet(CORE.spawnEvent, source, spawn);
+    emit(CORE.playerSpawnedEvent, source, player.charId);
     return { ok: true };
   },
 );
@@ -199,6 +201,8 @@ async function loadNow(
       emitNet(CORE.chooseSpawnEvent, source, labels);
     }
     emit(CORE.playerLoadedEvent, source, player.info());
+    if (points.length === 0)
+      emit(CORE.playerSpawnedEvent, source, player.charId);
     log.info(`loaded #${player.charId} ${player.fullName} (src ${source})`);
     return { ok: true };
   } catch (error) {

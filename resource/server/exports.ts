@@ -8,7 +8,7 @@ import {
 import { dutyCount } from "./jobs/dutyCount";
 import { sharedAccounts } from "./money/book";
 import { transferMoney } from "./money/transfer";
-import { players } from "./player/registry";
+import { players, selecting } from "./player/registry";
 
 /**
  * Server exports. All synchronous and small (callers mirror what they need and follow the local events);
@@ -38,6 +38,11 @@ registerExport(
 );
 registerExport("GetLoadedSources", () =>
   [...players.all()].map((player) => player.source),
+);
+/** The account id (`ai_core_users.id`) of a connected player, also on the character screen. */
+registerExport(
+  "GetUserId",
+  (src: number) => players.get(src)?.user.id ?? selecting.get(src)?.id ?? null,
 );
 registerExport(
   "GetFivemId",

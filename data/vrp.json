@@ -1,0 +1,13 @@
+{
+  "$schema": "./schemas/vrp.schema.json",
+  "defaults": {
+    "jobPrefix": true,
+    "jobOnDuty": true,
+    "adminPrefix": true,
+    "playerPrefix": true
+  },
+  "permissions": [],
+  "groups": [],
+  "items": [],
+  "seen": []
+}

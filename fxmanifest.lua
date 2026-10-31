@@ -22,6 +22,14 @@ client_scripts {
 	'bridge/esx/shared.lua',
 	'bridge/esx/game.lua',
 	'bridge/esx/ui.lua',
+	'lib/utils.lua',
+	'bridge/vrp/client.lua',
+	'bridge/vrp/v1/client_base.lua',
+	'bridge/vrp/v1/client_map.lua',
+	'bridge/vrp/v1/client_state.lua',
+	'bridge/vrp/ui_client.lua',
+	'bridge/vrp/v2/shared.lua',
+	'bridge/vrp/v2/client.lua',
 }
 server_scripts {
 	'dist/server.js',
@@ -33,6 +41,17 @@ server_scripts {
 	'bridge/qbx/server.lua',
 	'bridge/esx/server.lua',
 	'bridge/esx/shared.lua',
+	'lib/utils.lua',
+	'bridge/vrp/server.lua',
+	'bridge/vrp/v1/base.lua',
+	'bridge/vrp/v1/money.lua',
+	'bridge/vrp/v1/groups.lua',
+	'bridge/vrp/v1/inventory.lua',
+	'bridge/vrp/v1/identity.lua',
+	'bridge/vrp/v1/map.lua',
+	'bridge/vrp/ui.lua',
+	'bridge/vrp/v2/shared.lua',
+	'bridge/vrp/v2/server.lua',
 }
 ui_page 'dist/web/index.html'
 
@@ -43,8 +62,8 @@ dependencies {
 
 files {
 	'locales/*.json',
-	'dist/web/assets/*.js',
 	'dist/web/assets/*.css',
+	'dist/web/assets/*.js',
 	'dist/web/assets/*.woff',
 	'dist/web/assets/*.woff2',
 	'dist/web/backgrounds/*.jpg',
@@ -58,6 +77,11 @@ files {
 	'shared/locale.lua',
 	'imports.lua',
 	'locale.lua',
+	'lib/*.lua',
+	'cfg/*.lua',
+	'cfg/lang/*.lua',
+	'vRPShared.lua',
+	'client/vRP.lua',
 }
 provide 'es_extended'
 provide 'qb-core'
@@ -72,3 +96,4 @@ provide 'esx_menu_list'
 provide 'qb-menu'
 provide 'qb-input'
 provide 'progressbar'
+provide 'vrp'

@@ -68,6 +68,13 @@ export type Tables = {
     amount: number;
     created_at: number;
   };
+  ai_core_vrp_data: {
+    kind: string;
+    owner: string;
+    dkey: string;
+    dvalue: number[];
+    updated_at: number;
+  };
 };
 
 /** What an INSERT needs: columns with a default, NULL or AUTO_INCREMENT may be left out. */
@@ -137,5 +144,12 @@ export type TableInserts = {
     label: string;
     amount: number;
     created_at?: number;
+  };
+  ai_core_vrp_data: {
+    kind: string;
+    owner?: string;
+    dkey: string;
+    dvalue: number[];
+    updated_at?: number;
   };
 };

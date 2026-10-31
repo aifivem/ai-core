@@ -16,6 +16,7 @@ import {
   RECOMMENDATIONS_SECTION,
   recommendationsCard,
 } from "../recommendations/schema";
+import { VRP_FILE, VRP_TAB } from "../vrp/schema";
 
 /** ai-core's own panel: server settings, spawn points, character screen scene, job rules, jobs, gangs and money accounts (`data/*.json`). */
 
@@ -315,6 +316,7 @@ export function coreSchema(
           description: { type: "text", min: 0, max: 160 },
         },
       },
+      vrp: VRP_FILE,
     },
     tabs: [
       {
@@ -1077,6 +1079,7 @@ export function coreSchema(
           ],
         },
       },
+      VRP_TAB,
     ],
   };
 }

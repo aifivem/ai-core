@@ -91,3 +91,15 @@ CREATE TABLE IF NOT EXISTS `ai_core_bills` (
   PRIMARY KEY (`id`),
   KEY `char_id` (`char_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- vRP key-value data (bridge/vrp, resource/server/vrp): kind c = character (v1 UData, v2 CData), u = account (v2
+-- UData), s = server (SData), g = global (GData); owner = the id as text ('' for s / g). Every access is a primary key
+-- lookup; values are bytes (the Lua side sends hex).
+CREATE TABLE IF NOT EXISTS `ai_core_vrp_data` (
+  `kind` CHAR(1) NOT NULL,
+  `owner` VARCHAR(64) NOT NULL DEFAULT '',
+  `dkey` VARCHAR(100) NOT NULL,
+  `dvalue` MEDIUMBLOB NOT NULL,
+  `updated_at` DATETIME NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`kind`, `owner`, `dkey`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

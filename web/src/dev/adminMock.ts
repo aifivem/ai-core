@@ -6,6 +6,7 @@ import type {
   LookupOption,
 } from "@aicore-fivem/shared";
 import { coreSchema } from "../../../resource/server/admin/schema";
+import { VRP_NEW_RULE } from "../../../resource/server/vrp/schema";
 import accountsFile from "../../../data/accounts.json";
 import gangsFile from "../../../data/gangs.json";
 import jobsFile from "../../../data/jobs.json";
@@ -151,11 +152,49 @@ const commands = Object.fromEntries([
   cmd("tx", "monitor", "", "/tx", "?", "plain"),
 ]);
 
-const options = (records: Record<string, { label?: string }>): LookupOption[] =>
+const options = (
+  records: Record<string, { label?: string; grades?: { label: string }[] }>,
+): LookupOption[] =>
   Object.entries(records).map(([value, r]) => ({
     value,
     label: r.label ?? value,
+    grades: r.grades?.map((g) => g.label),
   }));
+// The vRP tab with a few rules and the permission names scripts asked for.
+const vrp = {
+  defaults: {
+    jobPrefix: true,
+    jobOnDuty: true,
+    adminPrefix: true,
+    playerPrefix: true,
+  },
+  permissions: [
+    {
+      ...VRP_NEW_RULE,
+      permission: "police.service",
+      who: "job",
+      job: "police",
+    },
+    { ...VRP_NEW_RULE, permission: "mechanic.*", who: "job", job: "mechanic" },
+    { ...VRP_NEW_RULE, permission: "vip.garage", who: "group", group: "vip" },
+  ],
+  groups: [
+    {
+      group: "Coronel",
+      who: "job",
+      job: "police",
+      gang: "",
+      grade: 3,
+      admin: false,
+    },
+  ],
+  items: [{ vrp: "edible|tacos", item: "bread" }],
+  seen: Array.from({ length: 120 }, (_, i) =>
+    i < 4
+      ? ["police.service", "police.pc", "admin.tickets", "player.phone"][i]!
+      : `script${i}.perm${i % 7}`,
+  ),
+};
 const ITEMS: LookupOption[] = [
   { value: "bread", label: "Bread" },
   { value: "water", label: "Water" },
@@ -172,7 +211,7 @@ export function mockAdminOpen():
     resource: "ai-core",
     schema: coreSchema(Object.keys(accounts)),
     texts: en,
-    data: { settings, jobs, gangs, accounts, keybinds, commands },
+    data: { settings, jobs, gangs, accounts, keybinds, commands, vrp },
   };
   return {
     panels: [panel],

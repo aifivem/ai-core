@@ -98,6 +98,13 @@ const NEVER_NEXT_TO: Record<string, string[]> = {
     "qb-menu",
     "qb-input",
     "progressbar",
+    // vRP (ai-core provides vrp) and vRP's DB drivers, which only call vRP.registerDBDriver.
+    "vrp",
+    "vRP",
+    "vrp_mysql",
+    "vrp_oxmysql",
+    "vrp_ghmattimysql",
+    "vRP-db-drivers",
   ],
   "ai-mysql": ["oxmysql", "mysql-async", "ghmattimysql"],
 };

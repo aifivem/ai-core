@@ -51,7 +51,7 @@ function num(value, fallback, min = -Infinity, max = Infinity) {
 function int(value, fallback, min = -Infinity, max = Infinity) {
 	return Math.round(num(value, fallback, min, max));
 }
-function bool$1(value, fallback) {
+function bool$2(value, fallback) {
 	return typeof value == "boolean" ? value : fallback;
 }
 function str(value, fallback, max = 64) {
@@ -298,6 +298,7 @@ const CORE = {
 	resource: "ai-core",
 	clientErrorEvent: "ai-core:clientError",
 	playerLoadedEvent: "ai-core:playerLoaded",
+	playerSpawnedEvent: "ai-core:playerSpawned",
 	playerUnloadedEvent: "ai-core:playerUnloaded",
 	moneyChangedEvent: "ai-core:moneyChanged",
 	jobsChangedEvent: "ai-core:jobsChanged",
@@ -388,15 +389,15 @@ const KEY_PURPOSES = [
 function toKeyPurpose(value) {
 	return KEY_PURPOSES.find((p) => p === value) ?? "temporary";
 }
-const text$14 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, finite$1 = (v) => typeof v == "number" && Number.isFinite(v), obj = (v) => typeof v == "object" && v && !Array.isArray(v) ? v : null;
+const text$15 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, finite$1 = (v) => typeof v == "number" && Number.isFinite(v), obj = (v) => typeof v == "object" && v && !Array.isArray(v) ? v : null;
 function toDispatchAlert(value) {
-	let v = obj(value), title = text$14(v?.title, 80);
+	let v = obj(value), title = text$15(v?.title, 80);
 	if (!v || !title) return null;
 	let c = obj(v.coords), b = obj(v.blip), jobs = Array.isArray(v.jobs) ? v.jobs.filter((j) => typeof j == "string" && j.length <= 32).slice(0, 10) : [];
 	return {
-		code: text$14(v.code, 12),
+		code: text$15(v.code, 12),
 		title,
-		message: text$14(v.message, 160),
+		message: text$15(v.message, 160),
 		coords: c && finite$1(c.x) && finite$1(c.y) && finite$1(c.z) ? {
 			x: c.x,
 			y: c.y,
@@ -410,15 +411,15 @@ function toDispatchAlert(value) {
 			scale: finite$1(b.scale) ? Math.min(3, Math.max(.1, b.scale)) : void 0
 		} : void 0,
 		duration: finite$1(v.duration) ? Math.min(3600, Math.max(1, Math.round(v.duration))) : void 0,
-		icon: text$14(v.icon, 40),
+		icon: text$15(v.icon, 40),
 		priority: v.priority === "high" ? "high" : "normal"
 	};
 }
 // ../../../packages/shared/src/billing.ts
-const text$13 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, id$2 = (v) => typeof v == "number" && Number.isInteger(v) && v > 0 ? v : void 0;
+const text$14 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, id$2 = (v) => typeof v == "number" && Number.isInteger(v) && v > 0 ? v : void 0;
 function toBillRequest(value) {
 	if (typeof value != "object" || !value || Array.isArray(value)) return null;
-	let v = value, to = id$2(v.to), toCitizenid = typeof v.toCitizenid == "string" && /^[A-Za-z0-9]{1,16}$/.test(v.toCitizenid) ? v.toCitizenid : void 0, label = text$13(v.label, 80), amount = v.amount;
+	let v = value, to = id$2(v.to), toCitizenid = typeof v.toCitizenid == "string" && /^[A-Za-z0-9]{1,16}$/.test(v.toCitizenid) ? v.toCitizenid : void 0, label = text$14(v.label, 80), amount = v.amount;
 	if (to === void 0 == (toCitizenid === void 0) || !label || typeof amount != "number" || !Number.isSafeInteger(amount) || amount < 1 || amount > 1e7) return null;
 	let from = id$2(v.from), job = typeof v.job == "string" && /^[a-z0-9_]{2,32}$/.test(v.job) ? v.job : void 0;
 	return job === void 0 && from === void 0 || to !== void 0 && from === to ? null : {
@@ -527,7 +528,7 @@ const LIB_UI = {
 	minigameForCallback: "ai-lib:minigameFor",
 	zoneEvent: "ai-lib:client:zone",
 	modelPointEvent: "ai-lib:client:modelPoint"
-}, named = new Set();
+}, VRP = { configEvent: "ai-core:vrp:config" }, named = new Set();
 function registerExport(name, handler) {
 	named.add(name), globalThis.exports(name, handler);
 	let first = name.charAt(0), twin = (first === first.toUpperCase() ? first.toLowerCase() : first.toUpperCase()) + name.slice(1);
@@ -16228,13 +16229,13 @@ function read(raw) {
 	let s = record(raw), providers = record(s.providers), discord = record(s.discord);
 	return {
 		providers: {
-			console: bool$1(providers.console, !0),
-			discord: bool$1(providers.discord, !0),
-			fivemanage: bool$1(providers.fivemanage, !1),
-			fivemstats: bool$1(providers.fivemstats, !1)
+			console: bool$2(providers.console, !0),
+			discord: bool$2(providers.discord, !0),
+			fivemanage: bool$2(providers.fivemanage, !1),
+			fivemstats: bool$2(providers.fivemstats, !1)
 		},
 		minLevel: toLevel(s.minLevel, "info"),
-		includeIp: bool$1(s.includeIp, !1),
+		includeIp: bool$2(s.includeIp, !1),
 		discord: {
 			name: str(discord.name, "ai-core"),
 			avatar: typeof discord.avatar == "string" ? discord.avatar : ""
@@ -16355,7 +16356,7 @@ function sendToDiscord(entry, url) {
 }
 // resource/server/logs/services.ts
 const batches = new Map();
-let flushTimer = null, warned = !1;
+let flushTimer$1 = null, warned = !1;
 function sendBatch(dataset, logs) {
 	fetch("https://api.fivemanage.com/api/v3/logs", {
 		method: "POST",
@@ -16372,7 +16373,7 @@ function sendBatch(dataset, logs) {
 	});
 }
 function flushFivemanage() {
-	flushTimer && clearTimeout(flushTimer), flushTimer = null;
+	flushTimer$1 && clearTimeout(flushTimer$1), flushTimer$1 = null;
 	for (let [dataset, logs] of batches) sendBatch(dataset, logs);
 	batches.clear();
 }
@@ -16389,7 +16390,7 @@ function sendToFivemanage(entry) {
 			player: entry.player,
 			target: entry.targetPlayer
 		}
-	}), batch.length >= 50 ? (batches.delete(entry.dataset), sendBatch(entry.dataset, batch)) : flushTimer ??= setTimeout(flushFivemanage, 2e3);
+	}), batch.length >= 50 ? (batches.delete(entry.dataset), sendBatch(entry.dataset, batch)) : flushTimer$1 ??= setTimeout(flushFivemanage, 2e3);
 }
 function sendToFivemStats(entry) {
 	let resource = logSettings.fivemstatsResource;
@@ -16535,7 +16536,7 @@ function readSpot(raw, fallback) {
 		camAngle: num(s.camAngle, fallback.camAngle, -180, 180),
 		targetHeight: num(s.targetHeight, fallback.targetHeight, -2, 3),
 		sway: num(s.sway, fallback.sway, 0, 45),
-		blur: bool$1(s.blur, fallback.blur),
+		blur: bool$2(s.blur, fallback.blur),
 		blurNear: num(s.blurNear, fallback.blurNear, 0, 50),
 		blurFar: num(s.blurFar, fallback.blurFar, 0, 100),
 		blurStrength: num(s.blurStrength, fallback.blurStrength, 0, 100)
@@ -16546,7 +16547,7 @@ function readScene(raw) {
 	return {
 		fov: num(s.fov, DEFAULT_SCENE.fov, 20, 90),
 		time: {
-			enabled: bool$1(time.enabled, DEFAULT_SCENE.time.enabled),
+			enabled: bool$2(time.enabled, DEFAULT_SCENE.time.enabled),
 			hour: int(time.hour, DEFAULT_SCENE.time.hour, 0, 23),
 			minute: int(time.minute, DEFAULT_SCENE.time.minute, 0, 59),
 			weather: isWeather(time.weather) ? time.weather : DEFAULT_SCENE.time.weather
@@ -16569,7 +16570,7 @@ const PRIME_TIME_SYSTEM_NAMES = ["tgiann-policealert"], PRIME_SOURCES = [
 function readPrimeTime(raw) {
 	let v = record(raw), source = typeof v.source == "string" && PRIME_SOURCES.includes(v.source) ? v.source : "auto";
 	return {
-		enabled: bool$1(v.enabled, DEFAULT_PRIME_TIME.enabled),
+		enabled: bool$2(v.enabled, DEFAULT_PRIME_TIME.enabled),
 		source,
 		offPrimeMultiplier: num(v.offPrimeMultiplier, .5, 0, 1),
 		start: hour$1(v.start, DEFAULT_PRIME_TIME.start),
@@ -16985,7 +16986,383 @@ const hourField = (path, label) => ({
 		hint: "ADMIN_H_RECOMMENDATIONS_DISMISSED",
 		placeholder: "ADMIN_PH_RECOMMENDATIONS_DISMISSED"
 	}]
-}, ID$1 = "^[a-z0-9_]{2,32}$", text$12 = (max, min = 1) => ({
+}, name$1 = (max, extra = {}) => ({
+	type: "text",
+	min: 0,
+	max,
+	...extra
+}), bool$1 = { type: "bool" }, VRP_DEFAULTS = {
+	defaults: {
+		jobPrefix: !0,
+		jobOnDuty: !0,
+		adminPrefix: !0,
+		playerPrefix: !0
+	},
+	permissions: [],
+	groups: [],
+	items: [],
+	seen: []
+}, VRP_FILE = {
+	kind: "settings",
+	sync: "admin",
+	sections: {
+		defaults: {
+			type: "object",
+			fields: {
+				jobPrefix: bool$1,
+				jobOnDuty: bool$1,
+				adminPrefix: bool$1,
+				playerPrefix: bool$1
+			}
+		},
+		permissions: {
+			type: "list",
+			max: 1e3,
+			of: {
+				type: "object",
+				fields: {
+					permission: {
+						type: "text",
+						min: 0,
+						max: 100,
+						pattern: "^([^\\s!]\\S*)?$"
+					},
+					who: {
+						type: "enum",
+						values: [
+							"job",
+							"gang",
+							"group",
+							"admin",
+							"everyone"
+						],
+						optional: !0
+					},
+					job: name$1(32, { lookup: "job" }),
+					gang: name$1(32, { lookup: "gang" }),
+					group: name$1(64, { pattern: "^\\S*$" }),
+					grade: spec.int(0, 30),
+					onDuty: bool$1,
+					admin: bool$1,
+					everyone: bool$1
+				}
+			}
+		},
+		groups: {
+			type: "list",
+			max: 500,
+			of: {
+				type: "object",
+				fields: {
+					group: name$1(64, { pattern: "^\\S*$" }),
+					who: {
+						type: "enum",
+						values: [
+							"job",
+							"gang",
+							"admin"
+						],
+						optional: !0
+					},
+					job: name$1(32, { lookup: "job" }),
+					gang: name$1(32, { lookup: "gang" }),
+					grade: spec.int(0, 30),
+					admin: bool$1
+				}
+			}
+		},
+		items: {
+			type: "list",
+			max: 2e3,
+			of: {
+				type: "object",
+				fields: {
+					vrp: {
+						type: "text",
+						min: 0,
+						max: 100,
+						pattern: "^\\S*$"
+					},
+					item: {
+						type: "text",
+						min: 0,
+						max: 64,
+						lookup: "item"
+					}
+				}
+			}
+		},
+		seen: {
+			type: "names",
+			max: 5e3,
+			itemMax: 100
+		}
+	},
+	defaults: VRP_DEFAULTS
+}, gradeRow = (of) => ({
+	widget: "grade",
+	path: "grade",
+	of,
+	lookup: of,
+	label: "ADMIN_F_VRP_GRADE",
+	hint: "ADMIN_H_VRP_GRADE",
+	showIf: {
+		path: "who",
+		values: [of]
+	}
+}), jobRow = {
+	widget: "text",
+	path: "job",
+	lookup: "job",
+	label: "ADMIN_F_VRP_JOB",
+	placeholder: "ADMIN_PH_VRP_JOB",
+	showIf: {
+		path: "who",
+		values: ["job"]
+	}
+}, gangRow = {
+	widget: "text",
+	path: "gang",
+	lookup: "gang",
+	label: "ADMIN_F_VRP_GANG",
+	placeholder: "ADMIN_PH_VRP_GANG",
+	showIf: {
+		path: "who",
+		values: ["gang"]
+	}
+}, VRP_NEW_RULE = {
+	permission: "",
+	who: "admin",
+	job: "",
+	gang: "",
+	group: "",
+	grade: 0,
+	onDuty: !0,
+	admin: !1,
+	everyone: !1
+}, VRP_TAB = {
+	id: "vrp",
+	file: "vrp",
+	icon: "key",
+	label: "ADMIN_TAB_VRP",
+	desc: "ADMIN_TAB_VRP_DESC",
+	cards: [
+		{
+			icon: "sliders",
+			title: "ADMIN_C_VRP_DEFAULTS",
+			desc: "ADMIN_C_VRP_DEFAULTS_DESC",
+			fields: [
+				{
+					widget: "switch",
+					path: "defaults.jobPrefix",
+					label: "ADMIN_F_VRP_JOB_PREFIX",
+					hint: "ADMIN_H_VRP_JOB_PREFIX"
+				},
+				{
+					widget: "switch",
+					path: "defaults.jobOnDuty",
+					label: "ADMIN_F_VRP_JOB_ON_DUTY",
+					hint: "ADMIN_H_VRP_JOB_ON_DUTY",
+					showIf: {
+						path: "defaults.jobPrefix",
+						values: [!0]
+					}
+				},
+				{
+					widget: "switch",
+					path: "defaults.adminPrefix",
+					label: "ADMIN_F_VRP_ADMIN_PREFIX",
+					hint: "ADMIN_H_VRP_ADMIN_PREFIX"
+				},
+				{
+					widget: "switch",
+					path: "defaults.playerPrefix",
+					label: "ADMIN_F_VRP_PLAYER_PREFIX",
+					hint: "ADMIN_H_VRP_PLAYER_PREFIX"
+				}
+			]
+		},
+		{
+			icon: "key",
+			title: "ADMIN_C_VRP_RULES",
+			desc: "ADMIN_C_VRP_RULES_DESC",
+			fields: [{
+				widget: "list",
+				path: "permissions",
+				label: "ADMIN_F_VRP_RULES",
+				hint: "ADMIN_H_VRP_RULES",
+				addLabel: "ADMIN_ADD_VRP_RULE",
+				newRow: VRP_NEW_RULE,
+				min: 0,
+				max: 1e3,
+				search: !0,
+				wrap: !0,
+				rows: [
+					{
+						widget: "text",
+						path: "permission",
+						label: "ADMIN_F_VRP_PERMISSION",
+						placeholder: "ADMIN_PH_VRP_PERMISSION"
+					},
+					{
+						widget: "select",
+						path: "who",
+						label: "ADMIN_F_VRP_WHO",
+						options: [
+							{
+								value: "job",
+								label: "ADMIN_O_VRP_JOB"
+							},
+							{
+								value: "gang",
+								label: "ADMIN_O_VRP_GANG"
+							},
+							{
+								value: "group",
+								label: "ADMIN_O_VRP_GROUP"
+							},
+							{
+								value: "admin",
+								label: "ADMIN_O_VRP_ADMIN"
+							},
+							{
+								value: "everyone",
+								label: "ADMIN_O_VRP_EVERYONE"
+							}
+						]
+					},
+					jobRow,
+					gradeRow("job"),
+					{
+						widget: "switch",
+						path: "onDuty",
+						label: "ADMIN_F_VRP_ON_DUTY",
+						showIf: {
+							path: "who",
+							values: ["job"]
+						}
+					},
+					gangRow,
+					gradeRow("gang"),
+					{
+						widget: "text",
+						path: "group",
+						label: "ADMIN_F_VRP_GROUP",
+						placeholder: "ADMIN_PH_VRP_GROUP",
+						showIf: {
+							path: "who",
+							values: ["group"]
+						}
+					}
+				]
+			}]
+		},
+		{
+			icon: "users",
+			title: "ADMIN_C_VRP_GROUPS",
+			desc: "ADMIN_C_VRP_GROUPS_DESC",
+			fields: [{
+				widget: "list",
+				path: "groups",
+				label: "ADMIN_F_VRP_GROUPS",
+				hint: "ADMIN_H_VRP_GROUPS",
+				addLabel: "ADMIN_ADD_VRP_GROUP",
+				newRow: {
+					group: "",
+					who: "job",
+					job: "",
+					gang: "",
+					grade: 0,
+					admin: !1
+				},
+				min: 0,
+				max: 500,
+				search: !0,
+				wrap: !0,
+				rows: [
+					{
+						widget: "text",
+						path: "group",
+						label: "ADMIN_F_VRP_GROUP_NAME",
+						placeholder: "ADMIN_PH_VRP_GROUP_NAME"
+					},
+					{
+						widget: "select",
+						path: "who",
+						label: "ADMIN_F_VRP_MEANS",
+						options: [
+							{
+								value: "job",
+								label: "ADMIN_O_VRP_JOB_GRADE"
+							},
+							{
+								value: "gang",
+								label: "ADMIN_O_VRP_GANG_GRADE"
+							},
+							{
+								value: "admin",
+								label: "ADMIN_O_VRP_ADMIN"
+							}
+						]
+					},
+					jobRow,
+					gradeRow("job"),
+					gangRow,
+					gradeRow("gang")
+				]
+			}]
+		},
+		{
+			icon: "box-open",
+			title: "ADMIN_C_VRP_ITEMS",
+			desc: "ADMIN_C_VRP_ITEMS_DESC",
+			fields: [{
+				widget: "list",
+				path: "items",
+				label: "ADMIN_F_VRP_ITEMS",
+				hint: "ADMIN_H_VRP_ITEMS",
+				addLabel: "ADMIN_ADD_VRP_ITEM",
+				newRow: {
+					vrp: "",
+					item: ""
+				},
+				min: 0,
+				max: 2e3,
+				search: !0,
+				rows: [{
+					widget: "text",
+					path: "vrp",
+					label: "ADMIN_F_VRP_ITEM_ID",
+					placeholder: "ADMIN_PH_VRP_ITEM_ID"
+				}, {
+					widget: "text",
+					path: "item",
+					lookup: "item",
+					label: "ADMIN_F_VRP_ITEM",
+					placeholder: "ADMIN_PH_VRP_ITEM"
+				}]
+			}]
+		},
+		{
+			icon: "list",
+			title: "ADMIN_C_VRP_SEEN",
+			desc: "ADMIN_C_VRP_SEEN_DESC",
+			fields: [{
+				widget: "browse",
+				path: "seen",
+				label: "ADMIN_F_VRP_SEEN",
+				hint: "ADMIN_H_VRP_SEEN",
+				addTo: {
+					path: "permissions",
+					field: "permission",
+					newRow: VRP_NEW_RULE,
+					label: "ADMIN_ADD_VRP_RULE_FOR",
+					doneLabel: "ADMIN_VRP_HAS_RULE"
+				}
+			}]
+		}
+	]
+}, ID$1 = "^[a-z0-9_]{2,32}$", text$13 = (max, min = 1) => ({
 	type: "text",
 	min,
 	max
@@ -16996,7 +17373,7 @@ const hourField = (path, label) => ({
 	of: {
 		type: "object",
 		fields: {
-			label: text$12(48),
+			label: text$13(48),
 			salary: spec.int(0, 1e6),
 			offPrimePayment: {
 				...spec.int(0, 1e6),
@@ -17055,10 +17432,10 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 					branding: {
 						type: "object",
 						fields: {
-							name: text$12(32),
-							subtitle: text$12(32),
-							tagline: text$12(48, 0),
-							taglineSub: text$12(64, 0),
+							name: text$13(32),
+							subtitle: text$13(32),
+							tagline: text$13(48, 0),
+							taglineSub: text$13(64, 0),
 							background: {
 								type: "enum",
 								values: ["skyline", "wet-drive"]
@@ -17250,7 +17627,7 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 					primeFinish: DEFAULT_PRIME_TIME.finish
 				},
 				sections: {
-					label: text$12(48),
+					label: text$13(48),
 					type: {
 						type: "text",
 						max: 32,
@@ -17279,7 +17656,7 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 					salary: 0
 				}] },
 				sections: {
-					label: text$12(48),
+					label: text$13(48),
 					grades
 				}
 			},
@@ -17293,7 +17670,7 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 					allowNegative: !1
 				},
 				sections: {
-					label: text$12(48),
+					label: text$13(48),
 					start: spec.int(0, 1e8),
 					allowNegative: bool
 				}
@@ -17303,10 +17680,10 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 				sync: "all",
 				labelPath: "description",
 				sections: {
-					resource: text$12(64),
-					description: text$12(120, 0),
-					defaultKey: text$12(32, 0),
-					mapper: text$12(32),
+					resource: text$13(64),
+					description: text$13(120, 0),
+					defaultKey: text$13(32, 0),
+					mapper: text$13(32),
 					key: {
 						type: "text",
 						min: 0,
@@ -17389,7 +17766,8 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 						max: 160
 					}
 				}
-			}
+			},
+			vrp: VRP_FILE
 		},
 		tabs: [
 			{
@@ -18151,7 +18529,8 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 						}
 					]
 				}
-			}
+			},
+			VRP_TAB
 		]
 	};
 }
@@ -18159,8 +18538,8 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 const first$1 = (value) => Array.isArray(value) ? value[0] : value, isTrue = (value) => first$1(value) === !0, number = (value, fallback = 0) => {
 	let v = first$1(value);
 	return typeof v == "number" && Number.isFinite(v) ? v : fallback;
-}, text$11 = (value, fallback) => typeof value == "string" ? value : fallback, metadata = (value) => isRecord(value) ? { ...value } : {};
-function rows(value) {
+}, text$12 = (value, fallback) => typeof value == "string" ? value : fallback, metadata = (value) => isRecord(value) ? { ...value } : {};
+function rows$1(value) {
 	return (Array.isArray(value) ? value : isRecord(value) ? Object.values(value) : []).filter(isRecord);
 }
 function label(value, fallback) {
@@ -18183,13 +18562,13 @@ function definition(raw, name, imageOf) {
 	if (!isRecord(raw)) return null;
 	let image = typeof raw.image == "string" ? raw.image : "";
 	return {
-		name: text$11(raw.name, name),
+		name: text$12(raw.name, name),
 		label: label(raw.label, name),
 		weight: number(raw.weight),
 		unique: raw.unique === !0 || raw.stack === !1,
 		close: (raw.close ?? raw.shouldClose) !== !1,
 		description: label(raw.description, ""),
-		image: /^(https?|nui):\/\//.test(image) ? image : imageOf?.(text$11(raw.name, name), image)
+		image: /^(https?|nui):\/\//.test(image) ? image : imageOf?.(text$12(raw.name, name), image)
 	};
 }
 function definitions(raw, imageOf) {
@@ -18233,7 +18612,7 @@ on("ai-inventory:usedItem", (source, name, _slot, _metadata, status) => {
 	emit(CORE.itemUsedEvent, source, name, isRecord(status) ? status : null);
 });
 // resource/server/inventory/adapters/codem-inventory.ts
-const RESOURCE$27 = "codem-inventory", call$7 = (name, ...args) => callExport(RESOURCE$27, name, ...args), codemImage = (name, image) => `nui://${RESOURCE$27}/html/itemimages/${image || `${name}.png`}`, stacksOf$4 = (ref) => rows(typeof ref == "number" ? call$7("GetInventory", players.get(ref)?.citizenid, ref) : call$7("GetStashItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []), codemInventory = {
+const RESOURCE$27 = "codem-inventory", call$7 = (name, ...args) => callExport(RESOURCE$27, name, ...args), codemImage = (name, image) => `nui://${RESOURCE$27}/html/itemimages/${image || `${name}.png`}`, stacksOf$4 = (ref) => rows$1(typeof ref == "number" ? call$7("GetInventory", players.get(ref)?.citizenid, ref) : call$7("GetStashItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []), codemInventory = {
 	resource: RESOURCE$27,
 	version: "",
 	addItem: (ref, item, count, metadata, slot) => typeof ref == "number" && isTrue(call$7("AddItem", ref, item, count, slot, metadata)),
@@ -18285,7 +18664,7 @@ const coreInventory = {
 	canCarryItem: (ref, name, count) => isTrue(call$5("canCarryItem", ref, name, count)),
 	getItems: (ref) => {
 		let inv = call$5("getInventory", ref);
-		return rows(isRecord(inv) ? inv.items : void 0).flatMap((row) => stack(row, (name) => name) ?? []);
+		return rows$1(isRecord(inv) ? inv.items : void 0).flatMap((row) => stack(row, (name) => name) ?? []);
 	},
 	clearInventory: (ref) => void call$5("clearInventory", ref),
 	registerStash: (stash) => void call$5("registerStash", {
@@ -18304,7 +18683,7 @@ const coreInventory = {
 		}
 		return out;
 	}
-}, RESOURCE$24 = "origen_inventory", call$4 = (name, ...args) => callExport(RESOURCE$24, name, ...args), stacksOf$2 = (ref) => rows(call$4("getInventoryItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []), origenInventory = {
+}, RESOURCE$24 = "origen_inventory", call$4 = (name, ...args) => callExport(RESOURCE$24, name, ...args), stacksOf$2 = (ref) => rows$1(call$4("getInventoryItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []), origenInventory = {
 	resource: RESOURCE$24,
 	version: "",
 	addItem: (ref, item, count, metadata, slot) => isTrue(call$4("addItem", ref, item, count, metadata, slot)),
@@ -18326,7 +18705,7 @@ const coreInventory = {
 	removeItem: (ref, item, count, metadata, slot) => isTrue(call$3("RemoveItem", ref, item, count, metadata, slot)),
 	getItemCount: (ref, item, metadata) => number(call$3("GetItemCount", ref, item, metadata)),
 	canCarryItem: (ref, item, count, metadata) => isTrue(call$3("CanCarryItem", ref, item, count, metadata)),
-	getItems: (ref) => rows(call$3("GetInventoryItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []),
+	getItems: (ref) => rows$1(call$3("GetInventoryItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []),
 	clearInventory: (ref) => void call$3("ClearInventory", ref),
 	registerStash: (stash) => void call$3("RegisterStash", stash.name, stash.label, stash.slots, stash.maxWeight, void 0, stash.jobs.length ? Object.fromEntries(stash.jobs.map((job) => [job, 0])) : void 0),
 	openInventory: (source, ref) => first$1(call$3("forceOpenInventory", source, typeof ref == "number" ? "player" : "stash", ref)) != null,
@@ -18356,7 +18735,7 @@ function itemsOf$1(ref) {
 	let player = callExport("qb-core", "GetPlayer", ref);
 	return isRecord(player) && isRecord(player.PlayerData) ? player.PlayerData.items : void 0;
 }
-const stacksOf$1 = (ref) => rows(itemsOf$1(ref)).flatMap((row) => stack(row, (name) => name) ?? []), qbInventory = {
+const stacksOf$1 = (ref) => rows$1(itemsOf$1(ref)).flatMap((row) => stack(row, (name) => name) ?? []), qbInventory = {
 	resource: RESOURCE$22,
 	version: "2.2.3",
 	addItem: (ref, item, count, metadata, slot) => isTrue(call$2("AddItem", ref, item, count, slot, metadata)),
@@ -18373,7 +18752,7 @@ const stacksOf$1 = (ref) => rows(itemsOf$1(ref)).flatMap((row) => stack(row, (na
 	openInventory: (source, ref) => (call$2(typeof ref == "number" ? "OpenInventoryById" : "OpenInventory", source, ref), !0),
 	getItemDefinition: () => null,
 	getItemDefinitions: () => ({})
-}, RESOURCE$21 = "qs-inventory", call$1 = (name, ...args) => callExport(RESOURCE$21, name, ...args), qsImage = (name, image) => `nui://${RESOURCE$21}/html/images/${image || `${name}.png`}`, stashes = new Map(), stashId = (name) => `Stash_${name}`, notRefused = (value) => first$1(value) !== !1, stacksOf = (ref) => rows(typeof ref == "number" ? call$1("GetInventory", ref) : call$1("GetStashItems", stashId(ref))).flatMap((row) => stack(row, (name) => name) ?? []), qsInventory = {
+}, RESOURCE$21 = "qs-inventory", call$1 = (name, ...args) => callExport(RESOURCE$21, name, ...args), qsImage = (name, image) => `nui://${RESOURCE$21}/html/images/${image || `${name}.png`}`, stashes = new Map(), stashId = (name) => `Stash_${name}`, notRefused = (value) => first$1(value) !== !1, stacksOf = (ref) => rows$1(typeof ref == "number" ? call$1("GetInventory", ref) : call$1("GetStashItems", stashId(ref))).flatMap((row) => stack(row, (name) => name) ?? []), qsInventory = {
 	resource: RESOURCE$21,
 	version: "",
 	addItem: (ref, item, count, metadata, slot) => {
@@ -18419,7 +18798,7 @@ const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetIn
 				let text = labels.get(name);
 				return text === void 0 && labels.set(name, text = definition(item(name), name)?.label ?? name), text;
 			};
-			return rows(itemsOf(ref)).flatMap((row) => stack(row, labelOf) ?? []);
+			return rows$1(itemsOf(ref)).flatMap((row) => stack(row, labelOf) ?? []);
 		},
 		clearInventory: (ref) => void call("ClearInventory", ref),
 		registerStash: (stash) => void call("RegisterStash", stash.name, stash.label, stash.slots, stash.maxWeight, void 0, stash.jobs.length ? stash.jobs : void 0),
@@ -19188,7 +19567,7 @@ const BANKING_SYSTEMS = [
 function readUpdates(u) {
 	let ignore = Array.isArray(u.ignore) ? u.ignore : [];
 	return {
-		check: bool$1(u.check, !0),
+		check: bool$2(u.check, !0),
 		ignore: ignore.filter((r) => typeof r == "string")
 	};
 }
@@ -19204,23 +19583,23 @@ function readSettings(raw) {
 		},
 		characters: {
 			slots: int(chars.slots, 3, 1, 10),
-			canDelete: bool$1(chars.canDelete, !0),
+			canDelete: bool$2(chars.canDelete, !0),
 			minAge: int(chars.minAge, 18, 0, 99)
 		},
 		jobs: {
-			multiJob: bool$1(jobs.multiJob, !0),
+			multiJob: bool$2(jobs.multiJob, !0),
 			maxJobs: int(jobs.maxJobs, 3, 1, 20),
 			unemployed: str(jobs.unemployed, "unemployed", 32),
-			restoreDuty: bool$1(jobs.restoreDuty, !1)
+			restoreDuty: bool$2(jobs.restoreDuty, !1)
 		},
 		gangs: {
-			multiGang: bool$1(gangs.multiGang, !0),
+			multiGang: bool$2(gangs.multiGang, !0),
 			maxGangs: int(gangs.maxGangs, 2, 1, 20)
 		},
 		paycheck: {
 			intervalMinutes: int(pay.intervalMinutes, 15, 0, 1440),
 			account: str(pay.account, "bank", 32),
-			fromJobAccount: bool$1(pay.fromJobAccount, !1)
+			fromJobAccount: bool$2(pay.fromJobAccount, !1)
 		},
 		primeTime: readPrimeTime(s.primeTime),
 		saveIntervalMinutes: int(s.saveIntervalMinutes, 5, 1, 60),
@@ -19238,10 +19617,10 @@ function readSettings(raw) {
 		garages: str(s.garages, "auto", 32),
 		notify: str(s.notify, "ai-lib", 32),
 		interaction: s.interaction === "target" ? "target" : "prompt",
-		pvp: bool$1(s.pvp, !0),
-		refuseOnConflict: bool$1(s.refuseOnConflict, !0),
+		pvp: bool$2(s.pvp, !0),
+		refuseOnConflict: bool$2(s.refuseOnConflict, !0),
 		updates: readUpdates(record(s.updates)),
-		setupDone: bool$1(s.setupDone, !1),
+		setupDone: bool$2(s.setupDone, !1),
 		spawn: {
 			default: vec4(spawn.default, {
 				x: -1035.71,
@@ -19249,7 +19628,7 @@ function readSettings(raw) {
 				z: 13.76,
 				heading: 330
 			}),
-			choose: bool$1(spawn.choose, !1),
+			choose: bool$2(spawn.choose, !1),
 			points: Array.isArray(spawn.points) ? spawn.points.flatMap((raw) => {
 				let p = record(raw), coords = readVec4(p.coords), label = str(p.label, "", 48);
 				return coords && label ? [{
@@ -19267,7 +19646,7 @@ function readGrades(raw) {
 		return {
 			label: str(v.label, "Member"),
 			salary: int(v.salary, 0, 0),
-			boss: bool$1(v.boss, !1),
+			boss: bool$2(v.boss, !1),
 			offPrimePayment: int(v.offPrimePayment, 0, 0)
 		};
 	});
@@ -19286,12 +19665,12 @@ function entries(raw, read) {
 const readAccount = (v) => ({
 	label: str(v.label, "Account"),
 	start: int(v.start, 0),
-	allowNegative: bool$1(v.allowNegative, !1)
+	allowNegative: bool$2(v.allowNegative, !1)
 }), readJob = (v) => ({
 	label: str(v.label, "Job"),
 	type: str(v.type, "none", 32),
-	defaultDuty: bool$1(v.defaultDuty, !1),
-	listed: bool$1(v.listed, !1),
+	defaultDuty: bool$2(v.defaultDuty, !1),
+	listed: bool$2(v.listed, !1),
 	grades: readGrades(v.grades),
 	prime: readJobPrime(v)
 }), readGang = (v) => ({
@@ -19333,12 +19712,12 @@ const FILE$1 = "commands", PARAM_TYPES = new Set([
 	"playerId",
 	"string",
 	"longString"
-]), text$10 = (value, max) => typeof value == "string" ? value.slice(0, max) : "", names = (value) => Array.isArray(value) ? value.filter((n) => typeof n == "string" && /^[\w.:-]{1,64}$/.test(n)).map((n) => n.toLowerCase()) : [];
+]), text$11 = (value, max) => typeof value == "string" ? value.slice(0, max) : "", names = (value) => Array.isArray(value) ? value.filter((n) => typeof n == "string" && /^[\w.:-]{1,64}$/.test(n)).map((n) => n.toLowerCase()) : [];
 function readParam(value) {
 	return !isRecord(value) || typeof value.name != "string" || typeof value.type != "string" || !PARAM_TYPES.has(value.type) ? null : {
-		name: text$10(value.name, 32),
+		name: text$11(value.name, 32),
 		type: value.type,
-		help: text$10(value.help, 120),
+		help: text$11(value.help, 120),
 		optional: value.optional === !0
 	};
 }
@@ -19349,7 +19728,7 @@ function readInfo(value) {
 	let params = Array.isArray(value.params) ? value.params.map(readParam).filter((p) => p !== null) : [], aces = Array.isArray(value.aces) ? value.aces.filter((a) => typeof a == "string" && /^[\w.:-]{1,64}$/.test(a)) : null;
 	return {
 		names: list,
-		help: text$10(value.help, 200),
+		help: text$11(value.help, 200),
 		params,
 		aces
 	};
@@ -19424,15 +19803,15 @@ registerExport("RegisterCommands", (_resource, list) => {
 	infos.length !== list.length && log$3.warn(`${resource}: ${list.length - infos.length} command(s) with an invalid description skipped`), commandRegistry.register(resource, infos);
 }), on("onResourceStop", () => commandRegistry.refreshSoon()), on("onServerResourceStart", () => commandRegistry.refreshSoon());
 // resource/server/admin/external.ts
-const ID = /^[a-z0-9_.-]{2,48}$/i, text$9 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, pageUrl = (v) => typeof v == "string" && v.startsWith("https://") ? v.slice(0, 300) : void 0;
+const ID = /^[a-z0-9_.-]{2,48}$/i, text$10 = (v, max) => typeof v == "string" && v.trim() ? v.trim().slice(0, max) : void 0, pageUrl = (v) => typeof v == "string" && v.startsWith("https://") ? v.slice(0, 300) : void 0;
 function toPanel(id, v, resource) {
-	let command = text$9(v.command, 64)?.replace(/^\//, ""), url = pageUrl(v.url), label = text$9(v.label, 48);
+	let command = text$10(v.command, 64)?.replace(/^\//, ""), url = pageUrl(v.url), label = text$10(v.label, 48);
 	return !label || !command && !url ? null : {
 		id,
 		resource,
 		label,
-		icon: text$9(v.icon, 32),
-		description: text$9(v.description, 160),
+		icon: text$10(v.icon, 32),
+		description: text$10(v.description, 160),
 		command,
 		url
 	};
@@ -19464,7 +19843,7 @@ const externalPanels = new class {
 		let records = panel.get("externalPanels");
 		return isRecord(records) ? Object.entries(records).flatMap(([id, v]) => {
 			if (!isRecord(v)) return [];
-			let resource = text$9(v.resource, 64) ?? "";
+			let resource = text$10(v.resource, 64) ?? "";
 			if (resource && GetResourceState(resource) !== "started") return [];
 			let found = toPanel(`panel:${id}`, v, resource);
 			return found ? [found] : [];
@@ -19548,10 +19927,10 @@ const FILE = "keybinds", NAME = /^[\w.-]{1,64}$/, KEYBOARD = new Set([
 	"MOUSE_EXTRABTN5",
 	"IOM_WHEEL_UP",
 	"IOM_WHEEL_DOWN"
-]), text$8 = (value, max) => typeof value == "string" && value.length <= max ? value : null;
+]), text$9 = (value, max) => typeof value == "string" && value.length <= max ? value : null;
 function readKeybind(value) {
 	if (!isRecord(value)) return null;
-	let resource = text$8(value.resource, 64), name = text$8(value.name, 64), description = text$8(value.description, 120), defaultKey = text$8(value.defaultKey, 32), mapper = text$8(value.mapper, 32), hint = value.hint === "foot" || value.hint === "vehicle" || value.hint === "always" ? value.hint : void 0;
+	let resource = text$9(value.resource, 64), name = text$9(value.name, 64), description = text$9(value.description, 120), defaultKey = text$9(value.defaultKey, 32), mapper = text$9(value.mapper, 32), hint = value.hint === "foot" || value.hint === "vehicle" || value.hint === "always" ? value.hint : void 0;
 	return !resource || !name || !NAME.test(name) || description === null || defaultKey === null || !mapper ? null : {
 		resource,
 		name,
@@ -19813,7 +20192,7 @@ registerExport("RegisterShop", (id, label, items) => {
 }), registerExport("GetItemDefinition", (item) => {
 	let n = name(item);
 	return n === null ? null : inventory.call("GetItemDefinition", (a) => a.getItemDefinition(n), null);
-}), registerExport("GetItemDefinitions", () => inventory.call("GetItemDefinitions", (a) => a.getItemDefinitions(), {})), registerExport("UseItem", (source, item, data) => {
+}), registerExport("GetInventoryWeight", (source) => typeof source == "number" ? inventory.call("GetInventoryWeight", (a) => a.getWeight?.(source) ?? null, null) : null), registerExport("GetItemDefinitions", () => inventory.call("GetItemDefinitions", (a) => a.getItemDefinitions(), {})), registerExport("UseItem", (source, item, data) => {
 	let n = name(item);
 	return typeof source == "number" && n !== null && inventory.useItem(source, n, data);
 }), registerExport("IsUsableItem", (item) => typeof item == "string" && inventory.isUsable(item));
@@ -19836,11 +20215,13 @@ function lookupOptions(source) {
 		})));
 		case "job": return sorted([...jobs].map(([value, d]) => ({
 			value,
-			label: d.label
+			label: d.label,
+			grades: d.grades.map((g) => g.label)
 		})));
 		case "gang": return sorted([...gangs].map(([value, d]) => ({
 			value,
-			label: d.label
+			label: d.label,
+			grades: d.grades.map((g) => g.label)
 		})));
 		case "account": return sorted([...accountTypes].map(([value, d]) => ({
 			value,
@@ -19970,14 +20351,14 @@ const gameThread = () => new Promise((resolve) => setImmediate(resolve)), versio
 }();
 setTimeout(() => versions.checkAll(), 15e3), every(CHECK_EVERY_MS, () => versions.checkAll(), { name: "versions" }), on("onServerResourceStart", (resource) => setTimeout(() => void versions.check(resource), 5e3)), panel.onChange("settings", () => versions.checkAll()), registerExport("GetUpdates", () => versions.list());
 // resource/server/phone/adapters/17mov_Phone.ts
-const RESOURCE$6 = "17mov_Phone", phone$7 = (name, ...args) => callExport(RESOURCE$6, name, ...args), text$7 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, mov17Phone = {
+const RESOURCE$6 = "17mov_Phone", phone$7 = (name, ...args) => callExport(RESOURCE$6, name, ...args), text$8 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, mov17Phone = {
 	resource: RESOURCE$6,
-	number: (source) => text$7(phone$7("GetNumberFromPlayer", source)),
+	number: (source) => text$8(phone$7("GetNumberFromPlayer", source)),
 	sourceOf: (number) => {
 		let s = phone$7("GetPlayerSrcFromActiveNumber", number);
 		return typeof s == "number" ? s : null;
 	},
-	hasPhone: (source) => text$7(phone$7("GetNumberFromPlayer", source)) !== null,
+	hasPhone: (source) => text$8(phone$7("GetNumberFromPlayer", source)) !== null,
 	mail: (to, m) => (phone$7("Email_SendEmailByNumber", to, m.sender, m.subject, m.message, void 0, !0), !0),
 	message: (from, to, body) => {
 		let result = phone$7("Messages_SendMessageToNumber", to, body, from);
@@ -19988,14 +20369,14 @@ const RESOURCE$6 = "17mov_Phone", phone$7 = (name, ...args) => callExport(RESOUR
 		title: n.title,
 		message: n.message
 	}), !0)
-}, RESOURCE$5 = "gksphone", phone$6 = (name, ...args) => callExport(RESOURCE$5, name, ...args), text$6 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, sourceOf = (number) => {
+}, RESOURCE$5 = "gksphone", phone$6 = (name, ...args) => callExport(RESOURCE$5, name, ...args), text$7 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, sourceOf = (number) => {
 	let s = Number(phone$6("GetSourceByPhone", number));
 	return Number.isInteger(s) && s > 0 ? s : null;
 }, gksPhone = {
 	resource: RESOURCE$5,
-	number: (source) => text$6(phone$6("GetPhoneBySource", source)),
+	number: (source) => text$7(phone$6("GetPhoneBySource", source)),
 	sourceOf,
-	hasPhone: (source) => text$6(phone$6("GetPhoneBySource", source)) !== null,
+	hasPhone: (source) => text$7(phone$6("GetPhoneBySource", source)) !== null,
 	mail: (to, m) => {
 		let source = sourceOf(to);
 		return source !== null && (phone$6("SendNewMail", source, {
@@ -20013,9 +20394,9 @@ const RESOURCE$6 = "17mov_Phone", phone$7 = (name, ...args) => callExport(RESOUR
 		message: n.message,
 		duration: 5e3
 	}), !0)
-}, RESOURCE$4 = "high-phone", phone$5 = (name, ...args) => callExport(RESOURCE$4, name, ...args), text$5 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, highPhone = {
+}, RESOURCE$4 = "high-phone", phone$5 = (name, ...args) => callExport(RESOURCE$4, name, ...args), text$6 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, highPhone = {
 	resource: RESOURCE$4,
-	number: (source) => text$5(phone$5("getPlayerPhoneNumber", source)),
+	number: (source) => text$6(phone$5("getPlayerPhoneNumber", source)),
 	sourceOf: (number) => {
 		let player = phone$5("getPlayerByPhone", number);
 		return isRecord(player) && typeof player.id == "number" ? player.id : null;
@@ -20033,9 +20414,9 @@ const RESOURCE$6 = "17mov_Phone", phone$7 = (name, ...args) => callExport(RESOUR
 		content: n.message,
 		duration: 5e3
 	}), !0)
-}, phone$4 = (name, ...args) => callExport("lb-phone", name, ...args), text$4 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, lbPhone = {
+}, phone$4 = (name, ...args) => callExport("lb-phone", name, ...args), text$5 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, lbPhone = {
 	resource: "lb-phone",
-	number: (source) => text$4(phone$4("GetEquippedPhoneNumber", source)),
+	number: (source) => text$5(phone$4("GetEquippedPhoneNumber", source)),
 	sourceOf: (number) => {
 		let s = phone$4("GetSourceFromNumber", number);
 		return typeof s == "number" ? s : null;
@@ -20053,9 +20434,9 @@ const RESOURCE$6 = "17mov_Phone", phone$7 = (name, ...args) => callExport(RESOUR
 		title: n.title,
 		content: n.message
 	}) != null
-}, RESOURCE$3 = "qs-smartphone", phone$3 = (name, ...args) => callExport(RESOURCE$3, name, ...args), text$3 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, live = (v) => v != null && v !== !1, qsSmartphone = {
+}, RESOURCE$3 = "qs-smartphone", phone$3 = (name, ...args) => callExport(RESOURCE$3, name, ...args), text$4 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, live = (v) => v != null && v !== !1, qsSmartphone = {
 	resource: RESOURCE$3,
-	number: (source) => text$3(phone$3("GetCurrentPhoneNumber", source)),
+	number: (source) => text$4(phone$3("GetCurrentPhoneNumber", source)),
 	sourceOf: () => null,
 	hasPhone: (source) => live(phone$3("getPhoneScopeIdentifier", source)),
 	mail: () => !1,
@@ -20072,9 +20453,9 @@ const RESOURCE$6 = "17mov_Phone", phone$7 = (name, ...args) => callExport(RESOUR
 		title: n.title,
 		text: n.message
 	}) !== !1
-}, RESOURCE$2 = "roadphone", phone$2 = (name, ...args) => callExport(RESOURCE$2, name, ...args), text$2 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, roadPhone = {
+}, RESOURCE$2 = "roadphone", phone$2 = (name, ...args) => callExport(RESOURCE$2, name, ...args), text$3 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, roadPhone = {
 	resource: RESOURCE$2,
-	number: (source) => text$2(phone$2("GetPhoneNumberBySource", source)),
+	number: (source) => text$3(phone$2("GetPhoneNumberBySource", source)),
 	sourceOf: (number) => {
 		let s = phone$2("getSourceFromPhone", number);
 		return typeof s == "number" ? s : null;
@@ -20087,10 +20468,10 @@ const RESOURCE$6 = "17mov_Phone", phone$7 = (name, ...args) => callExport(RESOUR
 		message: n.message,
 		app: n.app
 	}), !0)
-}, phone$1 = (name, ...args) => callExport("tgiann-phone", name, ...args), text$1 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, tgiannPhone = {
+}, phone$1 = (name, ...args) => callExport("tgiann-phone", name, ...args), text$2 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, tgiannPhone = {
 	resource: "tgiann-phone",
 	version: "2.0.0-b8",
-	number: (source) => text$1(phone$1("GetPhoneNumber", source)),
+	number: (source) => text$2(phone$1("GetPhoneNumber", source)),
 	sourceOf: (number) => {
 		let s = phone$1("GetSourceByNumber", number);
 		return typeof s == "number" ? s : null;
@@ -20108,7 +20489,7 @@ const RESOURCE$6 = "17mov_Phone", phone$7 = (name, ...args) => callExport(RESOUR
 		title: n.title,
 		content: n.message
 	}) != null
-}, RESOURCE$1 = "yseries", phone = (name, ...args) => callExport(RESOURCE$1, name, ...args), text = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, phones = new AdapterPicker({
+}, RESOURCE$1 = "yseries", phone = (name, ...args) => callExport(RESOURCE$1, name, ...args), text$1 = (v) => typeof v == "string" || typeof v == "number" ? String(v) : null, phones = new AdapterPicker({
 	category: "phone",
 	adapters: [
 		tgiannPhone,
@@ -20117,12 +20498,12 @@ const RESOURCE$6 = "17mov_Phone", phone$7 = (name, ...args) => callExport(RESOUR
 		mov17Phone,
 		{
 			resource: RESOURCE$1,
-			number: (source) => text(phone("GetPhoneNumberBySourceId", source)),
+			number: (source) => text$1(phone("GetPhoneNumberBySourceId", source)),
 			sourceOf: (number) => {
 				let s = Number(phone("GetPlayerSourceIdByPhoneNumber", number));
 				return Number.isInteger(s) && s > 0 ? s : null;
 			},
-			hasPhone: (source) => text(phone("GetPhoneNumberBySourceId", source)) !== null,
+			hasPhone: (source) => text$1(phone("GetPhoneNumberBySourceId", source)) !== null,
 			mail: (to, m) => phone("SendMail", {
 				title: m.subject,
 				sender: m.sender,
@@ -21800,7 +22181,13 @@ const LAYERS = [
 		"esx_menu_list",
 		"qb-menu",
 		"qb-input",
-		"progressbar"
+		"progressbar",
+		"vrp",
+		"vRP",
+		"vrp_mysql",
+		"vrp_oxmysql",
+		"vrp_ghmattimysql",
+		"vRP-db-drivers"
 	],
 	"ai-mysql": [
 		"oxmysql",
@@ -22383,8 +22770,8 @@ onClientCallback(CORE.createCharacterCallback, { args: ([raw]) => [raw] }, async
 });
 const choosing = new PlayerMap();
 onClientCallback(CORE.spawnChoiceCallback, { args: oneArg((v) => readInt(v, 0, 63)) }, (source, id) => {
-	let options = choosing.get(source), spawn = options?.[id];
-	return !options || !spawn ? BUSY : (choosing.delete(source), emitNet(CORE.spawnEvent, source, spawn), { ok: !0 });
+	let options = choosing.get(source), spawn = options?.[id], player = players.get(source);
+	return !options || !spawn || !player ? BUSY : (choosing.delete(source), emitNet(CORE.spawnEvent, source, spawn), emit(CORE.playerSpawnedEvent, source, player.charId), { ok: !0 });
 }), onClientCallback(CORE.selectCharacterCallback, { args: charIdArg }, async (source, charId) => selecting.has(source) ? lock.run(source, BUSY, () => loadCharacter(source, charId)) : BUSY), onClientCallback(CORE.deleteCharacterCallback, { args: charIdArg }, async (source, charId) => {
 	let user = selecting.get(source);
 	return user ? settings.characters.canDelete ? players.byCharacter(charId) ? {
@@ -22449,7 +22836,7 @@ async function loadNow(source, charId) {
 			});
 			choosing.set(source, options), emitNet(CORE.chooseSpawnEvent, source, labels);
 		}
-		return emit(CORE.playerLoadedEvent, source, player.info()), log$3.info(`loaded #${player.charId} ${player.fullName} (src ${source})`), { ok: !0 };
+		return emit(CORE.playerLoadedEvent, source, player.info()), points.length === 0 && emit(CORE.playerSpawnedEvent, source, player.charId), log$3.info(`loaded #${player.charId} ${player.fullName} (src ${source})`), { ok: !0 };
 	} catch (error) {
 		return log$3.error(`loading character ${charId} for ${source} failed`, error), BUSY;
 	}
@@ -22635,7 +23022,7 @@ function transferMoney(from, to, amount, reason, fee = 0) {
 }
 // resource/server/exports.ts
 const positive = (amount) => typeof amount == "number" && Number.isSafeInteger(amount) && amount > 0, reasonOf = (reason) => typeof reason == "string" && reason ? reason : caller();
-registerExport("GetPlayerData", (src) => players.get(src)?.snapshot() ?? null), registerExport("GetCharacter", (src) => players.get(src)?.info() ?? null), registerExport("GetSourceByCharId", (charId) => players.byCharacter(charId)?.source ?? null), registerExport("GetSourceByCitizenId", (citizenid) => players.byCitizen(citizenid)?.source ?? null), registerExport("GetLoadedSources", () => [...players.all()].map((player) => player.source)), registerExport("GetFivemId", (src) => players.get(src)?.user.fivem ?? null), registerExport("GetMoney", (src, account) => players.get(src)?.wallet.get(account) ?? null), registerExport("AddMoney", (src, account, amount, reason) => positive(amount) ? players.get(src)?.wallet.change(account, amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("RemoveMoney", (src, account, amount, reason) => positive(amount) ? players.get(src)?.wallet.change(account, -amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("SetMoney", (src, account, amount, reason) => players.get(src)?.wallet.set(account, amount, reasonOf(reason)).ok ?? !1), registerExport("GetJobs", (src) => players.get(src)?.jobs.all() ?? null), registerExport("GetCurrentJob", (src) => players.get(src)?.jobs.current() ?? null), registerExport("GetDutyJob", (src) => players.get(src)?.jobs.onDuty() ?? null), registerExport("SetDuty", (src, job) => players.get(src)?.jobs.setDuty(job).ok ?? !1), registerExport("SetJob", (src, job, grade) => players.get(src)?.jobs.set(job, grade).ok ?? !1), registerExport("RemoveJob", (src, job) => players.get(src)?.jobs.remove(job).ok ?? !1), registerExport("GetOnDutyCount", (job) => dutyCount(job)), registerExport("GetGangs", (src) => players.get(src)?.gangs.all() ?? null), registerExport("GetActiveGang", (src) => players.get(src)?.gangs.activeGang() ?? null), registerExport("SetGang", (src, gang, grade) => players.get(src)?.gangs.set(gang, grade).ok ?? !1), registerExport("RemoveGang", (src, gang) => players.get(src)?.gangs.remove(gang).ok ?? !1), registerExport("SetActiveGang", (src, gang) => players.get(src)?.gangs.setActive(gang).ok ?? !1), registerExport("GetMeta", (src, key) => players.get(src)?.getMeta(key) ?? null), registerExport("SetMeta", (src, key, value) => {
+registerExport("GetPlayerData", (src) => players.get(src)?.snapshot() ?? null), registerExport("GetCharacter", (src) => players.get(src)?.info() ?? null), registerExport("GetSourceByCharId", (charId) => players.byCharacter(charId)?.source ?? null), registerExport("GetSourceByCitizenId", (citizenid) => players.byCitizen(citizenid)?.source ?? null), registerExport("GetLoadedSources", () => [...players.all()].map((player) => player.source)), registerExport("GetUserId", (src) => players.get(src)?.user.id ?? selecting.get(src)?.id ?? null), registerExport("GetFivemId", (src) => players.get(src)?.user.fivem ?? null), registerExport("GetMoney", (src, account) => players.get(src)?.wallet.get(account) ?? null), registerExport("AddMoney", (src, account, amount, reason) => positive(amount) ? players.get(src)?.wallet.change(account, amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("RemoveMoney", (src, account, amount, reason) => positive(amount) ? players.get(src)?.wallet.change(account, -amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("SetMoney", (src, account, amount, reason) => players.get(src)?.wallet.set(account, amount, reasonOf(reason)).ok ?? !1), registerExport("GetJobs", (src) => players.get(src)?.jobs.all() ?? null), registerExport("GetCurrentJob", (src) => players.get(src)?.jobs.current() ?? null), registerExport("GetDutyJob", (src) => players.get(src)?.jobs.onDuty() ?? null), registerExport("SetDuty", (src, job) => players.get(src)?.jobs.setDuty(job).ok ?? !1), registerExport("SetJob", (src, job, grade) => players.get(src)?.jobs.set(job, grade).ok ?? !1), registerExport("RemoveJob", (src, job) => players.get(src)?.jobs.remove(job).ok ?? !1), registerExport("GetOnDutyCount", (job) => dutyCount(job)), registerExport("GetGangs", (src) => players.get(src)?.gangs.all() ?? null), registerExport("GetActiveGang", (src) => players.get(src)?.gangs.activeGang() ?? null), registerExport("SetGang", (src, gang, grade) => players.get(src)?.gangs.set(gang, grade).ok ?? !1), registerExport("RemoveGang", (src, gang) => players.get(src)?.gangs.remove(gang).ok ?? !1), registerExport("SetActiveGang", (src, gang) => players.get(src)?.gangs.setActive(gang).ok ?? !1), registerExport("GetMeta", (src, key) => players.get(src)?.getMeta(key) ?? null), registerExport("SetMeta", (src, key, value) => {
 	let player = players.get(src);
 	return !player || typeof key != "string" ? !1 : (player.setMeta(key, value), !0);
 }), registerExport("GetBranding", () => ({ ...settings.branding })), registerExport("GetJobDefinitions", () => Object.fromEntries(jobs)), registerExport("GetGangDefinitions", () => Object.fromEntries(gangs)), registerExport("GetJobDefinition", (job) => typeof job == "string" ? jobs.get(job) ?? null : null), registerExport("GetGangDefinition", (gang) => typeof gang == "string" ? gangs.get(gang) ?? null : null), registerExport("GetAccountTypes", () => Object.fromEntries(accountTypes)), registerExport("GetSharedMoney", (ownerType, ownerId, account) => sharedAccounts.get(ownerType, ownerId, account)?.balance ?? null), registerExport("AddSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("RemoveSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(-amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("TransferMoney", (from, to, amount, reason, fee) => transferMoney(from, to, amount, reasonOf(reason), fee ?? 0));
@@ -22813,7 +23200,7 @@ function inOrder(charId, task) {
 		queues.get(charId) === run && queues.delete(charId);
 	});
 }
-const view = (list) => list.map(({ id, label, amount, sender }) => ({
+const view$1 = (list) => list.map(({ id, label, amount, sender }) => ({
 	id,
 	label,
 	amount,
@@ -22821,7 +23208,7 @@ const view = (list) => list.map(({ id, label, amount, sender }) => ({
 }));
 function showBills(charId) {
 	let player = players.byCharacter(charId), list = bills.get(charId);
-	player && list?.length && emitNet(CORE.billsEvent, player.source, view(list));
+	player && list?.length && emitNet(CORE.billsEvent, player.source, view$1(list));
 }
 async function load(charId) {
 	let rows = await db.select("ai_core_bills", [
@@ -22845,7 +23232,7 @@ function add(charId, bill) {
 	let list = bills.get(charId);
 	list && !list.some((b) => b.id === bill.id) && (list.push(bill), showBills(charId));
 }
-function store(citizenid, bill) {
+function store$1(citizenid, bill) {
 	mysql.insert("INSERT INTO ai_core_bills (char_id, job, issuer_char_id, sender, label, amount, created_at)\n       SELECT c.id, ?, ?, ?, ?, ?, UTC_TIMESTAMP() FROM ai_core_characters c\n       WHERE c.citizenid = ? AND c.deleted_at IS NULL\n         AND (SELECT COUNT(*) FROM ai_core_bills b WHERE b.char_id = c.id) < ?", [
 		bill.job ?? null,
 		bill.fromCharId ?? null,
@@ -22875,7 +23262,7 @@ function newBill(b) {
 }
 function billOffline(citizenid, b) {
 	let bill = newBill(b);
-	return bill ? (store(citizenid, bill), !0) : !1;
+	return bill ? (store$1(citizenid, bill), !0) : !1;
 }
 function payBill(source, id) {
 	let payer = players.get(source), list = payer && bills.get(payer.charId), bill = list?.find((b) => b.id === id);
@@ -22905,11 +23292,11 @@ const builtinBilling = {
 		let target = players.get(b.to);
 		if (!target || (bills.get(target.charId)?.length ?? 0) >= 20) return !1;
 		let bill = newBill(b);
-		return bill ? (store(target.citizenid, bill), !0) : !1;
+		return bill ? (store$1(target.citizenid, bill), !0) : !1;
 	},
 	unpaid: (source, _citizenid, done) => {
 		let charId = players.get(source)?.charId;
-		done(view(charId !== void 0 && bills.get(charId) || []));
+		done(view$1(charId !== void 0 && bills.get(charId) || []));
 	},
 	pay: (source, id) => payBill(source, id) === null
 };
@@ -23308,6 +23695,436 @@ registerExport("GetGarageSystem", () => garages.active?.resource ?? null), regis
 	if (target === null || !adapter?.stored) return reply(null);
 	adapter.stored(target).then(reply, (error) => {
 		log$3.error(`${adapter.resource} stored vehicles failed`, error), reply(null);
+	});
+});
+// resource/server/characters/info.ts
+const cache = new class {
+	entries = new Map();
+	reading = new Map();
+	get(charId, done) {
+		let player = players.byCharacter(charId);
+		if (player) return done({
+			...player.info(),
+			userId: player.user.id
+		});
+		let cached = this.entries.get(charId);
+		if (cached && cached.until > Date.now()) return done(cached.info);
+		let waiting = this.reading.get(charId);
+		if (waiting) {
+			waiting.push(done);
+			return;
+		}
+		let list = [done];
+		this.reading.set(charId, list), findCharacter(charId).then((row) => row ? {
+			id: row.id,
+			citizenid: row.citizenid,
+			slot: row.slot,
+			firstname: row.firstname,
+			lastname: row.lastname,
+			birthdate: row.birthdate,
+			sex: row.sex,
+			nationality: row.nationality,
+			userId: row.userId
+		} : null, (error) => (log$3.error(`reading character ${charId} failed`, error), null)).then((info) => {
+			if (this.reading.delete(charId), this.entries.delete(charId), this.entries.size >= 5e3) {
+				let oldest = this.entries.keys().next();
+				oldest.done || this.entries.delete(oldest.value);
+			}
+			this.entries.set(charId, {
+				info,
+				until: Date.now() + 3e5
+			});
+			for (let fn of list) fn(info);
+		});
+	}
+	drop(charId) {
+		this.entries.delete(charId);
+	}
+}();
+on(CORE.playerLoadedEvent, (_source, info) => cache.drop(info.id)), on(CORE.playerUnloadedEvent, (_source, charId) => cache.drop(charId));
+function getCharacterInfo(charId, done) {
+	let id = readId(charId);
+	if (id === null) return done(null);
+	cache.get(id, done);
+}
+// resource/server/vrp/sql.ts
+function upsertStatement(rows) {
+	let values = [];
+	for (let row of rows) values.push(row.kind, row.owner, row.key, Buffer.from(row.hex, "hex"));
+	return [`INSERT INTO ai_core_vrp_data (kind, owner, dkey, dvalue) VALUES ${Array(rows.length).fill("(?, ?, ?, ?)").join(", ")} ON DUPLICATE KEY UPDATE dvalue = VALUES(dvalue)`, values];
+}
+function splitStatements(sql) {
+	let out = [], start = 0, quote = null;
+	for (let i = 0; i < sql.length; i++) {
+		let char = sql[i];
+		if (quote) char === "\\" && quote !== "`" ? i++ : char === quote && (quote = null);
+		else if (char === "'" || char === "\"" || char === "`") quote = char;
+		else if (char === "-" && sql[i + 1] === "-" && /\s/.test(sql[i + 2] ?? "\n")) {
+			let end = sql.indexOf("\n", i);
+			i = end < 0 ? sql.length : end;
+		} else if (char === "#") {
+			let end = sql.indexOf("\n", i);
+			i = end < 0 ? sql.length : end;
+		} else if (char === "/" && sql[i + 1] === "*") {
+			let end = sql.indexOf("*/", i + 2);
+			i = end < 0 ? sql.length : end + 1;
+		} else char === ";" && (out.push(sql.slice(start, i)), start = i + 1);
+	}
+	return out.push(sql.slice(start)), out.map((part) => part.trim()).filter((part) => part !== "");
+}
+// resource/server/vrp/backend.ts
+function toHex(value) {
+	return Array.isArray(value) || value instanceof Uint8Array ? Buffer.from(value).toString("hex") : null;
+}
+const vrpBackend = {
+	async read(kind, owner, key) {
+		let row = await mysql.single("SELECT dvalue FROM ai_core_vrp_data WHERE kind = ? AND owner = ? AND dkey = ?", [
+			kind,
+			owner,
+			key
+		]);
+		return row ? toHex(row.dvalue) ?? "" : null;
+	},
+	async write(rows) {
+		if (rows.length === 0) return;
+		let [sql, values] = upsertStatement(rows);
+		await mysql.query(sql, values);
+	}
+}, text = (v, max) => typeof v == "string" ? v.slice(0, max) : "", flag = (v, fallback) => typeof v == "boolean" ? v : fallback, grade = (v) => typeof v == "number" && Number.isInteger(v) && v >= 0 && v <= 30 ? v : 0, rows = (v) => Array.isArray(v) ? v.filter(isRecord) : [], WHO = [
+	"job",
+	"gang",
+	"group",
+	"admin",
+	"everyone"
+], whoOf = (v) => WHO.find((w) => w === v) ?? null;
+function readRule(row) {
+	let permission = text(row.permission, 100).trim();
+	if (!permission) return null;
+	let rule = {
+		permission,
+		job: text(row.job, 32),
+		gang: text(row.gang, 32),
+		group: text(row.group, 64),
+		grade: grade(row.grade),
+		onDuty: flag(row.onDuty, !0),
+		admin: flag(row.admin, !1),
+		everyone: flag(row.everyone, !1)
+	}, who = whoOf(row.who);
+	return who ? {
+		...rule,
+		job: who === "job" ? rule.job : "",
+		gang: who === "gang" ? rule.gang : "",
+		group: who === "group" ? rule.group : "",
+		admin: who === "admin",
+		everyone: who === "everyone"
+	} : rule;
+}
+function readAlias(row) {
+	let alias = {
+		job: text(row.job, 32),
+		gang: text(row.gang, 32),
+		grade: grade(row.grade),
+		admin: flag(row.admin, !1)
+	}, who = whoOf(row.who);
+	return who ? {
+		...alias,
+		job: who === "job" ? alias.job : "",
+		gang: who === "gang" ? alias.gang : "",
+		admin: who === "admin"
+	} : alias;
+}
+function readVrpConfig(raw) {
+	let file = isRecord(raw) ? raw : {}, d = isRecord(file.defaults) ? file.defaults : {}, fallback = VRP_DEFAULTS.defaults, groups = {};
+	for (let row of rows(file.groups)) {
+		let group = text(row.group, 64).trim();
+		group && (groups[group] = readAlias(row));
+	}
+	let items = {};
+	for (let row of rows(file.items)) {
+		let vrp = text(row.vrp, 100).trim(), item = text(row.item, 64).trim();
+		vrp && item && (items[vrp] = item);
+	}
+	return {
+		defaults: {
+			jobPrefix: flag(d.jobPrefix, fallback.jobPrefix),
+			jobOnDuty: flag(d.jobOnDuty, fallback.jobOnDuty),
+			adminPrefix: flag(d.adminPrefix, fallback.adminPrefix),
+			playerPrefix: flag(d.playerPrefix, fallback.playerPrefix)
+		},
+		permissions: rows(file.permissions).map(readRule).filter((rule) => rule !== null),
+		groups,
+		items
+	};
+}
+const view = panel.view("vrp", readVrpConfig);
+function vrpConfig() {
+	return view.value;
+}
+let sent = JSON.stringify(view.value);
+panel.onChange("vrp", () => {
+	let next = JSON.stringify(view.value);
+	next !== sent && (sent = next, emit(VRP.configEvent, view.value));
+});
+function gradeError(next, before) {
+	let stored = new Set(rows(before).map((row) => JSON.stringify(row)));
+	for (let row of rows(next)) {
+		if (stored.has(JSON.stringify(row))) continue;
+		let who = whoOf(row.who) ?? (row.job ? "job" : row.gang ? "gang" : null), def = who === "job" ? jobs.get(text(row.job, 32)) : who === "gang" ? gangs.get(text(row.gang, 32)) : void 0;
+		if (def && grade(row.grade) >= def.grades.length) return "ADMIN_ERR_VRP_GRADE";
+	}
+	return null;
+}
+panel.rule("vrp", (_key, next) => {
+	let before = panel.get("vrp");
+	return gradeError(next.permissions, before.permissions) ?? gradeError(next.groups, before.groups);
+});
+const MAX_SEEN = 5e3, seenPermissions = new class {
+	names;
+	timer = null;
+	full = !1;
+	constructor() {
+		let stored = panel.get("vrp").seen;
+		this.names = new Set(Array.isArray(stored) ? stored.filter((s) => typeof s == "string") : []);
+	}
+	add(permission) {
+		return typeof permission != "string" || permission === "" || permission.length > 100 || this.names.has(permission) ? !1 : this.names.size >= MAX_SEEN ? (this.full || log$3.warn(`vRP: ${MAX_SEEN} permission strings recorded, no more kept`), this.full = !0, !1) : (this.names.add(permission), this.timer ??= setTimeout(() => this.write(), 1e4), !0);
+	}
+	write() {
+		this.timer = null, panel.commit("vrp", void 0, {
+			...panel.get("vrp"),
+			seen: [...this.names].sort()
+		});
+	}
+}(), isHeader = (value) => isRecord(value) && typeof value.affectedRows == "number";
+function toParams(raw) {
+	return Array.isArray(raw) ? raw.length > 0 ? raw : void 0 : isRecord(raw) && Object.keys(raw).length > 0 ? raw : void 0;
+}
+function answer(mode, result) {
+	let rows = Array.isArray(result) ? result : [], affected = isHeader(result) ? result.affectedRows : rows.length;
+	if (mode === "execute") return [affected];
+	if (mode === "scalar") {
+		let first = rows[0];
+		return [isRecord(first) ? Object.values(first)[0] ?? null : null];
+	}
+	return [rows, affected];
+}
+function vrpQuery(sql, rawParams, rawMode, done) {
+	let mode = rawMode === "execute" || rawMode === "scalar" ? rawMode : "query";
+	if (typeof sql != "string" || sql.trim() === "") {
+		done("empty query");
+		return;
+	}
+	let params = toParams(rawParams), statements = splitStatements(sql);
+	(statements.length <= 1 ? mysql.query(statements[0] ?? sql, params) : runAll(statements, params)).then((result) => done(null, ...answer(mode, result)), (error) => done(error instanceof Error ? error.message : String(error)));
+}
+async function runAll(statements, params) {
+	let last = null, failure = null;
+	if (!await mysql.startTransaction(async (query) => {
+		try {
+			for (let statement of statements) last = await query(statement, params);
+		} catch (error) {
+			return failure = error, !1;
+		}
+	})) throw failure instanceof Error ? failure : Error(String(failure ?? "transaction rolled back"));
+	return last;
+}
+// resource/server/vrp/store.ts
+const isVrpKind = (value) => value === "c" || value === "u" || value === "s" || value === "g";
+var Entry = class {
+	kind;
+	owner;
+	key;
+	hex;
+	constructor(kind, owner, key, hex) {
+		this.kind = kind, this.owner = owner, this.key = key, this.hex = hex;
+	}
+};
+const fullKey = (kind, owner, key) => `${kind}\u0000${owner}\u0000${key}`, ownerKey = (kind, owner) => `${kind}\u0000${owner}`;
+var VrpStore = class {
+	options;
+	entries = new Map();
+	dirty = new Set();
+	byOwner = new Map();
+	releasing = new Map();
+	reading = new Map();
+	running = null;
+	again = !1;
+	chunk;
+	chunkBytes;
+	constructor(options) {
+		this.options = options, this.chunk = options.chunk ?? 500, this.chunkBytes = options.chunkBytes ?? 4e6;
+	}
+	get size() {
+		return this.entries.size;
+	}
+	get pending() {
+		return this.dirty.size;
+	}
+	kept(kind, owner) {
+		return kind === "s" || kind === "g" || this.options.isLive(kind, owner);
+	}
+	remember(entry, id) {
+		if (this.entries.set(id, entry), entry.kind !== "c" && entry.kind !== "u") return;
+		let ok = ownerKey(entry.kind, entry.owner), keys = this.byOwner.get(ok);
+		keys || (keys = new Set(), this.byOwner.set(ok, keys)), keys.add(id);
+	}
+	forget(id) {
+		let entry = this.entries.get(id);
+		if (!entry) return;
+		this.entries.delete(id);
+		let ok = ownerKey(entry.kind, entry.owner), keys = this.byOwner.get(ok);
+		keys && (keys.delete(id), keys.size === 0 && this.byOwner.delete(ok));
+	}
+	get(kind, owner, key, done) {
+		let id = fullKey(kind, owner, key), entry = this.entries.get(id);
+		if (entry) return done(entry.hex);
+		let waiting = this.reading.get(id);
+		if (waiting) {
+			waiting.push(done);
+			return;
+		}
+		let list = [done];
+		this.reading.set(id, list), this.options.backend.read(kind, owner, key).then((hex) => {
+			let now = this.entries.get(id);
+			if (now) return now.hex;
+			let value = hex ?? "";
+			return this.kept(kind, owner) && this.remember(new Entry(kind, owner, key, value), id), value;
+		}, (error) => (this.options.onError?.(`reading ${kind}/${owner}/${key}`, error), this.entries.get(id)?.hex ?? "")).then((value) => {
+			this.reading.delete(id);
+			for (let fn of list) fn(value);
+		});
+	}
+	set(kind, owner, key, hex) {
+		let id = fullKey(kind, owner, key), entry = this.entries.get(id);
+		if (entry) {
+			if (entry.hex === hex && !this.dirty.has(id)) return;
+			entry.hex = hex;
+		} else this.remember(new Entry(kind, owner, key, hex), id), this.kept(kind, owner) || this.releasing.set(ownerKey(kind, owner), [kind, owner]);
+		this.dirty.size === 0 && this.options.onDirty?.(), this.dirty.add(id);
+	}
+	release(kind, owner) {
+		let ok = ownerKey(kind, owner), keys = this.byOwner.get(ok);
+		if (keys) {
+			for (let id of [...keys]) this.dirty.has(id) || this.forget(id);
+			this.byOwner.has(ok) && this.releasing.set(ok, [kind, owner]);
+		}
+	}
+	flush() {
+		return this.running ? (this.again = !0, this.running) : (this.running = this.flushLoop().finally(() => {
+			this.running = null;
+		}), this.running);
+	}
+	async flushLoop() {
+		let ok = !0;
+		do
+			this.again = !1, ok = await this.flushOnce();
+		while (ok && (this.again || this.dirty.size > 0));
+	}
+	async flushOnce() {
+		if (this.dirty.size === 0) return !0;
+		let taken = [];
+		for (let id of this.dirty) {
+			let entry = this.entries.get(id);
+			entry && taken.push({
+				id,
+				entry
+			});
+		}
+		this.dirty.clear();
+		let start = 0;
+		for (; start < taken.length;) {
+			let end = start, bytes = 0;
+			for (; end < taken.length && end - start < this.chunk && (end === start || bytes + (taken[end]?.entry.hex.length ?? 0) <= this.chunkBytes);) bytes += taken[end]?.entry.hex.length ?? 0, end++;
+			let part = taken.slice(start, end);
+			try {
+				await this.options.backend.write(part.map(({ entry }) => ({
+					kind: entry.kind,
+					owner: entry.owner,
+					key: entry.key,
+					hex: entry.hex
+				})));
+			} catch (error) {
+				this.options.onError?.(`writing ${part.length} keys`, error);
+				for (let { id } of taken.slice(start)) this.dirty.add(id);
+				return this.options.onDirty?.(), !1;
+			}
+			start = end;
+		}
+		return this.sweep(), !0;
+	}
+	sweep() {
+		for (let [ok, [kind, owner]] of [...this.releasing]) {
+			if (this.options.isLive(kind, owner)) {
+				this.releasing.delete(ok);
+				continue;
+			}
+			let keys = this.byOwner.get(ok);
+			if (keys) for (let id of [...keys]) this.dirty.has(id) || this.forget(id);
+			this.byOwner.has(ok) || this.releasing.delete(ok);
+		}
+	}
+};
+// resource/server/vrp/index.ts
+const liveUsers = new Map();
+let flushTimer = null;
+const store = new VrpStore({
+	backend: vrpBackend,
+	isLive: (kind, owner) => kind === "c" ? players.byCharacter(Number(owner)) !== void 0 : liveUsers.has(Number(owner)),
+	onDirty: () => {
+		flushTimer ??= setTimeout(() => {
+			flushTimer = null, store.flush();
+		}, 1e3);
+	},
+	onError: (what, error) => log$3.error(`vRP data: ${what} failed`, error)
+});
+on(CORE.playerLoadedEvent, (source) => {
+	let userId = players.get(source)?.user.id;
+	userId !== void 0 && liveUsers.set(userId, (liveUsers.get(userId) ?? 0) + 1);
+}), on(CORE.playerUnloadedEvent, (source, charId) => {
+	let userId = players.get(source)?.user.id;
+	if (userId !== void 0) {
+		let left = (liveUsers.get(userId) ?? 1) - 1;
+		left > 0 ? liveUsers.set(userId, left) : (liveUsers.delete(userId), store.release("u", String(userId)));
+	}
+	store.release("c", String(charId)), store.flush();
+}), on("txAdmin:events:serverShuttingDown", () => void store.flush()), onStop(() => void store.flush());
+const HEX = /^(?:[0-9a-fA-F]{2})*$/;
+function dataKey(kind, owner, key) {
+	return !isVrpKind(kind) || typeof owner != "string" || owner.length > 64 || typeof key != "string" || key === "" || key.length > 100 ? null : [
+		kind,
+		owner,
+		key
+	];
+}
+registerExport("VrpGetData", (kind, owner, key, done) => {
+	if (typeof done != "function") return;
+	let answer = (hex) => {
+		try {
+			Reflect.apply(done, void 0, [hex]);
+		} catch (error) {
+			log$3.error("a VrpGetData callback failed", error);
+		}
+	}, parsed = dataKey(kind, owner, key);
+	if (!parsed) return answer("");
+	store.get(parsed[0], parsed[1], parsed[2], answer);
+}), registerExport("VrpSetData", (kind, owner, key, hex) => {
+	let parsed = dataKey(kind, owner, key);
+	return !parsed || typeof hex != "string" || hex.length > 16e6 || !HEX.test(hex) ? (log$3.warn(`VrpSetData refused ${String(kind)}/${String(key)}`), !1) : (store.set(parsed[0], parsed[1], parsed[2], hex.toLowerCase()), !0);
+}), registerExport("VrpQuery", (sql, params, mode, done) => {
+	typeof done == "function" && vrpQuery(sql, params, mode, (...answer) => {
+		try {
+			Reflect.apply(done, void 0, answer);
+		} catch (error) {
+			log$3.error("a VrpQuery callback failed", error);
+		}
+	});
+}), registerExport("GetVrpConfig", () => vrpConfig()), registerExport("VrpPermissionAsked", (permission) => seenPermissions.add(permission)), registerExport("GetCharacterInfo", (charId, done) => {
+	typeof done == "function" && getCharacterInfo(charId, (info) => {
+		try {
+			Reflect.apply(done, void 0, [info]);
+		} catch (error) {
+			log$3.error("a GetCharacterInfo callback failed", error);
+		}
 	});
 });
 // resource/server/devCommands.ts

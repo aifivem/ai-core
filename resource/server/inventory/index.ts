@@ -213,6 +213,16 @@ registerExport("GetItemDefinition", (item: unknown) => {
     ? null
     : inventory.call("GetItemDefinition", (a) => a.getItemDefinition(n), null);
 });
+/** A player's carried weight and limit (grams); null when the active inventory does not tell them. */
+registerExport("GetInventoryWeight", (source: unknown) =>
+  typeof source === "number"
+    ? inventory.call(
+        "GetInventoryWeight",
+        (a) => a.getWeight?.(source) ?? null,
+        null,
+      )
+    : null,
+);
 registerExport("GetItemDefinitions", () =>
   inventory.call("GetItemDefinitions", (a) => a.getItemDefinitions(), {}),
 );

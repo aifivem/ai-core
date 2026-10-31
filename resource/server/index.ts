@@ -41,6 +41,7 @@ import "./fuel";
 import "./doorlock";
 import "./garages";
 import "./buckets";
+import "./vrp";
 import "./devCommands";
 
 resetDutyCounts(jobs.keys());

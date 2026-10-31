@@ -5,6 +5,8 @@ import { getAt } from "./path";
 import { ActionW } from "./widgets/ActionW";
 import { NumberW, SelectW, SwitchW, TextW } from "./widgets/basic";
 import { BlipW } from "./widgets/BlipW";
+import { BrowseW } from "./widgets/BrowseW";
+import { GradeW } from "./widgets/GradeW";
 import { InfoW } from "./widgets/InfoW";
 import { ListW } from "./widgets/ListW";
 import { PointW, TagsW } from "./widgets/more";
@@ -57,6 +59,10 @@ export function Field({ spec }: { spec: WidgetSpec }) {
       return shell(<ActionW spec={spec} />, true);
     case "zone":
       return shell(<ZoneW spec={spec} path={spec.path} />);
+    case "grade":
+      return shell(<GradeW spec={spec} path={spec.path} />, true);
+    case "browse":
+      return shell(<BrowseW spec={spec} />);
     default: {
       const _exhaustive: never = spec;
       return _exhaustive;
