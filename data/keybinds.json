@@ -10,7 +10,7 @@
     "hint": ""
   },
   "aicore_interact": {
-    "resource": "ai-core",
+    "resource": "ai-lib",
     "description": "Interact with the prompt on screen",
     "defaultKey": "E",
     "mapper": "keyboard",
@@ -329,6 +329,24 @@
     "description": "Binoculars: zoom out",
     "defaultKey": "IOM_WHEEL_DOWN",
     "mapper": "MOUSE_WHEEL",
+    "key": "",
+    "hintWhen": "",
+    "hint": ""
+  },
+  "aicore_cancel_progress": {
+    "resource": "ai-lib",
+    "description": "Cancel the running action",
+    "defaultKey": "BACK",
+    "mapper": "keyboard",
+    "key": "",
+    "hintWhen": "",
+    "hint": ""
+  },
+  "jobs_hotdog_release": {
+    "resource": "ai-jobs",
+    "description": "Let go of the hot dog stand",
+    "defaultKey": "G",
+    "mapper": "keyboard",
     "key": "",
     "hintWhen": "",
     "hint": ""

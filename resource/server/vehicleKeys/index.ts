@@ -1,8 +1,10 @@
 import {
   GlobalKey,
+  plateOf,
   registerExport,
   stateString,
 } from "@aicore-fivem/lib/server";
+import { normalizePlate } from "@aicore-fivem/lib/shared";
 import {
   toKeyPurpose,
   VEHICLE_KEYS_STATE_KEY,
@@ -33,15 +35,15 @@ panel.onChange("settings", () => layer.setChoice(settings.vehicleKeys));
 
 /** A vehicle given as a server entity or a plate. */
 function target(vehicle: unknown): KeyTarget | null {
-  if (typeof vehicle === "string")
-    return vehicle.trim()
-      ? { vehicle: null, netId: null, plate: vehicle.trim() }
-      : null;
+  if (typeof vehicle === "string") {
+    const plate = normalizePlate(vehicle);
+    return plate ? { vehicle: null, netId: null, plate } : null;
+  }
   if (typeof vehicle !== "number" || !DoesEntityExist(vehicle)) return null;
   return {
     vehicle,
     netId: NetworkGetNetworkIdFromEntity(vehicle),
-    plate: GetVehicleNumberPlateText(vehicle).trim(),
+    plate: plateOf(vehicle),
   };
 }
 

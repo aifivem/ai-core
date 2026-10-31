@@ -3,6 +3,7 @@ import {
   controls,
   locationName,
   raycast,
+  ScriptCamera,
   TickLoop,
 } from "@aicore-fivem/lib/client";
 import { round as roundTo } from "@aicore-fivem/lib/shared";
@@ -68,19 +69,10 @@ function freeFly<T>(
       entity: 0,
       heading: ((rz % 360) + 360) % 360,
     };
-    const cam = CreateCamWithParams(
-      "DEFAULT_SCRIPTED_CAMERA",
-      pos.x,
-      pos.y,
-      pos.z,
-      rot.pitch,
-      0,
-      rot.yaw,
-      60,
-      true,
-      2,
-    );
-    RenderScriptCams(true, false, 0, true, true);
+    // One object reused every frame (`move` reads it), not a new one per frame.
+    const view = { rotation: { x: rot.pitch, y: 0, z: rot.yaw } };
+    const cam = new ScriptCamera();
+    cam.start(pos, { ...view, fov: 60 });
     FreezeEntityPosition(cache.ped, true);
     // Every control off while flying; the loop reads the disabled ones.
     controls.disableAll("freecam");
@@ -88,8 +80,7 @@ function freeFly<T>(
     const finish = (answer: T | null) => {
       loop.set(false);
       controls.enable("freecam");
-      RenderScriptCams(false, false, 0, true, true);
-      DestroyCam(cam, false);
+      cam.stop();
       ClearFocus();
       FreezeEntityPosition(cache.ped, false);
       resolve(answer);
@@ -120,8 +111,9 @@ function freeFly<T>(
       pos.x += (fx * forward + sx * side) * speed;
       pos.y += (fy * forward + sy * side) * speed;
       pos.z += (fz * forward + lift) * speed;
-      SetCamCoord(cam, pos.x, pos.y, pos.z);
-      SetCamRot(cam, rot.pitch, 0, rot.yaw, 2);
+      view.rotation.x = rot.pitch;
+      view.rotation.z = rot.yaw;
+      cam.move(pos, view);
       SetFocusPosAndVel(pos.x, pos.y, pos.z, 0, 0, 0);
       if (IsDisabledControlJustPressed(0, C.wheelUp))
         aim.heading = (aim.heading + 15) % 360;

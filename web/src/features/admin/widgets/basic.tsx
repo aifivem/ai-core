@@ -5,6 +5,7 @@ import {
   faPlus,
   faTriangleExclamation,
 } from "@fortawesome/free-solid-svg-icons";
+import { formatWeight } from "@aicore-fivem/lib/shared";
 import type { LookupOption, WidgetSpec } from "@aicore-fivem/shared";
 import { Input } from "../../../components/ui/input";
 import { Select } from "../../../components/ui/select";
@@ -213,11 +214,8 @@ export function NumberW({
   const unit = spec.unit ? (spec.unit === "$" ? "$" : t(spec.unit)) : "";
   const stepButton =
     "flex size-[3vh] shrink-0 items-center justify-center rounded-full bg-control text-[1.1vh] text-text-2 transition-[background-color,color,transform] duration-150 ease-out enabled:hover:bg-control-hover enabled:hover:text-text enabled:active:[transform:scale(0.92)] disabled:cursor-not-allowed disabled:opacity-40";
-  // Grams also read as kilograms, left of the box (80000 g = 80 kg).
-  const kilos =
-    spec.unit === "g"
-      ? `${(stored / 1000).toLocaleString("en-US", { maximumFractionDigits: 2 })} kg`
-      : null;
+  // Grams also read as a weight, left of the box (80000 g = 80 kg).
+  const kilos = spec.unit === "g" ? formatWeight(stored) : null;
   return (
     <div className="flex shrink-0 items-center gap-[1vh]">
       {kilos && (

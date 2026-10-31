@@ -1,4 +1,4 @@
-import { registerExport } from "@aicore-fivem/lib/client";
+import { Reasons, registerExport } from "@aicore-fivem/lib/client";
 import { isResourceStarted } from "@aicore-fivem/lib/fivem";
 import { CORE } from "@aicore-fivem/shared";
 
@@ -10,32 +10,22 @@ import { CORE } from "@aicore-fivem/shared";
  * with cd_easytime only as its own event (it turns the qb and vSync events into its pause with the meaning reversed).
  */
 class WorldSync {
-  private readonly reasons = new Set<string>();
+  /** Pause reasons owned by the calling resource (dropped when it stops); third-party events under `external`. */
+  readonly reasons = new Reasons();
   /** True while this layer sends the third-party events, so its own sends are not counted as reasons. */
   private sending = false;
 
+  constructor() {
+    this.reasons.onChange((paused) => this.announce(paused));
+  }
+
   get paused(): boolean {
-    return this.reasons.size > 0;
+    return this.reasons.any;
   }
 
-  /** A third-party pause event another script sent. */
+  /** A third-party pause event another script sent (never dropped by a resource stop: its sender is unknown). */
   external(event: string, paused: boolean): void {
-    if (!this.sending) this.set(`external:${event}`, paused);
-  }
-
-  set(reason: string, paused: boolean): void {
-    const before = this.reasons.size > 0;
-    if (paused) this.reasons.add(reason);
-    else this.reasons.delete(reason);
-    const now = this.reasons.size > 0;
-    if (now !== before) this.announce(now);
-  }
-
-  drop(resource: string): void {
-    const before = this.reasons.size > 0;
-    for (const r of this.reasons)
-      if (r.startsWith(`${resource}:`)) this.reasons.delete(r);
-    if (before && this.reasons.size === 0) this.announce(false);
+    if (!this.sending) this.reasons.set(event, paused, "external");
   }
 
   private announce(paused: boolean): void {
@@ -59,19 +49,17 @@ class WorldSync {
 
 export const worldSync = new WorldSync();
 const sync = worldSync;
-const owner = () => GetInvokingResource() || CORE.resource;
 registerExport(
   "PauseWorldSync",
   (reason: unknown) =>
-    typeof reason === "string" && sync.set(`${owner()}:${reason}`, true),
+    typeof reason === "string" && sync.reasons.set(reason, true),
 );
 registerExport(
   "ResumeWorldSync",
   (reason: unknown) =>
-    typeof reason === "string" && sync.set(`${owner()}:${reason}`, false),
+    typeof reason === "string" && sync.reasons.set(reason, false),
 );
 registerExport("IsWorldSyncPaused", () => sync.paused);
-on("onClientResourceStop", (resource: string) => sync.drop(resource));
 on("qb-weathersync:client:DisableSync", () => sync.external("qb", true));
 on("qb-weathersync:client:EnableSync", () => sync.external("qb", false));
 on("cd_easytime:PauseSync", (paused: unknown) =>

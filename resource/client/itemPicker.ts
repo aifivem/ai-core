@@ -1,11 +1,15 @@
-import { registerExport, triggerServerCallback } from "@aicore-fivem/lib/client";
+import {
+  caller,
+  registerExport,
+  triggerServerCallback,
+} from "@aicore-fivem/lib/client";
 import { isRecord, logSafe } from "@aicore-fivem/lib/shared";
 import {
   ITEM_PICKER_CALLBACK,
   type ItemPickerData,
   type PickerItem,
 } from "@aicore-fivem/shared";
-import { Locale, ResourceName } from "common";
+import { Locale } from "common";
 import { dialogs } from "./menu";
 
 const finite = (v: unknown): v is number =>
@@ -42,7 +46,8 @@ function toData(value: unknown): ItemPickerData {
 // NUI answers once with the chosen list (`dialogAnswer`), or null when closed.
 registerExport("OpenItemPicker", (id: unknown, request: unknown) => {
   if (typeof id !== "number" || !isRecord(request)) return;
-  const resource = GetInvokingResource() || ResourceName;
+  // Read now: the dialog opens after the server's answer, outside the export call.
+  const resource = caller();
   const title =
     typeof request.title === "string" ? logSafe(request.title, 60) : "";
   const target = typeof request.target === "number" ? request.target : null;

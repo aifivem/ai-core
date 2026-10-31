@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBox, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { formatWeight } from "@aicore-fivem/lib/shared";
 import type { PickerItem } from "@aicore-fivem/shared";
 import { VirtualList } from "../../components/VirtualList";
 import { cn } from "../../lib/utils";
@@ -9,9 +10,6 @@ export interface Row {
   item: PickerItem;
   count: number;
 }
-
-const kg = (grams: number) =>
-  `${(grams / 1000).toLocaleString("en-US", { maximumFractionDigits: 1 })} kg`;
 
 /** A row's count: typed freely, applied on leave or Enter (the picker caps it at the weight limit). */
 function CountBox({
@@ -143,7 +141,7 @@ export function PickedList({
           <div className="flex justify-between text-[1.15vh] text-text-3">
             <span>{texts.weight}</span>
             <span className="tabular-nums">
-              {kg(total)} / {kg(room.maxWeight)}
+              {formatWeight(total)} / {formatWeight(room.maxWeight)}
             </span>
           </div>
           <div className="h-[0.6vh] overflow-hidden rounded-full bg-white/8">

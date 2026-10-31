@@ -1,19 +1,20 @@
 import { requestAnimDict, requestModel } from "@aicore-fivem/lib/client";
 import { createLogger, waitFor } from "@aicore-fivem/lib/shared";
-import type {
-  CharacterAppearance,
-  CharacterCard,
-  CharacterScene,
-  SceneSpot,
-  Sex,
+import {
+  CORE,
+  type CharacterAppearance,
+  type CharacterCard,
+  type CharacterScene,
+  type SceneSpot,
+  type Sex,
 } from "@aicore-fivem/shared";
 import { applyLook, sameModel } from "./appearance";
 import { SceneCamera } from "./sceneCamera";
 import { worldSync } from "./world";
-import { visibility } from "./hud";
+import { hudHidden } from "./hud";
 
 /** HUDs and the minimap stay hidden from the character screen until the spawn fade lifts. */
-export const SCREEN_HUD_REASON = "ai-core:characters";
+export const SCREEN_HUD_REASON = "characters";
 
 const log = createLogger("ai-core");
 const MODELS: Record<Sex, string> = {
@@ -80,7 +81,7 @@ export class SelectScene {
     } finally {
       ShutdownLoadingScreen();
       ShutdownLoadingScreenNui();
-      visibility.set(SCREEN_HUD_REASON, true);
+      hudHidden.set(SCREEN_HUD_REASON, true, CORE.resource);
       DoScreenFadeIn(500);
     }
   }
@@ -259,7 +260,7 @@ export class SelectScene {
 
   private forceTime(time: CharacterScene["time"]): void {
     if (!time.enabled) return;
-    worldSync.set("ai-core:scene", true);
+    worldSync.reasons.set("scene", true, CORE.resource);
     NetworkOverrideClockTime(time.hour, time.minute, 0);
     SetOverrideWeather(time.weather);
     this.timeForced = true;
@@ -270,6 +271,6 @@ export class SelectScene {
     this.timeForced = false;
     ClearOverrideWeather();
     NetworkClearClockTimeOverride();
-    worldSync.set("ai-core:scene", false);
+    worldSync.reasons.set("scene", false, CORE.resource);
   }
 }

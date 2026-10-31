@@ -24,7 +24,7 @@ import {
   setPlayerModel,
   waitForGround,
 } from "./scene";
-import { visibility } from "./hud";
+import { hudHidden } from "./hud";
 import { announceLoaded } from "./playerState";
 import { spawnArmour } from "./armour";
 
@@ -229,7 +229,7 @@ onServerEvent(
       SetEntityInvincible(ped, false);
       SetEntityVisible(ped, true, false);
       spawnArmour.apply(ped, spawn.armour);
-      visibility.set(SCREEN_HUD_REASON, false);
+      hudHidden.set(SCREEN_HUD_REASON, false, CORE.resource);
       DoScreenFadeIn(500);
       screen = null;
       portraits = {};

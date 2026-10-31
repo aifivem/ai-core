@@ -1,4 +1,4 @@
-import { registerExport } from "@aicore-fivem/lib/client";
+import { caller, registerExport } from "@aicore-fivem/lib/client";
 import { createLogger } from "@aicore-fivem/lib/shared";
 import type { RadialAdapter, RadialItem } from "@aicore-fivem/shared";
 import { RADIALS } from "./registry";
@@ -13,6 +13,7 @@ const log = createLogger("ai-core");
  * all of them again; a stopped resource's items go.
  */
 class RadialLayer {
+  /** In the order scripts added them (a radial that starts later gets them in that order), so not `ByResource`. */
   private readonly items = new Map<
     string,
     { item: RadialItem; owner: string }
@@ -66,8 +67,8 @@ on("onClientResourceStop", (resource: string) => layer.dropOwner(resource));
 
 registerExport("AddRadialItem", (item: unknown) => {
   const parsed = toRadialItem(item);
-  if (parsed) layer.add(parsed, GetInvokingResource() ?? "");
-  else log.warn(`${GetInvokingResource()} AddRadialItem: not a radial item`);
+  if (parsed) layer.add(parsed, caller());
+  else log.warn(`${caller()} AddRadialItem: not a radial item`);
 });
 registerExport(
   "RemoveRadialItem",

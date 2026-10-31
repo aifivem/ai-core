@@ -1,4 +1,4 @@
-import { callExport, registerExport } from "@aicore-fivem/lib/client";
+import { callExport, Reasons, registerExport } from "@aicore-fivem/lib/client";
 import { createLogger } from "@aicore-fivem/lib/shared";
 import { CORE } from "@aicore-fivem/shared";
 import { AdapterPicker } from "common/adapters";
@@ -32,54 +32,31 @@ const huds = new AdapterPicker({
 });
 
 /**
- * Why HUDs are hidden now: `<resource>:<reason>` of every full-screen UI that is open (lib `hud.hide` / `show`).
- * HUDs show again when the last one closes or its resource stops.
+ * Why HUDs are hidden now: a reason per full-screen UI that is open (lib `hud.hide` / `show`), owned by the calling
+ * resource. HUDs show again when the last one closes or its resource stops. ai-core's own screens pass
+ * `CORE.resource` as the owner.
  */
-class HudVisibility {
-  private readonly reasons = new Set<string>();
-
-  get visible(): boolean {
-    return this.reasons.size === 0;
-  }
-
-  set(reason: string, hidden: boolean): void {
-    const before = this.visible;
-    if (hidden) this.reasons.add(reason);
-    else this.reasons.delete(reason);
-    if (this.visible !== before) this.announce();
-  }
-
-  drop(resource: string): void {
-    const before = this.visible;
-    for (const r of this.reasons)
-      if (r.startsWith(`${resource}:`)) this.reasons.delete(r);
-    if (this.visible !== before) this.announce();
-  }
-
-  private announce(): void {
-    emit(CORE.clientHudVisibleEvent, this.visible);
-    // Without a HUD that drives the minimap itself, the minimap follows too.
-    if (!huds.call("visibility", (a) => (a.set(this.visible), true), false))
-      DisplayRadar(this.visible);
-  }
-}
-
-export const visibility = new HudVisibility();
-const owner = () => GetInvokingResource() || CORE.resource;
+export const hudHidden = new Reasons();
+hudHidden.onChange((hidden) => {
+  const visible = !hidden;
+  emit(CORE.clientHudVisibleEvent, visible);
+  // Without a HUD that drives the minimap itself, the minimap follows too.
+  if (!huds.call("visibility", (a) => (a.set(visible), true), false))
+    DisplayRadar(visible);
+});
 registerExport(
   "HideHud",
   (reason: unknown) =>
-    typeof reason === "string" && visibility.set(`${owner()}:${reason}`, true),
+    typeof reason === "string" && hudHidden.set(reason, true),
 );
 registerExport(
   "ShowHud",
   (reason: unknown) =>
-    typeof reason === "string" && visibility.set(`${owner()}:${reason}`, false),
+    typeof reason === "string" && hudHidden.set(reason, false),
 );
-registerExport("IsHudVisible", () => visibility.visible);
+registerExport("IsHudVisible", () => !hudHidden.any);
 // Every HUD has its own settings screen: the radial menu (and any script) opens the running one's through here.
 registerExport("OpenHudSettings", () =>
   huds.call("settings", (a) => (a.settings(), true), false),
 );
 registerExport("HasHudSettings", () => huds.active !== null);
-on("onClientResourceStop", (resource: string) => visibility.drop(resource));

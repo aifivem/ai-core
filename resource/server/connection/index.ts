@@ -1,4 +1,4 @@
-import { registerExport } from "@aicore-fivem/lib/server";
+import { caller, registerExport } from "@aicore-fivem/lib/server";
 import { createLogger } from "@aicore-fivem/lib/shared";
 import { Locale } from "common";
 import { settings } from "../content";
@@ -25,6 +25,7 @@ type Check = (
  * the checks other resources add (`AddConnectionCheck`: whitelists, bans), in the order they were added.
  */
 class ConnectionGate {
+  /** Run in the order they were added (across resources), so a plain Map, not `ByResource`. */
   private readonly checks = new Map<string, { resource: string; run: Check }>();
 
   add(id: string, resource: string, run: Check): void {
@@ -93,16 +94,15 @@ on("onResourceStop", (resource: string) => {
 registerExport("AddConnectionCheck", (id: unknown, check: unknown) => {
   // A function from another resource arrives as a callable reference.
   if (typeof id === "string" && id && typeof check === "function")
-    gate.add(id, GetInvokingResource() ?? "?", check as Check);
+    gate.add(id, caller(), check as Check);
 });
 // RegisterReplacement(remove, keep?): `keep` defaults to the calling resource.
 registerExport("RegisterReplacement", (remove: unknown, keep?: unknown) => {
   const names = (Array.isArray(remove) ? remove : [remove]).filter(
     (n): n is string => typeof n === "string" && n !== "",
   );
-  const caller = GetInvokingResource();
-  const owner = typeof keep === "string" && keep ? keep : caller;
-  if (owner && names.length > 0)
-    conflicts.declare(owner, names, caller ?? owner);
+  const from = caller();
+  const owner = typeof keep === "string" && keep ? keep : from;
+  if (names.length > 0) conflicts.declare(owner, names, from);
 });
 registerExport("GetConflicts", () => conflicts.list().map((c) => ({ ...c })));

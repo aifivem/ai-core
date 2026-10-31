@@ -1,4 +1,4 @@
-import { registerExport } from "@aicore-fivem/lib/server";
+import { caller, registerExport } from "@aicore-fivem/lib/server";
 import {
   accountTypes,
   gangs as gangDefs,
@@ -18,9 +18,7 @@ import { players } from "./player/registry";
 const positive = (amount: unknown): amount is number =>
   typeof amount === "number" && Number.isSafeInteger(amount) && amount > 0;
 const reasonOf = (reason: unknown): string =>
-  typeof reason === "string" && reason
-    ? reason
-    : GetInvokingResource() || "unknown";
+  typeof reason === "string" && reason ? reason : caller();
 
 registerExport(
   "GetPlayerData",

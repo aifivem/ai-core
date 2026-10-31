@@ -1,4 +1,4 @@
-import { controls } from "@aicore-fivem/lib/client";
+import { ByResource, controls } from "@aicore-fivem/lib/client";
 import { MENU_EVENTS } from "@aicore-fivem/shared";
 import { NuiCallback, NuiMessage } from "common/nui";
 
@@ -28,28 +28,31 @@ export const pauseGuard = new PauseGuard();
  * time; the answer goes back to the asking resource as `MENU_EVENTS.menuResult`.
  */
 class Dialogs {
-  private current: { resource: string; id: number } | null = null;
+  /** The open dialog's id, owned by the asking resource: its stop closes the dialog (answered with null). */
+  private readonly current = new ByResource<"dialog", number>({
+    onDrop: (resource, _key, id) => this.close(resource, id, null),
+  });
 
   open(resource: string, id: number, data: unknown): void {
     this.answer(null);
-    this.current = { resource, id };
+    this.current.set("dialog", id, resource);
     SetNuiFocus(true, true);
     SendNUIMessage({ action: NuiMessage.itemsOpen, data });
   }
 
   answer(value: unknown): void {
-    const current = this.current;
-    if (!current) return;
-    this.current = null;
+    const id = this.current.get("dialog");
+    const resource = this.current.ownerOf("dialog");
+    if (id === undefined || resource === undefined) return;
+    this.current.delete("dialog");
+    this.close(resource, id, value);
+  }
+
+  private close(resource: string, id: number, value: unknown): void {
     SetNuiFocus(false, false);
     pauseGuard.set(true);
     SendNUIMessage({ action: NuiMessage.dialogClose });
-    emit(MENU_EVENTS.menuResult, current.resource, current.id, value);
-  }
-
-  /** A stopped resource's open picker closes with it. */
-  drop(resource: string): void {
-    if (this.current?.resource === resource) this.answer(null);
+    emit(MENU_EVENTS.menuResult, resource, id, value);
   }
 }
 
@@ -66,4 +69,3 @@ RegisterNuiCallback(
     cb(true);
   },
 );
-on("onClientResourceStop", (resource: string) => dialogs.drop(resource));

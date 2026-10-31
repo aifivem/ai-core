@@ -1,4 +1,4 @@
-import { registerExport } from "@aicore-fivem/lib/server";
+import { ByResource, caller, registerExport } from "@aicore-fivem/lib/server";
 import { isRecord } from "@aicore-fivem/lib/shared";
 import type {
   LogChannel,
@@ -21,7 +21,8 @@ import { discordWebhook, LEVELS, logSettings, toLevel } from "./settings";
  * The log system: resources name their channels, ai-core decides where logs go (`data/logs.json` providers,
  * webhook urls and API keys in the git-ignored `data/secrets.json`). Every ai-* resource logs through the `Log` export (lib `aiLog`).
  */
-const channels = new Map<string, Record<string, LogChannel>>();
+/** Each resource's channel settings, keyed by the resource itself (dropped when it stops). */
+const channels = new ByResource<string, Record<string, LogChannel>>();
 
 function playerInfo(source: number): LogPlayer | undefined {
   const name = GetPlayerName(String(source));
@@ -97,7 +98,7 @@ registerExport(
   "Log",
   (channel: unknown, message: unknown, options?: LogOptions) => {
     writeLog(
-      GetInvokingResource() || "unknown",
+      caller(),
       typeof channel === "string" ? channel : "log",
       message,
       isRecord(options) ? options : {},
@@ -107,13 +108,9 @@ registerExport(
 
 registerExport("LogChannels", (list: unknown) => {
   if (isRecord(list))
-    channels.set(
-      GetInvokingResource() || "unknown",
-      list as Record<string, LogChannel>,
-    );
+    channels.set(caller(), list as Record<string, LogChannel>);
 });
 
 on("onResourceStop", (resource: string) => {
-  channels.delete(resource);
   if (resource === ResourceName) flushFivemanage();
 });

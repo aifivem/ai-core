@@ -1,7 +1,8 @@
 import { registerExport } from "@aicore-fivem/lib/client";
+import { CORE } from "@aicore-fivem/shared";
 import { Locale } from "common";
 import { NuiCallback, NuiMessage, type KeyboardBind } from "common/nui";
-import { visibility } from "./hud";
+import { hudHidden } from "./hud";
 import { boundKey } from "./keyHints";
 import { keybinds } from "./keybinds";
 import { pauseGuard } from "./menu";
@@ -29,7 +30,7 @@ class KeyboardScreen {
         });
     }
     this.open = true;
-    visibility.set("ai-core:keyboard", true);
+    hudHidden.set("keyboard", true, CORE.resource);
     SetNuiFocus(true, true);
     SendNUIMessage({
       action: NuiMessage.keyboardOpen,
@@ -49,7 +50,7 @@ class KeyboardScreen {
   close(): void {
     if (!this.open) return;
     this.open = false;
-    visibility.set("ai-core:keyboard", false);
+    hudHidden.set("keyboard", false, CORE.resource);
     SetNuiFocus(false, false);
     pauseGuard.set(true);
     SendNUIMessage({ action: NuiMessage.keyboardClose });

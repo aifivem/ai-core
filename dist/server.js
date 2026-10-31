@@ -114,8 +114,8 @@ function readVec4(value) {
 		heading
 	};
 }
-// ../../../packages/lib/src/shared/access.ts
-const isPublic = (rule) => rule.jobs.length === 0 && rule.gangs.length === 0, isObject = (value) => typeof value == "object" && !!value && !Array.isArray(value);
+// ../../../packages/lib/src/shared/format.ts
+const normalizePlate = (plate) => plate.trim().toUpperCase(), isPublic = (rule) => rule.jobs.length === 0 && rule.gangs.length === 0, isObject = (value) => typeof value == "object" && !!value && !Array.isArray(value);
 function readRecords(raw, readOne) {
 	let out = new Map();
 	if (!isObject(raw)) return out;
@@ -1167,9 +1167,9 @@ var OnlinePlayers = class {
 const EMPTY$1 = new Set();
 new OnlinePlayers(), resourceExport(CORE.resource), resourceExport(CORE.resource), createLogger(GetCurrentResourceName());
 const dropped = new Set();
-let listening = !1;
+let listening$1 = !1;
 function onDropped(fn) {
-	listening || (listening = !0, on("playerDropped", () => {
+	listening$1 || (listening$1 = !0, on("playerDropped", () => {
 		let source = Number(globalThis.source);
 		for (let handler of dropped) handler(source);
 	})), dropped.add(fn);
@@ -15663,6 +15663,66 @@ async function createDatabaseTables(resource, file) {
 		else for (let [name, definition] of statement.columns) columns.has(name) || (await mysql.query(`ALTER TABLE \`${statement.table}\` ADD COLUMN ${definition}`), log$5.info(`^2added column ${statement.table}.${name}^7 (${resource})`));
 	}
 }
+// ../../../packages/lib/src/fivem/byResource.ts
+function caller() {
+	let invoking = GetInvokingResource();
+	return invoking != null && invoking !== "" ? invoking : GetCurrentResourceName();
+}
+const stopHandlers = [];
+let listening = !1;
+function onStop(handler) {
+	if (stopHandlers.push(handler), listening) return;
+	listening = !0;
+	let event = IsDuplicityVersion() ? "onResourceStop" : "onClientResourceStop";
+	on(event, (resource) => {
+		for (let stop of stopHandlers) stop(resource);
+	});
+}
+var ByResource = class {
+	options;
+	byOwner = new Map();
+	owners = new Map();
+	constructor(options = {}) {
+		this.options = options, onStop((resource) => this.dropResource(resource));
+	}
+	set(key, value, owner = caller()) {
+		let previous = this.owners.get(key);
+		previous !== void 0 && previous !== owner && this.byOwner.get(previous)?.delete(key);
+		let map = this.byOwner.get(owner);
+		map || this.byOwner.set(owner, map = new Map()), map.set(key, value), this.owners.set(key, owner);
+	}
+	get(key) {
+		let owner = this.owners.get(key);
+		return owner === void 0 ? void 0 : this.byOwner.get(owner)?.get(key);
+	}
+	ownerOf(key) {
+		return this.owners.get(key);
+	}
+	delete(key) {
+		let owner = this.owners.get(key);
+		if (owner === void 0) return !1;
+		this.owners.delete(key);
+		let map = this.byOwner.get(owner);
+		return map?.delete(key), map?.size === 0 && this.byOwner.delete(owner), !0;
+	}
+	*values() {
+		for (let map of this.byOwner.values()) yield* map.values();
+	}
+	*entries() {
+		for (let map of this.byOwner.values()) yield* map.entries();
+	}
+	get size() {
+		return this.owners.size;
+	}
+	dropResource(resource) {
+		let map = this.byOwner.get(resource);
+		if (map) {
+			this.byOwner.delete(resource);
+			for (let [key, value] of map) this.owners.delete(key), this.options.onDrop?.(resource, key, value);
+		}
+	}
+};
+const plateOf = (vehicle) => GetVehicleNumberPlateText(vehicle).trim().toUpperCase();
 let log$4 = null;
 var ScheduledJob = class {
 	interval;
@@ -16169,7 +16229,7 @@ function sendToConsole(entry) {
 	console.log(`${CONSOLE_COLORS[entry.level]}[log:${entry.resource}/${entry.channel}]${who} ${entry.message}^7`);
 }
 // resource/server/logs/index.ts
-const channels = new Map();
+const channels = new ByResource();
 function playerInfo(source) {
 	let name = GetPlayerName(String(source));
 	if (!name) return;
@@ -16211,11 +16271,11 @@ function writeLog(resource, channelName, message, options = {}) {
 }
 const coreLog = (channel, message, options) => writeLog(ResourceName, channel, message, options);
 registerExport("Log", (channel, message, options) => {
-	writeLog(GetInvokingResource() || "unknown", typeof channel == "string" ? channel : "log", message, isRecord(options) ? options : {});
+	writeLog(caller(), typeof channel == "string" ? channel : "log", message, isRecord(options) ? options : {});
 }), registerExport("LogChannels", (list) => {
-	isRecord(list) && channels.set(GetInvokingResource() || "unknown", list);
+	isRecord(list) && channels.set(caller(), list);
 }), on("onResourceStop", (resource) => {
-	channels.delete(resource), resource === ResourceName && flushFivemanage();
+	resource === ResourceName && flushFivemanage();
 });
 // resource/server/content/scene.ts
 const spot = (x, y, z, heading, anim, clip, cam) => ({
@@ -18280,12 +18340,9 @@ function toPanel(id, v, resource) {
 	};
 }
 const externalPanels = new class {
-	declared = new Map();
+	declared = new ByResource();
 	declare(panelSpec) {
-		this.declared.set(panelSpec.id, panelSpec);
-	}
-	dropFrom(resource) {
-		for (let [id, p] of this.declared) p.resource === resource && this.declared.delete(id);
+		this.declared.set(panelSpec.id, panelSpec, panelSpec.resource);
 	}
 	fromManifests() {
 		let out = [];
@@ -18324,11 +18381,11 @@ const externalPanels = new class {
 	}
 }();
 registerExport("RegisterExternalPanel", (spec) => {
-	let resource = GetInvokingResource();
-	if (!resource || !isRecord(spec)) return;
+	let resource = caller();
+	if (!isRecord(spec)) return;
 	let found = toPanel(`export:${resource}:${typeof spec.id == "string" && ID.test(spec.id) ? spec.id : resource}`, spec, resource);
 	found && externalPanels.declare(found);
-}), on("onResourceStop", (resource) => externalPanels.dropFrom(resource));
+});
 // resource/server/admin/keybinds.ts
 const FILE = "keybinds", NAME = /^[\w.-]{1,64}$/, KEYBOARD = new Set([
 	..."ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
@@ -20322,54 +20379,46 @@ gate.add("ai-core:fivem", "ai-core", (source) => identify(source) ? null : Local
 }), conflicts.schedule(5e3), on("onServerResourceStart", () => conflicts.schedule(1e3)), on("onResourceStop", (resource) => {
 	gate.dropResource(resource), conflicts.dropFrom(resource), conflicts.schedule(1e3);
 }), registerExport("AddConnectionCheck", (id, check) => {
-	typeof id == "string" && id && typeof check == "function" && gate.add(id, GetInvokingResource() ?? "?", check);
+	typeof id == "string" && id && typeof check == "function" && gate.add(id, caller(), check);
 }), registerExport("RegisterReplacement", (remove, keep) => {
-	let names = (Array.isArray(remove) ? remove : [remove]).filter((n) => typeof n == "string" && n !== ""), caller = GetInvokingResource(), owner = typeof keep == "string" && keep ? keep : caller;
-	owner && names.length > 0 && conflicts.declare(owner, names, caller ?? owner);
+	let names = (Array.isArray(remove) ? remove : [remove]).filter((n) => typeof n == "string" && n !== ""), from = caller(), owner = typeof keep == "string" && keep ? keep : from;
+	names.length > 0 && conflicts.declare(owner, names, from);
 }), registerExport("GetConflicts", () => conflicts.list().map((c) => ({ ...c })));
 // resource/server/buckets/pool.ts
 const buckets = new class {
 	next = 1e3;
 	free = [];
-	leases = new Map();
-	byOwner = new Map();
+	leases;
+	constructor(onDropped) {
+		this.leases = new ByResource({ onDrop: (owner, id, tag) => {
+			this.free.push(id), onDropped?.(owner, id, tag);
+		} });
+	}
 	acquire(owner, tag) {
 		let id = this.free.pop() ?? this.next++;
-		this.leases.set(id, {
-			owner,
-			tag
-		});
-		let set = this.byOwner.get(owner);
-		return set || this.byOwner.set(owner, set = new Set()), set.add(id), id;
+		return this.leases.set(id, tag, owner), id;
 	}
 	release(owner, id) {
-		if (this.leases.get(id)?.owner !== owner) return !1;
-		this.leases.delete(id);
-		let set = this.byOwner.get(owner);
-		return set?.delete(id), set?.size === 0 && this.byOwner.delete(owner), this.free.push(id), !0;
+		return this.leases.ownerOf(id) === owner && (this.leases.delete(id), this.free.push(id), !0);
 	}
 	releaseOwner(owner) {
-		let ids = [...this.byOwner.get(owner) ?? []];
-		for (let id of ids) this.release(owner, id);
-		return ids;
+		this.leases.dropResource(owner);
 	}
 	tagOf(id) {
-		return this.leases.get(id)?.tag;
+		return this.leases.get(id);
 	}
 	get size() {
 		return this.leases.size;
 	}
-}();
+}((owner, id, tag) => {
+	owner !== CORE.resource && log$3.info(`${owner} stopped: routing bucket ${id} (${tag}) free again`);
+});
 function acquireBucket(owner, tag) {
 	let id = buckets.acquire(owner, tag);
 	return SetRoutingBucketPopulationEnabled(id, !1), SetRoutingBucketEntityLockdownMode(id, "strict"), id;
 }
-const tagOf = (v) => typeof v == "string" && v ? v.slice(0, 64) : "unnamed", caller = () => GetInvokingResource() || CORE.resource;
-registerExport("AcquireBucket", (tag) => acquireBucket(caller(), tagOf(tag))), registerExport("ReleaseBucket", (id) => typeof id == "number" && buckets.release(caller(), id)), on("onResourceStop", (resource) => {
-	if (resource === CORE.resource) return;
-	let ids = buckets.releaseOwner(resource);
-	ids.length > 0 && log$3.info(`${resource} stopped: ${ids.length} routing buckets free again`);
-});
+const tagOf = (v) => typeof v == "string" && v ? v.slice(0, 64) : "unnamed";
+registerExport("AcquireBucket", (tag) => acquireBucket(caller(), tagOf(tag))), registerExport("ReleaseBucket", (id) => typeof id == "number" && buckets.release(caller(), id));
 const select = new class {
 	held = new Map();
 	enter(source) {
@@ -21020,7 +21069,7 @@ function transferMoney(from, to, amount, reason, fee = 0) {
 	return !a || !b || a.key === b.key || !a.change(-(amount + fee), reason) ? !1 : b.change(amount, reason) ? !0 : (a.change(amount + fee, `${reason}:refund`), !1);
 }
 // resource/server/exports.ts
-const positive = (amount) => typeof amount == "number" && Number.isSafeInteger(amount) && amount > 0, reasonOf = (reason) => typeof reason == "string" && reason ? reason : GetInvokingResource() || "unknown";
+const positive = (amount) => typeof amount == "number" && Number.isSafeInteger(amount) && amount > 0, reasonOf = (reason) => typeof reason == "string" && reason ? reason : caller();
 registerExport("GetPlayerData", (src) => players.get(src)?.snapshot() ?? null), registerExport("GetCharacter", (src) => players.get(src)?.info() ?? null), registerExport("GetSourceByCharId", (charId) => players.byCharacter(charId)?.source ?? null), registerExport("GetSourceByCitizenId", (citizenid) => players.byCitizen(citizenid)?.source ?? null), registerExport("GetLoadedSources", () => [...players.all()].map((player) => player.source)), registerExport("GetFivemId", (src) => players.get(src)?.user.fivem ?? null), registerExport("GetMoney", (src, account) => players.get(src)?.wallet.get(account) ?? null), registerExport("AddMoney", (src, account, amount, reason) => positive(amount) ? players.get(src)?.wallet.change(account, amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("RemoveMoney", (src, account, amount, reason) => positive(amount) ? players.get(src)?.wallet.change(account, -amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("SetMoney", (src, account, amount, reason) => players.get(src)?.wallet.set(account, amount, reasonOf(reason)).ok ?? !1), registerExport("GetJobs", (src) => players.get(src)?.jobs.all() ?? null), registerExport("GetCurrentJob", (src) => players.get(src)?.jobs.current() ?? null), registerExport("GetDutyJob", (src) => players.get(src)?.jobs.onDuty() ?? null), registerExport("SetDuty", (src, job) => players.get(src)?.jobs.setDuty(job).ok ?? !1), registerExport("SetJob", (src, job, grade) => players.get(src)?.jobs.set(job, grade).ok ?? !1), registerExport("RemoveJob", (src, job) => players.get(src)?.jobs.remove(job).ok ?? !1), registerExport("GetOnDutyCount", (job) => dutyCount(job)), registerExport("GetGangs", (src) => players.get(src)?.gangs.all() ?? null), registerExport("GetActiveGang", (src) => players.get(src)?.gangs.activeGang() ?? null), registerExport("SetGang", (src, gang, grade) => players.get(src)?.gangs.set(gang, grade).ok ?? !1), registerExport("RemoveGang", (src, gang) => players.get(src)?.gangs.remove(gang).ok ?? !1), registerExport("SetActiveGang", (src, gang) => players.get(src)?.gangs.setActive(gang).ok ?? !1), registerExport("GetMeta", (src, key) => players.get(src)?.getMeta(key) ?? null), registerExport("SetMeta", (src, key, value) => {
 	let player = players.get(src);
 	return !player || typeof key != "string" ? !1 : (player.setMeta(key, value), !0);
@@ -21036,14 +21085,18 @@ const activeKeys = new GlobalKey("ai:vehicleKeys", stateString), layer$1 = new A
 });
 panel.onChange("settings", () => layer$1.setChoice(settings.vehicleKeys));
 function target(vehicle) {
-	return typeof vehicle == "string" ? vehicle.trim() ? {
-		vehicle: null,
-		netId: null,
-		plate: vehicle.trim()
-	} : null : typeof vehicle != "number" || !DoesEntityExist(vehicle) ? null : {
+	if (typeof vehicle == "string") {
+		let plate = normalizePlate(vehicle);
+		return plate ? {
+			vehicle: null,
+			netId: null,
+			plate
+		} : null;
+	}
+	return typeof vehicle != "number" || !DoesEntityExist(vehicle) ? null : {
 		vehicle,
 		netId: NetworkGetNetworkIdFromEntity(vehicle),
-		plate: GetVehicleNumberPlateText(vehicle).trim()
+		plate: plateOf(vehicle)
 	};
 }
 registerExport("GiveVehicleKeys", (source, vehicle, purpose) => {

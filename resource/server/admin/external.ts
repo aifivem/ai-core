@@ -1,4 +1,4 @@
-import { registerExport } from "@aicore-fivem/lib/server";
+import { ByResource, caller, registerExport } from "@aicore-fivem/lib/server";
 import { isRecord } from "@aicore-fivem/lib/shared";
 import type { ExternalPanel } from "@aicore-fivem/shared";
 import { panel } from "../content";
@@ -38,15 +38,11 @@ function toPanel(
  * (works for escrowed scripts), and the `RegisterExternalPanel` export (dropped when that resource stops).
  */
 class ExternalPanels {
-  private readonly declared = new Map<string, ExternalPanel>();
+  /** Panels from the export, owned by the registering resource (one per resource as a rule). */
+  private readonly declared = new ByResource<string, ExternalPanel>();
 
   declare(panelSpec: ExternalPanel): void {
-    this.declared.set(panelSpec.id, panelSpec);
-  }
-
-  dropFrom(resource: string): void {
-    for (const [id, p] of this.declared)
-      if (p.resource === resource) this.declared.delete(id);
+    this.declared.set(panelSpec.id, panelSpec, panelSpec.resource);
   }
 
   private fromManifests(): ExternalPanel[] {
@@ -97,11 +93,10 @@ class ExternalPanels {
 export const externalPanels = new ExternalPanels();
 
 registerExport("RegisterExternalPanel", (spec: unknown) => {
-  const resource = GetInvokingResource();
-  if (!resource || !isRecord(spec)) return;
+  const resource = caller();
+  if (!isRecord(spec)) return;
   const id =
     typeof spec.id === "string" && ID.test(spec.id) ? spec.id : resource;
   const found = toPanel(`export:${resource}:${id}`, spec, resource);
   if (found) externalPanels.declare(found);
 });
-on("onResourceStop", (resource: string) => externalPanels.dropFrom(resource));

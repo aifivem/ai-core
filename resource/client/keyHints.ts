@@ -1,4 +1,5 @@
 import {
+  caller,
   cache,
   every,
   onCache,
@@ -33,6 +34,7 @@ export function boundKey(name: string): string {
  * event when the list changes; on foot / in a vehicle comes from the cache, nothing is polled.
  */
 class KeyHints {
+  /** Shown in the order scripts asked (across resources), so a plain Map keyed `<resource>:<id>`, not `ByResource`. */
   private readonly extra = new Map<
     string,
     KeyHintRequest & { resource: string }
@@ -111,9 +113,9 @@ on("onClientResourceStop", (resource: string) => hints.drop(resource));
 registerExport("ShowKeyHint", (id: unknown, hint: unknown) => {
   const request = toRequest(hint);
   if (typeof id === "string" && request)
-    hints.show(GetInvokingResource() ?? "", id, request);
+    hints.show(caller(), id, request);
 });
 registerExport("HideKeyHint", (id: unknown) => {
-  if (typeof id === "string") hints.hide(GetInvokingResource() ?? "", id);
+  if (typeof id === "string") hints.hide(caller(), id);
 });
 registerExport("GetKeyHints", () => hints.current);
