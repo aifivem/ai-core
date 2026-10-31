@@ -58,6 +58,16 @@ export type Tables = {
     grade: number;
     active: boolean;
   };
+  ai_core_bills: {
+    id: number | string;
+    char_id: number;
+    job: string | null;
+    issuer_char_id: number | null;
+    sender: string;
+    label: string;
+    amount: number;
+    created_at: number;
+  };
 };
 
 /** What an INSERT needs: columns with a default, NULL or AUTO_INCREMENT may be left out. */
@@ -117,5 +127,15 @@ export type TableInserts = {
     gang: string;
     grade?: number;
     active?: boolean;
+  };
+  ai_core_bills: {
+    id?: number | string;
+    char_id: number;
+    job?: string | null;
+    issuer_char_id?: number | null;
+    sender?: string;
+    label: string;
+    amount: number;
+    created_at?: number;
   };
 };

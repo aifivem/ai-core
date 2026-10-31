@@ -10,6 +10,12 @@ export interface LedgerEntry {
   actor: string | null;
 }
 
+/** A statement that rides in the money transaction (a paid bill's row). */
+interface Statement {
+  query: string;
+  values: (number | string | null)[];
+}
+
 /** Changes collected this long go out as one transaction (a paycheck for 10k players is one write, not 10k). */
 const FLUSH_MS = 50;
 /** Rows per statement: keeps each statement and its placeholder list a sane size. */
@@ -65,6 +71,7 @@ function ledgerStatements(
  */
 class MoneyWriter {
   private pending: LedgerEntry[] = [];
+  private attached: Statement[] = [];
   private timer: ReturnType<typeof setTimeout> | null = null;
   private chain: Promise<void> = Promise.resolve();
 
@@ -73,18 +80,30 @@ class MoneyWriter {
     this.timer ??= setTimeout(() => this.flush(), FLUSH_MS);
   }
 
+  /**
+   * Adds a statement to the batch now collecting: it commits or rolls back together with the money changes made in
+   * the same tick (a paid bill's delete with its transfer), so the two never drift apart in the DB.
+   */
+  attach(query: string, values: Statement["values"]): void {
+    this.attached.push({ query, values });
+    this.timer ??= setTimeout(() => this.flush(), FLUSH_MS);
+  }
+
   private flush(): void {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
     const batch = this.pending;
-    if (batch.length === 0) return;
+    const attached = this.attached;
+    if (batch.length === 0 && attached.length === 0) return;
     this.pending = [];
+    this.attached = [];
     this.chain = this.chain.then(async () => {
       try {
         // mysql.transaction answers false (no throw) when the transaction rolled back.
         const committed = await mysql.transaction([
           ...balanceStatements(batch),
           ...ledgerStatements(batch),
+          ...attached,
         ]);
         if (!committed) throw new Error("transaction rolled back");
       } catch (error) {

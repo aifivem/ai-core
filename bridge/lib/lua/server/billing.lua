@@ -1,7 +1,8 @@
 ---Bills through ai-core's billing layer (tgiann-phone, okokBilling... else ai-core's own bills), like the TypeScript
 ---lib's `billing`. Texts are already translated.
 ---@class AiLibBill
----@field to integer the player who gets it
+---@field to? integer the player who gets it (or `toCitizenid`)
+---@field toCitizenid? string the character who gets it by citizen id, also offline (stored only by ai-core's own bills)
 ---@field amount integer whole dollars
 ---@field label string what it is for
 ---@field from? integer the issuing player (a bill without `job` pays this player)

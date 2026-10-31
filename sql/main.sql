@@ -77,3 +77,17 @@ CREATE TABLE IF NOT EXISTS `ai_core_character_gangs` (
   `active` TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`char_id`, `gang`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ai-core's own bills (billing/builtin.ts): open bills only; paying one deletes its row in the money transaction.
+CREATE TABLE IF NOT EXISTS `ai_core_bills` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `char_id` INT UNSIGNED NOT NULL,
+  `job` VARCHAR(32) DEFAULT NULL,
+  `issuer_char_id` INT UNSIGNED DEFAULT NULL,
+  `sender` VARCHAR(64) NOT NULL DEFAULT '',
+  `label` VARCHAR(80) NOT NULL,
+  `amount` INT UNSIGNED NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `char_id` (`char_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

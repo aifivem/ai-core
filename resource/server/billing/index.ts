@@ -9,7 +9,7 @@ import { AdapterPicker } from "common/adapters";
 import { jobs, panel, settings } from "../content";
 import { log } from "../log";
 import { players } from "../player/registry";
-import { builtinBilling } from "./builtin";
+import { billOffline, builtinBilling } from "./builtin";
 import { BILLING_SCRIPTS } from "./registry";
 
 /**
@@ -25,26 +25,47 @@ const billing = new AdapterPicker({
 });
 panel.onChange("settings", () => billing.setChoice(settings.billing));
 
-/** The request with the players' citizen ids, the issuer's name and the job's label; null when a player is not loaded or the job does not exist. */
-function resolve(bill: BillRequest): BillSend | null {
-  const to = players.get(bill.to);
+/**
+ * Sends a valid bill; false when the issuer is not loaded, the job does not exist, the recipient is the issuer or the
+ * billing script refused it. A recipient named by citizen id who is offline gets it only from ai-core's own bills
+ * (stored by character id); a billing script needs the player online.
+ */
+export function sendBill(bill: BillRequest): boolean {
   const from = bill.from === undefined ? undefined : players.get(bill.from);
-  if (!to || (bill.from !== undefined && !from)) return null;
   const job = bill.job === undefined ? undefined : jobs.get(bill.job);
-  if (bill.job !== undefined && !job) return null;
-  return {
-    ...bill,
-    toCitizenid: to.citizenid,
+  if (bill.from !== undefined && !from) return false;
+  if (bill.job !== undefined && !job) return false;
+  const known = {
+    amount: bill.amount,
+    label: bill.label,
+    from: bill.from,
+    job: bill.job,
     fromCitizenid: from?.citizenid,
     fromName: from?.fullName,
     jobLabel: job?.label,
   };
-}
-
-/** Sends a valid bill; false when a player is not loaded, the job does not exist or the billing script refused it. */
-export function sendBill(bill: BillRequest): boolean {
-  const send = resolve(bill);
-  return send !== null && billing.call("send", (a) => a.send(send), false);
+  const to =
+    bill.to !== undefined
+      ? players.get(bill.to)
+      : bill.toCitizenid !== undefined
+        ? players.byCitizen(bill.toCitizenid)
+        : undefined;
+  if (to) {
+    if (from === to) return false;
+    const send: BillSend = {
+      ...known,
+      to: to.source,
+      toCitizenid: to.citizenid,
+    };
+    return billing.call("send", (a) => a.send(send), false);
+  }
+  const citizenid = bill.to === undefined ? bill.toCitizenid : undefined;
+  return (
+    citizenid !== undefined &&
+    citizenid !== from?.citizenid &&
+    billing.active === builtinBilling &&
+    billOffline(citizenid, known)
+  );
 }
 
 registerExport("GetBillingSystem", () => billing.active?.resource ?? null);
