@@ -36,3 +36,19 @@ function BridgeShapes.matchGroup(groups, filter)
         if groups[name] and groups[name] >= min then return name, groups[name] end
     end
 end
+
+---@type table<string, table>
+local sharedFiles = {}
+
+--- A data file copied from qbx_core (`shared/vehicles.lua`, `shared/weapons.lua`), loaded once per side.
+---@param name 'vehicles'|'weapons'
+---@return table
+function BridgeShapes.sharedData(name)
+    local data = sharedFiles[name]
+    if data then return data end
+    local chunk, err = load(LoadResourceFile(GetCurrentResourceName(), ('shared/%s.lua'):format(name)) or 'return {}', ('@@ai-core/shared/%s.lua'):format(name))
+    if not chunk then error(err) end
+    data = chunk() or {}
+    sharedFiles[name] = data
+    return data
+end
