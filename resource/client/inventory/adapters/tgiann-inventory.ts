@@ -9,6 +9,10 @@ export const tgiannInventory: InventoryClientAdapter = {
   openInventory: () => void callExport(RESOURCE, "OpenInventory"),
   hasItem: (item, count) =>
     callExport(RESOURCE, "HasItem", item, count) === true,
+  itemCount: (item) => {
+    const have: unknown = callExport(RESOURCE, "GetItemCount", item);
+    return typeof have === "number" ? have : 0;
+  },
   // `GetCurrentWeapon` answers two values (the held weapon item, the drop copy): the first is the item.
   currentWeapon: () => {
     const held: unknown = callExport(RESOURCE, "GetCurrentWeapon");

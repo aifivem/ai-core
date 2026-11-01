@@ -4,13 +4,16 @@ import { toHeldWeapon } from "../heldWeapon";
 
 /** ox_inventory 2.48.1 (client.lua, modules/inventory/client.lua): `openInventory()` without a type opens the player's own. */
 const RESOURCE = "ox_inventory";
+const countOf = (item: string): number => {
+  const have: unknown = callExport(RESOURCE, "GetItemCount", item);
+  return typeof have === "number" ? have : 0;
+};
+
 export const oxInventory: InventoryClientAdapter = {
   resource: RESOURCE,
   openInventory: () => void callExport(RESOURCE, "openInventory"),
-  hasItem: (item, count) => {
-    const have: unknown = callExport(RESOURCE, "GetItemCount", item);
-    return typeof have === "number" && have >= count;
-  },
+  hasItem: (item, count) => countOf(item) >= count,
+  itemCount: (item) => countOf(item),
   currentWeapon: () =>
     toHeldWeapon(
       callExport(RESOURCE, "getCurrentWeapon"),

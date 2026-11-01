@@ -7,12 +7,14 @@ import { isRecord } from "@aicore-fivem/lib/shared";
 import {
   CORE,
   INVENTORY_STATE_KEY,
+  ITEM_DEFINITIONS_CHANGED_EVENT,
   type InventoryRef,
   type ShopProduct,
   type UsableItemHandler,
 } from "@aicore-fivem/shared";
 import { panel, settings } from "../content";
 import { log } from "../log";
+import { ClientItemDefinitions } from "./clientDefinitions";
 import { InventoryLayer } from "./layer";
 import { INVENTORIES } from "./registry";
 
@@ -23,6 +25,10 @@ import { INVENTORIES } from "./registry";
 
 const activeInventory = new GlobalKey(INVENTORY_STATE_KEY, stateString);
 
+const clientDefinitions = new ClientItemDefinitions(() =>
+  inventory.call("GetItemDefinitions", (a) => a.getItemDefinitions(), null),
+);
+
 export const inventory = new InventoryLayer(
   INVENTORIES,
   settings.inventory,
@@ -30,9 +36,12 @@ export const inventory = new InventoryLayer(
   (resource) => {
     activeInventory.set(resource ?? undefined);
     emit(CORE.inventoryChangedEvent, resource);
+    // The first pick runs inside the constructor: read the definitions once `inventory` exists.
+    if (resource) queueMicrotask(() => clientDefinitions.refresh());
   },
 );
 panel.onChange("settings", () => inventory.setChoice(settings.inventory));
+on(ITEM_DEFINITIONS_CHANGED_EVENT, () => clientDefinitions.refresh());
 
 const ref = (v: unknown): InventoryRef | null =>
   typeof v === "number" || (typeof v === "string" && v !== "") ? v : null;
@@ -236,3 +245,35 @@ registerExport(
   "IsUsableItem",
   (item: unknown) => typeof item === "string" && inventory.isUsable(item),
 );
+registerExport("GetUsableItems", () => inventory.usableNames());
+registerExport(
+  "SetItemMetadata",
+  (inv: unknown, at: unknown, metadata: unknown) => {
+    const [r, s] = [ref(inv), slot(at)];
+    return (
+      r !== null &&
+      s !== undefined &&
+      isRecord(metadata) &&
+      inventory.call(
+        "SetItemMetadata",
+        (a) => a.setMetadata(r, s, { ...metadata }),
+        false,
+      )
+    );
+  },
+);
+registerExport("SetMaxWeight", (source: unknown, grams: unknown) => {
+  if (
+    typeof source !== "number" ||
+    typeof grams !== "number" ||
+    !Number.isFinite(grams) ||
+    grams < 0
+  )
+    return false;
+  const limit = Math.floor(grams);
+  return inventory.call(
+    "SetMaxWeight",
+    (a) => a.setMaxWeight(source, limit),
+    false,
+  );
+});

@@ -16,6 +16,8 @@ import {
  * keyed by slot; `AddItem` / `RemoveItem` take `(inv, item, amount, slot, info)` and accept a stash name as `inv`.
  * Usable items: tgiann-inventory calls the framework (`ESX.UseItem` / QB `CanUseItem`), which ai-core's bridge answers.
  * Shops: `RegisterShop(name, products, { label })` (products `{ name, price, type }`), `OpenShop(src, name)`.
+ * `SetMetadata(inv, slot, metadata)` and `SetMaxWeight(inv, weight)` answer nothing; a player's slot is checked first
+ * (`GetItemBySlot`), a stash's is not (no single-slot reader for one).
  */
 
 const RESOURCE = "tgiann-inventory";
@@ -85,6 +87,16 @@ export const tgiannInventory: InventoryAdapter = {
       maxWeight: data.maxWeight,
     };
   },
+  setMetadata: (ref, slot, metadata) => {
+    if (
+      typeof ref === "number" &&
+      !isRecord(first(call("GetItemBySlot", ref, slot)))
+    )
+      return false;
+    call("SetMetadata", ref, slot, metadata);
+    return true;
+  },
+  setMaxWeight: (source, grams) => (call("SetMaxWeight", source, grams), true),
   registerShop: (shop) =>
     void call(
       "RegisterShop",

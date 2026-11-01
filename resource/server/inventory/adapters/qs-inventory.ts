@@ -22,7 +22,8 @@ import {
  * registers a stash: its `RegisterStash(source, id, slots, weight, label)` opens it for that player, so the definitions
  * are kept here and used when one opens. Another player's inventory opens through the `qb-inventory` export names it
  * answers (`OpenInventoryById`). Usable items: qs-inventory registers its own with the framework, ai-core's bridge
- * answers framework item use.
+ * answers framework item use. Metadata: `SetItemMetadata(source, slot, metadata)` (its docs; players only, answers
+ * nothing); no export for a weight limit.
  */
 
 const RESOURCE = "qs-inventory";
@@ -109,4 +110,8 @@ export const qsInventory: InventoryAdapter = {
     return isRecord(list) ? definition(list[name], name, qsImage) : null;
   },
   getItemDefinitions: () => definitions(call("GetItemList"), qsImage),
+  setMetadata: (ref, slot, metadata) =>
+    typeof ref === "number" &&
+    (call("SetItemMetadata", ref, slot, metadata), true),
+  setMaxWeight: () => false,
 };

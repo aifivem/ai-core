@@ -9,6 +9,7 @@ export const aiInventory: InventoryClientAdapter = {
   resource: "ai-inventory",
   openInventory: () => inv.OpenSelf(),
   hasItem: (item, count) => inv.HasItem(item, count) === true,
+  itemCount: (item) => Number(inv.GetItemCount(item)) || 0,
   currentWeapon: () =>
     toHeldWeapon(callExport("ox_inventory", "getCurrentWeapon")),
 };

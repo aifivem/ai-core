@@ -15,6 +15,7 @@ import { oxInventory } from "./adapters/ox_inventory";
 import { qbInventory } from "./adapters/qb-inventory";
 import { qsInventory } from "./adapters/qs-inventory";
 import { tgiannInventory } from "./adapters/tgiann-inventory";
+import "./definitions";
 
 /** The client half of the inventory layer: follows the inventory the server picked (GlobalState). */
 const inventory = new AdapterFollower(
@@ -46,6 +47,11 @@ registerExport(
         a.hasItem(item, typeof count === "number" && count > 0 ? count : 1),
       false,
     ),
+);
+registerExport("GetItemCount", (item: unknown) =>
+  typeof item === "string"
+    ? inventory.call("itemCount", (a) => a.itemCount(item), null)
+    : null,
 );
 registerExport("GetCurrentWeapon", () =>
   inventory.call("currentWeapon", (a) => a.currentWeapon(), null),

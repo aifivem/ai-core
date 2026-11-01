@@ -21,7 +21,8 @@ const oxImage: ImageOf = (name, image) =>
  * `RemoveItem` answer `success, response`. Usable items: ox_inventory calls the framework (`ESX.UseItem`,
  * Qbox `CanUseItem`), which ai-core's bridge answers. Shops (modules/shops/server.lua): `RegisterShop(type, { name,
  * inventory })` without locations; its server cannot force a shop open, its client net event
- * `ox_inventory:openInventory ('shop', { type })` opens one.
+ * `ox_inventory:openInventory ('shop', { type })` opens one. `SetMetadata(inv, slot, metadata)` and
+ * `SetMaxWeight(inv, weight)` answer nothing: the slot and the inventory are checked first (`GetSlot`, `GetInventory`).
  */
 
 const RESOURCE = "ox_inventory";
@@ -75,6 +76,16 @@ export const oxInventory: InventoryAdapter = {
       typeof inv.maxWeight === "number"
       ? { weight: inv.weight, maxWeight: inv.maxWeight }
       : null;
+  },
+  setMetadata: (ref, slot, metadata) => {
+    if (first(call("GetSlot", ref, slot)) == null) return false;
+    call("SetMetadata", ref, slot, metadata);
+    return true;
+  },
+  setMaxWeight: (source, grams) => {
+    if (!isRecord(first(call("GetInventory", source)))) return false;
+    call("SetMaxWeight", source, grams);
+    return true;
   },
   registerShop: (shop) =>
     void call("RegisterShop", shop.name, {

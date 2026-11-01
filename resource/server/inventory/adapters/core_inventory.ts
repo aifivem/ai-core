@@ -13,6 +13,8 @@ import { definition, definitions, isTrue, number, stack } from "../parse";
  * `stash-<name>` of core_inventory's `stash` type, whose slots and size come from its own `Config.Inventories` (the
  * stash definition's `slots` / `maxWeight` / `jobs` are not used); it is created when first opened or filled.
  * `removeItem` takes neither metadata nor a slot. Usable items: the framework's, which ai-core's bridge answers.
+ * `setMetadata(inventory, slot, metadata)` answers nothing; its docs list no export for a weight limit
+ * (`updateInventorySize` changes slots and rows only).
  */
 
 const RESOURCE = "core_inventory";
@@ -71,4 +73,8 @@ export const coreInventory: InventoryAdapter = {
     return isRecord(list) ? definition(list[name], name) : null;
   },
   getItemDefinitions: () => definitions(call("getItemsList")),
+  setMetadata: (ref, slot, metadata) => (
+    call("setMetadata", inv(ref), slot, metadata), true
+  ),
+  setMaxWeight: () => false,
 };

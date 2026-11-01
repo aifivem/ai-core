@@ -1,13 +1,14 @@
 import { callExport } from "@aicore-fivem/lib/server";
 import { isRecord } from "@aicore-fivem/lib/shared";
 import type { InventoryAdapter, InventoryRef } from "@aicore-fivem/shared";
-import { isTrue, number, rows, stack } from "../parse";
+import { first, isTrue, number, rows, stack } from "../parse";
 
 /**
  * qb-inventory (server/functions.lua of 2.2.3). Player items live in qb-core's `PlayerData.items`; other inventories
  * are read with `GetInventory(id)`. Item definitions come from qb-core's shared items, which ai-core does not keep,
  * so this adapter answers none (docs/compat/inventory.md). Usable items: qb-inventory calls QB `CanUseItem`, which
- * ai-core's bridge answers.
+ * ai-core's bridge answers. Metadata: `SetItemData(source, item, "info", metadata, slot)` with the item name from
+ * `GetItemBySlot`, players only (no stash export); qb-inventory has no export for a player's weight limit.
  */
 
 const RESOURCE = "qb-inventory";
@@ -64,4 +65,14 @@ export const qbInventory: InventoryAdapter = {
   },
   getItemDefinition: () => null,
   getItemDefinitions: () => ({}),
+  setMetadata: (ref, slot, metadata) => {
+    if (typeof ref !== "number") return false;
+    const item = first(call("GetItemBySlot", ref, slot));
+    return (
+      isRecord(item) &&
+      typeof item.name === "string" &&
+      isTrue(call("SetItemData", ref, item.name, "info", metadata, slot))
+    );
+  },
+  setMaxWeight: () => false,
 };

@@ -99,6 +99,11 @@ export class InventoryLayer {
     return this.usable.has(name);
   }
 
+  /** Names of every item with a registered handler. */
+  usableNames(): string[] {
+    return [...this.usable.keys()];
+  }
+
   /** Runs an item's handler; false (keep the item) when none is registered or it throws (its resource stopped). */
   useItem(source: number, name: string, item: unknown): unknown {
     const handler = this.usable.get(name);

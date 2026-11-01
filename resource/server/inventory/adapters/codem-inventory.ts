@@ -17,6 +17,8 @@ import {
  * Player calls take the source; stashes are read with `GetStashItems(id)` and written whole with `UpdateStash`.
  * codem-inventory has no server export to add to or remove from a stash, register one, open one for a player or check
  * carry weight (its `AddItem` checks weight itself). Usable items: the framework's, which ai-core's bridge answers.
+ * Metadata: `SetItemMetadata(source, slot, metadata)` (read from bl_bridge and community_bridge; players only,
+ * answers nothing); no export for a weight limit.
  */
 
 const RESOURCE = "codem-inventory";
@@ -64,4 +66,8 @@ export const codemInventory: InventoryAdapter = {
     return isRecord(list) ? definition(list[name], name, codemImage) : null;
   },
   getItemDefinitions: () => definitions(call("GetItemList"), codemImage),
+  setMetadata: (ref, slot, metadata) =>
+    typeof ref === "number" &&
+    (call("SetItemMetadata", ref, slot, metadata), true),
+  setMaxWeight: () => false,
 };

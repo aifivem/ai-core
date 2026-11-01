@@ -7,7 +7,8 @@ import { definition, definitions, isTrue, number, rows, stack } from "../parse";
  * 0.5.3, prp-bridge 1.1.5, codem-lib, p_bridge 1.2.5; no version published). ox_inventory-like exports that take a
  * player source or a stash id. It has no server export that opens an inventory for a player (only its client
  * `openInventory`) and none that clears one, so a clear removes every stack. Usable items: the framework's, which
- * ai-core's bridge answers.
+ * ai-core's bridge answers. Metadata: `setMetadata(source, slot, metadata)` (bl_bridge, community_bridge; players
+ * only, answers nothing); no export for a weight limit is known.
  */
 
 const RESOURCE = "origen_inventory";
@@ -47,4 +48,8 @@ export const origenInventory: InventoryAdapter = {
   openInventory: () => false,
   getItemDefinition: (name) => definition(call("Items", name), name),
   getItemDefinitions: () => definitions(call("Items")),
+  setMetadata: (ref, slot, metadata) =>
+    typeof ref === "number" &&
+    (call("setMetadata", ref, slot, metadata), true),
+  setMaxWeight: () => false,
 };

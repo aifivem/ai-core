@@ -6,12 +6,15 @@ import { callExport } from "@aicore-fivem/lib/client";
  * known that opens the player's own inventory or gives the held weapon.
  */
 const RESOURCE = "origen_inventory";
+const countOf = (item: string): number => {
+  const have: unknown = callExport(RESOURCE, "Search", "count", item);
+  return typeof have === "number" ? have : 0;
+};
+
 export const origenInventory: InventoryClientAdapter = {
   resource: RESOURCE,
   openInventory: () => undefined,
-  hasItem: (item, count) => {
-    const have: unknown = callExport(RESOURCE, "Search", "count", item);
-    return typeof have === "number" && have >= count;
-  },
+  hasItem: (item, count) => countOf(item) >= count,
+  itemCount: (item) => countOf(item),
   currentWeapon: () => null,
 };

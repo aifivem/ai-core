@@ -12,10 +12,12 @@ import {
 } from "@aicore-fivem/lib/shared";
 import { CORE, VEHICLE_BAGS } from "@aicore-fivem/shared";
 
-/** Lib `spawnVehicle` of any resource asks here which `CreateVehicleServerSetter` type a model is (null: no such vehicle). */
+/** Lib `spawnVehicle` of any resource asks here which `CreateVehicleServerSetter` type a model (name or hash) is (null: no such vehicle). */
 onServerCallback(CORE.vehicleTypeCallback, (model) => {
-  if (typeof model !== "string") return null;
-  const hash = GetHashKey(model);
+  let hash: number;
+  if (typeof model === "string") hash = GetHashKey(model);
+  else if (Number.isInteger(model)) hash = (model as number) | 0;
+  else return null;
   return IsModelInCdimage(hash) && IsModelAVehicle(hash)
     ? vehicleTypeOfClass(GetVehicleClassFromName(hash))
     : null;

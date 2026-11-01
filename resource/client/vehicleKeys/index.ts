@@ -29,6 +29,7 @@ import { pCarkeys } from "./adapters/p_carkeys";
 import { qsVehicleKeys } from "./adapters/qs-vehiclekeys";
 import { rdVehicleKeys } from "./adapters/rd_vehiclekeys";
 import { t1gerKeys } from "./adapters/t1ger_keys";
+import "./has";
 
 /** Key systems with only a client API, one adapter file each (server list: `server/vehicleKeys/registry.ts`). */
 const ADAPTERS: readonly VehicleKeysClientAdapter[] = [

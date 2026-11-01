@@ -1,6 +1,10 @@
 import { resourceExport } from "@aicore-fivem/lib/server";
 import { isRecord } from "@aicore-fivem/lib/shared";
-import { CORE, type InventoryAdapter } from "@aicore-fivem/shared";
+import {
+  CORE,
+  ITEM_DEFINITIONS_CHANGED_EVENT,
+  type InventoryAdapter,
+} from "@aicore-fivem/shared";
 import { definition, definitions, stack, type ImageOf } from "../parse";
 
 /** ai-inventory, the default inventory (own exports, `@aicore-fivem/shared` `AiInventoryServerExports`). */
@@ -46,6 +50,9 @@ export const aiInventory: InventoryAdapter = {
       ? { weight: w.weight, maxWeight: w.maxWeight }
       : null;
   },
+  setMetadata: (ref, slot, metadata) =>
+    inv.SetMetadata(ref, slot, metadata) === true,
+  setMaxWeight: (source, grams) => inv.SetMaxWeight(source, grams) === true,
   registerUsableItem: (name, handler) => inv.RegisterUsableItem(name, handler),
   registerShop: (shop) => inv.RegisterShop(shop.name, shop.label, shop.items),
   openShop: (source, name) => inv.OpenShop(source, name) === true,
@@ -64,3 +71,6 @@ on(
     emit(CORE.itemUsedEvent, source, name, isRecord(status) ? status : null);
   },
 );
+
+// ai-inventory's item list is panel content: a change there reaches the clients' item definitions.
+on("ai-inventory:itemsChanged", () => emit(ITEM_DEFINITIONS_CHANGED_EVENT));

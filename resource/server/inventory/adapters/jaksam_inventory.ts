@@ -7,7 +7,7 @@ import { definition, isTrue, number, rows, stack } from "../parse";
  * jaksam_inventory (jaksam1074; calls read from the bridges that support it: envi-bridge 0.5.3, codem-lib; no version
  * published). Lower-case exports that take a player source or a stash id. Items are defined with `stackable` instead
  * of `unique`. It has no server export that opens an inventory for a player (only its client `openInventory`).
- * Usable items: the framework's, which ai-core's bridge answers.
+ * Usable items: the framework's, which ai-core's bridge answers. No source shows a metadata or weight limit export.
  */
 
 const RESOURCE = "jaksam_inventory";
@@ -57,4 +57,6 @@ export const jaksamInventory: InventoryAdapter = {
       }
     return out;
   },
+  setMetadata: () => false,
+  setMaxWeight: () => false,
 };
