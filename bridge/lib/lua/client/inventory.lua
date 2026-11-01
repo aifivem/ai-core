@@ -16,6 +16,9 @@ return {
     ---An item's `{ name, label, weight, unique, close, description, image? }` from ai-core's client mirror, or nil.
     ---@param name string
     itemDefinition = function(name) return exports['ai-core']:GetItemDefinition(name) end,
+    ---Every item definition of ai-core's client mirror, by name.
+    ---@return table<string, table>
+    itemDefinitions = function() return exports['ai-core']:GetItemDefinitions() or {} end,
     ---Every stack the player holds `{ name, label, count, slot, metadata }`; nil when the active inventory has no
     ---client list (ask your server).
     ---@return table[]?

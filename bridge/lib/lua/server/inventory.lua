@@ -16,6 +16,9 @@ return {
     ---`(source, { name, slot, count, metadata })`; returning false keeps the item.
     registerUsableItem = function(name, handler) return core:RegisterUsableItem(name, handler) end,
     getItemDefinition = function(name) return core:GetItemDefinition(name) end,
+    ---Every item definition of the active inventory, by name.
+    ---@return table<string, table>
+    getItemDefinitions = function() return core:GetItemDefinitions() or {} end,
     ---Replaces the metadata of the stack at `slot`; false when the inventory could not.
     setItemMetadata = function(inv, slot, metadata) return core:SetItemMetadata(inv, slot, metadata) end,
     ---A player's weight limit in grams until the inventory reloads it; false when the inventory has no way.
