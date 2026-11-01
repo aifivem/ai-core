@@ -1,6 +1,7 @@
 import type { InventoryClientAdapter } from "@aicore-fivem/shared";
 import { callExport } from "@aicore-fivem/lib/client";
 import { toHeldWeapon } from "../heldWeapon";
+import { stacksOf } from "../stacks";
 
 /** tgiann-inventory 2.4.1 (client/exports.lua): `OpenInventory()` without a type opens the player's own. */
 const RESOURCE = "tgiann-inventory";
@@ -18,4 +19,7 @@ export const tgiannInventory: InventoryClientAdapter = {
     const held: unknown = callExport(RESOURCE, "GetCurrentWeapon");
     return toHeldWeapon(Array.isArray(held) ? held[0] : held);
   },
+  // `GetPlayerItems()` is its slot-keyed main inventory; `tgiann-inventory:inventoryUpdated` (local) after each change
+  items: () => stacksOf(callExport(RESOURCE, "GetPlayerItems")),
+  onChange: (listener) => on("tgiann-inventory:inventoryUpdated", listener),
 };

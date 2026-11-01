@@ -110,7 +110,7 @@ end
 ---@field vehicleType fun(model: string|integer, asker: integer): string?, integer server: the spawn type a player's client gives (kept once two players agree; waits) and the model hash
 ---@field playersNear fun(source: integer, radius: number): integer[] server
 ---@field playersNearCoords fun(coords: vector3, radius: number, bucket?: integer): integer[] server: loaded players near a point (walks every loaded player)
----@field inventory table client `openInventory`, `hasItem`, `currentWeapon`, `itemCount`, `itemDefinition`; server the item calls through ai-core (and `registerShop`, `openShop`, `setItemMetadata`, `setMaxWeight`, `usableItems`)
+---@field inventory table client `openInventory`, `hasItem`, `currentWeapon`, `itemCount`, `itemDefinition`, `items`, `onCount`; server the item calls through ai-core (and `registerShop`, `openShop`, `setItemMetadata`, `setMaxWeight`, `usableItems`)
 ---@field vehicleKeys table server `give(source, vehicle, purpose?)`, `remove(source, vehicle)`, `has(source, vehicle)`; client `has(vehicle)` (entity or plate)
 ---@field phone table server
 ---@field dispatch { alert: (fun(alert: AiLibDispatchAlert): boolean) } server: police alerts through ai-core's alert system

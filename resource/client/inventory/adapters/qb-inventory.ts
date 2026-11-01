@@ -12,4 +12,6 @@ export const qbInventory: InventoryClientAdapter = {
   itemCount: () => null,
   // No client export for the held weapon item.
   currentWeapon: () => null,
+  // No client export lists the items (qb-core's PlayerData.items holds them).
+  items: () => null,
 };

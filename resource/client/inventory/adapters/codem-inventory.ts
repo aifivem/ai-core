@@ -1,6 +1,7 @@
 import type { InventoryClientAdapter } from "@aicore-fivem/shared";
 import { callExport } from "@aicore-fivem/lib/client";
 import { isRecord } from "@aicore-fivem/lib/shared";
+import { stacksOf } from "../stacks";
 
 /**
  * codem-inventory (codem.gitbook.io mInventory Remake "Client Exports"): only `GetItemList` and `getUserInventory`
@@ -24,4 +25,6 @@ export const codemInventory: InventoryClientAdapter = {
   hasItem: (item, count) => countOf(item) >= count,
   itemCount: (item) => countOf(item),
   currentWeapon: () => null,
+  // No change event is known: item count events stay silent with it
+  items: () => stacksOf(callExport(RESOURCE, "getUserInventory")),
 };

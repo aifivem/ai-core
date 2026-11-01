@@ -20,4 +20,6 @@ export const qsInventory: InventoryClientAdapter = {
       callExport(RESOURCE, "GetCurrentWeapon"),
       (name) => `nui://${RESOURCE}/html/images/${name}.png`,
     ),
+  // No client item list export is known.
+  items: () => null,
 };

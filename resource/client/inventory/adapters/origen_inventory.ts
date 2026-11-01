@@ -17,4 +17,6 @@ export const origenInventory: InventoryClientAdapter = {
   hasItem: (item, count) => countOf(item) >= count,
   itemCount: (item) => countOf(item),
   currentWeapon: () => null,
+  // No client item list export is known.
+  items: () => null,
 };

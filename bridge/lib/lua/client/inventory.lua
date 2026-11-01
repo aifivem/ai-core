@@ -16,4 +16,15 @@ return {
     ---An item's `{ name, label, weight, unique, close, description, image? }` from ai-core's client mirror, or nil.
     ---@param name string
     itemDefinition = function(name) return exports['ai-core']:GetItemDefinition(name) end,
+    ---Every stack the player holds `{ name, label, count, slot, metadata }`; nil when the active inventory has no
+    ---client list (ask your server).
+    ---@return table[]?
+    items = function() return exports['ai-core']:GetItems() end,
+    ---Runs `handler(item, count, previous)` each time the player's total of an item changes in the active inventory.
+    ---@param handler fun(item: string, count: integer, previous: integer)
+    onCount = function(handler)
+        AddEventHandler('ai-core:client:itemCount', function(item, count, previous)
+            if type(item) == 'string' and type(count) == 'number' then handler(item, count, tonumber(previous) or 0) end
+        end)
+    end,
 }

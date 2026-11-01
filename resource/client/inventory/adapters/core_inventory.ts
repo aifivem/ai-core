@@ -14,4 +14,6 @@ export const coreInventory: InventoryClientAdapter = {
     return typeof have === "number" ? have : 0;
   },
   currentWeapon: () => toHeldWeapon(callExport(RESOURCE, "getWeaponEquiped")),
+  // No client item list export is known.
+  items: () => null,
 };
