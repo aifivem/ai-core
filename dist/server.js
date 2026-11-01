@@ -24354,7 +24354,7 @@ const projection = new class {
 	settled = !1;
 	booting = !0;
 	owned = new Set();
-	chain = Promise.resolve();
+	chain = databaseReady.catch(() => void 0);
 	scheduled = !1;
 	dirty = new Set();
 	gone = new Set();

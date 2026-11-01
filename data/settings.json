@@ -211,5 +211,8 @@
   "doorlock": "auto",
   "garages": "auto",
   "notify": "ai-lib",
-  "bankAccounts": "core"
+  "bankAccounts": "core",
+  "characterScreen": "auto",
+  "frameworkTables": "auto",
+  "characterScreenActive": "ai-core"
 }

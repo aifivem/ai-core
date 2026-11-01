@@ -701,6 +701,34 @@
         "time",
         "spots"
       ]
+    },
+    "characterScreen": {
+      "description": "Who shows the character screen: Automatic uses an installed character script while it runs, else ai-core's. A picked script that is not running leaves ai-core's screen on, so players can always join.",
+      "enum": [
+        "auto",
+        "ai-core",
+        "tgiann-multichar",
+        "qb-multicharacter",
+        "esx_multicharacter",
+        "0r-multicharacterv3",
+        "0r-multicharacterv2",
+        "0r-multicharacter",
+        "um-multicharacter"
+      ]
+    },
+    "frameworkTables": {
+      "description": "ESX and QB character tables: Character scripts read the players, users, jobs and job_grades tables of ESX and QB. ai-core fills them with the characters of connected players; deleting a character there deletes it in ai-core too. Automatic makes them only while another character screen runs. Tables of the same name that ai-core did not make are never touched.",
+      "enum": [
+        "auto",
+        "on",
+        "off"
+      ]
+    },
+    "characterScreenActive": {
+      "description": "Showing now: The character screen players see right now.",
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 64
     }
   },
   "required": [

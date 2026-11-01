@@ -45,7 +45,8 @@ class Projection {
   private settled = false;
   private booting = true;
   private owned = new Set<ProjectionTable>();
-  private chain: Promise<void> = Promise.resolve();
+  /** Starts after the tables exist (the screen picker switches before `createDatabaseTables` is done). */
+  private chain: Promise<void> = databaseReady.catch(() => undefined);
   private scheduled = false;
   private readonly dirty = new Set<number>();
   private readonly gone = new Set<number>();
