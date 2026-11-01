@@ -31,6 +31,7 @@ import "./garages";
 import "./setup";
 import "./spawnChoice";
 import { openCharacters } from "./characters";
+import { externalScreen } from "./multichar";
 import { announceUnloaded } from "./playerState";
 
 // Stacking among NUI pages (`NUI_LAYER`): set at start, not left to load order.
@@ -38,9 +39,10 @@ SetNuiZindex(NUI_LAYER.screen);
 
 const log = createLogger("ai-core");
 
-/** No spawnmanager: ai-core takes the player from the loading screen to the character screen itself. */
+/** No spawnmanager: ai-core takes the player from the loading screen to the character screen itself, unless an external one runs. */
 async function boot(): Promise<void> {
   await waitFor(() => NetworkIsSessionStarted() || undefined, false);
+  if (externalScreen()) return;
   await openCharacters();
 }
 

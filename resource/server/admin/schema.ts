@@ -17,6 +17,11 @@ import {
   recommendationsCard,
 } from "../recommendations/schema";
 import { VRP_FILE, VRP_TAB } from "../vrp/schema";
+import {
+  CHARACTER_SCREEN_DEFAULTS,
+  CHARACTER_SCREEN_SECTIONS,
+  characterScreenCard,
+} from "../multichar/schema";
 
 /** ai-core's own panel: server settings, spawn points, character screen scene, job rules, jobs, gangs and money accounts (`data/*.json`). */
 
@@ -196,9 +201,11 @@ export function coreSchema(
             },
           },
           characterScene: sceneSection,
+          ...CHARACTER_SCREEN_SECTIONS,
         },
         defaults: {
           characterScene: DEFAULT_SCENE,
+          ...CHARACTER_SCREEN_DEFAULTS,
           primeTime: DEFAULT_PRIME_TIME,
           inventory: "auto",
           vehicleKeys: "auto",
@@ -396,6 +403,7 @@ export function coreSchema(
               },
             ],
           },
+          characterScreenCard,
           {
             icon: "floppy-disk",
             title: "ADMIN_C_SAVING",

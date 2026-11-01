@@ -89,6 +89,15 @@ function closeCharacters(): void {
   SendNUIMessage({ action: NuiMessage.closeCharacters });
 }
 
+/** An external character screen took over: ai-core's goes away without a spawn (its scene, NUI and HUD reason). */
+export function dropCharacters(): void {
+  if (!screen) return;
+  closeCharacters();
+  scene.leave();
+  hudHidden.set(SCREEN_HUD_REASON, false, CORE.resource);
+  screen = null;
+}
+
 type NuiReply = (value: unknown) => void;
 
 RegisterNuiCallback(NuiCallback.ready, (_data: unknown, cb: NuiReply) =>

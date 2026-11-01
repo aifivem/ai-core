@@ -11,6 +11,7 @@ import "./logs/coreEvents";
 import "./clientErrors";
 import "./connection";
 import "./player/session";
+import "./multichar/login";
 import "./player/deaths";
 import "./player/offlinePosition";
 import "./persistence";
