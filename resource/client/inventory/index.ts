@@ -5,7 +5,7 @@ import {
 } from "@aicore-fivem/lib/client";
 import { createLogger } from "@aicore-fivem/lib/shared";
 import { INVENTORY_STATE_KEY } from "@aicore-fivem/shared";
-import { AdapterFollower } from "common/adapters";
+import { AdapterFollower } from "common/adapterFollower";
 import { aiInventory } from "./adapters/ai-inventory";
 import { codemInventory } from "./adapters/codem-inventory";
 import { coreInventory } from "./adapters/core_inventory";

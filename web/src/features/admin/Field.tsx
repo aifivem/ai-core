@@ -3,14 +3,20 @@ import { useEditor } from "./context";
 import { FieldShell } from "./FieldShell";
 import { getAt } from "./path";
 import { ActionW } from "./widgets/ActionW";
-import { NumberW, SelectW, SwitchW, TextW } from "./widgets/basic";
+import { NumberW } from "./widgets/NumberW";
+import { SelectW } from "./widgets/SelectW";
+import { SwitchW } from "./widgets/SwitchW";
+import { TextW } from "./widgets/TextW";
 import { BlipW } from "./widgets/BlipW";
 import { BrowseW } from "./widgets/BrowseW";
 import { GradeW } from "./widgets/GradeW";
 import { InfoW } from "./widgets/InfoW";
 import { ListW } from "./widgets/ListW";
-import { PointW, TagsW } from "./widgets/more";
-import { ColorW, EntityW, ModelW } from "./widgets/pickers";
+import { PointW } from "./widgets/PointW";
+import { TagsW } from "./widgets/TagsW";
+import { ColorW } from "./widgets/ColorW";
+import { EntityW } from "./widgets/EntityW";
+import { ModelW } from "./widgets/ModelW";
 import { ZoneW } from "./widgets/ZoneW";
 
 /** One schema field: its shell (label, hint, save state) around the widget it names; hidden while `showIf` fails. */

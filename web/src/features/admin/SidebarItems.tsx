@@ -69,3 +69,32 @@ export function NavGroup({
     </div>
   );
 }
+
+/** A section row under the brand (dashboard, Players, Bans): its icon and label, green while its page is open. */
+export function NavButton({
+  icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: IconDefinition;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-current={active ? "page" : undefined}
+      onClick={onClick}
+      className={navRow(active)}
+    >
+      <FontAwesomeIcon
+        icon={icon}
+        className="w-[1.8vh] shrink-0 text-[1.6vh]"
+        aria-hidden
+      />
+      <NavLabel text={label} />
+    </button>
+  );
+}

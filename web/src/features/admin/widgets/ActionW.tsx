@@ -4,7 +4,7 @@ import type { WidgetSpec } from "@aicore-fivem/shared";
 import { Button } from "../../../components/ui/button";
 import { Dialog } from "../../../components/ui/dialog";
 import { useAppSelector } from "../../../store";
-import { fieldId, runAction } from "../actions";
+import { fieldId, runAction } from "../editActions";
 import { useEditor } from "../context";
 import { iconOf } from "../icons";
 

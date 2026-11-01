@@ -136,3 +136,6 @@ export function FormRow({
     </div>
   );
 }
+
+/** A ban reason needs at least three characters. */
+export const reasonOk = (text: string): boolean => text.trim().length >= 3;

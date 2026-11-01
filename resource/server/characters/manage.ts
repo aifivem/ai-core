@@ -10,12 +10,12 @@ import {
 } from "@aicore-fivem/shared";
 import { offline } from "../admin/players/offline";
 import { softDelete, updateInfo } from "../admin/players/repo";
-import { playerWatchers } from "../admin/players/watchers";
+import { charWatchers } from "../admin/players/charWatchers";
 import { coreLog } from "../logs";
 import { players } from "../player/registry";
 import { editCharacter, fail, GONE, OK, toCharId } from "./edit";
 import { findCharacter } from "./repo";
-import { answer } from "./writes";
+import { answer } from "./answer";
 
 type Info = Pick<
   CharacterInfo,
@@ -58,7 +58,7 @@ export function deleteCharacterBy(
     async () => {
       const row = await findCharacter(id);
       if (!row || !(await softDelete(id))) return GONE;
-      playerWatchers.deleted(id);
+      charWatchers.deleted(id);
       emit(CORE.characterDeletedEvent, id, row.userId);
       coreLog("characters", `deleted character #${id} (${who})`, {
         level: "warn",

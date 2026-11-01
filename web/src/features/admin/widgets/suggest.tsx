@@ -6,7 +6,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { Popover } from "../../../components/ui/popover";
 import { Tooltip } from "../../../components/ui/tooltip";
-import { placeNames, type Point } from "../actions";
+import { placeNames, type Point } from "../worldActions";
 import { useEditor } from "../context";
 import { getAt } from "../path";
 

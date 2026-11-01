@@ -1,61 +1,14 @@
+import { Entry, fullKey, ownerKey, VrpCache } from "./cache";
+import type { VrpKind, VrpStoreOptions } from "./data";
+
 /**
  * vRP's key-value data (`ai_core_vrp_data`) in memory: read through, written behind. Values are hex text (the Lua side
  * hex-encodes, so any bytes survive msgpack). Loaded characters' and accounts' keys and every server / global key stay
  * cached; a read for an owner that is not loaded is answered without caching it. Pure: the database is the injected
  * backend (bench `bench/vrpStore.bench.ts` runs it with a stub).
  */
-
-export type VrpKind = "c" | "u" | "s" | "g";
-
-export const isVrpKind = (value: unknown): value is VrpKind =>
-  value === "c" || value === "u" || value === "s" || value === "g";
-
-export interface VrpRow {
-  kind: VrpKind;
-  owner: string;
-  key: string;
-  hex: string;
-}
-
-export interface VrpBackend {
-  /** The stored value as hex, or null when the key is not stored. */
-  read(kind: VrpKind, owner: string, key: string): Promise<string | null>;
-  /** Upserts the rows (the store hands at most `chunk` rows per call). */
-  write(rows: VrpRow[]): Promise<void>;
-}
-
-class Entry {
-  constructor(
-    readonly kind: VrpKind,
-    readonly owner: string,
-    readonly key: string,
-    public hex: string,
-  ) {}
-}
-
-const fullKey = (kind: string, owner: string, key: string): string =>
-  `${kind}\u0000${owner}\u0000${key}`;
-const ownerKey = (kind: string, owner: string): string =>
-  `${kind}\u0000${owner}`;
-
-export interface VrpStoreOptions {
-  backend: VrpBackend;
-  /** Whether the owner of a `c` / `u` key is loaded (its keys stay cached). */
-  isLive: (kind: VrpKind, owner: string) => boolean;
-  /** Called when a write is wanted; the caller runs `flush()` soon (one timer). */
-  onDirty?: () => void;
-  onError?: (what: string, error: unknown) => void;
-  /** Rows per write call. */
-  chunk?: number;
-  /** Hex characters per write call (values can be large: MEDIUMBLOB). */
-  chunkBytes?: number;
-}
-
-export class VrpStore {
-  private readonly entries = new Map<string, Entry>();
+export class VrpStore extends VrpCache {
   private readonly dirty = new Set<string>();
-  /** `c` / `u` owner -> its cached keys. */
-  private readonly byOwner = new Map<string, Set<string>>();
   /** Owners whose clean keys go once their dirty ones are written (released, or never loaded). */
   private readonly releasing = new Map<string, [VrpKind, string]>();
   private readonly reading = new Map<string, Array<(hex: string) => void>>();
@@ -64,44 +17,14 @@ export class VrpStore {
   private readonly chunk: number;
   private readonly chunkBytes: number;
 
-  constructor(private readonly options: VrpStoreOptions) {
+  constructor(options: VrpStoreOptions) {
+    super(options);
     this.chunk = options.chunk ?? 500;
     this.chunkBytes = options.chunkBytes ?? 4_000_000;
   }
 
-  get size(): number {
-    return this.entries.size;
-  }
-
   get pending(): number {
     return this.dirty.size;
-  }
-
-  private kept(kind: VrpKind, owner: string): boolean {
-    return kind === "s" || kind === "g" || this.options.isLive(kind, owner);
-  }
-
-  private remember(entry: Entry, id: string): void {
-    this.entries.set(id, entry);
-    if (entry.kind !== "c" && entry.kind !== "u") return;
-    const ok = ownerKey(entry.kind, entry.owner);
-    let keys = this.byOwner.get(ok);
-    if (!keys) {
-      keys = new Set();
-      this.byOwner.set(ok, keys);
-    }
-    keys.add(id);
-  }
-
-  private forget(id: string): void {
-    const entry = this.entries.get(id);
-    if (!entry) return;
-    this.entries.delete(id);
-    const ok = ownerKey(entry.kind, entry.owner);
-    const keys = this.byOwner.get(ok);
-    if (!keys) return;
-    keys.delete(id);
-    if (keys.size === 0) this.byOwner.delete(ok);
   }
 
   /** The value as hex (`""` when unset); `done` runs at once on a cached key. */

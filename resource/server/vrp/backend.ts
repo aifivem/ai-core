@@ -1,7 +1,7 @@
 import { mysql } from "@aicore-fivem/mysql";
 import type { Tables } from "../tables";
 import { upsertStatement } from "./sql";
-import type { VrpBackend, VrpKind, VrpRow } from "./store";
+import type { VrpBackend, VrpKind, VrpRow } from "./data";
 
 /** `ai_core_vrp_data` on ai-core's pool: one primary key read per key, one multi-row upsert per chunk. */
 

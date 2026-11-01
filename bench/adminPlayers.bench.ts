@@ -1,6 +1,6 @@
 // Admin panel Players section at full server load (`bun --preload ./bench/preload.ts bench/adminPlayers.bench.ts`):
 // natives stubbed, no database. Times and sizes the `online` snapshot (latent `rows` chunks) and the list deltas
-// after a restart-like burst (capped flushes), with ai-core's real `PlayerWatchers`.
+// after a restart-like burst (capped flushes), with ai-core's real `ListWatchers`.
 import { plugin } from "bun";
 import { join } from "node:path";
 import { kb, msgpackSize } from "./msgpackSize";
@@ -37,8 +37,8 @@ g.setTimeout = (fn: () => void) => {
 };
 
 const { players } = await import("../resource/server/player/registry");
-const { playerWatchers } =
-  await import("../resource/server/admin/players/watchers");
+const { listWatchers } =
+  await import("../resource/server/admin/players/listWatchers");
 
 const jobs = ["police", "ambulance", "mechanic", "taxi", "unemployed"];
 function fakePlayer(i: number) {
@@ -65,13 +65,13 @@ for (const count of [2048, 10_000]) {
     players.add(fakePlayer(i) as unknown as Parameters<typeof players.add>[0]);
   sent.length = 0;
   // One admin opens the list: the snapshot goes out as latent chunks.
-  const build = time(() => playerWatchers.watchList(1));
+  const build = time(() => listWatchers.watchList(1));
   const chunks = sent.length;
   const biggest = Math.max(...sent.map((e) => e.bytes));
   const total = sent.reduce((n, e) => n + e.bytes, 0);
   // Ten admins watch the list; every player changes once (a restart, a duty sweep): capped flushes.
-  for (let a = 2; a <= 10; a++) playerWatchers.watchList(a);
-  for (let i = 1; i <= count; i++) playerWatchers.put(i);
+  for (let a = 2; a <= 10; a++) listWatchers.watchList(a);
+  for (let i = 1; i <= count; i++) listWatchers.put(i);
   sent.length = 0;
   let flushes = 0;
   const flush = time(() => {
@@ -86,6 +86,6 @@ for (const count of [2048, 10_000]) {
   console.log(
     `${count.toLocaleString("en-US")} online: snapshot ${build.toFixed(1)} ms, ${kb(total)} in ${chunks} latent chunks (largest ${kb(biggest)}); burst of ${count} changes: ${flushes} flushes (${flush.toFixed(1)} ms), largest event ${kb(perEvent)}, ${sent.length} events to 10 admins`,
   );
-  for (let a = 1; a <= 10; a++) playerWatchers.drop(a);
+  for (let a = 1; a <= 10; a++) listWatchers.unwatchList(a);
   for (const p of [...players.all()]) players.remove(p);
 }

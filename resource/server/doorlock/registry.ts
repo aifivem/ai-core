@@ -9,7 +9,7 @@ import { tgiannDoorlock } from "./adapters/tgiann-doorlock";
 /**
  * Every supported door lock script, in detection order: `auto` uses the first one running. ai-doorlock first (the
  * default), then TGIANN's, then the others.
- * A new door lock script = one adapter file and one line here.
+ * A new door lock script = one adapter file, one line here and its name in `names.ts`.
  */
 export const DOORLOCK_SYSTEMS: readonly DoorlockAdapter[] = [
   aiDoorlock,

@@ -11,7 +11,7 @@ import {
   type NotificationKind,
   type NotifyClientAdapter,
 } from "@aicore-fivem/shared";
-import { AdapterFollower } from "common/adapters";
+import { AdapterFollower } from "common/adapterFollower";
 
 /** A kind in a script's own words. */
 const kinds =

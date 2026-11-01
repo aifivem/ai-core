@@ -2,7 +2,8 @@ import { isResourceStarted, registerExport } from "@aicore-fivem/lib/server";
 import { jobs as jobDefs, panel, settings } from "../../content";
 import type { PrimeHours } from "../../content/primeTime";
 import { log } from "../../log";
-import { PRIME_TIME_SYSTEMS, type PrimeTimeAdapter } from "./registry";
+import type { PrimeTimeAdapter } from "./adapter";
+import { PRIME_TIME_SYSTEMS } from "./registry";
 
 /** `start > finish` wraps past midnight; `start === finish` is the whole day. */
 export function inPrimeHours(

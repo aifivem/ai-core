@@ -6,7 +6,7 @@ import type {
   LookupOption,
 } from "@aicore-fivem/shared";
 import { coreSchema } from "../../../resource/server/admin/schema";
-import { VRP_NEW_RULE } from "../../../resource/server/vrp/schema";
+import { VRP_NEW_RULE } from "../../../resource/server/vrp/mappingCards";
 import accountsFile from "../../../data/accounts.json";
 import gangsFile from "../../../data/gangs.json";
 import jobsFile from "../../../data/jobs.json";

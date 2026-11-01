@@ -15,7 +15,7 @@ import {
   FUEL_STATE_KEY,
   type FuelClientAdapter,
 } from "@aicore-fivem/shared";
-import { AdapterFollower } from "common/adapters";
+import { AdapterFollower } from "common/adapterFollower";
 import {
   cdnFuel,
   lcFuel,

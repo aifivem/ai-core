@@ -14,7 +14,8 @@ import {
   onBansDelta,
   openHistory,
 } from "./actions";
-import { BanDetailsDialog, BanFormDialog } from "./BanDialogs";
+import { BanDetailsDialog } from "./BanDetailsDialog";
+import { BanFormDialog } from "./BanFormDialog";
 import { dateTime, endText, StatusChip, useServerNow } from "./parts";
 
 /**

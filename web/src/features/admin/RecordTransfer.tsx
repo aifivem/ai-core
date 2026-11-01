@@ -9,7 +9,7 @@ import { Button } from "../../components/ui/button";
 import { Dialog } from "../../components/ui/dialog";
 import { Switch } from "../../components/ui/switch";
 import { Tooltip } from "../../components/ui/tooltip";
-import { importRecords } from "./actions";
+import { importRecords } from "./recordActions";
 
 type T = (key: string, ...args: Array<string | number>) => string;
 type Records = Record<string, Record<string, unknown>>;

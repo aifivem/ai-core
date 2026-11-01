@@ -5,7 +5,7 @@ import type { WidgetSpec } from "@aicore-fivem/shared";
 import { Button } from "../../../components/ui/button";
 import { useEditor } from "../context";
 import { getAt } from "../path";
-import { useField } from "./basic";
+import { useField } from "./useField";
 import { SearchBox, SHOWN_STEP } from "./SearchBox";
 
 type Spec = Extract<WidgetSpec, { widget: "browse" }>;

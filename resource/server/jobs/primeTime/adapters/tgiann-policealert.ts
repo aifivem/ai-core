@@ -1,5 +1,5 @@
 import { callExport } from "@aicore-fivem/lib/server";
-import type { PrimeTimeAdapter } from "../registry";
+import type { PrimeTimeAdapter } from "../adapter";
 
 const RESOURCE = "tgiann-policealert";
 

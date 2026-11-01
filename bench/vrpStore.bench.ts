@@ -3,7 +3,8 @@
 // N / 10 characters (10 keys each, 32-byte values): writes, flushes (500-row upserts), cached reads, read-through
 // misses, an update of 10 %, and releasing half the characters. Each size runs in its own process (heap figure).
 import { upsertStatement } from "../resource/server/vrp/sql";
-import { VrpStore, type VrpRow } from "../resource/server/vrp/store";
+import type { VrpRow } from "../resource/server/vrp/data";
+import { VrpStore } from "../resource/server/vrp/store";
 
 const time = async (fn: () => unknown): Promise<number> => {
   const start = performance.now();

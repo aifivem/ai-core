@@ -17,7 +17,7 @@ import { Button } from "../../../components/ui/button";
 import { TabBar } from "../../../components/ui/tabs";
 import { VirtualList } from "../../../components/VirtualList";
 import { useAppSelector } from "../../../store";
-import { Panel, RowButton, Who } from "../players/PlayersList";
+import { Panel, RowButton, Who } from "../players/ListPanel";
 import type { T } from "../players/parts";
 import {
   closeBans,
@@ -26,7 +26,8 @@ import {
   onBansDelta,
   openList,
 } from "./actions";
-import { BanDetailsDialog, BanFormDialog } from "./BanDialogs";
+import { BanDetailsDialog } from "./BanDetailsDialog";
+import { BanFormDialog } from "./BanFormDialog";
 import { banTitle, endText, StatusChip, useServerNow } from "./parts";
 
 const TABS = [

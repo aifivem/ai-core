@@ -1,21 +1,14 @@
-import type {
-  BankingAccounts,
-  BankingAdapter,
-  SocietyType,
-} from "@aicore-fivem/shared";
+import type { BankingAdapter, SocietyType } from "@aicore-fivem/shared";
 import { gangs, jobs, settings } from "../content";
 import { databaseReady } from "../database";
 import { log } from "../log";
 import { type Account, linkSharedAccounts } from "../money/account";
 import { sharedAccounts } from "../money/book";
+import { BANK, keyOf, ScriptAccounts } from "./scriptAccounts";
 
-/** The ai-core account a banking script's job / gang account stands for. */
-const BANK = "bank";
 /** Start writes the script refuses (it creates its accounts after it starts) are tried again this often, this many times. */
 const RETRY_MS = 3000;
 const RETRIES = 10;
-
-const keyOf = (type: SocietyType, name: string): string => `${type}:${name}`;
 
 /**
  * Keeps ai-core's job and gang `bank` accounts and the active banking script's own accounts together (panel setting
@@ -26,10 +19,7 @@ const keyOf = (type: SocietyType, name: string): string => `${type}:${name}`;
  * reported back by the script synchronously; `writing` drops them, `known` (the balance the script shows) catches any
  * later echo. On activation ai-core's balance wins.
  */
-class SocietyLink {
-  private adapter: BankingAdapter | null = null;
-  /** Accounts the script answered it has (positive answers only, reset on every activation). */
-  private readonly owned = new Set<string>();
+class SocietyLink extends ScriptAccounts {
   /** Accounts whose writes the script kept refusing (given up until the next activation). */
   private readonly refused = new Set<string>();
   /** The balance the script shows per account, as last written or reported. */
@@ -41,6 +31,7 @@ class SocietyLink {
   private generation = 0;
 
   constructor() {
+    super();
     linkSharedAccounts({
       balance: (account) => this.keptBalance(account),
       change: (account, delta) => this.keptChange(account, delta),
@@ -108,51 +99,6 @@ class SocietyLink {
       .catch((error: unknown) =>
         log.error("linking the banking script's accounts failed", error),
       );
-  }
-
-  /** `own` mode: the script's accounts that stand for this ai-core account, or null when ai-core keeps it. */
-  private kept(account: Account): BankingAccounts | null {
-    const type = account.ownerType;
-    if (
-      settings.bankAccounts !== "own" ||
-      type === "character" ||
-      account.name !== BANK
-    )
-      return null;
-    const accounts = this.adapter?.accounts;
-    return accounts && this.has(accounts, type, account.ownerId)
-      ? accounts
-      : null;
-  }
-
-  private keptBalance(account: Account): number | null {
-    const accounts = this.kept(account);
-    if (!accounts || account.ownerType === "character") return null;
-    const type = account.ownerType;
-    return (
-      this.call(
-        "balance",
-        () => accounts.balance(type, account.ownerId),
-        null,
-      ) ?? 0
-    );
-  }
-
-  private keptChange(account: Account, delta: number): boolean | null {
-    const accounts = this.kept(account);
-    if (!accounts || account.ownerType === "character") return null;
-    const type = account.ownerType;
-    return delta > 0
-      ? this.call(
-          "add",
-          () => accounts.add(type, account.ownerId, delta),
-          false,
-        )
-      : this.call(
-          "remove",
-          () => accounts.remove(type, account.ownerId, -delta),
-          false,
-        );
   }
 
   /** `core` mode: ai-core changed one of its accounts; written to the script on the next tick. */
@@ -224,39 +170,6 @@ class SocietyLink {
       `${resource}: ${delta} in ${type} ${name} did not fit ai-core's balance; setting it back`,
     );
     this.changed(account);
-  }
-
-  private has(
-    accounts: BankingAccounts,
-    type: SocietyType,
-    name: string,
-  ): boolean {
-    const key = keyOf(type, name);
-    if (this.owned.has(key)) return true;
-    if (!this.call("has", () => accounts.has(type, name), false)) return false;
-    this.owned.add(key);
-    return true;
-  }
-
-  private call<T>(what: string, fn: () => T, fallback: T): T {
-    return this.adapter
-      ? this.guard(this.adapter, what, fn, fallback)
-      : fallback;
-  }
-
-  /** One try / catch around the script's exports: logged, answered with `fallback`. */
-  private guard<T>(
-    adapter: BankingAdapter,
-    what: string,
-    fn: () => T,
-    fallback: T,
-  ): T {
-    try {
-      return fn();
-    } catch (error) {
-      log.error(`${adapter.resource} ${what} failed`, error);
-      return fallback;
-    }
   }
 }
 

@@ -1,15 +1,13 @@
 import { ByResource, caller, GlobalGroup } from "@aicore-fivem/lib/server";
 import { isRecord } from "@aicore-fivem/lib/shared";
 import { CORE, type CharacterResult } from "@aicore-fivem/shared";
+import { gangs, jobs, panel } from "../content";
 import {
-  gangs,
-  jobs,
-  panel,
   readGang,
   readJob,
   type GangDef,
   type JobDef,
-} from "../content";
+} from "../content/definitions";
 import { ID_PATTERN } from "../content/parse";
 import { log } from "../log";
 import { sharedAccounts } from "../money/book";

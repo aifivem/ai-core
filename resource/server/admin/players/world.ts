@@ -3,26 +3,28 @@ import { CORE } from "@aicore-fivem/shared";
 import { ADMIN_PLAYERS, type Position } from "common/adminPlayers";
 import { Locale } from "common";
 import { findCharacter } from "../../characters/repo";
-import { inventory } from "../../inventory";
 import { medical } from "../../medical";
 import { claims, players } from "../../player/registry";
-import { action, BUSY, GONE, logEdit, onCharacter, parse } from "./gate";
+import {
+  action,
+  BUSY,
+  charOnly,
+  GONE,
+  logEdit,
+  onCharacter,
+  parse,
+} from "./gate";
 import { fail, offline, OK } from "./offline";
 import { softDelete } from "./repo";
 import { loadView } from "./view";
-import { playerWatchers } from "./watchers";
+import { charWatchers } from "./charWatchers";
 
-/** Player actions of the Players section: position, kick, revive, kill, items, inventory, delete. */
+/** Player actions of the Players section: position, kick, revive, kill, delete (items: `inventoryActions.ts`). */
 
 function pedPosition(source: number): Position {
   const ped = GetPlayerPed(String(source));
   return { ...entityCoords(ped), heading: GetEntityHeading(ped) };
 }
-
-const charOnly = ([charId]: unknown[]) => {
-  const id = parse.charId(charId);
-  return id === null ? null : ([id] as const);
-};
 
 // The admin goes to the character: to its ped while online, else to where it spawns next.
 action("goto", charOnly, async (source, charId) => {
@@ -48,7 +50,7 @@ action("bring", charOnly, async (source, charId) => {
       if (player.source === source) return fail("ADMIN_PLAYERS_ERR_SELF");
       emitNet(ADMIN_PLAYERS.teleportEvent, player.source, point);
       notify(player.source, Locale("ADMIN_PLAYERS_NOTIFY_BROUGHT"), "info");
-      playerWatchers.char(charId, { position: point });
+      charWatchers.char(charId, { position: point });
       return OK;
     },
     () => offline.position(charId, point),
@@ -118,83 +120,6 @@ action("kill", charOnly, async (source, charId) => {
   return result;
 });
 
-// Through ai-core's inventory layer, so any adapted inventory works; only for a loaded character.
-action(
-  "item",
-  ([charId, item, count, mode]) => {
-    const id = parse.charId(charId);
-    const name = parse.name(item);
-    const n = parse.int(count, 1, 10_000);
-    const m = mode === "give" || mode === "remove" ? mode : null;
-    return id === null || name === null || n === null || m === null
-      ? null
-      : ([id, name.toLowerCase(), n, m] as const);
-  },
-  async (source, charId, item, count, mode) => {
-    if (
-      !inventory.call(
-        "GetItemDefinition",
-        (a) => a.getItemDefinition(item),
-        null,
-      )
-    )
-      return fail("ADMIN_PLAYERS_ERR_ITEM");
-    const result = await onCharacter(
-      charId,
-      (player) => {
-        const target = player.source;
-        if (mode === "give")
-          return inventory.call(
-            "AddItem",
-            (a) => a.addItem(target, item, count, undefined, undefined),
-            false,
-          )
-            ? OK
-            : fail("ADMIN_PLAYERS_ERR_ITEM_FULL");
-        const has = inventory.call(
-          "GetItemCount",
-          (a) => a.getItemCount(target, item, undefined),
-          0,
-        );
-        if (has <= 0) return fail("ADMIN_PLAYERS_ERR_ITEM_NONE");
-        const take = Math.min(count, has);
-        return inventory.call(
-          "RemoveItem",
-          (a) => a.removeItem(target, item, take, undefined, undefined),
-          false,
-        )
-          ? OK
-          : fail("ADMIN_PLAYERS_ERR_ITEM_NONE");
-      },
-      null,
-    );
-    if (result.ok)
-      logEdit(source, charId, `${mode} item ${item} x${count}`, {
-        item,
-        count,
-        mode,
-      });
-    return result;
-  },
-);
-
-action("inventory", charOnly, async (source, charId) => {
-  const result = await onCharacter(
-    charId,
-    (player) =>
-      inventory.call(
-        "OpenInventory",
-        (a) => a.openInventory(source, player.source),
-        false,
-      )
-        ? OK
-        : fail("ADMIN_PLAYERS_ERR_INVENTORY"),
-    null,
-  );
-  if (result.ok) logEdit(source, charId, "opened the inventory");
-  return result;
-});
-
 // Soft delete of an offline character (an online one is kicked first).
 action("delete", charOnly, async (source, charId) => {
   if (players.byCharacter(charId)) return fail("ADMIN_PLAYERS_ERR_ONLINE");
@@ -207,7 +132,7 @@ action("delete", charOnly, async (source, charId) => {
   });
   if (result.ok) {
     logEdit(source, charId, "deleted the character", {}, "warn");
-    playerWatchers.deleted(charId);
+    charWatchers.deleted(charId);
   }
   return result;
 });

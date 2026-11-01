@@ -16,7 +16,7 @@ import { iconOf } from "./icons";
 import { EXTERNAL_TAB, OtherPanelsNav } from "./OtherPanelsNav";
 import { goBans } from "./bans/actions";
 import { goPlayers } from "./players/actions";
-import { NavGroup, NavLabel, navRow, tabRow } from "./SidebarItems";
+import { NavButton, NavGroup, NavLabel, navRow, tabRow } from "./SidebarItems";
 
 const fill = (texts: Record<string, string>, key: string): string =>
   texts[key] ?? key;
@@ -78,45 +78,24 @@ export function Sidebar({
         </div>
       </div>
       <div className="flex shrink-0 flex-col gap-[0.8vh] border-b border-white/8 p-[1.4vh]">
-        <button
-          type="button"
-          aria-current={dashboard ? "page" : undefined}
+        <NavButton
+          icon={faGauge}
+          label={fill(core, "ADMIN_DASHBOARD")}
+          active={dashboard}
           onClick={goDashboard}
-          className={navRow(dashboard)}
-        >
-          <FontAwesomeIcon
-            icon={faGauge}
-            className="w-[1.8vh] shrink-0 text-[1.6vh]"
-            aria-hidden
-          />
-          <NavLabel text={fill(core, "ADMIN_DASHBOARD")} />
-        </button>
-        <button
-          type="button"
-          aria-current={players ? "page" : undefined}
+        />
+        <NavButton
+          icon={faUsers}
+          label={fill(core, "ADMIN_PLAYERS")}
+          active={players}
           onClick={() => goPlayers()}
-          className={navRow(players)}
-        >
-          <FontAwesomeIcon
-            icon={faUsers}
-            className="w-[1.8vh] shrink-0 text-[1.6vh]"
-            aria-hidden
-          />
-          <NavLabel text={fill(core, "ADMIN_PLAYERS")} />
-        </button>
-        <button
-          type="button"
-          aria-current={bans ? "page" : undefined}
+        />
+        <NavButton
+          icon={faGavel}
+          label={fill(core, "ADMIN_BANS")}
+          active={bans}
           onClick={() => goBans()}
-          className={navRow(bans)}
-        >
-          <FontAwesomeIcon
-            icon={faGavel}
-            className="w-[1.8vh] shrink-0 text-[1.6vh]"
-            aria-hidden
-          />
-          <NavLabel text={fill(core, "ADMIN_BANS")} />
-        </button>
+        />
         <label className="flex h-[3.6vh] items-center gap-[0.8vh] rounded-full border border-white/8 bg-[#2222224D] px-[1.2vh] transition-[border-color] duration-150 focus-within:border-tgi-green-40">
           <FontAwesomeIcon
             icon={faFilter}

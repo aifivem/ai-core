@@ -10,10 +10,10 @@ import {
 import type { WidgetSpec } from "@aicore-fivem/shared";
 import { Button } from "../../../components/ui/button";
 import { Tooltip } from "../../../components/ui/tooltip";
-import { drawZone, myPosition, pickPoint, teleport } from "../actions";
+import { drawZone, myPosition, pickPoint, teleport } from "../worldActions";
 import { useEditor } from "../context";
 import { getAt } from "../path";
-import { useField } from "./basic";
+import { useField } from "./useField";
 
 type Spec = Extract<WidgetSpec, { widget: "zone" }>;
 interface Corner {

@@ -2,7 +2,7 @@ import { players } from "../player/registry";
 import { registerExport } from "@aicore-fivem/lib/server";
 import type { LookupOption, Lookups, LookupSource } from "@aicore-fivem/shared";
 import { accountTypes, gangs, jobs } from "../content";
-import { inventory } from "../inventory";
+import { inventory } from "../inventory/active";
 
 const SOURCES: readonly LookupSource[] = [
   "item",

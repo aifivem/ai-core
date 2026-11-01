@@ -1,6 +1,6 @@
 -- Qbox scripts include `@qbx_core/modules/playerdata.lua`; ai-core provides qbx_core, so the include resolves here.
 -- It keeps the including resource's `QBX.PlayerData` current from ai-core's bridge (QBCore's client events), with
--- Qbox's `jobs` / `gangs` maps (bridge/qbx/client.lua). Client only, as in qbx_core (a shared include is skipped on
+-- Qbox's `jobs` / `gangs` maps (bridge/qbx/client/player.lua). Client only, as in qbx_core (a shared include is skipped on
 -- the server).
 
 if IsDuplicityVersion() then return end

@@ -20,7 +20,8 @@ import { MemberCard } from "./MemberCard";
 import { MetaCard } from "./MetaCard";
 import { MoneyCard } from "./MoneyCard";
 import { Chip, type T } from "./parts";
-import { ActionsCard, ItemsCard, PositionCard } from "./PlayerCards";
+import { ActionsCard } from "./ActionsCard";
+import { ItemsCard, PositionCard } from "./PlayerCards";
 import { PlayersList } from "./PlayersList";
 
 function CharacterPage({ t }: { t: T }) {

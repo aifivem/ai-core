@@ -2,89 +2,21 @@ import { useEffect } from "react";
 import { useParams, useRouterState, useSearch } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import { useNuiEvent } from "fivem-nui-react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faDoorOpen } from "@fortawesome/free-solid-svg-icons";
-import {
-  toAdminShowTarget,
-  type AdminDelta,
-  type AdminPanelSnapshot,
-  type ExternalPanel,
-  type Lookups,
-  type UpdateInfo,
-} from "@aicore-fivem/shared";
 import { NuiMessage } from "../../../../resource/common/nui";
-import { mockAdminOpen } from "../../dev/adminMock";
-import { store, useAppSelector } from "../../store";
-import { changed } from "../../store/admin";
-import { closePanel, loadPanelData, openPanel } from "./actions";
+import { useAppSelector } from "../../store";
+import { closePanel, loadPanelData } from "./actions";
+import { OPEN_OPTIONS, onDelta, onOpen } from "./adminMessages";
 import { Dashboard } from "./Dashboard";
 import { Editor } from "./Editor";
-import { GlobalSearch } from "./GlobalSearch";
 import { usePanelLang } from "./lang";
+import { PanelHeader } from "./PanelHeader";
 import { RecordsView } from "./RecordsView";
 import { BansSection } from "./bans/BansSection";
 import { PlayersSection } from "./players/PlayersSection";
-import {
-  onRecommendationDelta,
-  openRecommendations,
-} from "./recommendationActions";
+import { onRecommendationDelta } from "./recommendationActions";
 import { Setup } from "./Setup";
 import { Sidebar } from "./Sidebar";
 import { TableView } from "./TableView";
-
-import peds from "./peds.json";
-
-// One options object: a new one per render would re-subscribe (and re-fire the browser mock) on every render.
-const OPEN_OPTIONS = { mockData: mockAdminOpen(), mockDelay: 300 };
-
-/** GTA's ped models (no native lists them): a static list shipped with the panel. */
-const PED_OPTIONS = peds.map((value) => ({ value, label: value }));
-const NO_LOOKUPS: Lookups = {
-  item: [],
-  job: [],
-  gang: [],
-  account: [],
-  resource: [],
-  player: [],
-  vehicle: [],
-  ped: [],
-};
-
-function onOpen(value: unknown): void {
-  if (typeof value !== "object" || value === null) return;
-  const { panels, texts, lookups, external, updates, target } = value as {
-    panels?: unknown;
-    texts?: unknown;
-    lookups?: unknown;
-    external?: unknown;
-    updates?: unknown;
-    target?: unknown;
-  };
-  // ai-core builds these objects itself; only the outer shape is checked.
-  if (!Array.isArray(panels)) return;
-  openPanel(
-    panels as AdminPanelSnapshot[],
-    typeof texts === "object" && texts !== null
-      ? (texts as Record<string, string>)
-      : {},
-    typeof lookups === "object" && lookups !== null
-      ? { ...NO_LOOKUPS, ...(lookups as Partial<Lookups>), ped: PED_OPTIONS }
-      : { ...NO_LOOKUPS, ped: PED_OPTIONS },
-    Array.isArray(external) ? (external as ExternalPanel[]) : [],
-    Array.isArray(updates) ? (updates as UpdateInfo[]) : [],
-    toAdminShowTarget(target),
-  );
-  openRecommendations(value);
-}
-
-function onDelta(value: unknown): void {
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as AdminDelta).resource === "string"
-  )
-    store.dispatch(changed(value as AdminDelta));
-}
 
 /** The admin panel: client messages, Esc to close, and the large centred panel (sidebar, header, editor). */
 export function AdminRoot() {
@@ -179,34 +111,12 @@ export function AdminRoot() {
       >
         <Sidebar resource={resource} tab={tabId} dashboard={dashboard} />
         <main className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-[7.6vh] shrink-0 items-center gap-[1.6vh] border-b border-white/8 bg-header px-[2.2vh]">
-            <div className="flex min-w-0 flex-1 flex-col gap-[0.6vh]">
-              <h1 className="truncate font-display text-[2vh] leading-[1.15] font-extrabold tracking-[-0.01em] uppercase">
-                {title}
-              </h1>
-              <p className="truncate text-[1.3vh] leading-[1.3] text-text-3">
-                {subtitle}
-              </p>
-            </div>
-            {/* The dashboard has its own big search box (it also filters the script cards). */}
-            {!dashboard && <GlobalSearch />}
-            <button
-              type="button"
-              onClick={closePanel}
-              className="group flex items-center gap-[1vh] rounded-full"
-            >
-              <span className="text-[1.4vh] text-text-3 transition-colors duration-150 group-hover:text-text">
-                {t("ADMIN_CLOSE")}
-              </span>
-              <span className="flex size-[4vh] items-center justify-center rounded-full bg-control text-text-2 transition-[background-color,color,transform] duration-150 ease-out group-hover:bg-control-hover group-hover:text-text group-active:[transform:scale(0.92)]">
-                <FontAwesomeIcon
-                  icon={faDoorOpen}
-                  className="text-[1.6vh]"
-                  aria-hidden
-                />
-              </span>
-            </button>
-          </header>
+          <PanelHeader
+            title={title}
+            subtitle={subtitle}
+            dashboard={dashboard}
+            t={t}
+          />
           <div className="flex min-h-0 flex-1 flex-col p-[2.2vh] pr-[1.2vh]">
             {dashboard && <Dashboard />}
             {setup && <Setup />}

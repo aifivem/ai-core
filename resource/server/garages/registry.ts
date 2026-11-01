@@ -7,7 +7,7 @@ import { tgiannRealparking } from "./adapters/tgiann-realparking";
 /**
  * Every supported garage script, in detection order: `auto` uses the first one running. ai-garages first (the default),
  * then TGIANN's, then the others. Each answers only what it exposes.
- * A new garage script = one adapter file (or a `clientGarage` line with its client adapter) and one line here.
+ * A new garage script = one adapter file (or a `clientGarage` line with its client adapter) one line here and its name in `names.ts`.
  */
 export const GARAGE_SYSTEMS: readonly GarageAdapter[] = [
   aiGarages,

@@ -1,0 +1,100 @@
+-- QBCore on ai-core, server side: `exports['qb-core']:GetCoreObject()`, `QBCore:GetObject`, the Player object and
+-- QBCore's server events. Everything reads the shared mirror (bridge/core/server/players.lua) and writes through ai-core.
+-- This file: the Player classes (LuaLS) and the bridge's QB namespace `BridgeQB`, filled by the files after it.
+
+---@class QBJob
+---@field name string
+---@field label string
+---@field type string
+---@field payment number
+---@field onduty boolean
+---@field isboss boolean
+---@field grade { name: string, level: integer }
+
+---@class QBGang
+---@field name string
+---@field label string
+---@field isboss boolean
+---@field grade { name: string, level: integer }
+
+---@class QBCharInfo
+---@field firstname string
+---@field lastname string
+---@field birthdate string
+---@field gender integer
+---@field nationality string
+---@field phone string
+---@field account string
+---@field card? string|integer
+
+---@class QBItem
+---@field name string
+---@field label string
+---@field amount integer
+---@field count integer
+---@field info table
+---@field slot integer
+---@field weight number
+---@field type string
+---@field unique boolean
+---@field useable boolean
+---@field image string
+---@field shouldClose boolean
+---@field description string
+
+---@class QBPlayerData
+---@field source? integer
+---@field citizenid string
+---@field cid integer
+---@field license string|nil
+---@field name string
+---@field money table<string, number>
+---@field charinfo QBCharInfo
+---@field job QBJob
+---@field gang QBGang
+---@field metadata table<string, any>
+---@field position vector3|table
+---@field items table<integer, QBItem>
+---@field optin boolean
+
+---@class QBPlayerFunctions
+---@field GetPlayerData fun(): QBPlayerData
+---@field UpdateClient fun(key?: string, value?: any)
+---@field UpdatePlayerData fun(key?: string, value?: any)
+---@field AddMoney fun(moneytype: string, amount: number, reason?: string): boolean
+---@field RemoveMoney fun(moneytype: string, amount: number, reason?: string): boolean
+---@field SetMoney fun(moneytype: string, amount: number, reason?: string): boolean
+---@field GetMoney fun(moneytype: string): number|false
+---@field SetJob fun(job: string, grade?: integer|string): boolean
+---@field SetJobDuty fun(onDuty: boolean)
+---@field SetGang fun(gang: string, grade?: integer|string): boolean
+---@field SetPlayerData fun(key: string, value: any)
+---@field SetMetaData fun(key: string, value: any)
+---@field GetMetaData fun(key: string): any
+---@field AddRep fun(rep: string, amount: number)
+---@field RemoveRep fun(rep: string, amount: number)
+---@field GetRep fun(rep: string): number|nil
+---@field AddJobReputation fun(amount: number)
+---@field AddItem fun(item: string, amount: integer, slot?: integer, info?: table): boolean
+---@field RemoveItem fun(item: string, amount: integer, slot?: integer): boolean
+---@field GetItemByName fun(item: string): QBItem|nil
+---@field GetItemsByName fun(item: string): QBItem[]
+---@field GetItemBySlot fun(slot: integer): QBItem|nil
+---@field HasItem fun(items: string|string[]|table<string, integer>, amount?: integer): boolean
+---@field ClearInventory fun(keep?: string|string[])
+---@field SetInventory fun(items: table): boolean
+---@field SetCreditCard fun(cardNumber: string|integer)
+---@field GetCardSlot fun(cardNumber: string|integer, cardType: string): integer|nil
+---@field GetName fun(): string
+---@field Notify fun(text: string, type?: string, length?: integer)
+---@field Save fun()
+---@field Logout fun()
+---@field AddMethod fun(name: string, handler: function): boolean
+---@field AddField fun(name: string, data: any): boolean
+
+---@class QBPlayer
+---@field PlayerData QBPlayerData
+---@field Functions QBPlayerFunctions
+---@field Offline boolean
+
+BridgeQB = {}

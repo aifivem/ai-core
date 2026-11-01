@@ -5,7 +5,7 @@ import {
   waitForEntity,
 } from "@aicore-fivem/lib/client";
 import { createLogger } from "@aicore-fivem/lib/shared";
-import { AdapterFollower } from "common/adapters";
+import { AdapterFollower } from "common/adapterFollower";
 import {
   VEHICLE_KEYS_CLIENT_EVENT,
   VEHICLE_KEYS_STATE_KEY,

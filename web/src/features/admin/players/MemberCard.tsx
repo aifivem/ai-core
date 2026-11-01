@@ -4,18 +4,17 @@ import {
   faBriefcase,
   faPeopleGroup,
   faPlus,
-  faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import type { CharacterView } from "../../../../../resource/common/adminPlayers";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Select } from "../../../components/ui/select";
-import { Switch } from "../../../components/ui/switch";
 import { useAppSelector } from "../../../store";
 import { LookupBox } from "../widgets/lookup";
 import { runAction } from "./actions";
 import { useDefs, type Kind } from "./defs";
 import { Note, PCard, Rows, useAction, type T } from "./parts";
+import { MemberRow } from "./MemberRow";
 
 /** A character's jobs (with duty) or gangs (with the active one): grade per row, remove, add. */
 export function MemberCard({
@@ -91,63 +90,17 @@ export function MemberCard({
           </p>
         )}
         {list.map((m) => (
-          <div
+          <MemberRow
             key={m.name}
-            className="flex min-h-[5vh] items-center gap-[1.2vh] py-[0.8vh]"
-          >
-            <span className="min-w-0 flex-1 truncate text-[1.4vh] font-medium">
-              {defs.label(kind, m.name)}
-            </span>
-            <div className="w-[20vh]">
-              <Select
-                value={String(m.grade)}
-                aria-label={defs.label(kind, m.name)}
-                options={defs.grades(kind, m.name)}
-                onChange={(g) =>
-                  void run(() => runAction(kind, [id, m.name, Number(g)]))
-                }
-              />
-            </div>
-            <label
-              className="flex items-center gap-[0.8vh] text-[1.25vh] text-text-3"
-              title={
-                kind === "job" && !online
-                  ? t("ADMIN_PLAYERS_ONLINE_ONLY")
-                  : undefined
-              }
-            >
-              {t(
-                kind === "job" ? "ADMIN_PLAYERS_DUTY" : "ADMIN_PLAYERS_ACTIVE",
-              )}
-              <Switch
-                checked={current === m.name}
-                disabled={kind === "job" && !online}
-                onCheckedChange={(on) =>
-                  void run(() =>
-                    runAction(kind === "job" ? "duty" : "activeGang", [
-                      id,
-                      on ? m.name : null,
-                    ]),
-                  )
-                }
-              />
-            </label>
-            <Button
-              variant="icon"
-              aria-label={t("ADMIN_PLAYERS_REMOVE")}
-              title={t("ADMIN_PLAYERS_REMOVE")}
-              onClick={() =>
-                void run(() =>
-                  runAction(kind === "job" ? "removeJob" : "removeGang", [
-                    id,
-                    m.name,
-                  ]),
-                )
-              }
-            >
-              <FontAwesomeIcon icon={faTrash} aria-hidden />
-            </Button>
-          </div>
+            kind={kind}
+            id={id}
+            m={m}
+            current={current}
+            online={online}
+            defs={defs}
+            run={run}
+            t={t}
+          />
         ))}
       </Rows>
       <div className="flex items-center gap-[1vh]">

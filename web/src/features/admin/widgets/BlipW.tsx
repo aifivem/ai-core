@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faImage,
@@ -12,27 +12,12 @@ import { Popover } from "../../../components/ui/popover";
 import { Select } from "../../../components/ui/select";
 import { VirtualList } from "../../../components/VirtualList";
 import { cn } from "../../../lib/utils";
-import blips from "../blips.json";
 import { useEditor } from "../context";
-import { useField } from "./basic";
+import { useField } from "./useField";
+import blips from "../blips.json";
+import { COLORS, COLS, Icon, label, SPRITES, type Sprite } from "./blipSprites";
 
 type Spec = Extract<WidgetSpec, { widget: "blip" }>;
-interface Sprite {
-  id: number;
-  name: string;
-  ext: string;
-}
-interface Color {
-  id: number;
-  hex: string;
-  name: string;
-}
-// The FiveM blip reference (docs.fivem.net/docs/game-references/blips): sprite pictures and blip colours.
-const SPRITES: Sprite[] = blips.sprites.filter((s) => s.name !== "radar_empty");
-const COLORS: Color[] = blips.colors;
-const COLS = 8;
-const url = (s: Sprite) => `${blips.base}${s.name}.${s.ext}`;
-const label = (s: Sprite) => s.name.replace(/^radar_/, "").replace(/_/g, " ");
 
 interface BlipValue {
   sprite: number;
@@ -48,34 +33,6 @@ const toBlip = (v: unknown): BlipValue => {
     scale: typeof r.scale === "number" ? r.scale : 0.8,
   };
 };
-
-const Icon = memo(function Icon({
-  sprite,
-  size,
-}: {
-  sprite: number;
-  size: string;
-}) {
-  const s = blips.sprites.find((x) => x.id === sprite);
-  if (!s)
-    return (
-      <span
-        style={{ width: size, height: size }}
-        className="rounded-full bg-white/10"
-      />
-    );
-  // A few sprites have no picture in the reference: the cell stays empty instead of a broken image.
-  return (
-    <img
-      src={url(s)}
-      alt=""
-      draggable={false}
-      loading="lazy"
-      onError={(e) => (e.currentTarget.style.visibility = "hidden")}
-      style={{ width: size, height: size, objectFit: "contain" }}
-    />
-  );
-});
 
 /** A map blip: picture (searchable grid of every sprite), colour (swatches) and size, previewed as the game shows it. */
 export function BlipW({ spec, path }: { spec: Spec; path: string }) {

@@ -8,7 +8,7 @@ import {
   recommendationChanged,
   recommendationsOpened,
 } from "../../store/admin";
-import { saveField } from "./actions";
+import { saveField } from "./editActions";
 import { getAt } from "./path";
 
 /** ai-core's script recommendations: the open snapshot, the deltas, dismiss and the product page. */

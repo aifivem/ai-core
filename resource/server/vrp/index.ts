@@ -6,7 +6,8 @@ import { players } from "../player/registry";
 import { vrpBackend } from "./backend";
 import { seenPermissions, vrpConfig } from "./config";
 import { vrpQuery } from "./query";
-import { isVrpKind, VrpStore, type VrpKind } from "./store";
+import { isVrpKind, type VrpKind } from "./data";
+import { VrpStore } from "./store";
 
 /**
  * ai-core's JS side of the vRP bridge (bridge/vrp): the key-value store behind vRP's UData / CData / SData / GData,

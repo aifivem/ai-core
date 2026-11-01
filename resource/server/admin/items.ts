@@ -3,7 +3,7 @@ import {
   ITEM_PICKER_CALLBACK,
   type ItemPickerData,
 } from "@aicore-fivem/shared";
-import { inventory } from "../inventory";
+import { inventory } from "../inventory/active";
 
 // The item picker of admin tools (lib `itemPicker`): every item of the active inventory sorted by label, and the
 // target's carried weight so the list can stop at the limit (the give itself is checked again by the inventory).

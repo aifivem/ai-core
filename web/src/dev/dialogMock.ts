@@ -1,4 +1,4 @@
-import type { ItemPickerMessage } from "../features/dialogs/ItemPicker";
+import type { ItemPickerMessage } from "../features/dialogs/itemPickerMessage";
 
 /** Browser preview only: `?view=items` shows the admin item picker. */
 export const ITEMS_MOCK: ItemPickerMessage | undefined =

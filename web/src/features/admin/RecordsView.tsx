@@ -1,24 +1,21 @@
 import { useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faChevronRight,
   faFileImport,
-  faLock,
   faMagnifyingGlass,
   faPlus,
-  faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import type { AdminPanelSnapshot, TabSpec } from "@aicore-fivem/shared";
 import { Button } from "../../components/ui/button";
 import { Tooltip } from "../../components/ui/tooltip";
 import { VirtualList } from "../../components/VirtualList";
-import { cn } from "../../lib/utils";
-import { goTo } from "./actions";
 import { Editor } from "./Editor";
 import { iconOf } from "./icons";
 import { getAt } from "./path";
 import { CreateDialog, DeleteDialog } from "./RecordDialogs";
 import { ExportButton, ImportDialog } from "./RecordTransfer";
+import { RecordRow } from "./RecordRow";
+import { RecordTitle } from "./RecordTitle";
 
 type T = (key: string, ...args: Array<string | number>) => string;
 
@@ -112,47 +109,16 @@ export function RecordsView({ panel, tab, selected, t }: Props) {
               {t(search ? "ADMIN_NO_MATCH" : "ADMIN_EMPTY_LIST")}
             </p>
           }
-          renderItem={(key) => {
-            const sub = tab.listSub
-              ? getAt(records[key], tab.listSub)
-              : undefined;
-            const active = key === selected;
-            return (
-              <button
-                type="button"
-                onClick={() => goTo(panel.resource, tab.id, key)}
-                className={cn(
-                  "flex min-h-[6.4vh] w-full items-center gap-[1.2vh] rounded-[0.9vh] px-[1.4vh] py-[1vh] text-left transition-[background-color] duration-150 ease-out",
-                  active
-                    ? "bg-tgi-green-15"
-                    : "bg-surface [box-shadow:inset_0_0_0_1px_rgba(255,255,255,0.06)] hover:bg-[#202020]",
-                )}
-              >
-                <span className="flex min-w-0 flex-1 flex-col gap-[0.4vh]">
-                  <span
-                    title={labelOf(key)}
-                    className={cn(
-                      "truncate text-[1.5vh] leading-[1.2] font-semibold",
-                      active && "text-tgi-green",
-                    )}
-                  >
-                    {labelOf(key)}
-                  </span>
-                  <span className="truncate text-[1.25vh] leading-[1.2] text-text-3">
-                    {typeof sub === "string" && sub ? `${key} · ${sub}` : key}
-                  </span>
-                </span>
-                <FontAwesomeIcon
-                  icon={faChevronRight}
-                  className={cn(
-                    "text-[1.2vh]",
-                    active ? "text-tgi-green" : "text-text-4",
-                  )}
-                  aria-hidden
-                />
-              </button>
-            );
-          }}
+          renderItem={(key) => (
+            <RecordRow
+              resource={panel.resource}
+              tab={tab}
+              recordKey={key}
+              record={records[key]}
+              label={labelOf(key)}
+              active={key === selected}
+            />
+          )}
         />
       </div>
 
@@ -167,37 +133,14 @@ export function RecordsView({ panel, tab, selected, t }: Props) {
         </div>
       ) : (
         <div className="flex min-w-0 flex-1 flex-col border-l border-white/8 pl-[2vh]">
-          <div className="flex shrink-0 items-center gap-[1.2vh] pb-[1.6vh]">
-            <span className="flex min-w-0 flex-col gap-[0.4vh]">
-              <span
-                title={labelOf(selected)}
-                className="truncate text-[2.1vh] leading-[1.2] font-semibold"
-              >
-                {labelOf(selected)}
-              </span>
-              <span className="truncate font-mono text-[1.25vh] leading-[1.2] text-text-3">
-                {selected}
-              </span>
-            </span>
-            <span className="flex-1" />
-            {locked ? (
-              <span className="flex items-center gap-[0.6vh] text-[1.3vh] text-tgi-green">
-                <FontAwesomeIcon icon={faLock} aria-hidden />
-                {t("ADMIN_LOCKED")}
-              </span>
-            ) : (
-              tab.deleteLabel && (
-                <Button variant="danger" onClick={() => setDeleting(true)}>
-                  <FontAwesomeIcon
-                    icon={faTrash}
-                    data-icon="inline-start"
-                    aria-hidden
-                  />
-                  {t(tab.deleteLabel)}
-                </Button>
-              )
-            )}
-          </div>
+          <RecordTitle
+            label={labelOf(selected)}
+            recordKey={selected}
+            locked={locked}
+            deleteLabel={tab.deleteLabel}
+            onDelete={() => setDeleting(true)}
+            t={t}
+          />
           <Editor
             key={selected}
             tab={tab}

@@ -1,11 +1,6 @@
 import { isResourceStarted } from "@aicore-fivem/lib/fivem";
 import type { Logger } from "@aicore-fivem/lib/shared";
-
-/** What every integration adapter has: the resource it talks to and, optionally, the version it is written for. */
-interface Adapter {
-  readonly resource: string;
-  readonly version?: string;
-}
+import { guarded, type Adapter } from "./adapter";
 
 /** Runs before the first switch and after every one; `restarted` = the same adapter whose resource started again. */
 export type SwitchHandler<A> = (
@@ -34,25 +29,6 @@ function provides(resource: string): string[] {
     { length: GetNumResourceMetadata(resource, "provide") },
     (_, i) => GetResourceMetadata(resource, "provide", i),
   );
-}
-
-/** Runs `fn` on an adapter; logs and answers `fallback` when there is none or its resource throws. */
-function guarded<A extends Adapter, T>(
-  adapter: A | null,
-  what: string,
-  fn: (adapter: A) => T,
-  fallback: T,
-  log: Logger,
-): T {
-  if (!adapter) return fallback;
-  try {
-    return fn(adapter);
-  } catch (error) {
-    // While clients load, a resource reads started before its scripts ran: its start event hands state over again.
-    if (!String(error).includes("No such export"))
-      log.error(`${adapter.resource} ${what} failed`, error);
-    return fallback;
-  }
 }
 
 /** Every picker of this resource, fed by one start and one stop listener (one pair per picker passes Node's limit). */
@@ -181,40 +157,5 @@ export class AdapterPicker<A extends Adapter> {
       log.warn(
         `${next.resource} ${installed} is installed; its adapter is written for ${next.version}`,
       );
-  }
-}
-
-/** A GlobalKey mirror holding the server's pick (client `GlobalKey<string>`). */
-interface PickKey {
-  get(): string | undefined;
-  onChange(
-    listener: (id: "global", value: string | undefined) => void,
-  ): unknown;
-}
-
-/** Client half of a server-side picker: follows the adapter the server published in a GlobalKey. */
-export class AdapterFollower<A extends Adapter> {
-  private current: A | null = null;
-
-  constructor(
-    private readonly adapters: readonly A[],
-    key: PickKey,
-    private readonly log: Logger,
-  ) {
-    this.pick(key.get());
-    key.onChange((_id, value) => this.pick(value));
-  }
-
-  get active(): A | null {
-    return this.current;
-  }
-
-  /** Runs `fn` on the followed adapter; `fallback` while none is picked or when its resource throws. */
-  call<T>(what: string, fn: (adapter: A) => T, fallback: T): T {
-    return guarded(this.current, what, fn, fallback, this.log);
-  }
-
-  private pick(resource: string | undefined): void {
-    this.current = this.adapters.find((a) => a.resource === resource) ?? null;
   }
 }

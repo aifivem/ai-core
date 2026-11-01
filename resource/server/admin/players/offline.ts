@@ -15,7 +15,7 @@ import {
 import { loadAccounts } from "../../money/book";
 import { moneyWriter } from "../../money/writer";
 import { updateInfo, updateMetadata, updatePosition } from "./repo";
-import { playerWatchers } from "./watchers";
+import { charWatchers } from "./charWatchers";
 
 /**
  * Edits of a character that is not loaded. The caller holds the character (`claims.run`), so it cannot load while
@@ -64,7 +64,7 @@ export const offline = {
         : account.change(mode === "add" ? amount : -amount, reason, actor);
     if (!result.ok) return changeError(result.error);
     if (!(await moneyWriter.commit())) return fail("ADMIN_PLAYERS_ERR_WRITE");
-    playerWatchers.money(charId, name, result.balance);
+    charWatchers.money(charId, name, result.balance);
     return OK;
   },
 
@@ -88,7 +88,7 @@ export const offline = {
     }
     if (only) await saveOnlyJob(charId, job, grade);
     else await saveJob(charId, job, grade);
-    playerWatchers.char(charId, { jobs: list });
+    charWatchers.char(charId, { jobs: list });
     return OK;
   },
 
@@ -96,7 +96,7 @@ export const offline = {
     const list = await loadJobs(charId);
     if (!list.some((m) => m.job === job)) return changeError("NOT_MEMBER");
     await deleteJob(charId, job);
-    playerWatchers.char(charId, { jobs: list.filter((m) => m.job !== job) });
+    charWatchers.char(charId, { jobs: list.filter((m) => m.job !== job) });
     return OK;
   },
 
@@ -125,7 +125,7 @@ export const offline = {
     const activate = !active;
     await saveGangMembership(charId, gang, grade, only, activate);
     if (activate) active = gang;
-    playerWatchers.char(charId, { gangs: list, activeGang: active });
+    charWatchers.char(charId, { gangs: list, activeGang: active });
     return OK;
   },
 
@@ -140,7 +140,7 @@ export const offline = {
       active = list[0]?.gang ?? null;
       await saveActiveGang(charId, active);
     }
-    playerWatchers.char(charId, { gangs: list, activeGang: active });
+    charWatchers.char(charId, { gangs: list, activeGang: active });
     return OK;
   },
 
@@ -152,7 +152,7 @@ export const offline = {
     if (gang !== null && !data.gangs.some((m) => m.gang === gang))
       return changeError("NOT_MEMBER");
     await saveActiveGang(charId, gang);
-    playerWatchers.char(charId, { activeGang: gang });
+    charWatchers.char(charId, { activeGang: gang });
     return OK;
   },
 
@@ -166,13 +166,13 @@ export const offline = {
     if (value === null) delete row.metadata[key];
     else row.metadata[key] = value;
     await updateMetadata(charId, row.metadata);
-    playerWatchers.meta(charId, key, value);
+    charWatchers.meta(charId, key, value);
     return OK;
   },
 
   async position(charId: number, p: Position): Promise<PlayersResult> {
     await updatePosition(charId, p);
-    playerWatchers.char(charId, { position: p });
+    charWatchers.char(charId, { position: p });
     return OK;
   },
 
@@ -184,7 +184,7 @@ export const offline = {
     >,
   ): Promise<PlayersResult> {
     await updateInfo(charId, info);
-    playerWatchers.char(charId, info);
+    charWatchers.char(charId, info);
     return OK;
   },
 };

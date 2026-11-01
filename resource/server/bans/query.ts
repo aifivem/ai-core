@@ -1,9 +1,6 @@
-import { isRecord } from "@aicore-fivem/lib/shared";
 import {
-  BAN_FILTERS,
   BAN_IDENTIFIERS,
   banStatus,
-  type BanCursor,
   type BanFilter,
   type BanInfo,
   type BanListPage,
@@ -11,6 +8,7 @@ import {
 } from "@aicore-fivem/shared";
 import { mysql } from "@aicore-fivem/mysql";
 import type { Tables } from "../tables";
+import { FIRST, type Column, type ParsedBanQuery } from "./search";
 import { copyBan, type BanStore, type Identifiers } from "./store";
 
 /**
@@ -22,8 +20,6 @@ import { copyBan, type BanStore, type Identifiers } from "./store";
 export const PAGE = 50;
 /** Bans one identifier search or a history shows at most. */
 export const HISTORY_LIMIT = 100;
-/** Above every INT UNSIGNED id: the first page's cursor. */
-const FIRST = 2 ** 32;
 
 const COLUMNS =
   "id, fivem, license, discord, ip, name, reason, banned_by, created_at, expires_at, revoked_at, revoked_by";
@@ -56,8 +52,6 @@ export const recordOf = (
   revokedBy: string | null = null,
 ): BanRecord => ({ ...copyBan(ban), revoked, revokedBy });
 
-type Column = "id" | (typeof BAN_IDENTIFIERS)[number];
-
 /** Bans matching any of the (column, value) pairs, newest first: one indexed branch per pair. */
 async function matchAny(
   pairs: Array<[Column, string | number]>,
@@ -85,70 +79,6 @@ export function historyOf(identifiers: Identifiers): Promise<BanRecord[]> {
       return value ? [[type, value]] : [];
     }),
   );
-}
-
-export type BanSearch =
-  | { kind: "match"; pairs: Array<[Column, string | number]> }
-  | { kind: "name"; prefix: string };
-
-/** What a typed search means; null when it is too short or too long. */
-export function parseBanSearch(raw: string): BanSearch | null {
-  const q = raw.trim().replace(/^#/, "");
-  if (q.length < 1 || q.length > 64) return null;
-  const prefixed = /^(fivem|license|discord|ip):(\S+)$/i.exec(q);
-  if (prefixed?.[1] && prefixed[2])
-    return {
-      kind: "match",
-      pairs: [[prefixed[1].toLowerCase() as Column, prefixed[2]]],
-    };
-  if (/^\d+$/.test(q)) {
-    const id = Number(q);
-    const pairs: Array<[Column, string | number]> = [
-      ["fivem", q],
-      ["discord", q],
-    ];
-    if (id > 0 && id < FIRST) pairs.unshift(["id", id]);
-    return { kind: "match", pairs };
-  }
-  if (/^[0-9a-f]{40}$/i.test(q))
-    return { kind: "match", pairs: [["license", q.toLowerCase()]] };
-  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(q))
-    return { kind: "match", pairs: [["ip", q]] };
-  return q.length >= 2 ? { kind: "name", prefix: q } : null;
-}
-
-export interface ParsedBanQuery {
-  filter: BanFilter;
-  search: BanSearch | null;
-  cursor: BanCursor | null;
-}
-
-/** A `BanQuery` from another resource or the panel; null when any part is wrong. */
-export function readBanQuery(raw: unknown): ParsedBanQuery | null {
-  if (!isRecord(raw)) return null;
-  const filter = raw.filter ?? "all";
-  if (!(BAN_FILTERS as readonly unknown[]).includes(filter)) return null;
-  let search: BanSearch | null = null;
-  if (raw.search != null && raw.search !== "") {
-    if (typeof raw.search !== "string") return null;
-    search = parseBanSearch(raw.search);
-    if (!search) return null;
-  }
-  let cursor: BanCursor | null = null;
-  if (raw.cursor != null) {
-    const c = raw.cursor;
-    if (
-      !isRecord(c) ||
-      typeof c.id !== "number" ||
-      !Number.isInteger(c.id) ||
-      c.id < 1 ||
-      c.id > FIRST ||
-      (c.at !== null && !(typeof c.at === "number" && Number.isFinite(c.at)))
-    )
-      return null;
-    cursor = { id: c.id, at: c.at };
-  }
-  return { filter: filter as BanFilter, search, cursor };
 }
 
 /** `LIKE` prefix with `!` as the escape character (portable: no backslash rules). */

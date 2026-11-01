@@ -7,7 +7,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { cn } from "../../lib/utils";
 import { useAppSelector } from "../../store";
-import { clearFocus, fieldId } from "./actions";
+import { clearFocus } from "./actions";
+import { fieldId } from "./editActions";
 import { useEditor } from "./context";
 
 interface Props {

@@ -7,16 +7,11 @@ import {
   type BansHistoryAnswer,
   type BansListAnswer,
 } from "common/adminBans";
-import {
-  banList,
-  createBan,
-  editBan,
-  isBanned,
-  readMinutes,
-  readReason,
-  unbanPlayer,
-} from "../bans";
-import { historyOf, readBanQuery } from "../bans/query";
+import { createBan, editBan, unbanPlayer } from "../bans/changes";
+import { banList, isBanned } from "../bans/lookup";
+import { readMinutes, readReason } from "../bans/parse";
+import { historyOf } from "../bans/query";
+import { readBanQuery } from "../bans/search";
 import type { Identifiers } from "../bans/store";
 import {
   identifiersOf,

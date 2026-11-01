@@ -1,5 +1,5 @@
 import { every, onStop } from "@aicore-fivem/lib/server";
-import { saveCharacters } from "./characters/repo";
+import { saveCharacters } from "./characters/save";
 import { settings } from "./content";
 import { log } from "./log";
 import { players } from "./player/registry";

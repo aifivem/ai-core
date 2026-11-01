@@ -5,7 +5,7 @@ import { Select } from "../../../components/ui/select";
 import { useAppSelector } from "../../../store";
 import { useEditor } from "../context";
 import { getAt } from "../path";
-import { useField } from "./basic";
+import { useField } from "./useField";
 
 type Spec = Extract<WidgetSpec, { widget: "grade" }>;
 

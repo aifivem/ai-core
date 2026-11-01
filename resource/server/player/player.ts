@@ -8,14 +8,23 @@ import {
   type AiPlayerData,
   type CharacterInfo,
 } from "@aicore-fivem/shared";
-import type { CharacterRow, CharacterSave } from "../characters/repo";
-import { playerWatchers } from "../admin/players/watchers";
+import type { CharacterRow } from "../characters/repo";
+import type { CharacterSave } from "../characters/save";
+import { charWatchers } from "../admin/players/charWatchers";
 import { settings } from "../content";
 import { GangSet } from "../jobs/gangSet";
 import { JobSet, logWriteError } from "../jobs/jobSet";
 import { loadGangs, loadJobs } from "../jobs/repo";
 import { loadAccounts } from "../money/book";
 import type { User } from "./users";
+import {
+  characterInfo,
+  savedArmour,
+  savedHealth,
+  savedLastDuty,
+  savedPlayTime,
+  type InfoEdit,
+} from "./rowValues";
 import { Wallet } from "./wallet";
 
 /** A player with a loaded character: everything ai-core knows about them, in memory. */
@@ -47,10 +56,7 @@ export class Player {
       loadJobs(row.id),
       loadGangs(row.id),
     ]);
-    const lastDuty =
-      typeof row.metadata.lastDutyJob === "string"
-        ? row.metadata.lastDutyJob
-        : null;
+    const lastDuty = savedLastDuty(row.metadata);
     const writes = new WriteQueue(logWriteError);
     const player = new Player(
       source,
@@ -74,26 +80,7 @@ export class Player {
   }
 
   info(): CharacterInfo {
-    const {
-      id,
-      citizenid,
-      slot,
-      firstname,
-      lastname,
-      birthdate,
-      sex,
-      nationality,
-    } = this.row;
-    return {
-      id,
-      citizenid,
-      slot,
-      firstname,
-      lastname,
-      birthdate,
-      sex,
-      nationality,
-    };
+    return characterInfo(this.row);
   }
 
   get fullName(): string {
@@ -113,7 +100,7 @@ export class Player {
   setMeta(key: string, value: unknown): void {
     if (value === undefined || value === null) delete this.row.metadata[key];
     else this.row.metadata[key] = value;
-    playerWatchers.meta(this.row.id, key, value ?? null);
+    charWatchers.meta(this.row.id, key, value ?? null);
     patchPlayerData(this.source, "metadata", { [key]: value ?? null });
     emit(CORE.metaChangedEvent, this.source, key, value ?? null);
   }
@@ -124,18 +111,13 @@ export class Player {
   }
 
   /** Name, birth date and nationality from the admin panel (the caller writes the row); scripts that copied them see the change after the next load. */
-  setInfo(
-    info: Pick<
-      CharacterInfo,
-      "firstname" | "lastname" | "birthdate" | "nationality"
-    >,
-  ): void {
+  setInfo(info: InfoEdit): void {
     this.row.firstname = info.firstname;
     this.row.lastname = info.lastname;
     this.row.birthdate = info.birthdate;
     this.row.nationality = info.nationality;
     sendPlayerData(this.source, "character", this.info());
-    playerWatchers.char(this.row.id, info);
+    charWatchers.char(this.row.id, info);
   }
 
   /** The full snapshot for the owner's client. */
@@ -163,35 +145,18 @@ export class Player {
 
   /** Saved body armour (metadata `armor`, QB's key), 0-100; set again on the ped at spawn. */
   armour(): number {
-    const value = this.row.metadata.armor;
-    return typeof value === "number" && Number.isFinite(value)
-      ? Math.min(100, Math.max(0, Math.round(value)))
-      : 0;
+    return savedArmour(this.row.metadata);
   }
 
-  /**
-   * Saved ped health (metadata `health`), set again at spawn; 0 when none is saved or it is 100 or below (GTA's dead
-   * line: a downed character comes back down through the death script's `isdead`, never by spawning dead).
-   */
+  /** Saved ped health (metadata `health`), set again at spawn; 0 when none is saved or it is 100 or below. */
   health(): number {
-    const value = this.row.metadata.health;
-    return typeof value === "number" && Number.isFinite(value) && value > 100
-      ? Math.round(value)
-      : 0;
+    return savedHealth(this.row.metadata);
   }
 
   /** Seconds played: the stored metadata `playtime` plus the time since it was last counted. */
   playTime(): number {
-    return (
-      this.storedPlayTime() + Math.floor((Date.now() - this.counted) / 1000)
-    );
-  }
-
-  private storedPlayTime(): number {
-    const value = this.row.metadata.playtime;
-    return typeof value === "number" && Number.isFinite(value) && value > 0
-      ? Math.floor(value)
-      : 0;
+    const unsaved = Math.floor((Date.now() - this.counted) / 1000);
+    return savedPlayTime(this.row.metadata) + unsaved;
   }
 
   /** What the periodic flush writes: the ped's position, armour and health (server copies), play time and the metadata bag. */
@@ -199,7 +164,7 @@ export class Player {
     const seconds = Math.floor((Date.now() - this.counted) / 1000);
     if (seconds > 0) {
       this.counted += seconds * 1000;
-      this.setMeta("playtime", this.storedPlayTime() + seconds);
+      this.setMeta("playtime", savedPlayTime(this.row.metadata) + seconds);
     }
     const ped = GetPlayerPed(String(this.source));
     if (ped && DoesEntityExist(ped)) {

@@ -10,7 +10,7 @@ import {
   GARAGES_STATE_KEY,
   type GarageClientAdapter,
 } from "@aicore-fivem/shared";
-import { AdapterFollower } from "common/adapters";
+import { AdapterFollower } from "common/adapterFollower";
 import { cdGarage } from "./adapters/cd_garage";
 import { jgAdvancedGarages } from "./adapters/jg-advancedgarages";
 

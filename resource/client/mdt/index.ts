@@ -6,7 +6,7 @@ import {
 } from "@aicore-fivem/lib/client";
 import { createLogger } from "@aicore-fivem/lib/shared";
 import { CORE, type MdtClientAdapter } from "@aicore-fivem/shared";
-import { AdapterFollower } from "common/adapters";
+import { AdapterFollower } from "common/adapterFollower";
 
 /** A client export without arguments that opens the MDT (it checks the job itself). */
 const exportOpener = (resource: string, name: string): MdtClientAdapter => ({

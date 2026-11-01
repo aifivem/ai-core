@@ -1,7 +1,7 @@
 import type { ValueLabels, WidgetSpec } from "@aicore-fivem/shared";
 import { cn } from "../../../lib/utils";
 import { useEditor } from "../context";
-import { useField } from "./basic";
+import { useField } from "./useField";
 
 type T = (key: string, ...args: Array<string | number>) => string;
 

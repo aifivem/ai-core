@@ -14,8 +14,9 @@ g.GetConvarInt = (name: string, fallback: number) =>
 const { mysql } = await import("@aicore-fivem/mysql");
 await mysql.awaitConnection();
 const { upsertUser } = await import("../resource/server/player/users");
-const { listCharacters, getCharacter, saveCharacters } =
+const { listCharacters, getCharacter } =
   await import("../resource/server/characters/repo");
+const { saveCharacters } = await import("../resource/server/characters/save");
 const { loadJobs, loadGangs } = await import("../resource/server/jobs/repo");
 const { Account } = await import("../resource/server/money/account");
 

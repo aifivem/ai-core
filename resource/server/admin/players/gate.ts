@@ -30,6 +30,12 @@ export const parse = {
   },
 };
 
+/** The arguments of an action that takes only a character id. */
+export const charOnly = ([charId]: unknown[]) => {
+  const id = parse.charId(charId);
+  return id === null ? null : ([id] as const);
+};
+
 /** Edits per admin: the panel's limit for every write. */
 const WRITE_RATE = { count: 30, windowMs: 10_000 };
 

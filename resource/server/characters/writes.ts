@@ -3,7 +3,7 @@ import type { CharacterResult } from "@aicore-fivem/shared";
 import type { MoneyMode } from "common/adminPlayers";
 import { changeError, offline } from "../admin/players/offline";
 import { settings } from "../content";
-import { log } from "../log";
+import { answer } from "./answer";
 import { editCharacter, fail, toCharId } from "./edit";
 
 /**
@@ -21,24 +21,6 @@ const nameOf = (v: unknown): string | null =>
   typeof v === "string" && NAME.test(v) ? v : null;
 const gradeOf = (v: unknown): number | null =>
   typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 255 ? v : null;
-
-/** Hands the answer to the caller's callback (a throwing callback is logged, never left unanswered). */
-export function answer<T>(
-  what: string,
-  work: Promise<T>,
-  done: unknown,
-  fallback: T,
-): void {
-  work
-    .catch((error: unknown) => {
-      log.error(`${what} failed`, error);
-      return fallback;
-    })
-    .then((result) => {
-      if (typeof done === "function") (done as (result: T) => void)(result);
-    })
-    .catch((error: unknown) => log.error(`${what}: callback failed`, error));
-}
 
 const ERROR: CharacterResult = fail("ADMIN_PLAYERS_ERR_BUSY");
 

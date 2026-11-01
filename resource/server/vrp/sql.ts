@@ -1,4 +1,4 @@
-import type { VrpRow } from "./store";
+import type { VrpRow } from "./data";
 
 /** SQL text helpers of the vRP layer (pure: the bench runs them). */
 

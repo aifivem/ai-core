@@ -11,7 +11,7 @@ import { tgiannClothing } from "./adapters/tgiann-clothing";
  * Every supported clothing script, in detection order: `auto` uses the first one running. ai-appearance comes last:
  * an installed clothing script replaces it. tgiann-clothing comes first because it `provide`s illenium-appearance and
  * qb-clothing. A new clothing script = one adapter file here, one in `client/appearance/adapters/` and a line in both
- * lists.
+ * lists and in `names.ts`.
  */
 export const APPEARANCE_SYSTEMS: readonly AppearanceAdapter[] = [
   tgiannClothing,

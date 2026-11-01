@@ -50,8 +50,8 @@ g.GetConvar = (name: string, fallback: string) =>
   name === "mysql_connection_string" ? connection(DB) : convar(name, fallback);
 const { mysql } = await import("@aicore-fivem/mysql");
 const { BanStore } = await import("../resource/server/bans/store");
-const { historyOf, listBans, readBanQuery } =
-  await import("../resource/server/bans/query");
+const { historyOf, listBans } = await import("../resource/server/bans/query");
+const { readBanQuery } = await import("../resource/server/bans/search");
 
 async function median(fn: () => Promise<unknown>): Promise<number> {
   const runs: number[] = [];

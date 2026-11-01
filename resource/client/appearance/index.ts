@@ -13,7 +13,7 @@ import {
   type CharacterAppearance,
   type ClothingMenu,
 } from "@aicore-fivem/shared";
-import { AdapterFollower } from "common/adapters";
+import { AdapterFollower } from "common/adapterFollower";
 import { aiAppearance } from "./adapters/ai-appearance";
 import { blAppearance } from "./adapters/bl_appearance";
 import { crmAppearance } from "./adapters/crm-appearance";

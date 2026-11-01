@@ -4,7 +4,7 @@ import { faCircleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { Button } from "../../components/ui/button";
 import { Dialog } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
-import { createRecord, deleteRecord } from "./actions";
+import { createRecord, deleteRecord } from "./recordActions";
 
 type T = (key: string, ...args: Array<string | number>) => string;
 

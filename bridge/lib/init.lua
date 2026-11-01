@@ -26,6 +26,7 @@ end
 
 ---@class AiLib
 ---@field side 'client'|'server'
+---@field loadPart fun(path: string): ... internal: runs a module's part `lua/<side>/<module>/<part>.lua` (else `lua/shared/...`) and returns what it returns (`aiLib.loadPart('Points/point')`); a module past the size limit keeps its parts there
 ---@field waitFor fun(check: (fun(): any), timeout?: integer|false, interval?: integer): any
 ---@field every fun(ms: integer, fn: fun(), options?: { active?: boolean, name?: string }): AiLibJob periodic work (0 = every frame) on the resource's one scheduler thread; `job:set(active)`, `job:stop()`, `job.running`
 ---@field formatText fun(text: string, ...: string|number): string
@@ -120,7 +121,7 @@ end
 ---@field world table client `pauseSync` / `resumeSync`; server time and weather
 ---@field appearance table client `apply(ped, look)`, `read(ped)`, `openMenu(menu)`, `wearOutfit(outfit)`, `reloadSkin()`; server `get(charId)` (waits), `provider()`: looks through ai-core's appearance layer
 ---@diagnostic disable-next-line: lowercase-global
-aiLib = setmetatable({ side = side }, {
+aiLib = setmetatable({ side = side, loadPart = loadModule }, {
     __index = function(self, key)
         local value = loadModule(key)
         rawset(self, key, value)

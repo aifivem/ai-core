@@ -10,18 +10,17 @@ import {
   type CreateCharacterInput,
 } from "@aicore-fivem/shared";
 import { listCharacters } from "../characters/repo";
-import { answer } from "../characters/writes";
+import { answer } from "../characters/answer";
 import { databaseReady } from "../database";
 import { log } from "../log";
 import { enterWorldBucket } from "../player/buckets";
 import { players, selecting } from "../player/registry";
-import {
-  createCharacterFor,
-  loginCharacterFor,
-  logoutCharacter,
-} from "../player/session";
+import { createCharacterFor } from "../player/create";
+import { loginCharacterFor } from "../player/load";
+import { logoutCharacter } from "../player/session";
 import { identify, upsertUser, type User } from "../player/users";
-import { projection } from "./projection";
+import "./projection";
+import { projection } from "./projection/projection";
 import { externalScreen, onScreenSwitch } from "./screen";
 
 /**
