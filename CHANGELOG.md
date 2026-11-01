@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.5.0](https://github.com/aifivem/ai-core/compare/v0.4.0...v0.5.0) (2026-11-01)
+
+
+### New Features
+
+* **core:** SearchCharacters and GetAccountHistory exports ([d9b266e](https://github.com/aifivem/ai-core/commit/d9b266e4915b9d2094b7b5134c0c465b37f2ee96))
+* **inventory:** CanCarryItems export for a combined carry check ([55f32a9](https://github.com/aifivem/ai-core/commit/55f32a9fd5e5453919a8eeca281a9a173b1924e7))
+* **inventory:** client GetItems export and item count events from the active inventory ([ced6d22](https://github.com/aifivem/ai-core/commit/ced6d221dce95a3710962383374dbea1e0dd15f6))
+* **jobs:** GetUnemployedJob export with the panel's unemployed job ([8a5e1fe](https://github.com/aifivem/ai-core/commit/8a5e1fe343da933e0d108a9bdda8f71459fbee39))
+* **stress:** AddNeed export for hunger and thirst ([2e5445e](https://github.com/aifivem/ai-core/commit/2e5445e3e8d2b339bb5166714875fd5f2de96103))
+
+
+### Bug Fixes
+
+* **bridge:** follow bucket changes made outside the QB bucket functions ([5b42193](https://github.com/aifivem/ai-core/commit/5b42193c108f277600e0b15edff6ab48e8cc01b0))
+
 ## [0.4.0](https://github.com/aifivem/ai-core/compare/v0.3.0...v0.4.0) (2026-11-01)
 
 
