@@ -16,6 +16,12 @@ return {
     ---`(source, { name, slot, count, metadata })`; returning false keeps the item.
     registerUsableItem = function(name, handler) return core:RegisterUsableItem(name, handler) end,
     getItemDefinition = function(name) return core:GetItemDefinition(name) end,
+    ---Replaces the metadata of the stack at `slot`; false when the inventory could not.
+    setItemMetadata = function(inv, slot, metadata) return core:SetItemMetadata(inv, slot, metadata) end,
+    ---A player's weight limit in grams until the inventory reloads it; false when the inventory has no way.
+    setMaxWeight = function(src, grams) return core:SetMaxWeight(src, grams) end,
+    ---@return string[] names of every item a usable handler is registered for
+    usableItems = function() return core:GetUsableItems() end,
     ---Kept by ai-core like stashes; `items` are `{ name, price }`.
     registerShop = function(name, label, items) core:RegisterShop(name, label, items) end,
     ---Opens a registered shop on the player's screen without range or access checks (check before).

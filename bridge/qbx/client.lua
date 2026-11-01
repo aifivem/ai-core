@@ -99,9 +99,8 @@ local function playerData()
     return data
 end
 
--- Runs after the bridge built the QB PlayerData for this load (core/client.lua registered first).
-AddEventHandler('ai-core:client:playerLoaded', function(data)
-    if type(data) ~= 'table' then return end
+-- Runs after the QB part built the PlayerData for this load (bridge/qb/client.lua registered its listener first).
+BridgeClient.on('loaded', function(data)
     takeSnapshot(data)
     TriggerEvent('QBCore:Player:SetPlayerData', extend())
 end)
@@ -148,7 +147,8 @@ end)
 
 provide('GetPlayerData', playerData)
 provide('Notify', function(text, kind, duration, subTitle)
-    BridgeClient.notify(BridgeQbox.notifyText(text, subTitle), kind, duration)
+    local title, description = BridgeQbox.notifyParts(text, subTitle)
+    BridgeClient.notify(description or '', kind, duration, title)
 end)
 provide('IsLoggedIn', function() return BridgeClient.loaded end)
 provide('GetGroups', function() return BridgeQbox.groups(playerData()) end)

@@ -330,28 +330,22 @@ function F.GetPeds(ignoreList)
     return out
 end
 
----@param entities integer[]
----@param coords? vector3|table
----@return integer, number
-local function closest(entities, coords)
-    local from, best, bestDistance = origin(coords), -1, -1
-    for _, entity in ipairs(entities) do
-        local d = #(GetEntityCoords(entity) - from)
-        if bestDistance == -1 or d < bestDistance then best, bestDistance = entity, d end
-    end
-    return best, bestDistance
-end
-
+--- The closest ped other than the local one and the peds of `ignoreList`, and the distance; -1, -1 when none.
 ---@param coords? vector3|table
 ---@param ignoreList? integer[]
+---@return integer, number
 function F.GetClosestPed(coords, ignoreList)
-    local list = ignoreList or {}
-    list[#list + 1] = PlayerPedId()
-    return closest(F.GetPeds(list), coords)
+    local ignore
+    if type(ignoreList) == 'table' and next(ignoreList) then
+        ignore = {}
+        for _, ped in ipairs(ignoreList) do ignore[ped] = true end
+    end
+    return BridgeClient.closest('ped', coords, ignore and function(ped) return not ignore[ped] end)
 end
 
 ---@param coords? vector3|table
-function F.GetClosestObject(coords) return closest(GetGamePool('CObject'), coords) end
+---@return integer, number
+function F.GetClosestObject(coords) return BridgeClient.closest('object', coords) end
 
 ---@param model string|integer
 ---@param timeout? integer

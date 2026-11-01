@@ -1,22 +1,6 @@
 -- Server vehicles the same way as the TypeScript lib's `spawnVehicle`: created on the server (strict entity lockdown),
 -- set up in one call, the look applied by ai-core on the entity owner's client from the same state bags.
 
-local TYPES = { automobile = true, bike = true, boat = true, heli = true, plane = true, submarine = true, trailer = true, train = true }
-local types = {}
-
----The `CreateVehicleServerSetter` type of a model, asked from a player's client (ai-core answers); nil when no such
----vehicle exists. Call from a thread.
----@param model string
----@param asker integer
----@return string?
-local function vehicleType(model, asker)
-    if types[model] then return types[model] end
-    local answer = aiLib.triggerClientCallback('ai-core:vehicleType', asker, { model }, 10000)
-    if type(answer) ~= 'string' or not TYPES[answer] then return nil end
-    types[model] = answer
-    return answer
-end
-
 ---@param vehicle integer
 ---@param src integer
 ---@param seat integer
@@ -31,7 +15,7 @@ local function seatPlayer(vehicle, src, seat)
 end
 
 ---@class AiLibSpawnVehicleOptions
----@field model string
+---@field model string|integer model name or hash
 ---@field coords vector4|{x: number, y: number, z: number, w?: number, heading?: number}
 ---@field asker? integer a player whose client tells the spawn type; without it `type` or `automobile`
 ---@field type? string
@@ -66,10 +50,16 @@ end
 ---@param options AiLibSpawnVehicleOptions
 ---@return integer?
 return function(options)
-    local kind = options.asker and vehicleType(options.model, options.asker) or options.type or 'automobile'
-    if not kind then return nil end
+    local model = options.model
+    local hash = type(model) == 'number' and model or GetHashKey(model --[[@as string]])
+    ---@type string?
+    local kind = options.type or 'automobile'
+    if options.asker then
+        kind, hash = aiLib.vehicleType(model, options.asker)
+        if not kind then return nil end
+    end
     local c = options.coords
-    local vehicle = CreateVehicleServerSetter(GetHashKey(options.model), kind, c.x, c.y, c.z, c.w or c.heading or 0.0)
+    local vehicle = CreateVehicleServerSetter(hash, kind, c.x, c.y, c.z, c.w or c.heading or 0.0)
     if not aiLib.waitFor(function() return DoesEntityExist(vehicle) or nil end, 5000) then return nil end
     if options.persistent ~= false then SetEntityOrphanMode(vehicle, 2) end
     -- The server reads the plate only after the owner client's first sync: always set one, so keys never go to an
@@ -79,7 +69,8 @@ return function(options)
     if options.bucket then SetEntityRoutingBucket(vehicle, options.bucket) end
     if options.locked then SetVehicleDoorsLocked(vehicle, 2) end
     local state = Entity(vehicle).state
-    if options.fuel then state:set('fuel', options.fuel, true) end
+    -- Through ai-core's fuel layer: a fuel script that keeps fuel on clients gets it from the entity's owner.
+    if options.fuel then exports['ai-core']:SetVehicleFuel(vehicle, options.fuel) end
     if options.props then state:set('ai:props', options.props, true) end
     if options.setup then state:set('ai:setup', options.setup, true) end
     for key, value in pairs(options.bags or {}) do state:set(key, value, true) end

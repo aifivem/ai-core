@@ -112,7 +112,8 @@ function QBCore.Debug(resource, obj, _depth)
     print(('^5[%s]^0 %s'):format(resource or GetInvokingResource() or 'qb-core', type(obj) == 'table' and json.encode(obj, { indent = true }) or tostring(obj)))
 end
 
----@param text string|table
+--- `text` may be `{ text, caption }`: `text` is the title over `caption`.
+---@param text string|{ text?: string, caption?: string }
 ---@param kind? string
 ---@param length? integer
 ---@param _icon? string
@@ -135,17 +136,11 @@ function QBCore.Functions.GetClosestPlayer(coords)
     return closest, distance
 end
 
---- The closest vehicle to `coords` and the distance.
+--- The closest vehicle to `coords` (default the local ped) and the distance; -1, -1 when none.
 ---@param coords? vector3|table
 ---@return integer, number
 function QBCore.Functions.GetClosestVehicle(coords)
-    coords = origin(coords)
-    local closest, distance = -1, -1
-    for _, vehicle in ipairs(GetGamePool('CVehicle')) do
-        local d = #(coords - GetEntityCoords(vehicle))
-        if distance == -1 or d < distance then closest, distance = vehicle, d end
-    end
-    return closest, distance
+    return BridgeClient.closest('vehicle', coords)
 end
 
 ---@param vehicle integer
@@ -159,15 +154,18 @@ local sharedJob, sharedGang = BridgeShapes.qbJobDefinition, BridgeShapes.qbGangD
 
 local sharedReady = false
 
---- Fills QBCore.Shared's jobs and gangs once from ai-core's client (vehicles and weapons: bridge/qb/shared.lua);
---- after that they follow ai-core's definition changes and the server's Shared updates.
+--- Fills QBCore.Shared's jobs, gangs and items once from ai-core's client (vehicles and weapons:
+--- bridge/qb/shared.lua); after that they follow ai-core's definition changes and the server's Shared updates (items
+--- scripts add with `QBCore.Functions.AddItem`).
 local function ensureShared()
     if sharedReady then return end
     sharedReady = true
     local S = QBCore.Shared
     S.Jobs, S.Gangs, S.Items = S.Jobs or {}, S.Gangs or {}, S.Items or {}
-    for name, definition in pairs(exports['ai-core']:GetDefinitions('jobs') or {}) do S.Jobs[name] = sharedJob(definition) end
-    for name, definition in pairs(exports['ai-core']:GetDefinitions('gangs') or {}) do S.Gangs[name] = sharedGang(definition) end
+    local core = exports['ai-core']
+    for name, definition in pairs(core:GetDefinitions('jobs') or {}) do S.Jobs[name] = sharedJob(definition) end
+    for name, definition in pairs(core:GetDefinitions('gangs') or {}) do S.Gangs[name] = sharedGang(definition) end
+    for name, definition in pairs(core:GetItemDefinitions() or {}) do S.Items[name] = BridgeShapes.qbItem(name, definition) end
 end
 
 local updateQueued = false
@@ -186,6 +184,17 @@ AddEventHandler('ai-core:client:definitions', function(file, name, value)
     if not sharedReady or (file ~= 'jobs' and file ~= 'gangs') then return end
     local list = file == 'jobs' and QBCore.Shared.Jobs or QBCore.Shared.Gangs
     list[name] = value and (file == 'jobs' and sharedJob(value) or sharedGang(value)) or nil
+    queueUpdateObject()
+end)
+
+-- The active inventory's item definitions (ai-core's client mirror: the first change carries every item); before the
+-- first use the whole mirror is read instead.
+AddEventHandler('ai-core:client:itemDefinitionsChanged', function(changes)
+    if not sharedReady or type(changes) ~= 'table' then return end
+    local items = QBCore.Shared.Items
+    for name, definition in pairs(changes) do
+        items[name] = type(definition) == 'table' and BridgeShapes.qbItem(name, definition) or nil
+    end
     queueUpdateObject()
 end)
 
@@ -263,16 +272,34 @@ BridgeClient.provideExport('qb-core', 'GetShared', getShared)
 ---@type table<string, number>
 local lastMoney = {}
 
-BridgeClient.on('loaded', function()
+--- qb-core's client sets `isLoggedIn` when `QBCore:Client:OnPlayerLoaded` arrives.
+local function loggedIn()
+    if BridgeClient.loaded and not LocalPlayer.state.isLoggedIn then LocalPlayer.state:set('isLoggedIn', true, false) end
+end
+
+-- An external character screen (or its spawn, qb-spawn) fires OnPlayerLoaded itself, locally or from the server.
+RegisterNetEvent('QBCore:Client:OnPlayerLoaded', loggedIn)
+
+-- Under an external character screen the data loads at login and OnPlayerLoaded is that screen's; qb-core's own login
+-- does not fire it either.
+BridgeClient.on('loaded', function(_, external)
     rebuild()
     QBCore.PlayerData = PlayerData
     for account, balance in pairs(BridgeClient.money) do lastMoney[account] = balance end
-    LocalPlayer.state:set('isLoggedIn', true, false)
+    if not external then LocalPlayer.state:set('isLoggedIn', true, false) end
     TriggerEvent('QBCore:Player:SetPlayerData', PlayerData)
     TriggerEvent('QBCore:Client:OnPlayerUpdated', 'all', PlayerData)
     TriggerEvent('QBCore:Client:OnJobUpdate', PlayerData.job)
     TriggerEvent('QBCore:Client:OnGangUpdate', PlayerData.gang)
-    TriggerEvent('QBCore:Client:OnPlayerLoaded')
+    if not external then TriggerEvent('QBCore:Client:OnPlayerLoaded') end
+end)
+
+-- A screen that never fires OnPlayerLoaded still leaves the player logged in once they stand in the world.
+BridgeClient.on('spawned', loggedIn)
+
+-- The license comes on its own bridge event, after the data of a character an external screen loaded.
+RegisterNetEvent('ai-core:bridge:license', function(license)
+    if PlayerData.citizenid then PlayerData.license = license end
 end)
 
 BridgeClient.on('unloaded', function()

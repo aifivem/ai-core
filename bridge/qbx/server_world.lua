@@ -190,15 +190,8 @@ provide('ToggleOptin', function(source) QBCore.Functions.ToggleOptin(source) end
 --- Deprecated in Qbox (its QB layer's SetField): the QB bridge's.
 provide('SetField', function(fieldName, data) return QBCore.Functions.SetField(fieldName, data) end)
 
---- ai-core keeps no ban list: nobody counts as banned.
-provide('IsPlayerBanned', function() return false end)
+--- ai-core's ban list (the QB bridge's IsPlayerBanned: `true, message` or false).
+provide('IsPlayerBanned', function(source) return QBCore.Functions.IsPlayerBanned(source) end)
 
-local t = aiLib.locale('ai-core')
-
---- Drops the player and logs it (ai-core stores no ban, so the player can join again).
-provide('ExploitBan', function(source, origin)
-    source = math.tointeger(tonumber(source))
-    if not source or not GetPlayerName(source) then return end
-    aiLib.aiLog('anticheat', ('Dropped for exploiting: %s'):format(tostring(origin)), { level = 'warn', source = source, metadata = { by = GetInvokingResource() } })
-    DropPlayer(tostring(source), t('BRIDGE_EXPLOIT_DROPPED'))
-end)
+--- A permanent ban in ai-core's ban list with the origin as reason (the QB bridge's ExploitBan).
+provide('ExploitBan', function(source, origin) BridgeQB.exploitBan(source, origin) end)

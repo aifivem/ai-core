@@ -252,11 +252,15 @@ local function build(source)
     function self.setGroup(_newGroup)
         warnOnce('setGroup', 'xPlayer.setGroup is ignored: admin rights on ai-core are the ai.admin ace (server.cfg).')
     end
+    --- Seconds played by the character (ai-core `GetPlayTime`: saved play time plus this session).
     function self.getPlayTime()
-        return self.lastPlaytime + (tonumber(GetPlayerTimeOnline(tostring(source))) or 0)
+        return tonumber(core:GetPlayTime(source)) or 0
     end
-    function self.togglePaycheck(toggle) self.paycheckEnabled = toggle == true end
-    function self.isPaycheckEnabled() return self.paycheckEnabled end
+    --- ai-core's paycheck skips the player while off (until the character unloads).
+    function self.togglePaycheck(toggle)
+        if core:SetPaycheckEnabled(source, toggle == true) then self.paycheckEnabled = toggle == true end
+    end
+    function self.isPaycheckEnabled() return core:IsPaycheckEnabled(source) == true end
     function self.kick(reason) DropPlayer(tostring(source), reason or '') end
     function self.triggerEvent(eventName, ...) TriggerClientEvent(eventName, source, ...) end
     function self.executeCommand(command)
@@ -425,10 +429,16 @@ local function build(source)
         self.maxWeight = w and w.maxWeight or 0
         return self.maxWeight
     end
-    --- The carry limit is the inventory's own setting; ai-core's inventory layer cannot change it.
-    function self.setMaxWeight(_newWeight)
-        warnOnce('setMaxWeight', 'xPlayer.setMaxWeight is not answered: the carry limit is set in the inventory.')
-        return false
+    --- The carry limit in grams through ai-core's inventory layer (until the inventory reloads it); false when the
+    --- inventory has no way to change it.
+    function self.setMaxWeight(newWeight)
+        local grams = tonumber(newWeight)
+        if not grams or grams ~= grams or grams < 0 or grams == math.huge then return false end
+        grams = math.floor(grams)
+        if core:SetMaxWeight(source, grams) ~= true then return false end
+        self.maxWeight = grams
+        self.triggerEvent('esx:setMaxWeight', grams)
+        return true
     end
     --- ox_inventory's ESX sync: keeps the reported values on the xPlayer.
     function self.syncInventory(weight, maxWeight, items)
@@ -484,20 +494,120 @@ local function build(source)
         end
         return false
     end
-    --- Ammo, components and tint are weapon item metadata, which ai-core's inventory layer cannot change yet:
-    --- these answer false (nothing changed).
-    local function metadataChange(name)
-        return function()
-            warnOnce(name, ('xPlayer.%s is not answered: weapon ammo, components and tint are kept by the inventory.'):format(name))
-            return false
-        end
+    --- Ammo, components and tint are the weapon item's metadata (`ammo`, `components`, `tint`), replaced on its stack
+    --- through ai-core's inventory layer (`SetItemMetadata`). `change(metadata)` edits a copy and answers false to stop.
+    ---@param weaponName string
+    ---@param change fun(metadata: table): boolean
+    ---@return boolean
+    local function changeWeapon(weaponName, change)
+        local index = self.getWeapon(weaponName)
+        if not index then return false end
+        local _, stacks = loadoutOf(source)
+        local stack = stacks[index]
+        if not stack then return false end
+        local metadata = {}
+        for key, value in pairs(type(stack.metadata) == 'table' and stack.metadata or {}) do metadata[key] = value end
+        if not change(metadata) then return false end
+        return core:SetItemMetadata(source, stack.slot, metadata) == true
     end
-    self.addWeaponAmmo = metadataChange('addWeaponAmmo')
-    self.removeWeaponAmmo = metadataChange('removeWeaponAmmo')
-    self.updateWeaponAmmo = metadataChange('updateWeaponAmmo')
-    self.addWeaponComponent = metadataChange('addWeaponComponent')
-    self.removeWeaponComponent = metadataChange('removeWeaponComponent')
-    self.setWeaponTint = metadataChange('setWeaponTint')
+    ---@param weaponName string
+    ---@param ammo integer
+    local function setPedAmmo(weaponName, ammo)
+        local p = GetPlayerPed(tostring(source))
+        if p ~= 0 then SetPedAmmo(p, joaat(weaponName:upper()), ammo) end
+    end
+    ---@param value any
+    ---@return integer|nil
+    local function ammoCount(value)
+        value = tonumber(value)
+        if not value or value ~= value or value < 0 or value > 100000 then return nil end
+        return math.floor(value)
+    end
+    function self.addWeaponAmmo(weaponName, ammoCount2)
+        local add, ammo = ammoCount(ammoCount2), 0
+        if not add then return false end
+        local ok = changeWeapon(weaponName, function(metadata)
+            ammo = math.min(100000, (tonumber(metadata.ammo) or 0) + add)
+            metadata.ammo = ammo
+            return true
+        end)
+        if ok then setPedAmmo(weaponName, ammo) end
+        return ok
+    end
+    function self.removeWeaponAmmo(weaponName, ammoCount2)
+        local remove, ammo = ammoCount(ammoCount2), 0
+        if not remove then return false end
+        local ok = changeWeapon(weaponName, function(metadata)
+            ammo = math.max(0, (tonumber(metadata.ammo) or 0) - remove)
+            metadata.ammo = ammo
+            return true
+        end)
+        if ok then setPedAmmo(weaponName, ammo) end
+        return ok
+    end
+    --- The ammo the player's client reports (ESX's own sync); a throwable at 0 is used up.
+    function self.updateWeaponAmmo(weaponName, ammoCount2)
+        local ammo = ammoCount(ammoCount2)
+        if not ammo then return false end
+        local ok = changeWeapon(weaponName, function(metadata)
+            metadata.ammo = ammo
+            return true
+        end)
+        if ok and ammo == 0 then
+            local valid, _, weapon = pcall(ESX.GetWeapon, weaponName)
+            if valid and weapon and weapon.throwable then self.removeWeapon(weaponName) end
+        end
+        return ok
+    end
+    function self.addWeaponComponent(weaponName, weaponComponent)
+        local valid, component = pcall(ESX.GetWeaponComponent, weaponName, weaponComponent)
+        if not valid or not component or self.hasWeaponComponent(weaponName, weaponComponent) then return false end
+        local ok = changeWeapon(weaponName, function(metadata)
+            local list = {}
+            for i, owned in ipairs(type(metadata.components) == 'table' and metadata.components or {}) do list[i] = owned end
+            list[#list + 1] = weaponComponent
+            metadata.components = list
+            return true
+        end)
+        if ok then
+            local p = GetPlayerPed(tostring(source))
+            if p ~= 0 then GiveWeaponComponentToPed(p, joaat(weaponName:upper()), component.hash) end
+            self.triggerEvent('esx:showInventoryItemNotification', true, component.label, 1)
+        end
+        return ok
+    end
+    function self.removeWeaponComponent(weaponName, weaponComponent)
+        local valid, component = pcall(ESX.GetWeaponComponent, weaponName, weaponComponent)
+        if not valid or not component or not self.hasWeaponComponent(weaponName, weaponComponent) then return false end
+        local ok = changeWeapon(weaponName, function(metadata)
+            local list = {}
+            for _, owned in ipairs(type(metadata.components) == 'table' and metadata.components or {}) do
+                if owned ~= weaponComponent and tostring(owned) ~= tostring(component.hash) then list[#list + 1] = owned end
+            end
+            metadata.components = list
+            return true
+        end)
+        if ok then
+            local p = GetPlayerPed(tostring(source))
+            if p ~= 0 then RemoveWeaponComponentFromPed(p, joaat(weaponName:upper()), component.hash) end
+            self.triggerEvent('esx:showInventoryItemNotification', false, component.label, 1)
+        end
+        return ok
+    end
+    function self.setWeaponTint(weaponName, weaponTintIndex)
+        local tint = math.tointeger(tonumber(weaponTintIndex))
+        local valid, _, weapon = pcall(ESX.GetWeapon, weaponName)
+        if not valid or not tint or not weapon or not weapon.tints or not weapon.tints[tint] then return false end
+        local ok = changeWeapon(weaponName, function(metadata)
+            metadata.tint = tint
+            return true
+        end)
+        if ok then
+            self.triggerEvent('esx:setWeaponTint', weaponName, tint)
+            self.triggerEvent('esx:showInventoryItemNotification', true, weapon.tints[tint], 1)
+        end
+        return ok
+    end
 
     -- Metadata (ai-core's character metadata)
     function self.getMeta(index, subIndex)
@@ -602,10 +712,29 @@ ESX = { Players = xPlayers, Jobs = {}, Items = {}, OneSync = {} }
 
 ESX.GetPlayerFromId = getPlayerFromId
 
+---@type table<string, integer> license without its prefix -> source of the loaded players
+local byLicense = {}
+---@type table<integer, string> source -> its key in `byLicense`
+local licenseOf = {}
+
+--- The loaded player behind an ESX identifier: the citizenid (`xPlayer.identifier`), or a multichar's
+--- `char<slot>:<license>` (the account's character in that slot, while it is the one loaded).
+---@param identifier any
+---@return integer|nil
+local function sourceOfIdentifier(identifier)
+    if type(identifier) ~= 'string' then return nil end
+    local source = Bridge.sourceByCitizenId(identifier)
+    if source then return source end
+    local slot, license = identifier:match('^%a*(%d+):(.+)$')
+    source = license and byLicense[license]
+    local mirror = source and Bridge.players[source]
+    return mirror and mirror.character.slot == tonumber(slot) and source or nil
+end
+
 ---@param identifier string
 ---@return xPlayer|nil
 function ESX.GetPlayerFromIdentifier(identifier)
-    local source = Bridge.sourceByCitizenId(identifier)
+    local source = sourceOfIdentifier(identifier)
     return source and getPlayerFromId(source) or nil
 end
 
@@ -737,18 +866,48 @@ function ESX.RefreshJob(jobName)
     return true
 end
 
---- Jobs are made in ai-core's admin panel; a script cannot add one at run time.
+--- A job of the calling script as an ai-core runtime definition (gone when that script stops; listed in job centers,
+--- as ESX's `whitelisted` 0). Grades `{ grade, name, label, salary }`; a job the script made before only gets the grades
+--- it lacks, as in ESX. ai-core's panel jobs are not changed from here.
 ---@param name string
 ---@param label string
----@param grades table
+---@param grades { grade: integer, name?: string, label?: string, salary?: number }[]
 ---@param jobType? string
 ---@return boolean
 function ESX.CreateJob(name, label, grades, jobType)
-    local _ = label and grades and jobType
-    if type(name) == 'string' and not ESX.Jobs[name] then
-        print(('[^3WARNING^7] [ai-core ESX bridge] ESX.CreateJob(%s) from %s: add the job in the admin panel (Jobs).'):format(name, GetInvokingResource() or '?'))
+    local owner = GetInvokingResource() or 'ai-core'
+    ---@param why string
+    ---@return false
+    local function refuse(why)
+        print(('[^3WARNING^7] [ai-core ESX bridge] ESX.CreateJob(%s) from %s: %s'):format(tostring(name), owner, why))
+        return false
     end
-    return false
+    if type(name) ~= 'string' or name == '' then return refuse('missing argument `name`') end
+    if type(label) ~= 'string' or label == '' then return refuse('missing argument `label`') end
+    if type(grades) ~= 'table' or not next(grades) then return refuse('missing argument `grades`') end
+    local mine = Bridge.scriptDefinition('job', name)
+    if not mine and Bridge.definitionExists('job', name) then return refuse('the job exists in ai-core\'s admin panel or belongs to another script') end
+    local definition = { label = label, type = type(jobType) == 'string' and jobType or 'civ', defaultDuty = true, listed = true, grades = {} }
+    if mine then
+        definition.label, definition.type = mine.definition.label, mine.definition.type
+        for grade, entry in pairs(mine.definition.grades) do definition.grades[grade] = entry end
+    end
+    local added = false
+    for _, grade in pairs(grades) do
+        local number = type(grade) == 'table' and Bridge.gradeNumber(grade.grade) or nil
+        if not number then return refuse('every grade needs a `grade` number from 0 to 99') end
+        if definition.grades[number] == nil then
+            local gradeLabel = grade.label or grade.name
+            definition.grades[number] = { label = type(gradeLabel) == 'string' and gradeLabel or ('Grade %d'):format(number), salary = math.max(0, math.floor(tonumber(grade.salary) or 0)), boss = grade.name == 'boss' }
+            added = true
+        end
+    end
+    if not added then return refuse('the job and its grades exist already') end
+    local ok, err = Bridge.putDefinition('job', name, definition, owner)
+    if not ok then return refuse(('ai-core refused it (%s)'):format(tostring(err))) end
+    ESX.Jobs = buildJobs()
+    TriggerEvent('esx:jobCreated', name, ESX.Jobs[name])
+    return true
 end
 
 ---@param name string
@@ -806,12 +965,11 @@ function ESX.UseItem(source, item, ...)
     Bridge.useItem(source, item, ...)
 end
 
+--- Every item a use handler is registered for (ai-core `GetUsableItems`, one call).
 ---@return table<string, boolean>
 function ESX.GetUsableItems()
     local out = {}
-    for name in pairs(ESX.Items) do
-        if core:IsUsableItem(name) then out[name] = true end
-    end
+    for _, name in ipairs(core:GetUsableItems() or {}) do out[name] = true end
     return out
 end
 
@@ -898,7 +1056,7 @@ function ESX.IsPlayerLoaded(source) return Bridge.players[tonumber(source)] ~= n
 
 ---@param identifier string
 ---@return integer|nil
-function ESX.GetPlayerIdFromIdentifier(identifier) return Bridge.sourceByCitizenId(identifier) end
+function ESX.GetPlayerIdFromIdentifier(identifier) return sourceOfIdentifier(identifier) end
 
 --- Replaces xPlayer functions (an inventory's item functions): each `overrides[fnName](xPlayer)` returns the new
 --- function. Applied to every xPlayer built from now on and to the loaded ones (a restarted script registers again).
@@ -927,13 +1085,20 @@ function ESX.GetConfig(key)
     return config
 end
 
---- ai-core saves characters itself (periodic flush and on leave); this reports the save ESX scripts wait for.
+--- Saves the player now (ai-core `SavePlayer`: position and metadata, then its queued money and membership writes);
+--- `esx:playerSaved` and `cb(success)` follow the save.
 ---@param playerId integer
 ---@param cb? fun(success: boolean)
 local function savePlayer(playerId, cb)
     local x = getPlayerFromId(playerId)
-    if x then TriggerEvent('esx:playerSaved', x.source, x) end
-    if cb then cb(x ~= nil) end
+    if not x then
+        if cb then cb(false) end
+        return
+    end
+    core:SavePlayer(x.source, function(ok)
+        if ok then TriggerEvent('esx:playerSaved', x.source, x) end
+        if cb then cb(ok == true) end
+    end)
 end
 
 Bridge.provideExport('es_extended', 'getSharedObject', function() return ESX end)
@@ -1058,6 +1223,64 @@ AddEventHandler('esx:onPlayerDropped', function(_, _, cb)
     if cb then cb() end
 end)
 
+-- ESX's own ammo sync (es_extended's client reports the ammo left): only a weapon the player holds, never more ammo
+-- than its item has.
+aiLib.onClientEvent('esx:updateWeaponAmmo', function(src, weaponName, ammo)
+    ammo = tonumber(ammo)
+    if type(weaponName) ~= 'string' or #weaponName > 64 or not ammo or ammo < 0 or ammo > 100000 or ammo ~= math.floor(ammo) then return end
+    local x = xPlayers[src]
+    if not x then return end
+    local _, weapon = x.getWeapon(weaponName)
+    if not weapon or ammo > weapon.ammo then return end
+    x.updateWeaponAmmo(weaponName, ammo)
+end, { rate = { count = 10, windowMs = 1000 } })
+
+-- Character screens in ESX mode (esx_multicharacter, tgiann-multichar, 0r): `esx:onPlayerJoined(src, 'char<N>', data?)`
+-- loads the account's character in slot N, or creates it from `data` (esx_identity's fields); a server event only, as
+-- in es_extended's multichar mode. docs/compat/multichar.md.
+AddEventHandler('esx:onPlayerJoined', function(src, char, data)
+    -- A client cannot raise it (never a net event here); `source` is a player id only for one that came from a client.
+    if (tonumber(source) or 0) > 0 then return end
+    local id = Bridge.loginSource(src)
+    local slot = type(char) == 'string' and math.tointeger(tonumber(char:match('^%a*(%d+)$') or char:match('^%a*(%d+):') or ''))
+    if not id or not slot or slot < 1 then return end
+    local license = type(char) == 'string' and char:match(':(.+)$')
+    if license and license ~= ESX.GetIdentifier(id) then return end
+    if type(data) ~= 'table' then
+        Bridge.login(id, { slot = slot })
+        return
+    end
+    Bridge.createCharacter(id, {
+        firstname = tostring(data.firstname or ''),
+        lastname = tostring(data.lastname or ''),
+        birthdate = Bridge.isoDate(data.dateofbirth) or '',
+        sex = Bridge.sexOf(data.sex),
+        slot = slot,
+        height = tonumber(data.height),
+    })
+end)
+
+--- Players whose logout a script asked for with `esx:playerLogout` (the unload then does not raise it again).
+---@type table<integer, true>
+local logoutAsked = {}
+--- The bridge raises `esx:playerLogout` itself for listeners when a character unloads; its own raise is not a request.
+local raisingLogout = false
+
+-- A character screen's logout: ai-core saves and unloads the character (`LogoutCharacter`), then `cb` runs.
+AddEventHandler('esx:playerLogout', function(playerId, cb)
+    if raisingLogout or (tonumber(source) or 0) > 0 then return end
+    local id = math.tointeger(tonumber(playerId))
+    if not id or not Bridge.players[id] then
+        if cb then cb() end
+        return
+    end
+    logoutAsked[id] = true
+    Bridge.logout(id, function(ok)
+        if not ok then logoutAsked[id] = nil end
+        if cb then cb() end
+    end)
+end)
+
 -- Jobs and items: ESX.Jobs / ESX.Items follow ai-core's job definitions and the active inventory.
 AddEventHandler('ai-core:definitionsChanged', function(file, name)
     if file ~= 'jobs' then return end
@@ -1084,6 +1307,8 @@ Bridge.on('loaded', function(source)
     loadedCount = loadedCount + 1
     GlobalState.playerCount = loadedCount
     countJob(x.job.name, 1)
+    local license = ESX.GetIdentifier(source)
+    if license then byLicense[license], licenseOf[source] = source, license end
     local state = Player(source).state
     state:set('identifier', x.identifier, false)
     state:set('license', x.license, false)
@@ -1102,9 +1327,19 @@ Bridge.on('unloaded', function(source, reason)
     if x then x.beginAccountShutdown() end
     if reason == 'dropped' then TriggerEvent('esx:playerDropped', source, reason)
     else
-        TriggerEvent('esx:playerLogout', source)
+        -- A logout ai-core made itself (its character screen, a switch) is announced as ESX's logout; one a script
+        -- asked for was already raised by that script.
+        if not logoutAsked[source] then
+            raisingLogout = true
+            TriggerEvent('esx:playerLogout', source, nil)
+            raisingLogout = false
+        end
         TriggerEvent('esx:playerDropped', source, 'esx_player_logout')
     end
+    logoutAsked[source] = nil
+    local license = licenseOf[source]
+    if license and byLicense[license] == source then byLicense[license] = nil end
+    licenseOf[source] = nil
     if x then
         countJob(x.job.name, -1)
         loadedCount = math.max(0, loadedCount - 1)
@@ -1112,6 +1347,13 @@ Bridge.on('unloaded', function(source, reason)
     end
     xPlayers[source] = nil
     pendingSet[source] = nil
+end)
+
+-- ai-core changed the character's name (SetCharacterInfo).
+Bridge.on('character', function(source)
+    local x, mirror = xPlayers[source], Bridge.players[source]
+    if not x or not mirror then return end
+    x.setName(('%s %s'):format(mirror.character.firstname, mirror.character.lastname))
 end)
 
 Bridge.on('job', function(source, job)

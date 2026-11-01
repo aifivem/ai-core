@@ -191,16 +191,27 @@ function ESX.Game.GetClosestEntity(entities, isPlayerEntities, coords, modelFilt
     return closest, closestDistance
 end
 
----@param coords? vector3|table
+--- Only entities whose model is a key of `modelFilter` (nil: every entity).
 ---@param modelFilter? table<integer, boolean>
-function ESX.Game.GetClosestObject(coords, modelFilter)
-    return ESX.Game.GetClosestEntity(ESX.Game.GetObjects(), false, coords, modelFilter)
+---@return (fun(entity: integer): boolean)|nil
+local function byModel(modelFilter)
+    if type(modelFilter) ~= 'table' then return nil end
+    return function(entity) return modelFilter[GetEntityModel(entity)] and true or false end
 end
 
 ---@param coords? vector3|table
 ---@param modelFilter? table<integer, boolean>
+---@return integer, number
+function ESX.Game.GetClosestObject(coords, modelFilter)
+    return BridgeClient.closest('object', coords, byModel(modelFilter))
+end
+
+--- The closest ped other than the local one.
+---@param coords? vector3|table
+---@param modelFilter? table<integer, boolean>
+---@return integer, number
 function ESX.Game.GetClosestPed(coords, modelFilter)
-    return ESX.Game.GetClosestEntity(ESX.Game.GetPeds(true), false, coords, modelFilter)
+    return BridgeClient.closest('ped', coords, byModel(modelFilter))
 end
 
 ---@param coords? vector3|table
@@ -210,8 +221,9 @@ end
 
 ---@param coords? vector3|table
 ---@param modelFilter? table<integer, boolean>
+---@return integer, number
 function ESX.Game.GetClosestVehicle(coords, modelFilter)
-    return ESX.Game.GetClosestEntity(ESX.Game.GetVehicles(), false, coords, modelFilter)
+    return BridgeClient.closest('vehicle', coords, byModel(modelFilter))
 end
 
 ---@param entities table
@@ -236,15 +248,16 @@ end
 
 ---@param coords? vector3|table
 ---@param maxDistance number
+---@return integer[]
 function ESX.Game.GetVehiclesInArea(coords, maxDistance)
-    return within(ESX.Game.GetVehicles(), false, coords, maxDistance)
+    return aiLib.entitiesInArea('vehicle', origin(coords), maxDistance)
 end
 
 ---@param coords vector3|table
 ---@param maxDistance number
 ---@return boolean
 function ESX.Game.IsSpawnPointClear(coords, maxDistance)
-    return #ESX.Game.GetVehiclesInArea(coords, maxDistance) == 0
+    return aiLib.isSpawnClear(origin(coords), maxDistance)
 end
 
 ---@param shape integer
@@ -524,13 +537,12 @@ end
 
 ESX.Scaleform = { Utils = {} }
 
---- Loads a scaleform movie; the handle once loaded (waits up to 5 s, ESX waits forever).
+--- Loads a scaleform movie (ai-lib's loader); the handle once loaded, 0 when it did not load within 10 s (ESX waits
+--- forever).
 ---@param movie string
 ---@return integer
 function ESX.Scaleform.Utils.RequestScaleformMovie(movie)
-    local scaleform = RequestScaleformMovie(movie)
-    aiLib.waitFor(function() return HasScaleformMovieLoaded(scaleform) or nil end, 5000)
-    return scaleform
+    return aiLib.requestScaleformMovie(movie)
 end
 
 --- Calls a method of a scaleform movie (loaded by name when a name is given). The caller frees the movie with

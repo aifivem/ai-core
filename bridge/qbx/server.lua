@@ -121,7 +121,7 @@ end
 ---@param citizenid string
 ---@return false, QboxErrorResult
 local function playerNotFound(citizenid)
-    return false, { code = 'player_not_found', message = ('player not found with citizenid %s (ai-core changes loaded characters only)'):format(tostring(citizenid)) }
+    return false, { code = 'player_not_found', message = ('player not found with citizenid %s'):format(tostring(citizenid)) }
 end
 
 ---@param code string
@@ -158,15 +158,23 @@ local function moneyAmount(value)
     return math.tointeger(rounded)
 end
 
--- Offline characters: the QB bridge's offline Player (ai-core reads a stored character by id) plus Qbox's fields.
+-- Offline characters: the QB bridge's offline Player (ai-core reads and writes a stored character) plus Qbox's fields.
 
 ---@param player table|nil
 ---@return table|nil
 local function qboxOffline(player)
     if not player or not player.Offline then return player end
     local data = player.PlayerData
-    data.jobs, data.gangs = data.jobs or {}, data.gangs or {}
-    data.job.bankAuth, data.gang.bankAuth = false, false
+    local character = BridgeQB.offlineCharacter(player)
+    data.jobs, data.gangs = {}, {}
+    if character then
+        data.userId = character.info.userId
+        for _, m in ipairs(character.jobs) do data.jobs[m.job] = m.grade end
+        for _, m in ipairs(character.gangs) do data.gangs[m.gang] = m.grade end
+    end
+    data.job.bankAuth = data.job.isboss == true
+    data.gang.bankAuth = data.gang.isboss == true
+    BridgeQbox.fillMeta(data.metadata)
     return player
 end
 
@@ -176,6 +184,18 @@ end
 local function getOfflinePlayer(citizenid)
     if type(citizenid) ~= 'string' and type(citizenid) ~= 'number' then return nil end
     return qboxOffline(BridgeQB.getOfflinePlayer(tostring(citizenid)))
+end
+
+--- Qbox's resolvePlayer: a loaded character's source, else (a citizenid) the stored character as an offline Player
+--- (waits). Both nil when nobody matches.
+---@param identifier integer|string
+---@return integer|nil source, table|nil offline
+local function resolve(identifier)
+    local source = resolveSource(identifier)
+    if source or type(identifier) ~= 'string' then return source, nil end
+    local player = getOfflinePlayer(identifier)
+    if player and not player.Offline then return player.PlayerData.source, nil end
+    return nil, player
 end
 
 -- The Qbox parts of a loaded player's object.
@@ -236,7 +256,7 @@ local function extendPlayer(source)
     end
     add('SetPlayerData', function(key, value) setPlayerData(source, key, value) end)
     add('GetName', function() return ('%s %s'):format(data.charinfo.firstname, data.charinfo.lastname) end)
-    add('Logout', function() core:SwitchCharacter(source) end)
+    add('Logout', function() Bridge.logout(source) end)
     add('HasItem', function(items, amount) return hasItem(source, items, amount) end)
     add('GetItemBySlot', function(slot)
         for _, stack in ipairs(Bridge.inventory():GetItems(source) or {}) do
@@ -405,30 +425,33 @@ provide('GetPlayersData', function()
     return out
 end)
 provide('IsPlayerLoaded', function(source) return Bridge.players[source] ~= nil end)
-provide('Login', function()
-    print('^3[ai-core bridge] exports.qbx_core:Login is not supported: ai-core\'s character screen logs players in^0')
-    return false
-end)
-provide('Logout', function(source)
-    if Bridge.players[source] then core:SwitchCharacter(source) end
-end)
-provide('Save', function() end)
+-- Login / logout / delete: the QB bridge's (one implementation; Qbox's newData has QB's `cid` and `charinfo`).
+provide('Login', function(source, citizenid, newData) return QBCore.Player.Login(source, citizenid, newData) end)
+provide('Logout', function(source) QBCore.Player.Logout(source) end)
+provide('Save', function(source) QBCore.Player.Save(source) end)
+--- Changes on an offline Player are written as they happen.
 provide('SaveOffline', function() end)
 provide('CreatePlayer', function(playerData, offline)
     if type(playerData) ~= 'table' then return nil end
     return qboxOffline(QBCore.Player.CreatePlayer(playerData, offline))
 end)
-provide('DeleteCharacter', function(citizenid)
-    print(('^3[ai-core bridge] exports.qbx_core:DeleteCharacter(%s) is not supported: delete characters in the admin panel^0'):format(tostring(citizenid)))
+--- Qbox's export is its admin delete (ForceDeleteCharacter): a loaded character's player is dropped first.
+provide('DeleteCharacter', function(citizenid) QBCore.Player.ForceDeleteCharacter(citizenid) end)
+
+-- Every soft delete of a character (character screen, panel, DeleteCharacter); ai-core's citizenid is the id as text.
+AddEventHandler('ai-core:characterDeleted', function(charId)
+    TriggerEvent('qbx_core:server:characterDeleted', tostring(charId))
 end)
 
---- Qbox's SetPlayerData: `metadata` goes to ai-core key by key; other fields stay on the player object for the session.
+--- Qbox's SetPlayerData: `metadata`, `job`, `gang` and `charinfo` go to ai-core (a stored character's through the
+--- offline exports); other fields stay on the player object for the session.
 ---@param identifier integer|string
 ---@param key string
 ---@param value any
 setPlayerData = function(identifier, key, value)
     if type(key) ~= 'string' then return end
-    local source = resolveSource(identifier)
+    local source, offline = resolve(identifier)
+    if offline then return offline.Functions.SetPlayerData(key, value) end
     local player = source and BridgeQB.getPlayer(source)
     if not source or not player then return end
     if key == 'metadata' and type(value) == 'table' then
@@ -438,6 +461,7 @@ setPlayerData = function(identifier, key, value)
         end
         return
     end
+    if key == 'charinfo' or key == 'job' or key == 'gang' then return player.Functions.SetPlayerData(key, value) end
     player.PlayerData[key] = value
     ---@diagnostic disable-next-line: fivem/event-wrong-side
     TriggerEvent('QBCore:Player:SetPlayerData', player.PlayerData)
@@ -450,12 +474,22 @@ provide('UpdatePlayerData', function(identifier)
     ---@diagnostic disable-next-line: fivem/event-wrong-side
     TriggerEvent('QBCore:Player:SetPlayerData', player.PlayerData)
 end)
+--- One charinfo value: names, birth date, nationality and (stored characters) gender go to ai-core's character, the
+--- account number and card to its metadata, anything else stays on the player object for the session.
 provide('SetCharInfo', function(identifier, key, value)
     if type(key) ~= 'string' then return end
-    local source = resolveSource(identifier)
-    local player = source and BridgeQB.getPlayer(source)
+    local source, offline = resolve(identifier)
+    local player = offline or (source and BridgeQB.getPlayer(source))
     if not player then return end
-    player.PlayerData.charinfo[key] = value
+    local charinfo = player.PlayerData.charinfo
+    if key == 'firstname' or key == 'lastname' or key == 'birthdate' or key == 'nationality' or key == 'gender' or key == 'account' or key == 'card' then
+        local patch = {}
+        for k, v in pairs(charinfo) do patch[k] = v end
+        patch[key] = value
+        return player.Functions.SetPlayerData('charinfo', patch)
+    end
+    charinfo[key] = value
+    if offline then return end
     ---@diagnostic disable-next-line: fivem/event-wrong-side
     TriggerEvent('QBCore:Player:SetPlayerData', player.PlayerData)
 end)
@@ -464,33 +498,37 @@ end)
 
 local CLAMPED = { hunger = true, thirst = true, stress = true }
 
+--- A loaded character's metadata changes through ai-core's player, a stored one's through `SetOfflineMeta`.
 provide('SetMetadata', function(identifier, key, value)
     if type(key) ~= 'string' then return end
-    local source = resolveSource(identifier)
-    if not source then return end
+    local source, offline = resolve(identifier)
+    if not source and not offline then return end
     if CLAMPED[key] then
         value = tonumber(value)
         if not value or value ~= value or value == math.huge or value == -math.huge then return end
         value = math.max(0, math.min(100, value))
     end
-    local top, nested = key:match('^([^%.]+)%.(.+)$')
-    if not top then
-        core:SetMeta(source, key, value)
-        return
+    local metadata = offline and offline.PlayerData.metadata or Bridge.players[source].metadata
+    ---@param k string
+    ---@param v any
+    local function set(k, v)
+        if offline then offline.Functions.SetMetaData(k, v) else core:SetMeta(source, k, v) end
     end
+    local top, nested = key:match('^([^%.]+)%.(.+)$')
+    if not top then return set(key, value) end
     if nested:find('.', 1, true) then return end
-    local current = Bridge.players[source].metadata[top]
+    local current = metadata[top]
     if type(current) ~= 'table' then return end
     local copy = {}
     for k, v in pairs(current) do copy[k] = v end
     copy[nested] = value
-    core:SetMeta(source, top, copy)
+    set(top, copy)
 end)
 
 provide('GetMetadata', function(identifier, key)
     if type(key) ~= 'string' then return nil end
-    local source = resolveSource(identifier)
-    local player = source and BridgeQB.getPlayer(source)
+    local source, offline = resolve(identifier)
+    local player = offline or (source and BridgeQB.getPlayer(source))
     if not player then return nil end
     local metadata = player.PlayerData.metadata
     local top, nested = key:match('^([^%.]+)%.(.+)$')
@@ -499,32 +537,34 @@ provide('GetMetadata', function(identifier, key)
     return metadata[top][nested]
 end)
 
--- Money (loaded characters; ai-core keeps offline balances in its own book, not changed from here).
+-- Money: a loaded character through ai-core's wallet, a stored one (citizenid) through the offline Player's money
+-- functions (ai-core's offline money exports). Hooks run for both (`source` nil for a stored character, as in Qbox).
 
 ---@param event 'addMoney'|'removeMoney'|'setMoney'
----@param change fun(source: integer, moneyType: string, amount: integer, reason: string): boolean
+---@param method 'AddMoney'|'RemoveMoney'|'SetMoney'
 ---@return fun(identifier: integer|string, moneyType: string, amount: number, reason?: string): boolean
-local function moneyExport(event, change)
+local function moneyExport(event, method)
     return function(identifier, moneyType, amount, reason)
-        local source = resolveSource(identifier)
-        if not source then return false end
+        local source, offline = resolve(identifier)
         local valid = moneyAmount(amount)
-        if not valid or Bridge.players[source].money[moneyType] == nil then return false end
+        if not valid or (not source and not offline) then return false end
+        local balances = offline and offline.PlayerData.money or Bridge.players[source].money
+        if balances[moneyType] == nil then return false end
         if not runHooks(event, { source = source, moneyType = moneyType, amount = valid }) then return false end
-        return change(source, moneyType, valid, reason or 'unknown') == true
+        if offline then return offline.Functions[method](moneyType, valid, reason or 'unknown') == true end
+        return core[method](core, source, moneyType, valid, reason or 'unknown') == true
     end
 end
 
-provide('AddMoney', moneyExport('addMoney', function(source, t, amount, reason) return core:AddMoney(source, t, amount, reason) end))
-provide('RemoveMoney', moneyExport('removeMoney', function(source, t, amount, reason) return core:RemoveMoney(source, t, amount, reason) end))
-provide('SetMoney', moneyExport('setMoney', function(source, t, amount, reason) return core:SetMoney(source, t, amount, reason) end))
+provide('AddMoney', moneyExport('addMoney', 'AddMoney'))
+provide('RemoveMoney', moneyExport('removeMoney', 'RemoveMoney'))
+provide('SetMoney', moneyExport('setMoney', 'SetMoney'))
 provide('GetMoney', function(identifier, moneyType)
     if not moneyType then return false end
-    local source = resolveSource(identifier)
-    if not source then return false end
-    local amount = Bridge.players[source].money[moneyType]
-    if amount == nil then return false end
-    return amount
+    local source, offline = resolve(identifier)
+    local balances = offline and offline.PlayerData.money or source and Bridge.players[source].money
+    if not balances or balances[moneyType] == nil then return false end
+    return balances[moneyType]
 end)
 
 -- Groups.
@@ -540,19 +580,184 @@ provide('IsGradeBoss', function(group, grade)
     return entry ~= nil and entry.isboss == true
 end)
 
----@param name string
----@return false, string
-local function panelOnly(name)
-    return false, ('%s is not supported on ai-core: jobs and gangs are edited in the admin panel'):format(name)
+-- Job / gang definitions scripts create (qbx_core's groups API): ai-core runtime definitions owned by the calling
+-- script (gone when it stops; ai-core's definitionsChanged fires Qbox's onJobUpdate / onGangUpdate). ai-core's panel
+-- jobs and gangs, and those another script made, are not changed from here.
+
+---@return string
+local function invoker() return GetInvokingResource() or 'ai-core' end
+
+---@param kind BridgeDefinitionKind
+---@return string
+local function title(kind) return kind == 'job' and 'Job' or 'Gang' end
+
+---@param kind BridgeDefinitionKind
+---@param name any
+---@param value any a Qbox job / gang table
+---@param owner string
+---@return boolean, string
+local function createGroup(kind, name, value, owner)
+    if type(name) ~= 'string' or name:match('^%s*$') then return false, ('Invalid parameter: %sName must be a non-empty string.'):format(kind) end
+    local definition = BridgeQB.scriptDefinition(kind, name, value)
+    if not definition then return false, ("Invalid %s '%s': a table with grades keyed by integers 0-99."):format(kind, name) end
+    local ok, err = Bridge.putDefinition(kind, name, definition, owner)
+    if not ok then return false, ("%s '%s' refused by ai-core: %s"):format(title(kind), name, tostring(err)) end
+    return true, ("%s '%s' created/updated successfully."):format(title(kind), name)
 end
 
-for _, name in ipairs({ 'CreateJob', 'CreateJobs', 'CreateGangs', 'RemoveJob', 'RemoveGang' }) do
-    provide(name, function() return panelOnly(name) end)
+---@param kind BridgeDefinitionKind
+---@param name any
+---@param owner string
+---@return boolean, string
+local function removeGroup(kind, name, owner)
+    if type(name) ~= 'string' then return false, ('invalid_%s_name'):format(kind) end
+    if not Bridge.scriptDefinition(kind, name) then return false, ('%s_not_exists'):format(kind) end
+    if not Bridge.dropDefinition(kind, name, owner) then return false, ('%s_owned_by_another_resource'):format(kind) end
+    return true, 'success'
 end
-for _, name in ipairs({ 'UpsertJobData', 'UpsertGangData', 'UpsertJobGrade', 'UpsertGangGrade', 'RemoveJobGrade', 'RemoveGangGrade' }) do
-    provide(name, function()
-        print(('^3[ai-core bridge] exports.qbx_core:%s is not supported: jobs and gangs are edited in the admin panel^0'):format(name))
+
+---@param definition BridgeScriptDefinition
+---@return BridgeScriptDefinition
+local function copyDefinition(definition)
+    local out = {}
+    for key, value in pairs(definition) do out[key] = value end
+    out.grades = {}
+    for grade, entry in pairs(definition.grades) do out.grades[grade] = entry end
+    return out
+end
+
+--- Qbox's in-place edits (UpsertJobData, UpsertJobGrade, RemoveJobGrade...) on a script's own definition; refusals are
+--- printed as Qbox prints its errors.
+---@param kind BridgeDefinitionKind
+---@param export string
+---@param name any
+---@param create boolean a missing name is created (the Upsert*Data exports)
+---@param change fun(definition: BridgeScriptDefinition): string? an error text refuses the edit
+local function editGroup(kind, export, name, create, change)
+    local function refuse(why) print(('^3[ai-core bridge] exports.qbx_core:%s(%s): %s^0'):format(export, tostring(name), why)) end
+    if type(name) ~= 'string' then return refuse(('invalid %s name'):format(kind)) end
+    local mine = Bridge.scriptDefinition(kind, name)
+    local definition
+    if mine then
+        definition = copyDefinition(mine.definition)
+    elseif Bridge.definitionExists(kind, name) then
+        return refuse(('%s %s belongs to ai-core\'s admin panel or another script'):format(kind, name))
+    elseif create then
+        definition = { label = name, grades = {} }
+    else
+        return refuse(('%s must exist to edit grades'):format(title(kind)))
+    end
+    local err = change(definition)
+    if err then return refuse(err) end
+    local ok, why = Bridge.putDefinition(kind, name, definition, invoker())
+    if not ok then refuse(tostring(why)) end
+end
+
+---@param data any
+---@param job boolean
+---@return BridgeScriptGrade|nil
+local function gradeOf(data, job)
+    if type(data) ~= 'table' then return nil end
+    local label = data.name or data.label
+    return {
+        label = type(label) == 'string' and label or 'Member',
+        salary = job and math.max(0, math.floor(tonumber(data.payment) or 0)) or 0,
+        boss = data.isboss == true,
+    }
+end
+
+provide('CreateJob', function(name, job) return createGroup('job', name, job, invoker()) end)
+provide('CreateJobs', function(newJobs)
+    if type(newJobs) ~= 'table' then return false, 'Invalid parameter: newJobs must be a table.' end
+    local owner, failed = invoker(), {}
+    for name, job in pairs(newJobs) do
+        local ok, message = createGroup('job', name, job, owner)
+        if not ok then failed[#failed + 1] = ('%s (%s)'):format(tostring(name), message) end
+    end
+    if #failed > 0 then return false, ('Some jobs failed to create: %s'):format(table.concat(failed, ', ')) end
+    return true, 'All jobs created/updated successfully.'
+end)
+provide('CreateGangs', function(newGangs)
+    if type(newGangs) ~= 'table' then return false, 'Invalid parameter: newGangs must be a table.' end
+    for name, gang in pairs(newGangs) do
+        if type(name) ~= 'string' or not BridgeQB.scriptDefinition('gang', name, gang) then
+            return false, ("Invalid parameter: gang '%s' must be a table with grades keyed by integers 0-99."):format(tostring(name))
+        end
+    end
+    local owner = invoker()
+    for name, gang in pairs(newGangs) do
+        local ok, message = createGroup('gang', name, gang, owner)
+        if not ok then return false, message end
+    end
+    return true
+end)
+provide('RemoveJob', function(name) return removeGroup('job', name, invoker()) end)
+provide('RemoveGang', function(name) return removeGroup('gang', name, invoker()) end)
+
+provide('UpsertJobData', function(name, data)
+    editGroup('job', 'UpsertJobData', name, true, function(definition)
+        if type(data) ~= 'table' then return 'data must be a table' end
+        definition.label = type(data.label) == 'string' and data.label or definition.label
+        definition.type = type(data.type) == 'string' and data.type or 'none'
+        definition.defaultDuty = data.defaultDuty == true
     end)
+end)
+provide('UpsertGangData', function(name, data)
+    editGroup('gang', 'UpsertGangData', name, true, function(definition)
+        if type(data) ~= 'table' then return 'data must be a table' end
+        definition.label = type(data.label) == 'string' and data.label or definition.label
+    end)
+end)
+for _, entry in ipairs({ { 'UpsertJobGrade', 'job' }, { 'UpsertGangGrade', 'gang' } }) do
+    local export, kind = entry[1], entry[2] --[[@as BridgeDefinitionKind]]
+    provide(export, function(name, grade, data)
+        editGroup(kind, export, name, false, function(definition)
+            local number, value = Bridge.gradeNumber(grade), gradeOf(data, kind == 'job')
+            if not number then return 'grade must be an integer from 0 to 99' end
+            if not value then return 'grade data must be a table' end
+            definition.grades[number] = value
+        end)
+    end)
+end
+for _, entry in ipairs({ { 'RemoveJobGrade', 'job' }, { 'RemoveGangGrade', 'gang' } }) do
+    local export, kind = entry[1], entry[2] --[[@as BridgeDefinitionKind]]
+    provide(export, function(name, grade)
+        editGroup(kind, export, name, false, function(definition)
+            local number = Bridge.gradeNumber(grade)
+            if not number then return 'grade must be an integer from 0 to 99' end
+            definition.grades[number] = nil
+        end)
+    end)
+end
+
+-- Memberships: a loaded character changes through ai-core's player, a stored one (citizenid) through ai-core's
+-- offline character exports.
+
+--- A citizenid's loaded source, else its stored character's offline Player (waits); both nil when neither exists.
+---@param citizenid string|integer
+---@return integer|nil source, table|nil offline
+local function member(citizenid)
+    local key = tostring(citizenid)
+    local source = Bridge.sourceByCitizenId(key)
+    if source then return source, nil end
+    local player = getOfflinePlayer(key)
+    if player and not player.Offline then return player.PlayerData.source, nil end
+    return nil, player
+end
+
+---@param offline table an offline Player
+---@return integer
+local function charIdOf(offline)
+    return Bridge.charIdOf(offline.PlayerData.citizenid) --[[@as integer]]
+end
+
+--- An offline export's answer in Qbox's shape.
+---@param result any
+---@param code string
+---@return boolean, QboxErrorResult?
+local function offlineAnswer(result, code)
+    if type(result) == 'table' and result.ok then return true end
+    return false, { code = code, message = ('ai-core refused the change: %s'):format(type(result) == 'table' and tostring(result.error) or 'no answer') }
 end
 
 ---@param citizenid string|integer
@@ -566,7 +771,11 @@ local function addPlayerToJob(citizenid, jobName, grade)
     local job = qboxJobs()[jobName]
     if not job then return groupNotFound('job_not_found', jobName) end
     if not job.grades[grade] then return false, { code = 'job_missing_grade', message = ('job %s does not have grade %s'):format(jobName, grade) } end
-    local source = Bridge.sourceByCitizenId(tostring(citizenid))
+    local source, offline = member(citizenid)
+    if offline then
+        if offline.PlayerData.jobs[jobName] == grade then return true end
+        return offlineAnswer(Bridge.await('SetOfflineJob', charIdOf(offline), jobName, grade), 'max_jobs')
+    end
     if not source then return playerNotFound(tostring(citizenid)) end
     if jobMap(Bridge.players[source])[jobName] == grade then return true end
     if not core:SetJob(source, jobName, grade) then return false, { code = 'max_jobs', message = 'ai-core refused the job (maximum jobs reached)' } end
@@ -578,44 +787,54 @@ end
 ---@return boolean, QboxErrorResult?
 local function removePlayerFromJob(citizenid, jobName)
     if jobName == 'unemployed' then return false, { code = 'unemployed', message = 'players cannot be removed from the unemployed job' } end
-    local source = Bridge.sourceByCitizenId(tostring(citizenid))
+    local source, offline = member(citizenid)
+    if offline then
+        if offline.PlayerData.jobs[jobName] == nil then return true end
+        return offlineAnswer(Bridge.await('RemoveOfflineJob', charIdOf(offline), jobName), 'job_not_removed')
+    end
     if not source then return playerNotFound(tostring(citizenid)) end
     if jobMap(Bridge.players[source])[jobName] == nil then return true end
     return core:RemoveJob(source, jobName) == true
 end
 
---- The primary job is ai-core's current job: the on-duty one, so making a job primary puts the player on its duty.
+--- The primary job is ai-core's current job: the on-duty one, so making a job primary puts the player on its duty. A
+--- stored character's becomes its last duty job (its current job when it loads).
 ---@param citizenid string|integer
 ---@param jobName string
 ---@return boolean, QboxErrorResult?
 local function setPrimaryJob(citizenid, jobName)
-    local source = Bridge.sourceByCitizenId(tostring(citizenid))
-    if not source then return playerNotFound(tostring(citizenid)) end
-    if jobName == 'unemployed' then return core:SetDuty(source, nil) == true end
-    if jobMap(Bridge.players[source])[jobName] == nil then
+    local source, offline = member(citizenid)
+    if not source and not offline then return playerNotFound(tostring(citizenid)) end
+    local held = offline and offline.PlayerData.jobs or jobMap(Bridge.players[source --[[@as integer]]])
+    if jobName ~= 'unemployed' and held[jobName] == nil then
         return false, { code = 'player_not_in_job', message = ('player %s does not have job %s'):format(tostring(citizenid), tostring(jobName)) }
     end
-    if not qboxJobs()[jobName] then return groupNotFound('job_not_found', jobName) end
-    return core:SetDuty(source, jobName) == true
+    if jobName ~= 'unemployed' and not qboxJobs()[jobName] then return groupNotFound('job_not_found', jobName) end
+    if offline then
+        return offlineAnswer(Bridge.await('SetOfflineMeta', charIdOf(offline), 'lastDutyJob', jobName ~= 'unemployed' and jobName or nil), 'job_not_set')
+    end
+    ---@cast source integer
+    return core:SetDuty(source, jobName ~= 'unemployed' and jobName or nil) == true
 end
 
 provide('AddPlayerToJob', addPlayerToJob)
 provide('RemovePlayerFromJob', removePlayerFromJob)
 provide('SetPlayerPrimaryJob', setPrimaryJob)
 provide('SetJob', function(identifier, jobName, grade)
-    local source = resolveSource(identifier)
-    if not source or type(jobName) ~= 'string' then return false end
+    local source, offline = resolve(identifier)
+    if (not source and not offline) or type(jobName) ~= 'string' then return false end
     jobName = jobName:lower()
-    local citizenid = Bridge.players[source].character.citizenid
+    local data = offline and offline.PlayerData or BridgeQB.getPlayer(source --[[@as integer]]).PlayerData
     if jobName == 'unemployed' then
-        local current = Bridge.jobOf(Bridge.players[source]).name
+        local current = data.job.name
         if current == 'unemployed' then return true end
-        return removePlayerFromJob(citizenid, current)
+        return removePlayerFromJob(data.citizenid, current)
     end
-    local ok, err = addPlayerToJob(citizenid, jobName, grade)
+    local ok, err = addPlayerToJob(data.citizenid, jobName, grade)
     if not ok then return false, err end
     return true
 end)
+--- Duty is runtime state of a loaded character.
 provide('SetJobDuty', function(identifier, onDuty)
     local source = resolveSource(identifier)
     if not source then return end
@@ -634,7 +853,11 @@ local function addPlayerToGang(citizenid, gangName, grade)
     local gang = qboxGangs()[gangName]
     if not gang then return groupNotFound('gang_not_found', gangName) end
     if not gang.grades[grade] then return false, { code = 'gang_missing_grade', message = ('gang %s does not have grade %s'):format(gangName, grade) } end
-    local source = Bridge.sourceByCitizenId(tostring(citizenid))
+    local source, offline = member(citizenid)
+    if offline then
+        if offline.PlayerData.gangs[gangName] == grade then return true end
+        return offlineAnswer(Bridge.await('SetOfflineGang', charIdOf(offline), gangName, grade), 'max_gangs')
+    end
     if not source then return playerNotFound(tostring(citizenid)) end
     if gangMap(Bridge.players[source])[gangName] == grade then return true end
     if not core:SetGang(source, gangName, grade) then return false, { code = 'max_gangs', message = 'ai-core refused the gang (maximum gangs reached)' } end
@@ -646,18 +869,27 @@ end
 ---@return boolean, QboxErrorResult?
 local function removePlayerFromGang(citizenid, gangName)
     if gangName == 'none' then return false, { code = 'none', message = 'none is the default gang, so players cannot be removed from it' } end
-    local source = Bridge.sourceByCitizenId(tostring(citizenid))
+    local source, offline = member(citizenid)
+    if offline then
+        if offline.PlayerData.gangs[gangName] == nil then return true end
+        return offlineAnswer(Bridge.await('RemoveOfflineGang', charIdOf(offline), gangName), 'gang_not_removed')
+    end
     if not source then return playerNotFound(tostring(citizenid)) end
     if gangMap(Bridge.players[source])[gangName] == nil then return true end
     return core:RemoveGang(source, gangName) == true
 end
 
---- The primary gang is ai-core's active gang.
+--- The primary gang is ai-core's active gang (a loaded character's only: a stored character's first gang becomes
+--- active by itself).
 ---@param citizenid string|integer
 ---@param gangName string
 ---@return boolean, QboxErrorResult?
 local function setPrimaryGang(citizenid, gangName)
-    local source = Bridge.sourceByCitizenId(tostring(citizenid))
+    local source, offline = member(citizenid)
+    if offline then
+        if offline.PlayerData.gang.name == gangName then return true end
+        return false, { code = 'player_not_loaded', message = ('the active gang of %s changes only while the character is loaded'):format(tostring(citizenid)) }
+    end
     if not source then return playerNotFound(tostring(citizenid)) end
     if gangName == 'none' then return core:SetActiveGang(source, nil) == true end
     if gangMap(Bridge.players[source])[gangName] == nil then
@@ -671,18 +903,20 @@ provide('AddPlayerToGang', addPlayerToGang)
 provide('RemovePlayerFromGang', removePlayerFromGang)
 provide('SetPlayerPrimaryGang', setPrimaryGang)
 provide('SetGang', function(identifier, gangName, grade)
-    local source = resolveSource(identifier)
-    if not source or type(gangName) ~= 'string' then return false end
+    local source, offline = resolve(identifier)
+    if (not source and not offline) or type(gangName) ~= 'string' then return false end
     gangName = gangName:lower()
-    local citizenid = Bridge.players[source].character.citizenid
+    local data = offline and offline.PlayerData or BridgeQB.getPlayer(source --[[@as integer]]).PlayerData
     if gangName == 'none' then
-        local current = Bridge.gangOf(Bridge.players[source]).name
+        local current = data.gang.name
         if current == 'none' then return true end
-        return removePlayerFromGang(citizenid, current)
+        return removePlayerFromGang(data.citizenid, current)
     end
-    local ok, err = addPlayerToGang(citizenid, gangName, grade)
+    local ok, err = addPlayerToGang(data.citizenid, gangName, grade)
     if not ok then return false, err end
-    return setPrimaryGang(citizenid, gangName)
+    -- A stored character's new gang is active when it has no other (ai-core's rule).
+    if offline then return true end
+    return setPrimaryGang(data.citizenid, gangName)
 end)
 
 provide('GetGroups', function(source)
@@ -698,14 +932,11 @@ provide('HasPrimaryGroup', function(source, filter)
     return player ~= nil and BridgeQbox.hasGroup(filter, player.PlayerData, true)
 end)
 
---- Members of a job or gang: the loaded characters (ai-core has no export for stored memberships).
+--- Every member of a job or gang, loaded or not (the QB bridge's walk over ai-core's paged members). Waits.
 provide('GetGroupMembers', function(group, groupType)
     local out = {}
-    for _, mirror in pairs(Bridge.players) do
-        local list, key = groupType == 'gang' and mirror.gangs or mirror.jobs, groupType == 'gang' and 'gang' or 'job'
-        for _, m in ipairs(list) do
-            if m[key] == group then out[#out + 1] = { citizenid = mirror.character.citizenid, grade = m.grade } end
-        end
+    for i, entry in ipairs(BridgeQB.groupMembers(groupType == 'gang' and 'gang' or 'job', group)) do
+        out[i] = { citizenid = entry.citizenid, grade = entry.grade }
     end
     return out
 end)
@@ -778,8 +1009,10 @@ provide('CanUseItem', function(name)
     return function(source, item) return Bridge.useItem(source, name, item) end
 end)
 
+--- Qbox's title / description pair: the title shows above the text on ai-lib's card.
 provide('Notify', function(source, text, kind, duration, subTitle)
-    Bridge.notify(source, BridgeQbox.notifyText(text, subTitle), kind, duration)
+    local heading, description = BridgeQbox.notifyParts(text, subTitle)
+    Bridge.notify(source, description or heading or '', kind, duration, description and heading or nil)
 end)
 provide('GetCoreObject', function() return BridgeQB.coreObject() end)
 provide('GetCoreVersion', function() return BridgeQbox.VERSION end)

@@ -1,9 +1,12 @@
 -- ai-core's framework bridge, client side: the player's mirror, built from ai-core's own player data channel
 -- (snapshot at load, then deltas) and the job / gang definitions ai-core's client keeps, plus ai-core's notify for
--- every framework's notify call.
+-- every framework's notify call. Under an external character screen (`docs/compat/multichar.md`) the mirror loads when
+-- ai-core logs the character in (`ai-core:client:externalLoaded`), before that screen spawns the ped; 'spawned' follows
+-- once the player stands in the world (`ai-core:client:playerLoaded`).
 
 ---@class BridgeClientState
 ---@field loaded boolean
+---@field external boolean the character was loaded by an external character screen (it fires its own load events)
 ---@field character table|nil
 ---@field money table<string, number>
 ---@field job table|nil
@@ -13,12 +16,13 @@
 ---@field name string|nil
 
 ---@type BridgeClientState
-BridgeClient = { loaded = false, character = nil, money = {}, job = nil, gang = nil, metadata = {}, license = nil, name = nil }
+BridgeClient = { loaded = false, external = false, character = nil, money = {}, job = nil, gang = nil, metadata = {}, license = nil, name = nil }
 
----@alias BridgeClientChange 'loaded'|'unloaded'|'money'|'job'|'gang'|'meta'
+--- 'loaded' (data: AiPlayerData, external: boolean): the character's data is in; 'spawned': it stands in the world.
+---@alias BridgeClientChange 'loaded'|'spawned'|'unloaded'|'money'|'job'|'gang'|'meta'
 
 ---@type table<string, fun(...)[]>
-local listeners = { loaded = {}, unloaded = {}, money = {}, job = {}, gang = {}, meta = {} }
+local listeners = { loaded = {}, spawned = {}, unloaded = {}, money = {}, job = {}, gang = {}, meta = {} }
 
 ---@param kind BridgeClientChange
 ---@param fn fun(...)
@@ -46,12 +50,32 @@ end
 
 local kinds = { primary = 'info', inform = 'info', info = 'info', success = 'success', error = 'error', warning = 'warning' }
 
----@param text string|table
+--- Every framework's notify: QB's `{ text, caption }` table shows `text` as the title over `caption`.
+---@param text string|{ text?: string, caption?: string }
 ---@param kind? string
 ---@param duration? integer
-function BridgeClient.notify(text, kind, duration)
-    if type(text) == 'table' then text = text.text or text.caption or '' end
-    aiLib.notify(tostring(text), kinds[kind or 'info'] or 'info', duration)
+---@param title? string
+function BridgeClient.notify(text, kind, duration, title)
+    if type(text) == 'table' then
+        if text.caption then
+            title, text = text.text, text.caption
+        else
+            text = text.text
+        end
+    end
+    aiLib.notify(tostring(text or ''), kinds[kind or 'info'] or 'info', tonumber(duration), title and tostring(title) or nil)
+end
+
+--- The closest ped / object / vehicle to `coords` (default the local ped; peds skip it) that passes `filter`, in ESX's
+--- and QB's shape: the entity and its distance, -1, -1 when none.
+---@param kind 'ped'|'object'|'vehicle'
+---@param coords? vector3|vector4|table
+---@param filter? fun(entity: integer): boolean
+---@return integer, number
+function BridgeClient.closest(kind, coords, filter)
+    local entity, distance = aiLib.nearestEntity(kind, coords, nil, { filter = filter })
+    if entity == 0 then return -1, -1 end
+    return entity, distance --[[@as number]]
 end
 
 --- ai-core's values the job and gang views are built from.
@@ -190,9 +214,10 @@ RegisterNetEvent('ai-core:client:playerData', function(key, value) put(key, valu
 RegisterNetEvent('ai-core:client:playerDataPatch', function(key, value) put(key, value, true) end)
 RegisterNetEvent('ai-core:bridge:license', function(license) BridgeClient.license = license end)
 
--- The character stands in the world: ai-core hands the whole player data (the snapshot its channel built).
-AddEventHandler('ai-core:client:playerLoaded', function(data)
-    if type(data) ~= 'table' then return end
+--- Builds the mirror from ai-core's player data and tells the framework parts.
+---@param data table ai-core's player data (`AiPlayerData`)
+---@param external boolean
+local function load(data, external)
     BridgeClient.character = data.character
     putMoney(data.money or {}, true)
     BridgeClient.metadata = data.metadata or {}
@@ -200,22 +225,51 @@ AddEventHandler('ai-core:client:playerLoaded', function(data)
     raw.gangs, raw.activeGang = data.gangs or {}, data.activeGang
     BridgeClient.name = GetPlayerName(PlayerId())
     BridgeClient.job, BridgeClient.gang = jobView(), gangView()
+    BridgeClient.external = external
     BridgeClient.loaded = true
-    emitChange('loaded')
-end)
+    emitChange('loaded', data, external)
+end
 
-AddEventHandler('ai-core:client:playerUnloaded', function()
+local function unload()
     if not BridgeClient.loaded then return end
     BridgeClient.loaded = false
     emitChange('unloaded')
+    BridgeClient.external = false
     BridgeClient.character, BridgeClient.job, BridgeClient.gang = nil, nil, nil
     BridgeClient.metadata = {}
     for account in pairs(BridgeClient.money) do BridgeClient.money[account] = nil end
+end
+
+-- An external character screen logged the character in: its snapshot already came on the player data channel (sent
+-- before this event); the screen spawns the ped and fires its own load events, so the mirror loads now.
+RegisterNetEvent('ai-core:client:externalLoaded', function()
+    if BridgeClient.loaded or not BridgeClient.character then return end
+    load({
+        character = BridgeClient.character,
+        money = BridgeClient.money,
+        metadata = BridgeClient.metadata,
+        jobs = raw.jobs,
+        duty = raw.duty,
+        job = raw.job,
+        gangs = raw.gangs,
+        activeGang = raw.activeGang,
+    }, true)
 end)
+
+-- The character stands in the world: ai-core hands the whole player data (the snapshot its channel built).
+AddEventHandler('ai-core:client:playerLoaded', function(data)
+    if type(data) ~= 'table' then return end
+    if not (BridgeClient.loaded and BridgeClient.external) then load(data, false) end
+    emitChange('spawned')
+end)
+
+AddEventHandler('ai-core:client:playerUnloaded', unload)
+-- Let go before ai-core's client saw the player in the world (still in the external screen's spawn selector).
+RegisterNetEvent('ai-core:client:externalLogout', unload)
 
 -- Framework notify events other scripts send to this client.
 RegisterNetEvent('QBCore:Notify', function(text, kind, length) BridgeClient.notify(text, kind, length) end)
-RegisterNetEvent('esx:showNotification', function(text, kind, length) BridgeClient.notify(text, kind, length) end)
+RegisterNetEvent('esx:showNotification', function(text, kind, length, title) BridgeClient.notify(text, kind, length, title) end)
 
 --- Callback requests of both frameworks: request id -> the caller's function.
 ---@type table<string, function>

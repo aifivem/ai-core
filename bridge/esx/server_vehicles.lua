@@ -18,34 +18,6 @@ local function knownVehicles()
     return byHash
 end
 
---- Types players' clients reported for models outside the shared list: kept for the model only once two different
---- players gave the same answer (ai-core's own `vehicleType` rule), so one modified client cannot set it for everyone.
----@type table<integer, string>
-local reported = {}
----@type table<integer, table<string, integer>> hash -> type -> first player who answered it
-local votes = {}
-
----@param hash integer
----@param kind string
----@param player integer
-local function vote(hash, kind, player)
-    local byKind = votes[hash] or {}
-    votes[hash] = byKind
-    local first = byKind[kind]
-    if first == nil then byKind[kind] = player
-    elseif first ~= player then
-        reported[hash], votes[hash] = kind, nil
-    end
-end
-
----@param model string|integer
----@return integer hash, string|nil name
-local function modelOf(model)
-    if type(model) == 'string' then return joaat(model), model end
-    local known = knownVehicles()[model]
-    return model, known and known.name or nil
-end
-
 ---@param cb any
 ---@return boolean
 local function callable(cb) return cb ~= nil and cb ~= false and ESX.IsFunctionReference(cb) end
@@ -66,8 +38,8 @@ end
 ---@return boolean
 local function finite(x) return type(x) == 'number' and x == x and x ~= math.huge and x ~= -math.huge end
 
---- A vehicle model's `CreateVehicleServerSetter` type: the shared vehicle list, then a player's client (ai-core
---- answers `ai-core:vehicleType` for model names). `cb` or a return value (waits).
+--- A vehicle model's `CreateVehicleServerSetter` type: the shared vehicle list, then a player's client through ai-lib's
+--- `vehicleType` (model name or hash; kept for everyone once two players' clients agree). `cb` or a return value (waits).
 ---@param model string|integer
 ---@param player? integer|function
 ---@param cb? any
@@ -75,15 +47,12 @@ local function finite(x) return type(x) == 'number' and x == x and x ~= math.hug
 function ESX.GetVehicleType(model, player, cb)
     if callable(player) and cb == nil then cb, player = player, nil end
     return answer(cb, function()
-        local hash, name = modelOf(model)
-        local known = knownVehicles()[hash]
+        if type(model) ~= 'string' and math.type(model) ~= 'integer' then return nil end
+        local known = knownVehicles()[type(model) == 'string' and joaat(model) or model]
         if known and VEHICLE_TYPES[known.type] then return known.type end
-        if reported[hash] then return reported[hash] end
-        if not player or not name then return nil end
-        local kind = aiLib.triggerClientCallback('ai-core:vehicleType', player --[[@as integer]], { name }, 10000)
-        if type(kind) ~= 'string' or not VEHICLE_TYPES[kind] then return nil end
-        vote(hash, kind, player --[[@as integer]])
-        return kind
+        local asker = math.tointeger(player)
+        if not asker or not Bridge.players[asker] then return nil end
+        return (aiLib.vehicleType(model, asker))
     end)
 end
 
@@ -106,26 +75,15 @@ end
 function ESX.OneSync.SpawnVehicle(vehicleModel, coords, heading, vehicleProperties, cb, vehicleType)
     if type(cb) == 'string' and vehicleType == nil then vehicleType, cb = cb, nil end
     return answer(cb, function()
-        local hash, name = modelOf(vehicleModel)
-        local asker = next(Bridge.players)
-        local kind = vehicleType or ESX.GetVehicleType(name or hash, asker)
+        local kind = vehicleType or ESX.GetVehicleType(vehicleModel, next(Bridge.players))
         if not kind then
             print(('[^3WARNING^7] Could not resolve the type of vehicle ^5%s^7.'):format(tostring(vehicleModel)))
             return nil
         end
         local props = type(vehicleProperties) == 'table' and vehicleProperties or {}
         local at = { x = coords.x, y = coords.y, z = coords.z, w = finite(heading) and heading or 0.0 }
-        local entity ---@type integer
-        if name then
-            entity = aiLib.spawnVehicle({ model = name, coords = at, type = kind, plate = type(props.plate) == 'string' and props.plate or nil, bags = { VehicleProperties = props } }) or 0
-        else
-            -- A hash of a model outside the shared list: ai-lib's spawnVehicle takes model names only.
-            entity = CreateVehicleServerSetter(hash, kind, at.x, at.y, at.z, at.w) --[[@as integer]]
-            if not aiLib.waitFor(function() return DoesEntityExist(entity) or nil end, 2000) then return nil end
-            SetEntityOrphanMode(entity, 2)
-            Entity(entity).state:set('VehicleProperties', props, true)
-        end
-        return netIdOf(entity)
+        local entity = aiLib.spawnVehicle({ model = vehicleModel, coords = at, type = kind, plate = type(props.plate) == 'string' and props.plate or nil, bags = { VehicleProperties = props } })
+        return entity and netIdOf(entity) or nil
     end)
 end
 
@@ -183,19 +141,16 @@ end
 ---@field dist number
 
 --- Candidate players around `origin`: a player's OneSync scope through ai-core (ai-lib `playersNear`, the player
---- included) within its range, else every player.
+--- included) within its range, else the loaded players near the point (ai-lib `playersNearCoords`).
 ---@param origin integer|vector3|table
 ---@param distance number
+---@param bucket? integer
 ---@return integer[]
-local function candidates(origin, distance)
+local function candidates(origin, distance, bucket)
     if type(origin) == 'number' and distance <= 400 then
-        local list = aiLib.playersNear(origin, distance)
-        list[#list + 1] = origin
-        return list
+        return aiLib.playersNear(origin, distance)
     end
-    local list = {}
-    for _, id in ipairs(GetPlayers()) do list[#list + 1] = tonumber(id) --[[@as integer]] end
-    return list
+    return aiLib.playersNearCoords(originOf(origin), distance, bucket)
 end
 
 ---@param origin integer|vector3|table
@@ -209,7 +164,7 @@ local function nearbyPlayers(origin, distance, ignore, bucket, closest)
     ignore = type(ignore) == 'table' and ignore or {}
     local at = originOf(origin)
     local out, best = {}, nil
-    for _, id in ipairs(candidates(origin, distance)) do
+    for _, id in ipairs(candidates(origin, distance, bucket)) do
         local ped = GetPlayerPed(id)
         if ped ~= 0 and not ignore[id] and (not bucket or GetPlayerRoutingBucket(id) == bucket) and not (closest and id == origin) then
             local coords = GetEntityCoords(ped)

@@ -177,8 +177,8 @@ end
 ---@type table<integer, string>
 local props = {}
 
---- A prop held by `ped` at a ped bone id. Local to this client (the server's entity lockdown blocks client-made
---- networked objects), so other players do not see it; 0 when the model does not load.
+--- A prop held by `ped` at a ped bone id (ai-lib's `attachProp`). Local to this client (the server's entity lockdown
+--- blocks client-made networked objects), so other players do not see it; 0 when the model does not load.
 ---@param ped integer
 ---@param model string|integer
 ---@param boneId integer
@@ -191,13 +191,14 @@ local props = {}
 ---@param vertex? boolean
 ---@return integer
 function F.AttachProp(ped, model, boneId, x, y, z, xR, yR, zR, vertex)
-    local hash = aiLib.requestModel(model, 5000)
-    if not hash then return 0 end
-    local at = GetEntityCoords(ped)
-    local prop = CreateObject(hash, at.x, at.y, at.z, false, false, false)
-    AttachEntityToEntity(prop, ped, GetPedBoneIndex(ped, boneId), x, y, z, xR, yR, zR, true, true, false, true, not vertex and 2 or 0, true)
-    SetModelAsNoLongerNeeded(hash)
-    props[prop] = invoker()
+    local prop = aiLib.attachProp(model, {
+        ped = ped,
+        bone = boneId,
+        offset = vector3(x, y, z),
+        rotation = vector3(xR, yR, zR),
+        rotationOrder = vertex and 0 or 2,
+    })
+    if prop ~= 0 then props[prop] = invoker() end
     return prop
 end
 
@@ -260,11 +261,7 @@ end
 ---@param radius number
 ---@return boolean
 function F.SpawnClear(coords, radius)
-    local at = origin(coords)
-    for _, vehicle in ipairs(GetGamePool('CVehicle')) do
-        if #(GetEntityCoords(vehicle) - at) <= radius then return false end
-    end
-    return true
+    return aiLib.isSpawnClear(origin(coords), radius)
 end
 
 ---@param model integer
@@ -358,10 +355,7 @@ aiLib.onServerEvent('QBCore:Command:DeleteVehicle', function()
     local ped = aiLib.cache.ped
     local vehicle = GetVehiclePedIsUsing(ped)
     if vehicle ~= 0 then return F.DeleteVehicle(vehicle) end
-    local at = GetEntityCoords(ped)
-    for _, other in ipairs(GetGamePool('CVehicle')) do
-        if #(at - GetEntityCoords(other)) <= 5.0 then F.DeleteVehicle(other) end
-    end
+    for _, other in ipairs(aiLib.entitiesInArea('vehicle', GetEntityCoords(ped), 5.0)) do F.DeleteVehicle(other) end
 end)
 
 ---@param coords vector3
@@ -420,7 +414,7 @@ local function vehicleInfo(vehicle, seat)
         plate = F.GetPlate(vehicle),
         driver = GetPedInVehicleSeat(vehicle, -1),
         inseat = GetPedInVehicleSeat(vehicle, seat),
-        haskeys = true,
+        haskeys = aiLib.vehicleKeys.has(vehicle),
     }
 end
 

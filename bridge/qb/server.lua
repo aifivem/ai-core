@@ -125,7 +125,7 @@ local function copy(value)
     return out
 end
 
----@param mirror BridgeMirror
+---@param mirror { metadata: table<string, any> } a mirror or a stored character
 ---@return table<string, any>
 local function metadataOf(mirror)
     local out = {}
@@ -133,6 +133,36 @@ local function metadataOf(mirror)
     for key, value in pairs(mirror.metadata) do out[key] = value end
     out[CHARINFO_KEY] = nil
     return out
+end
+
+--- QB charinfo values ai-core keeps on the character (names, birth date, nationality, gender) as one
+--- `SetCharacterInfo` patch of the ones that differ from `charinfo`; nil when none does. A loaded character's sex is
+--- left out (ai-core changes it only while the character is not loaded: the ped model follows it).
+---@param value table
+---@param charinfo QBCharInfo
+---@param loaded boolean
+---@return table<string, string>|nil
+local function charinfoPatch(value, charinfo, loaded)
+    local patch, any = {}, false
+    for _, field in ipairs({ 'firstname', 'lastname', 'nationality' }) do
+        if type(value[field]) == 'string' and value[field] ~= charinfo[field] then patch[field], any = value[field], true end
+    end
+    local birthdate = Bridge.isoDate(value.birthdate)
+    if birthdate and birthdate ~= charinfo.birthdate then patch.birthdate, any = birthdate, true end
+    if not loaded and value.gender ~= nil then
+        local sex = Bridge.sexOf(value.gender)
+        if sex ~= (charinfo.gender == 1 and 'female' or 'male') then patch.sex, any = sex, true end
+    end
+    return any and patch or nil
+end
+
+--- Applies a charinfo patch to QB's charinfo shape.
+---@param charinfo QBCharInfo
+---@param patch table<string, string>
+local function applyCharinfo(charinfo, patch)
+    for key, value in pairs(patch) do
+        if key == 'sex' then charinfo.gender = value == 'female' and 1 or 0 else charinfo[key] = value end
+    end
 end
 
 ---@type table<integer, QBPlayer>
@@ -418,9 +448,12 @@ local function build(source)
         end,
         GetName = function() return ('%s %s'):format(data.charinfo.firstname, data.charinfo.lastname) end,
         Notify = function(text, kind, length) Bridge.notify(source, text, kind, length) end,
-        -- ai-core saves money and memberships as they change and the rest on its own schedule.
-        Save = function() data.position = GetEntityCoords(GetPlayerPed(source)) end,
-        Logout = function() core:SwitchCharacter(source) end,
+        -- ai-core writes money and memberships as they change; this writes position and metadata now.
+        Save = function()
+            data.position = GetEntityCoords(GetPlayerPed(source))
+            core:SavePlayer(source)
+        end,
+        Logout = function() Bridge.logout(source) end,
     }
     functions.UpdatePlayerData = functions.UpdateClient
     functions.SetPlayerData = function(key, value)
@@ -438,14 +471,21 @@ local function build(source)
         elseif key == 'gang' then
             if type(value) == 'table' and type(value.name) == 'string' then functions.SetGang(value.name, type(value.grade) == 'table' and value.grade.level or 0) end
         elseif key == 'charinfo' then
-            -- Names and birth date belong to ai-core's character; the QB-only values are kept.
+            -- Names, birth date and nationality go to ai-core's character; the QB-only values are kept in metadata.
             if type(value) ~= 'table' then return end
+            local patch = charinfoPatch(value, data.charinfo, true)
+            if patch then
+                core:SetCharacterInfo(c.id, patch, function(result)
+                    if type(result) == 'table' and result.ok then Bridge.characterChanged(source, patch) end
+                end)
+            end
             local stored2 = mirror.metadata[CHARINFO_KEY]
             local values = type(stored2) == 'table' and copy(stored2) or {}
+            local extraChanged = false
             for _, field in ipairs({ 'account', 'card' }) do
-                if value[field] ~= nil then values[field] = value[field] end
+                if value[field] ~= nil and value[field] ~= values[field] then values[field], extraChanged = value[field], true end
             end
-            core:SetMeta(source, CHARINFO_KEY, values)
+            if extraChanged then core:SetMeta(source, CHARINFO_KEY, values) end
         else
             data[key] = value
             playerUpdated(source, key, value)
@@ -495,22 +535,20 @@ end
 
 local qbJobDefinition, qbGangDefinition = BridgeShapes.qbJobDefinition, BridgeShapes.qbGangDefinition
 
---- Jobs, gangs and items other scripts added with QBCore.Functions.AddJob / AddGang / AddItem: shown in QBCore.Shared
---- next to ai-core's own (server_functions.lua keeps them).
----@type { Jobs: table<string, table>, Gangs: table<string, table>, Items: table<string, table> }
-local added = { Jobs = {}, Gangs = {}, Items = {} }
+--- Items other scripts added with QBCore.Functions.AddItem: shown in QBCore.Shared next to the inventory's own
+--- (server_functions.lua keeps them). Jobs and gangs scripts add are ai-core definitions (in `Bridge.jobDefinitions`).
+---@type { Items: table<string, table> }
+local added = { Items = {} }
 
---- QBCore.Shared.Jobs / Gangs in QB's shape (grades keyed by their index as text).
+--- QBCore.Shared.Jobs / Gangs in QB's shape (grades keyed by their index as text): ai-core's panel and script jobs.
 local function sharedJobs()
     local out = {}
-    for name, value in pairs(added.Jobs) do out[name] = value end
     for name, definition in pairs(Bridge.jobDefinitions()) do out[name] = qbJobDefinition(definition) end
     return out
 end
 
 local function sharedGangs()
     local out = {}
-    for name, value in pairs(added.Gangs) do out[name] = value end
     for name, definition in pairs(Bridge.gangDefinitions()) do out[name] = qbGangDefinition(definition) end
     return out
 end
@@ -836,12 +874,21 @@ Bridge.on('meta', function(source, key, value)
     playerUpdated(source, 'metadata', data.metadata)
 end)
 
+-- ai-core changed the character's name, birth date or nationality (QB / Qbox SetCharInfo).
+Bridge.on('character', function(source)
+    local player, mirror = qbPlayers[source], Bridge.players[source]
+    if not player or not mirror then return end
+    local c, charinfo = mirror.character, player.PlayerData.charinfo
+    applyCharinfo(charinfo, { firstname = c.firstname, lastname = c.lastname, birthdate = c.birthdate, nationality = c.nationality or '', sex = c.sex })
+    playerUpdated(source, 'charinfo', charinfo)
+end)
+
 -- A panel edit of a job or gang: QB's shared update (server object refresh, every client's Shared table).
 AddEventHandler('ai-core:definitionsChanged', function(file, name)
     local tableName = file == 'jobs' and 'Jobs' or file == 'gangs' and 'Gangs' or nil
     if not tableName or type(name) ~= 'string' then return end
     local definition = (file == 'jobs' and Bridge.jobDefinitions() or Bridge.gangDefinitions())[name]
-    local value = definition and (file == 'jobs' and qbJobDefinition(definition --[[@as AiJobDefinition]]) or qbGangDefinition(definition)) or added[tableName][name]
+    local value = definition and (file == 'jobs' and qbJobDefinition(definition --[[@as AiJobDefinition]]) or qbGangDefinition(definition)) or nil
     TriggerClientEvent('QBCore:Client:OnSharedUpdate', -1, tableName, name, value)
     TriggerEvent('QBCore:Server:UpdateObject')
 end)
@@ -860,6 +907,11 @@ BridgeQB = {
     addExtensions = addExtensions,
     copy = copy,
     metaDefaults = META_DEFAULTS,
+    metadataOf = metadataOf,
+    charinfoKey = CHARINFO_KEY,
+    charinfoPatch = charinfoPatch,
+    applyCharinfo = applyCharinfo,
+    playerUpdated = playerUpdated,
     added = added,
     ---@param phone string
     ---@return integer|nil

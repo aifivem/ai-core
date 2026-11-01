@@ -68,9 +68,9 @@ local onDuty = {}
 
 --- Calls `fn(...)` for every part (ESX, QB) that wants to hear a player change.
 ---@type table<string, fun(source: integer, ...)[]>
-local listeners = { loaded = {}, unloaded = {}, money = {}, job = {}, gang = {}, meta = {} }
+local listeners = { loaded = {}, unloaded = {}, money = {}, job = {}, gang = {}, meta = {}, character = {} }
 
----@alias BridgeChange 'loaded'|'unloaded'|'money'|'job'|'gang'|'meta'
+---@alias BridgeChange 'loaded'|'unloaded'|'money'|'job'|'gang'|'meta'|'character'
 
 ---@param kind BridgeChange
 ---@param fn fun(source: integer, ...)
@@ -113,7 +113,7 @@ function Bridge.gangDefinitions()
 end
 
 --- The job a framework script sees: ai-core's current job (`GetCurrentJob`) with its definition.
----@param mirror BridgeMirror
+---@param mirror { job: AiJobMembership, duty?: string } a mirror, or a stored character's pick
 ---@return BridgeJob
 function Bridge.jobOf(mirror)
     local pick = mirror.job
@@ -132,7 +132,7 @@ function Bridge.jobOf(mirror)
 end
 
 --- The active gang, else none.
----@param mirror BridgeMirror
+---@param mirror { gangs: AiGangMembership[], activeGang?: string } a mirror or a stored character
 ---@return { name: string, label: string, grade: integer, gradeLabel: string, boss: boolean }
 function Bridge.gangOf(mirror)
     local pick
@@ -202,10 +202,246 @@ local kinds = { primary = 'info', inform = 'info', info = 'info', success = 'suc
 ---@param text string
 ---@param kind? string
 ---@param duration? integer
-function Bridge.notify(source, text, kind, duration)
+---@param title? string shown above the text
+function Bridge.notify(source, text, kind, duration, title)
     if type(text) == 'table' then text = text.text or text.caption or '' end
-    aiLib.notify(source, tostring(text), kinds[kind or 'info'] or 'info', duration)
+    aiLib.notify(source, tostring(text), kinds[kind or 'info'] or 'info', duration, title ~= nil and tostring(title) or nil)
 end
+
+--- Calls an ai-core export whose last argument is a `done` callback and waits for its one answer (call from a
+--- thread). Optional arguments before `done` are passed as nil.
+---@param name string
+---@param ... any
+---@return any
+function Bridge.await(name, ...)
+    local answer = promise.new()
+    local args = table.pack(...)
+    args.n = args.n + 1
+    args[args.n] = function(result) answer:resolve(result) end
+    core[name](core, table.unpack(args, 1, args.n))
+    return Citizen.Await(answer)
+end
+
+--- ai-core's character id behind a citizenid (ai-core's citizenid is the character id as text); nil when it cannot be one.
+---@param citizenid any
+---@return integer|nil
+function Bridge.charIdOf(citizenid)
+    if type(citizenid) ~= 'string' and type(citizenid) ~= 'number' then return nil end
+    local id = math.tointeger(tonumber(citizenid))
+    return id and id > 0 and tostring(id) == tostring(citizenid) and id or nil
+end
+
+--- A birth date as ai-core's `YYYY-MM-DD`: ISO dates stay, `DD/MM/YYYY` (esx_identity's default; `MM/DD/YYYY` when the
+--- first part cannot be a month) is turned around. Nil when it is no date.
+---@param text any
+---@return string|nil
+function Bridge.isoDate(text)
+    if type(text) ~= 'string' then return nil end
+    local year, month, day = text:match('^(%d%d%d%d)[%-/%.](%d%d?)[%-/%.](%d%d?)$')
+    if not year then
+        local a, b
+        a, b, year = text:match('^(%d%d?)[%-/%.](%d%d?)[%-/%.](%d%d%d%d)$')
+        if not a then return nil end
+        day, month = a, b
+        if tonumber(month) > 12 and tonumber(day) <= 12 then day, month = month, day end
+    end
+    return ('%s-%02d-%02d'):format(year, tonumber(month), tonumber(day))
+end
+
+--- ai-core's sex from a framework value: QB gender 1 / '1' / 'Female', ESX 'f' are female, anything else male.
+---@param value any
+---@return 'male'|'female'
+function Bridge.sexOf(value)
+    if value == 1 or value == '1' then return 'female' end
+    local text = type(value) == 'string' and value:lower() or ''
+    return (text == 'f' or text == 'female') and 'female' or 'male'
+end
+
+--------------------------------------------------------------------------------------------------------------------
+-- Character screens (multichar scripts log players in through the framework's login; docs/compat/multichar.md)
+--------------------------------------------------------------------------------------------------------------------
+
+---@class BridgeNewCharacter
+---@field firstname string
+---@field lastname string
+---@field birthdate string YYYY-MM-DD
+---@field sex 'male'|'female'
+---@field nationality? string
+---@field slot? integer
+---@field height? number centimetres, kept in metadata `height`
+
+--- A player who may be logged in by a script: connected, no character loaded, within the bridge's rate gate.
+---@param source any
+---@return integer|nil
+function Bridge.loginSource(source)
+    local id = math.tointeger(tonumber(source))
+    if not id or id <= 0 or not GetPlayerName(tostring(id)) or Bridge.players[id] then return nil end
+    return Bridge.allow(id) and id or nil
+end
+
+---@param what string
+---@param source integer
+---@param result { ok: boolean, error?: string }|nil
+---@return boolean
+local function loginAnswer(what, source, result)
+    if result and result.ok then return true end
+    print(('^3[ai-core bridge] %s of player %d (from %s) refused: %s^0'):format(what, source, GetInvokingResource() or '?', result and result.error or 'no answer'))
+    return false
+end
+
+--- Loads a character of the player's own account (ai-core `LoginCharacter`: char id, `{ slot }` or `{ citizenid }`).
+--- Waits; call from a thread.
+---@param source integer
+---@param character integer|{ slot: integer }|{ citizenid: string }
+---@return boolean
+function Bridge.login(source, character)
+    return loginAnswer('login', source, Bridge.await('LoginCharacter', source, character))
+end
+
+--- Creates a character on the player's account (ai-core's form rules and slot limit) and loads it. Waits.
+---@param source integer
+---@param input BridgeNewCharacter
+---@return boolean
+function Bridge.createCharacter(source, input)
+    local result = Bridge.await('CreateAndLoginCharacter', source, {
+        firstname = input.firstname, lastname = input.lastname, birthdate = input.birthdate, sex = input.sex,
+        nationality = input.nationality, slot = input.slot,
+    })
+    if not loginAnswer('character creation', source, result) then return false end
+    local height = tonumber(input.height)
+    if height and height > 0 and height < 300 and Bridge.players[source] then core:SetMeta(source, 'height', math.floor(height)) end
+    return true
+end
+
+--- Lets go of the loaded character (ai-core `LogoutCharacter`: saved, the character screen shows again).
+---@param source integer
+---@param done? fun(ok: boolean)
+function Bridge.logout(source, done)
+    core:LogoutCharacter(source, function(result)
+        if done then done(type(result) == 'table' and result.ok == true) end
+    end)
+end
+
+--- ai-core changed a loaded character's name, birth date, nationality or sex (`SetCharacterInfo` answered ok): the
+--- mirror takes the values and the framework parts hear 'character'.
+---@param source integer
+---@param patch table<string, string>
+function Bridge.characterChanged(source, patch)
+    local mirror = Bridge.players[source]
+    if not mirror then return end
+    for key, value in pairs(patch) do mirror.character[key] = value end
+    emitChange('character', source)
+end
+
+--------------------------------------------------------------------------------------------------------------------
+-- Job / gang definitions scripts create through a framework function (QB AddJob, Qbox CreateJob, ESX CreateJob):
+-- ai-core's runtime definitions. The bridge calls them from inside ai-core, so ai-core owns them there; the bridge
+-- keeps the script that asked and removes them when that script stops.
+--------------------------------------------------------------------------------------------------------------------
+
+---@class BridgeScriptGrade
+---@field label string
+---@field salary number
+---@field boss boolean
+
+---@class BridgeScriptDefinition
+---@field label string
+---@field type? string jobs only
+---@field defaultDuty? boolean jobs only
+---@field listed? boolean jobs only: shown in job centers
+---@field grades table<integer, BridgeScriptGrade> by grade number from 0 (gaps allowed, filled when sent)
+
+---@alias BridgeDefinitionKind 'job'|'gang'
+
+--- Grades past this number are refused (a gap is filled with placeholder grades).
+local MAX_GRADE = 99
+
+---@type table<BridgeDefinitionKind, table<string, { owner: string, definition: BridgeScriptDefinition }>>
+local scriptDefinitions = { job = {}, gang = {} }
+
+--- A grade number of a framework table key or field (`0`, `'1'`); nil when it is none.
+---@param value any
+---@return integer|nil
+function Bridge.gradeNumber(value)
+    if type(value) == 'string' and value:match('^%d+$') then value = tonumber(value) end
+    local grade = math.tointeger(value)
+    return grade and grade >= 0 and grade <= MAX_GRADE and grade or nil
+end
+
+---@param definition BridgeScriptDefinition
+---@param kind BridgeDefinitionKind
+---@return table
+local function aiDefinition(definition, kind)
+    local top = -1
+    for grade in pairs(definition.grades) do
+        if grade > top then top = grade end
+    end
+    local grades = {}
+    for grade = 0, top do
+        local entry = definition.grades[grade]
+        grades[grade + 1] = entry and { label = entry.label, salary = entry.salary, boss = entry.boss } or { label = ('Grade %d'):format(grade), salary = 0, boss = false }
+    end
+    local out = { label = definition.label, grades = grades }
+    if kind == 'job' then
+        out.type, out.defaultDuty, out.listed = definition.type or 'none', definition.defaultDuty == true, definition.listed == true
+    end
+    return out
+end
+
+--- The script definition the bridge registered under a name (with the resource that owns it), nil for panel jobs and
+--- names nobody registered through the bridge.
+---@param kind BridgeDefinitionKind
+---@param name string
+---@return { owner: string, definition: BridgeScriptDefinition }|nil
+function Bridge.scriptDefinition(kind, name)
+    return scriptDefinitions[kind][name]
+end
+
+--- Whether ai-core knows a job / gang of that name (panel, any script).
+---@param kind BridgeDefinitionKind
+---@param name string
+---@return boolean
+function Bridge.definitionExists(kind, name)
+    return (kind == 'job' and Bridge.jobDefinitions() or Bridge.gangDefinitions())[name] ~= nil
+end
+
+--- Registers or replaces a script's job / gang as an ai-core runtime definition owned by `owner`. A panel name or one
+--- another resource registered is refused (`CORE_ERR_DEFINITION_PANEL` / `CORE_ERR_DEFINITION_OWNER`).
+---@param kind BridgeDefinitionKind
+---@param name string
+---@param definition BridgeScriptDefinition
+---@param owner string
+---@return boolean ok, string? error ai-core lang key
+function Bridge.putDefinition(kind, name, definition, owner)
+    local mine = scriptDefinitions[kind][name]
+    if mine and mine.owner ~= owner then return false, 'CORE_ERR_DEFINITION_OWNER' end
+    local result = kind == 'job' and core:RegisterJobDefinition(name, aiDefinition(definition, kind))
+        or core:RegisterGangDefinition(name, aiDefinition(definition, kind))
+    if type(result) ~= 'table' or not result.ok then return false, type(result) == 'table' and result.error or 'CORE_ERR_ARGS' end
+    scriptDefinitions[kind][name] = { owner = owner, definition = definition }
+    return true
+end
+
+--- Removes a job / gang `owner` registered through the bridge; false for any other name.
+---@param kind BridgeDefinitionKind
+---@param name string
+---@param owner string
+---@return boolean
+function Bridge.dropDefinition(kind, name, owner)
+    local mine = scriptDefinitions[kind][name]
+    if not mine or mine.owner ~= owner then return false end
+    scriptDefinitions[kind][name] = nil
+    if kind == 'job' then core:RemoveJobDefinition(name) else core:RemoveGangDefinition(name) end
+    return true
+end
+
+AddEventHandler('onResourceStop', function(resource)
+    for kind, list in pairs(scriptDefinitions) do
+        for name, entry in pairs(list) do
+            if entry.owner == resource then Bridge.dropDefinition(kind --[[@as BridgeDefinitionKind]], name, resource) end
+        end
+    end
+end)
 
 ---@param source integer
 local function load(source)
@@ -349,22 +585,7 @@ local itemCache = {}
 ---@field close boolean
 ---@field description string
 
----@param name string
----@param definition AiItemDefinition
----@return table
-local function qbItem(name, definition)
-    return {
-        name = name,
-        label = definition.label,
-        weight = definition.weight,
-        type = 'item',
-        image = ('%s.png'):format(name),
-        unique = definition.unique,
-        useable = true,
-        shouldClose = definition.close,
-        description = definition.description,
-    }
-end
+local qbItem = BridgeShapes.qbItem
 
 ---@param name string
 ---@return table|nil

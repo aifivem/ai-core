@@ -638,7 +638,7 @@ end
 function ESX.ShowAdvancedNotification(sender, subject, msg, _textureDict, _iconType)
     local text = clean(msg)
     if subject and subject ~= '' then text = ('%s: %s'):format(clean(subject), text) end
-    exports['ai-lib']:Notify({ title = sender and clean(sender) or nil, text = text, kind = 'info' })
+    BridgeClient.notify(text, 'info', nil, sender and clean(sender) or nil)
 end
 
 ---@param msg string
@@ -701,13 +701,13 @@ provide('esx_context', 'Refresh', function(...) return ESX.RefreshContext(...) e
 provide('esx_context', 'focusPreview', function() end)
 provide('esx_textui', 'TextUI', function(...) return ESX.TextUI(...) end)
 provide('esx_textui', 'HideUI', function() return ESX.HideUI() end)
-provide('esx_notify', 'Notify', function(kind, length, message) BridgeClient.notify(message or '', kind, length) end)
+provide('esx_notify', 'Notify', function(kind, length, message, title) BridgeClient.notify(message or '', kind, length, title) end)
 provide('esx_progressbar', 'Progressbar', function(...) return ESX.Progressbar(...) end)
 provide('esx_progressbar', 'CancelProgressbar', function() return ESX.CancelProgressbar() end)
 
 RegisterNetEvent('ESX:TextUI', function(message, kind) ESX.TextUI(message, kind) end)
 RegisterNetEvent('ESX:HideUI', function() ESX.HideUI() end)
-RegisterNetEvent('ESX:Notify', function(kind, length, message) BridgeClient.notify(message or '', kind, length) end)
+RegisterNetEvent('ESX:Notify', function(kind, length, message, title) BridgeClient.notify(message or '', kind, length, title) end)
 RegisterNetEvent('esx:showAdvancedNotification', function(...) ESX.ShowAdvancedNotification(...) end)
 RegisterNetEvent('esx:showHelpNotification', function(msg, thisFrame, beep, duration) ESX.ShowHelpNotification(msg, thisFrame, beep, duration) end)
 aiLib.onServerEvent('esx:showInventoryItemNotification', function(add, item, count)

@@ -168,10 +168,11 @@ end, { active = false, name = 'esxPauseMenu' })
 
 -- Character load and unload ------------------------------------------------------------------------------------------
 
--- bridge/esx/client.lua's listener ran first: PlayerData is built and esx:playerLoaded went out.
-BridgeClient.on('loaded', function()
+-- The character stands in the world (PlayerData was built and esx:playerLoaded went out on 'loaded'). An external
+-- character screen spawns the ped and fires esx:onPlayerSpawn itself, as es_extended leaves it to its multichar.
+BridgeClient.on('spawned', function()
     deathSent = false
-    reportSpawn()
+    if not BridgeClient.external then reportSpawn() end
     TriggerEvent('esx:restoreLoadout')
     if firstSpawn then
         firstSpawn = false

@@ -1,5 +1,6 @@
 -- The framework shapes both bridge sides hand out (loaded on the server and the client before the framework parts):
--- ai-core's job / gang view (`Bridge.jobOf` / `BridgeClient`) as QB's and ESX's job tables, and Qbox's group match.
+-- ai-core's job / gang view (`Bridge.jobOf` / `BridgeClient`) as QB's and ESX's job tables, QB's job / gang / item
+-- definitions, and Qbox's group match.
 
 ---@class BridgeShapes
 BridgeShapes = {}
@@ -53,6 +54,24 @@ function BridgeShapes.qbGangDefinition(definition)
     local grades = {}
     for i, grade in ipairs(definition.grades or {}) do grades[tostring(i - 1)] = { name = grade.label, isboss = grade.boss, bankAuth = grade.boss } end
     return { label = definition.label, grades = grades }
+end
+
+--- QB's item (`QBCore.Shared.Items[name]`) from an ai-core item definition.
+---@param name string
+---@param definition { label: string, weight: number, unique: boolean, close: boolean, description: string }
+---@return table
+function BridgeShapes.qbItem(name, definition)
+    return {
+        name = name,
+        label = definition.label,
+        weight = definition.weight,
+        type = 'item',
+        image = ('%s.png'):format(name),
+        unique = definition.unique,
+        useable = true,
+        shouldClose = definition.close,
+        description = definition.description,
+    }
 end
 
 ---@type table<string, table>

@@ -26,7 +26,7 @@ local DEFAULT_MAX_WEIGHT = 24000
 ---@field accounts ESXClientAccount[]
 ---@field money number cash
 ---@field job ESXJob
----@field inventory table[] filled by the inventory (`ESX.SetPlayerData('inventory', ...)` / `esx:setInventory`)
+---@field inventory table[] filled by the inventory (`ESX.SetPlayerData('inventory', ...)` / `esx:setInventory`); rows `SearchInventory` read are kept current
 ---@field loadout table[] always empty: weapons are inventory items on ai-core
 ---@field weight number
 ---@field maxWeight number
@@ -159,8 +159,9 @@ end
 ---@param text string
 ---@param kind? string
 ---@param length? integer
-function ESX.ShowNotification(text, kind, length)
-    BridgeClient.notify(text, kind, length)
+---@param title? string
+function ESX.ShowNotification(text, kind, length, title)
+    BridgeClient.notify(text, kind, length, title)
 end
 
 ---@param name string
@@ -171,8 +172,51 @@ end
 
 -- Inventory ----------------------------------------------------------------------------------------------------------
 
---- ESX's SearchInventory over `ESX.PlayerData.inventory` (filled by the inventory). An item the list does not hold is
---- asked from ai-core's inventory layer (`HasItem`), which knows only whether the player has it: count 1 or 0.
+--- ESX's inventory row for an item the player holds `count` of (label and weight from ai-core's item definitions);
+--- nil for an item no definition knows that the player does not hold.
+---@param name string
+---@param count integer
+---@return table|nil
+local function itemRow(name, count)
+    local definition = aiLib.inventory.itemDefinition(name)
+    if not definition and count <= 0 then return nil end
+    return {
+        name = name,
+        count = count,
+        label = definition and definition.label or name,
+        weight = definition and definition.weight or 0,
+        usable = false,
+        rare = false,
+        canRemove = true,
+    }
+end
+
+--- Puts fresh rows into `PlayerData.inventory` (by name) and tells the ESX imports once when one changed.
+---@param rows table<string, table>
+local function keepRows(rows)
+    if not ESX.PlayerLoaded then return end
+    local list = ESX.PlayerData.inventory or {}
+    local changed = false
+    for _, row in ipairs(list) do
+        local fresh = rows[row.name]
+        if fresh then
+            rows[row.name] = nil
+            if row.count ~= fresh.count then
+                row.count = fresh.count
+                changed = true
+            end
+        end
+    end
+    for _, row in pairs(rows) do
+        list[#list + 1] = row
+        changed = true
+    end
+    if changed then ESX.SetPlayerData('inventory', list) end
+end
+
+--- ESX's SearchInventory. Counts come from the active inventory's client count (`GetItemCount`), read at each call;
+--- the rows read are kept in `ESX.PlayerData.inventory`. An inventory without a client count is read from that list
+--- (filled by the inventory), else from ai-core's `HasItem`, which knows only whether the player has it: count 1 or 0.
 ---@param items string|string[]
 ---@param count? boolean
 ---@return any
@@ -181,23 +225,26 @@ function ESX.SearchInventory(items, count)
     if type(items) == 'string' then
         single, items = items, { items }
     end
-    local wanted = {}
-    for i = 1, #items do wanted[items[i]] = true end
-    local data = {}
-    for _, entry in ipairs(ESX.PlayerData.inventory or {}) do
-        if wanted[entry.name] then
-            wanted[entry.name] = nil
-            data[entry.name] = count and entry.count or entry
+    local listed = {}
+    for _, row in ipairs(ESX.PlayerData.inventory or {}) do listed[row.name] = row end
+    local data, fresh = {}, {}
+    for i = 1, #items do
+        local name = items[i]
+        local held, row = aiLib.inventory.itemCount(name), nil
+        if held ~= nil then
+            row = itemRow(name, math.floor(tonumber(held) or 0))
+            if row then fresh[name] = row end
+        else
+            row = listed[name]
+            if not row and aiLib.inventory.hasItem(name, 1) == true then row = itemRow(name, 1) end
         end
-    end
-    for name in pairs(wanted) do
-        local has = aiLib.inventory.hasItem(name, 1) == true
         if count then
-            data[name] = has and 1 or 0
-        elseif has then
-            data[name] = { name = name, count = 1, label = name, weight = 0, usable = false, rare = false, canRemove = true }
+            data[name] = row and row.count or 0
+        elseif row then
+            data[name] = row
         end
     end
+    if next(fresh) then keepRows(fresh) end
     if single then return data[single] end
     return data
 end

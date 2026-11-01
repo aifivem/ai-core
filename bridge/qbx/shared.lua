@@ -164,21 +164,17 @@ function BridgeQbox.fillMeta(metadata)
     end
 end
 
---- Qbox notify arguments as one card text: `text` may be `{ text, caption }`, `subTitle` goes under the title.
+--- Qbox notify arguments as a title and a text: `text` may be `{ text, caption }`, `subTitle` goes under the title.
 ---@param text string|{ text?: string, caption?: string }
 ---@param subTitle? string
----@return string
-function BridgeQbox.notifyText(text, subTitle)
-    local title, description
+---@return string|nil title, string|nil description
+function BridgeQbox.notifyParts(text, subTitle)
     if type(text) == 'table' then
-        title, description = text.text, text.caption
-    elseif subTitle then
-        title, description = text, subTitle
-    else
-        description = text
+        if text.caption then return text.text, text.caption end
+        return nil, text.text
     end
-    if title and description then return ('%s: %s'):format(title, description) end
-    return tostring(title or description or '')
+    if subTitle then return text, subTitle end
+    return nil, text
 end
 
 ---@type { hashes: table<integer, table>|nil, categories: table<string, table[]>|nil }

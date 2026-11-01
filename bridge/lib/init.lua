@@ -34,7 +34,7 @@ end
 ---@field triggerServerCallback fun(name: string, args?: any[], timeout?: integer): (any), (string?) client
 ---@field onServerCallback fun(name: string, handler: (fun(...: any): any)) client
 ---@field callAction fun(name: string, args?: any[], options: { fallback: string, timeout?: integer, silent?: boolean }): table? client: runs an action, notifies the translated refusal, returns the ok reply or nil
----@field notify fun(...: any) client `(text, kind?, duration?)`; server `(source, text, kind?, duration?)`
+---@field notify fun(...: any) client `(text, kind?, duration?, title?)`; server `(source, text, kind?, duration?, title?)`
 ---@field progress AiLibProgress client: `aiLib.progress(options)` waits (true = ran out), `progress.cancel()`, `progress.isRunning()`
 ---@field menu { show: (fun(request: table, listeners?: table): string?), input: (fun(request: table): table?), itemPicker: (fun(request: { title: string, target?: integer }): table?), skillCheck: (fun(difficulty: string|table, keys?: string[]): boolean), lockpick: (fun(options?: table): string) } client
 ---@field itemPicker fun(request: { title: string, target?: integer }): table? client, admin tools: the taken list or nil
@@ -60,7 +60,11 @@ end
 ---@field fadeOut fun(ms?: integer) client
 ---@field fadeIn fun(ms?: integer) client
 ---@field waitForEntity fun(netId: integer, timeout?: integer): integer client: the entity once it exists here, 0 after the timeout
----@field nearestVehicle fun(metres: number, options?: { networked?: boolean, notOwn?: boolean, filter?: fun(vehicle: integer): boolean }): integer client
+---@field nearestVehicle fun(metres: number, options?: { networked?: boolean, notOwn?: boolean, filter?: (fun(vehicle: integer): boolean), from?: vector3 }): integer, number? client: the vehicle (0 when none) and its distance
+---@field nearestEntity fun(kind: 'ped'|'object'|'vehicle', from?: vector3, maxDistance?: number, options?: { filter?: (fun(entity: integer): boolean), ignoreLocal?: boolean }): integer, number? client: the closest entity of a pool (0 when none) and its distance
+---@field entitiesInArea fun(kind: 'ped'|'object'|'vehicle', coords: vector3, radius: number): integer[] client
+---@field isSpawnClear fun(coords: vector3, radius: number): boolean client: no vehicle within `radius`
+---@field attachProp fun(model: string|integer, options: AiLibAttachPropOptions): integer client: a local prop held at a ped bone (0 on failure, waits; leftovers go when the resource stops)
 ---@field playerData { get: (fun(key: string): any), onChange: (fun(key: string, handler: fun(value: any))) } client
 ---@field onServerEvent fun(name: string, handler: (fun(...: any))) client
 ---@field onClientEvent fun(name: string, handler: (fun(source: integer, ...: any)), options?: table) server
@@ -85,6 +89,7 @@ end
 ---@field requestAnimDict fun(dict: string, timeout?: integer): string? client
 ---@field requestAnimSet fun(set: string, timeout?: integer): string? client: a movement clipset
 ---@field requestTextureDict fun(dict: string, timeout?: integer): string? client
+---@field requestScaleformMovie fun(name: string, timeout?: integer): integer client: the movie handle, 0 when it did not load
 ---@field requestWeaponAsset fun(weapon: string|integer, timeout?: integer): integer? client
 ---@field pedHeadshot fun(ped: integer, transparent?: boolean, timeout?: integer): (integer?), (string?) client: handle and txd once rendered
 ---@field locationName fun(coords?: vector3): { street: string, crossing: string?, zone: string } client
@@ -101,9 +106,11 @@ end
 ---@field minigameFor fun(source: integer, options: table): string server: ai-lib's minigame on the player's client ('won' | 'lost' | 'broken', waits)
 ---@field addCommand fun(name: string|string[], options: table, handler: (fun(source: integer, args: table, raw: string))) server
 ---@field spawnVehicle fun(options: AiLibSpawnVehicleOptions): integer? server
+---@field vehicleType fun(model: string|integer, asker: integer): string?, integer server: the spawn type a player's client gives (kept once two players agree; waits) and the model hash
 ---@field playersNear fun(source: integer, radius: number): integer[] server
----@field inventory table client `openInventory`, `hasItem`, `currentWeapon`; server the item calls through ai-core (and `registerShop`, `openShop`)
----@field vehicleKeys { give: (fun(source: integer, vehicle: integer|string, purpose?: string)), remove: (fun(source: integer, vehicle: integer|string)), has: (fun(source: integer, vehicle: integer|string): boolean) } server
+---@field playersNearCoords fun(coords: vector3, radius: number, bucket?: integer): integer[] server: loaded players near a point (walks every loaded player)
+---@field inventory table client `openInventory`, `hasItem`, `currentWeapon`, `itemCount`, `itemDefinition`; server the item calls through ai-core (and `registerShop`, `openShop`, `setItemMetadata`, `setMaxWeight`, `usableItems`)
+---@field vehicleKeys table server `give(source, vehicle, purpose?)`, `remove(source, vehicle)`, `has(source, vehicle)`; client `has(vehicle)` (entity or plate)
 ---@field phone table server
 ---@field dispatch { alert: (fun(alert: AiLibDispatchAlert): boolean) } server: police alerts through ai-core's alert system
 ---@field billing { send: (fun(bill: AiLibBill): boolean), unpaid: (fun(src: integer): table[]?), pay: (fun(src: integer, id: string): boolean), provider: (fun(): string?) } server: bills through ai-core (`unpaid` waits)
