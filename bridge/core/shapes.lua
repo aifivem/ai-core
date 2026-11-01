@@ -37,6 +37,24 @@ function BridgeShapes.matchGroup(groups, filter)
     end
 end
 
+--- QB's job definition (`QBCore.Shared.Jobs[name]`) from an ai-core one (grades keyed by their index as text).
+---@param definition AiJobDefinition
+---@return table
+function BridgeShapes.qbJobDefinition(definition)
+    local grades = {}
+    for i, grade in ipairs(definition.grades or {}) do grades[tostring(i - 1)] = { name = grade.label, payment = grade.salary, isboss = grade.boss, bankAuth = grade.boss } end
+    return { label = definition.label, type = definition.type, defaultDuty = definition.defaultDuty, offDutyPay = false, grades = grades }
+end
+
+--- QB's gang definition (`QBCore.Shared.Gangs[name]`).
+---@param definition { label: string, grades: AiGrade[] }
+---@return table
+function BridgeShapes.qbGangDefinition(definition)
+    local grades = {}
+    for i, grade in ipairs(definition.grades or {}) do grades[tostring(i - 1)] = { name = grade.label, isboss = grade.boss, bankAuth = grade.boss } end
+    return { label = definition.label, grades = grades }
+end
+
 ---@type table<string, table>
 local sharedFiles = {}
 

@@ -1,6 +1,8 @@
 local resource = GetCurrentResourceName()
 local pending = {}
-local nextId = 0
+-- Ids start far above the TypeScript lib's: a resource that bundles both (ai-core: TS lib + its Lua bridge) gets
+-- both sides' answers on the same `aicore:cbr:<resource>` event, and equal ids would take each other's answers.
+local nextId = 1 << 40
 
 RegisterNetEvent(('aicore:cbr:%s'):format(resource), function(id, ok, result)
     local entry = pending[id]
