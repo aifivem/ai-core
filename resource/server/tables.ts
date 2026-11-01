@@ -68,12 +68,30 @@ export type Tables = {
     amount: number;
     created_at: number;
   };
+  ai_core_deleted_log: {
+    char_id: number;
+    user_id: number;
+  };
   ai_core_vrp_data: {
     kind: string;
     owner: string;
     dkey: string;
     dvalue: number[];
     updated_at: number;
+  };
+  ai_core_bans: {
+    id: number;
+    fivem: string | null;
+    license: string | null;
+    discord: string | null;
+    ip: string | null;
+    name: string;
+    reason: string;
+    banned_by: string;
+    created_at: number;
+    expires_at: number | null;
+    revoked_at: number | null;
+    revoked_by: string | null;
   };
 };
 
@@ -145,11 +163,29 @@ export type TableInserts = {
     amount: number;
     created_at?: number;
   };
+  ai_core_deleted_log: {
+    char_id: number;
+    user_id: number;
+  };
   ai_core_vrp_data: {
     kind: string;
     owner?: string;
     dkey: string;
     dvalue: number[];
     updated_at?: number;
+  };
+  ai_core_bans: {
+    id?: number;
+    fivem?: string | null;
+    license?: string | null;
+    discord?: string | null;
+    ip?: string | null;
+    name?: string;
+    reason: string;
+    banned_by?: string;
+    created_at?: number;
+    expires_at?: number | null;
+    revoked_at?: number | null;
+    revoked_by?: string | null;
   };
 };

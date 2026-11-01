@@ -67,7 +67,8 @@ CREATE TABLE IF NOT EXISTS `ai_core_character_jobs` (
   `char_id` INT UNSIGNED NOT NULL,
   `job` VARCHAR(32) NOT NULL,
   `grade` TINYINT UNSIGNED NOT NULL DEFAULT 0,
-  PRIMARY KEY (`char_id`, `job`)
+  PRIMARY KEY (`char_id`, `job`),
+  KEY `job` (`job`, `char_id`, `grade`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `ai_core_character_gangs` (
@@ -75,7 +76,8 @@ CREATE TABLE IF NOT EXISTS `ai_core_character_gangs` (
   `gang` VARCHAR(32) NOT NULL,
   `grade` TINYINT UNSIGNED NOT NULL DEFAULT 0,
   `active` TINYINT(1) NOT NULL DEFAULT 0,
-  PRIMARY KEY (`char_id`, `gang`)
+  PRIMARY KEY (`char_id`, `gang`),
+  KEY `gang` (`gang`, `char_id`, `grade`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ai-core's own bills (billing/builtin.ts): open bills only; paying one deletes its row in the money transaction.
@@ -92,6 +94,16 @@ CREATE TABLE IF NOT EXISTS `ai_core_bills` (
   KEY `char_id` (`char_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Characters soft-deleted through the framework projections (multichar/projection): the delete trigger adds a row,
+-- ai-core reads and removes an account's rows at its next projection refresh and fires `characterDeleted`. Holds only
+-- deletes not yet noticed.
+CREATE TABLE IF NOT EXISTS `ai_core_deleted_log` (
+  `char_id` INT UNSIGNED NOT NULL,
+  `user_id` INT UNSIGNED NOT NULL,
+  PRIMARY KEY (`char_id`),
+  KEY `user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- vRP key-value data (bridge/vrp, resource/server/vrp): kind c = character (v1 UData, v2 CData), u = account (v2
 -- UData), s = server (SData), g = global (GData); owner = the id as text ('' for s / g). Every access is a primary key
 -- lookup; values are bytes (the Lua side sends hex).
@@ -102,4 +114,23 @@ CREATE TABLE IF NOT EXISTS `ai_core_vrp_data` (
   `dvalue` MEDIUMBLOB NOT NULL,
   `updated_at` DATETIME NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`kind`, `owner`, `dkey`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Bans (resource/server/bans): identifiers as the connection gate sees them (without the `type:` prefix). Active ones
+-- (not revoked, not expired) are read once at start and checked in memory; `active` serves that read.
+CREATE TABLE IF NOT EXISTS `ai_core_bans` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `fivem` VARCHAR(20) DEFAULT NULL,
+  `license` VARCHAR(60) DEFAULT NULL,
+  `discord` VARCHAR(30) DEFAULT NULL,
+  `ip` VARCHAR(45) DEFAULT NULL,
+  `name` VARCHAR(64) NOT NULL DEFAULT '',
+  `reason` VARCHAR(255) NOT NULL,
+  `banned_by` VARCHAR(64) NOT NULL DEFAULT '',
+  `created_at` DATETIME NOT NULL DEFAULT current_timestamp(),
+  `expires_at` DATETIME DEFAULT NULL,
+  `revoked_at` DATETIME DEFAULT NULL,
+  `revoked_by` VARCHAR(64) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `active` (`revoked_at`, `expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
