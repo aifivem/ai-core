@@ -82,6 +82,7 @@ on(CORE.playerLoadedEvent, (_source: number, info: CharacterInfo) =>
 on(CORE.playerUnloadedEvent, (_source: number, charId: number) =>
   cache.drop(charId),
 );
+on(CORE.characterDeletedEvent, (charId: number) => cache.drop(charId));
 
 /** A character by id, loaded or not: `done` gets it with its account id, or null (unknown or deleted). */
 export function getCharacterInfo(

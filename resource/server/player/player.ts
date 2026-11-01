@@ -20,6 +20,11 @@ import { Wallet } from "./wallet";
 
 /** A player with a loaded character: everything ai-core knows about them, in memory. */
 export class Player {
+  /** Runtime switch of a script (`SetPaycheckEnabled`); every load starts paid. */
+  paycheck = true;
+  /** Epoch ms up to which play time is counted into metadata `playtime`. */
+  private counted = Date.now();
+
   private constructor(
     readonly source: number,
     readonly user: User,
@@ -175,8 +180,27 @@ export class Player {
       : 0;
   }
 
-  /** What the periodic flush writes: the ped's position, armour and health (server copies) and the metadata bag. */
+  /** Seconds played: the stored metadata `playtime` plus the time since it was last counted. */
+  playTime(): number {
+    return (
+      this.storedPlayTime() + Math.floor((Date.now() - this.counted) / 1000)
+    );
+  }
+
+  private storedPlayTime(): number {
+    const value = this.row.metadata.playtime;
+    return typeof value === "number" && Number.isFinite(value) && value > 0
+      ? Math.floor(value)
+      : 0;
+  }
+
+  /** What the periodic flush writes: the ped's position, armour and health (server copies), play time and the metadata bag. */
   saveData(): CharacterSave {
+    const seconds = Math.floor((Date.now() - this.counted) / 1000);
+    if (seconds > 0) {
+      this.counted += seconds * 1000;
+      this.setMeta("playtime", this.storedPlayTime() + seconds);
+    }
     const ped = GetPlayerPed(String(this.source));
     if (ped && DoesEntityExist(ped)) {
       const [x = 0, y = 0, z = 0] = GetEntityCoords(ped);

@@ -3,7 +3,7 @@ import { databaseReady } from "../../database";
 import { log } from "../../log";
 
 /**
- * Indexes the player search needs (sql/main.sql has them for new installs). The table installer never adds keys to
+ * Indexes the player search and the member lists (`GetJobMembers`) need (sql/main.sql has them for new installs). The table installer never adds keys to
  * existing tables, so a database from before them gets them here once: an in-place, lock-free `ADD INDEX` (InnoDB
  * builds a secondary index without copying the table; seconds at 1M rows, MariaDB 10.0+ / MySQL 5.6+).
  */
@@ -20,6 +20,8 @@ const WANTED = [
   ],
   ["ai_core_users", "license", "`license`"],
   ["ai_core_users", "discord", "`discord`"],
+  ["ai_core_character_jobs", "job", "`job`, `char_id`, `grade`"],
+  ["ai_core_character_gangs", "gang", "`gang`, `char_id`, `grade`"],
 ] as const;
 
 async function addMissing(): Promise<void> {
@@ -31,7 +33,7 @@ async function addMissing(): Promise<void> {
   const have = new Set(rows.map((r) => `${r.TABLE_NAME}.${r.INDEX_NAME}`));
   for (const [table, name, columns] of WANTED) {
     if (have.has(`${table}.${name}`)) continue;
-    log.info(`adding index ${name} to ${table} (player search)`);
+    log.info(`adding index ${name} to ${table}`);
     await mysql.query(
       `ALTER TABLE \`${table}\` ADD INDEX \`${name}\` (${columns}), ALGORITHM=INPLACE, LOCK=NONE`,
     );

@@ -8,10 +8,12 @@ import {
   loadGangs,
   loadJobs,
   saveActiveGang,
-  saveGang,
+  saveGangMembership,
   saveJob,
+  saveOnlyJob,
 } from "../../jobs/repo";
 import { loadAccounts } from "../../money/book";
+import { moneyWriter } from "../../money/writer";
 import { updateInfo, updateMetadata, updatePosition } from "./repo";
 import { playerWatchers } from "./watchers";
 
@@ -41,7 +43,11 @@ const gradeOk = (grades: number, grade: number): boolean =>
   Number.isInteger(grade) && grade >= 0 && grade < grades;
 
 export const offline = {
-  /** Through the money API: the account object writes the balance delta and the ledger row like any change. */
+  /**
+   * Through the money API: the account object writes the balance delta and the ledger row like any change. Answers
+   * the batch's real outcome; the account object is thrown away, so a rolled-back change leaves no balance anywhere
+   * and the watchers hear only a committed one.
+   */
   async money(
     charId: number,
     name: string,
@@ -57,7 +63,7 @@ export const offline = {
         ? account.set(amount, reason, actor)
         : account.change(mode === "add" ? amount : -amount, reason, actor);
     if (!result.ok) return changeError(result.error);
-    await account.idle();
+    if (!(await moneyWriter.commit())) return fail("ADMIN_PLAYERS_ERR_WRITE");
     playerWatchers.money(charId, name, result.balance);
     return OK;
   },
@@ -72,16 +78,16 @@ export const offline = {
     if (!gradeOk(def.grades.length, grade)) return changeError("INVALID_GRADE");
     let list = await loadJobs(charId);
     const existing = list.find((m) => m.job === job);
+    const only = !existing && !settings.jobs.multiJob;
     if (existing) existing.grade = grade;
     else {
-      if (!settings.jobs.multiJob) {
-        for (const other of list) await deleteJob(charId, other.job);
-        list = [];
-      } else if (list.length >= settings.jobs.maxJobs)
+      if (only) list = [];
+      else if (list.length >= settings.jobs.maxJobs)
         return changeError("LIMIT");
       list.push({ job, grade });
     }
-    await saveJob(charId, job, grade);
+    if (only) await saveOnlyJob(charId, job, grade);
+    else await saveJob(charId, job, grade);
     playerWatchers.char(charId, { jobs: list });
     return OK;
   },
@@ -106,21 +112,19 @@ export const offline = {
     let list = data.gangs;
     let active = data.active;
     const existing = list.find((m) => m.gang === gang);
+    const only = !existing && !settings.gangs.multiGang;
     if (existing) existing.grade = grade;
     else {
-      if (!settings.gangs.multiGang) {
-        for (const other of list) await deleteGang(charId, other.gang);
+      if (only) {
         list = [];
         active = null;
       } else if (list.length >= settings.gangs.maxGangs)
         return changeError("LIMIT");
       list.push({ gang, grade });
     }
-    await saveGang(charId, gang, grade);
-    if (!active) {
-      active = gang;
-      await saveActiveGang(charId, gang);
-    }
+    const activate = !active;
+    await saveGangMembership(charId, gang, grade, only, activate);
+    if (activate) active = gang;
     playerWatchers.char(charId, { gangs: list, activeGang: active });
     return OK;
   },

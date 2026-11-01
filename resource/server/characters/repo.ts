@@ -86,6 +86,21 @@ export async function listCharacters(userId: number): Promise<CharacterRow[]> {
   return (rows ?? []).map(toRow);
 }
 
+/** Every account's characters with this license (users index `license`, characters index `user_id`). */
+export async function listCharactersByLicense(
+  license: string,
+): Promise<CharacterRow[]> {
+  const columns = COLUMNS.split(", ")
+    .map((c) => `c.${c}`)
+    .join(", ");
+  const rows = await mysql.query<RawRow[]>(
+    `SELECT ${columns} FROM ai_core_users u JOIN ai_core_characters c ON c.user_id = u.id AND c.deleted_at IS NULL
+     WHERE u.license = ? ORDER BY u.id, c.slot`,
+    [license],
+  );
+  return (rows ?? []).map(toRow);
+}
+
 export async function getCharacter(
   userId: number,
   charId: number,

@@ -65,3 +65,66 @@ export function saveActiveGang(
     [gang ?? "", charId],
   );
 }
+
+/**
+ * A character's only job (multi-job off) in one transaction: the other memberships go with the same commit, so a
+ * failure leaves the old ones (stored characters; a loaded one changes through its `JobSet`).
+ */
+export async function saveOnlyJob(
+  charId: number,
+  job: string,
+  grade: number,
+): Promise<void> {
+  const committed = await mysql.transaction([
+    {
+      query:
+        "DELETE FROM ai_core_character_jobs WHERE char_id = ? AND job <> ?",
+      values: [charId, job],
+    },
+    {
+      query:
+        "INSERT INTO ai_core_character_jobs (char_id, job, grade) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE grade = VALUES(grade)",
+      values: [charId, job, grade],
+    },
+  ]);
+  if (!committed) throw new Error(`job ${job} of #${charId} rolled back`);
+}
+
+/**
+ * A stored character's gang membership in one transaction: `only` drops the other gangs (multi-gang off), `activate`
+ * makes it the active gang (the character had none).
+ */
+export async function saveGangMembership(
+  charId: number,
+  gang: string,
+  grade: number,
+  only: boolean,
+  activate: boolean,
+): Promise<void> {
+  const committed = await mysql.transaction([
+    ...(only
+      ? [
+          {
+            query:
+              "DELETE FROM ai_core_character_gangs WHERE char_id = ? AND gang <> ?",
+            values: [charId, gang],
+          },
+        ]
+      : []),
+    {
+      query:
+        "INSERT INTO ai_core_character_gangs (char_id, gang, grade) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE grade = VALUES(grade)",
+      values: [charId, gang, grade],
+    },
+    ...(activate
+      ? [
+          {
+            query:
+              "UPDATE ai_core_character_gangs SET active = (gang = ?) WHERE char_id = ?",
+            values: [gang, charId],
+          },
+        ]
+      : []),
+  ]);
+  if (!committed) throw new Error(`gang ${gang} of #${charId} rolled back`);
+}

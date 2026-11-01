@@ -27,6 +27,7 @@ async function payAll(): Promise<void> {
   const offPrime = new Map<string, boolean>();
   const due: Array<{ player: Player; job: string; salary: number }> = [];
   for (const player of players.all()) {
+    if (!player.paycheck) continue;
     const job = player.jobs.onDuty();
     if (!job) continue;
     const grade = player.jobs.grade(job);
@@ -49,7 +50,7 @@ async function payAll(): Promise<void> {
     for (const job of new Set(due.map((d) => d.job)))
       funds.set(job, await sharedAccounts.load("job", job));
   for (const { player, job, salary } of due) {
-    if (players.get(player.source) !== player) continue;
+    if (players.get(player.source) !== player || !player.paycheck) continue;
     if (player.jobs.onDuty() !== job) continue;
     if (settings.paycheck.fromJobAccount) {
       const account = funds.get(job)?.get(settings.paycheck.account);

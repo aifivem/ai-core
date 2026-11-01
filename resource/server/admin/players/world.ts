@@ -1,6 +1,8 @@
 import { entityCoords, notify } from "@aicore-fivem/lib/server";
+import { CORE } from "@aicore-fivem/shared";
 import { ADMIN_PLAYERS, type Position } from "common/adminPlayers";
 import { Locale } from "common";
+import { findCharacter } from "../../characters/repo";
 import { inventory } from "../../inventory";
 import { medical } from "../../medical";
 import { claims, players } from "../../player/registry";
@@ -198,7 +200,10 @@ action("delete", charOnly, async (source, charId) => {
   if (players.byCharacter(charId)) return fail("ADMIN_PLAYERS_ERR_ONLINE");
   const result = await claims.run(charId, BUSY, async () => {
     if (players.byCharacter(charId)) return BUSY;
-    return (await softDelete(charId)) ? OK : GONE;
+    const row = await findCharacter(charId);
+    if (!row || !(await softDelete(charId))) return GONE;
+    emit(CORE.characterDeletedEvent, charId, row.userId);
+    return OK;
   });
   if (result.ok) {
     logEdit(source, charId, "deleted the character", {}, "warn");
