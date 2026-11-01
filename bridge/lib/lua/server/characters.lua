@@ -34,6 +34,12 @@ return {
     jobMembers = function(job, after, limit)
         return wait({ members = {} }, function(done) core:GetJobMembers(job, done, after, limit) end)
     end,
+    ---Whether anyone holds a job, loaded or not (one row is read). Waits.
+    ---@param job string
+    ---@return boolean
+    hasJobMember = function(job)
+        return #(wait({ members = {} }, function(done) core:GetJobMembers(job, done, nil, 1) end).members or {}) > 0
+    end,
     gangMembers = function(gang, after, limit)
         return wait({ members = {} }, function(done) core:GetGangMembers(gang, done, after, limit) end)
     end,

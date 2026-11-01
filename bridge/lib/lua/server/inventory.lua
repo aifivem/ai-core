@@ -7,6 +7,9 @@ return {
     getItemCount = function(inv, item, metadata) return core:GetItemCount(inv, item, metadata) end,
     hasItem = function(inv, item, count) return core:HasItem(inv, item, count or 1) end,
     canCarryItem = function(inv, item, count, metadata) return core:CanCarryItem(inv, item, count, metadata) end,
+    ---Whether all the items fit together (one trade, one reward): weight and space shared.
+    ---@param items { name: string, count: integer, metadata?: table }[]
+    canCarryItems = function(inv, items) return core:CanCarryItems(inv, items) end,
     getItems = function(inv) return core:GetItems(inv) end,
     ---An inventory's stacks by slot.
     ---@return table<integer, table>

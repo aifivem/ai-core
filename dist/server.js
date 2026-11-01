@@ -19895,6 +19895,7 @@ const RESOURCE$17 = "ai-inventory", inv$1 = resourceExport(RESOURCE$17), imageOf
 	removeItem: (ref, item, count, metadata, slot) => inv$1.RemoveItem(ref, item, count, metadata, slot) === !0,
 	getItemCount: (ref, item, metadata) => Number(inv$1.GetItemCount(ref, item, metadata)) || 0,
 	canCarryItem: (ref, item, count, metadata) => inv$1.CanCarryItem(ref, item, count, metadata) === !0,
+	canCarryItems: (ref, items) => inv$1.CanCarryItems(ref, items) === !0,
 	getItems: (ref) => {
 		let list = inv$1.GetItems(ref);
 		return Array.isArray(list) ? list.filter(isRecord).flatMap((row) => stack(row, (name) => name) ?? []) : [];
@@ -20120,6 +20121,10 @@ const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetIn
 		removeItem: (ref, name, count, metadata, slot) => isTrue(call("RemoveItem", ref, name, count, slot, metadata)),
 		getItemCount: (ref, name, metadata) => number(call("GetItemCount", ref, name, metadata)),
 		canCarryItem: (ref, name, count) => isTrue(call("CanCarryItem", ref, name, count)),
+		canCarryItems: (ref, items) => isTrue(call("CanCarryItems", ref, items.map((it) => ({
+			name: it.name,
+			amount: it.count
+		})))),
 		getItems: (ref) => {
 			let labels = new Map(), labelOf = (name) => {
 				let text = labels.get(name);
@@ -24753,7 +24758,7 @@ const jobView = (def) => ({
 	label: def.label,
 	grades: def.grades
 }), runtimeJobs = new RuntimeDefinitions("job", jobs, readJob, jobView, CORE.runtimeJobPrefix), runtimeGangs = new RuntimeDefinitions("gang", gangs, readGang, gangView, CORE.runtimeGangPrefix);
-registerExport("GetBranding", () => ({ ...settings.branding })), registerExport("GetJobDefinitions", () => Object.fromEntries(jobs)), registerExport("GetGangDefinitions", () => Object.fromEntries(gangs)), registerExport("GetJobDefinition", (job) => typeof job == "string" ? jobs.get(job) ?? null : null), registerExport("GetGangDefinition", (gang) => typeof gang == "string" ? gangs.get(gang) ?? null : null), registerExport("GetAccountTypes", () => Object.fromEntries(accountTypes)), registerExport("RegisterJobDefinition", (name, def) => runtimeJobs.register(name, def)), registerExport("RemoveJobDefinition", (name) => runtimeJobs.remove(name)), registerExport("RegisterGangDefinition", (name, def) => runtimeGangs.register(name, def)), registerExport("RemoveGangDefinition", (name) => runtimeGangs.remove(name));
+registerExport("GetBranding", () => ({ ...settings.branding })), registerExport("GetJobDefinitions", () => Object.fromEntries(jobs)), registerExport("GetGangDefinitions", () => Object.fromEntries(gangs)), registerExport("GetJobDefinition", (job) => typeof job == "string" ? jobs.get(job) ?? null : null), registerExport("GetGangDefinition", (gang) => typeof gang == "string" ? gangs.get(gang) ?? null : null), registerExport("GetAccountTypes", () => Object.fromEntries(accountTypes)), registerExport("GetUnemployedJob", () => settings.jobs.unemployed), registerExport("RegisterJobDefinition", (name, def) => runtimeJobs.register(name, def)), registerExport("RemoveJobDefinition", (name) => runtimeJobs.remove(name)), registerExport("RegisterGangDefinition", (name, def) => runtimeGangs.register(name, def)), registerExport("RemoveGangDefinition", (name) => runtimeGangs.remove(name));
 // resource/server/money/history.ts
 const EMPTY$2 = {
 	rows: [],
@@ -25141,6 +25146,21 @@ registerExport("GetItemCount", count), registerExport("HasItem", (inv, item, nee
 		amount(count)
 	];
 	return r !== null && i !== null && n !== null && inventory.call("CanCarryItem", (a) => a.canCarryItem(r, i, n, meta(metadata)), !1);
+}), registerExport("CanCarryItems", (inv, items) => {
+	let r = ref(inv);
+	if (r === null || !Array.isArray(items)) return !1;
+	let list = [];
+	for (let raw of items) {
+		if (!isRecord(raw)) return !1;
+		let [i, n] = [name(raw.name), amount(raw.count ?? raw.amount)];
+		if (i === null || n === null) return !1;
+		list.push({
+			name: i,
+			count: n,
+			metadata: meta(raw.metadata ?? raw.info)
+		});
+	}
+	return inventory.call("CanCarryItems", (a) => a.canCarryItems ? a.canCarryItems(r, list) : list.every((it) => a.canCarryItem(r, it.name, it.count, it.metadata)), !1);
 }), registerExport("GetItems", (inv) => {
 	let r = ref(inv);
 	return r === null ? [] : inventory.call("GetItems", (a) => a.getItems(r), []);

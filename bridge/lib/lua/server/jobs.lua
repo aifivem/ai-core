@@ -20,6 +20,9 @@ return {
     set = function(src, job, grade) return core:SetJob(src, job, grade) end,
     ---@return boolean
     remove = function(src, job) return core:RemoveJob(src, job) end,
+    ---The job of a character without one (the panel's setting).
+    ---@return string
+    unemployed = function() return core:GetUnemployedJob() end,
     ---@param job string
     ---@return integer
     onDutyCount = function(job) return core:GetOnDutyCount(job) end,
