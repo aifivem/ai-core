@@ -38,7 +38,8 @@ Owner decision (ported from the owner's Qbox server): salaries can drop outside 
 
 - Definitions (name, label, grades with label, salary for jobs, permissions) are panel content: `data/jobs.json` and `data/gangs.json` in ai-core. The shipped records are qb-core's defaults (`shared/jobs.lua`, `shared/gangs.lua`) in our shape, except `police`, `ambulance`, `mechanic` and `unemployed`, which keep ai-core's own values; QB's `none` gang is not a record (no active gang = none).
 - A job's `listed` switch ("Listed in the job center", default off) marks a job anyone may take at a job center: the ESX bridge's `GetJobs()` answers `whitelisted = not listed` (esx_joblisting). ai-cityhall keeps its own offer list in its panel.
-- Memberships are player data: `character_jobs` and `character_gangs` tables (`char_id`, `job` | `gang`, `grade`), PRIMARY KEY (`char_id`, `job` | `gang`).
+- Scripts can add definitions at runtime (`RegisterJobDefinition` / `RegisterGangDefinition`, `runtime.ts`): owned by the registering resource and gone when it stops, never saved to the panel files, a panel record of the same name always wins. Members of a definition that is gone keep the membership (no salary: no grade to pay), like a job deleted in the panel.
+- Memberships are player data: `character_jobs` and `character_gangs` tables (`char_id`, `job` | `gang`, `grade`), PRIMARY KEY (`char_id`, `job` | `gang`), index (`job` | `gang`, `char_id`, `grade`) for member lists (`GetJobMembers`, keyset pages: 1.5M memberships, 0.7-0.9 ms per 100-row page at any depth).
 - Duty / active gang: one value per character each (job name or none, gang name or none). The active gang is saved with the character; duty is in memory unless the restore setting is on.
 - Job and gang money lives in the shared accounts table (owner type `job` / `gang`), with atomic updates and the ledger.
 

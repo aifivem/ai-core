@@ -94,6 +94,10 @@ export interface Settings {
     points: Array<{ label: string; coords: Vec4 }>;
   };
   characterScene: CharacterScene;
+  /** `auto` (an external multichar while one runs), `ai-core` (always its own screen) or a multichar's resource name. */
+  characterScreen: string;
+  /** ESX / QB tables (`players`, `users`, `jobs`, `job_grades`) for external multichars; `auto` = while one runs. */
+  frameworkTables: "auto" | "on" | "off";
 }
 
 export type AccountType = AccountTypeDefinition;
@@ -196,6 +200,11 @@ function readSettings(raw: unknown): Settings {
         : [],
     },
     characterScene: readScene(s.characterScene),
+    characterScreen: str(s.characterScreen, "auto", 64),
+    frameworkTables:
+      s.frameworkTables === "on" || s.frameworkTables === "off"
+        ? s.frameworkTables
+        : "auto",
   };
 }
 
@@ -237,7 +246,7 @@ const readAccount = (v: Record<string, unknown>): AccountType => ({
   allowNegative: bool(v.allowNegative, false),
 });
 
-const readJob = (v: Record<string, unknown>): JobDef => ({
+export const readJob = (v: Record<string, unknown>): JobDef => ({
   label: str(v.label, "Job"),
   type: str(v.type, "none", 32),
   defaultDuty: bool(v.defaultDuty, false),
@@ -246,7 +255,7 @@ const readJob = (v: Record<string, unknown>): JobDef => ({
   prime: readJobPrime(v),
 });
 
-const readGang = (v: Record<string, unknown>): GangDef => ({
+export const readGang = (v: Record<string, unknown>): GangDef => ({
   label: str(v.label, "Gang"),
   grades: readGrades(v.grades),
 });
