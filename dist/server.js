@@ -124,7 +124,13 @@ function readVec4(value) {
 const fail$3 = (error) => ({
 	ok: !1,
 	error
-}), flatDistance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), normalizePlate = (plate) => plate.trim().toUpperCase(), isPublic = (rule) => rule.jobs.length === 0 && rule.gangs.length === 0, isObject = (value) => typeof value == "object" && !!value && !Array.isArray(value);
+}), flatDistance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+// ../../../packages/lib/src/shared/format.ts
+function round(value, decimals = 0) {
+	let power = 10 ** decimals;
+	return Math.round(value * power) / power;
+}
+const normalizePlate = (plate) => plate.trim().toUpperCase(), isPublic = (rule) => rule.jobs.length === 0 && rule.gangs.length === 0, isObject = (value) => typeof value == "object" && !!value && !Array.isArray(value);
 function readRecords(raw, readOne) {
 	let out = new Map();
 	if (!isObject(raw)) return out;
@@ -23861,9 +23867,105 @@ function sourceOfPed(ped) {
 	let owner = NetworkGetEntityOwner(ped);
 	return owner > 0 && players.get(owner) !== void 0 && GetPlayerPed(String(owner)) === ped ? owner : null;
 }
+const hashes = (names) => new Set(names.map((name) => GetHashKey(name) | 0)), CAUSES = [
+	["fall", hashes(["WEAPON_FALL"])],
+	["drown", hashes(["WEAPON_DROWNING", "WEAPON_DROWNING_IN_VEHICLE"])],
+	["vehicle", hashes([
+		"WEAPON_RUN_OVER_BY_CAR",
+		"WEAPON_RAMMED_BY_CAR",
+		"VEHICLE_WEAPON_ROTORS"
+	])],
+	["fire", hashes([
+		"WEAPON_FIRE",
+		"WEAPON_MOLOTOV",
+		"WEAPON_FLARE",
+		"WEAPON_PETROLCAN"
+	])],
+	["explosion", hashes([
+		"WEAPON_EXPLOSION",
+		"WEAPON_GRENADE",
+		"WEAPON_STICKYBOMB",
+		"WEAPON_PIPEBOMB",
+		"WEAPON_PROXMINE",
+		"WEAPON_RPG",
+		"WEAPON_HOMINGLAUNCHER",
+		"WEAPON_GRENADELAUNCHER",
+		"WEAPON_COMPACTLAUNCHER",
+		"WEAPON_FIREWORK",
+		"WEAPON_RAILGUN",
+		"WEAPON_RAILGUNXM3",
+		"WEAPON_EMPLAUNCHER"
+	])],
+	["animal", hashes(["WEAPON_ANIMAL", "WEAPON_COUGAR"])],
+	["melee", hashes([
+		"WEAPON_UNARMED",
+		"WEAPON_KNIFE",
+		"WEAPON_DAGGER",
+		"WEAPON_BAT",
+		"WEAPON_BOTTLE",
+		"WEAPON_CROWBAR",
+		"WEAPON_FLASHLIGHT",
+		"WEAPON_GOLFCLUB",
+		"WEAPON_HAMMER",
+		"WEAPON_HATCHET",
+		"WEAPON_KNUCKLE",
+		"WEAPON_MACHETE",
+		"WEAPON_NIGHTSTICK",
+		"WEAPON_WRENCH",
+		"WEAPON_BATTLEAXE",
+		"WEAPON_POOLCUE",
+		"WEAPON_STONE_HATCHET",
+		"WEAPON_SWITCHBLADE",
+		"WEAPON_CANDYCANE",
+		"WEAPON_STUNROD"
+	])],
+	["other", hashes([
+		"WEAPON_BLEEDING",
+		"WEAPON_EXHAUSTION",
+		"WEAPON_ELECTRIC_FENCE",
+		"WEAPON_BARBED_WIRE",
+		"WEAPON_HIT_BY_WATER_CANNON"
+	])]
+];
+function causeOf(weapon) {
+	let hash = weapon | 0;
+	for (let [cause, set] of CAUSES) if (set.has(hash)) return cause;
+	return "firearm";
+}
+function pointOf(entity) {
+	let [x = 0, y = 0, z = 0] = GetEntityCoords(entity);
+	return {
+		x: round(x, 1),
+		y: round(y, 1),
+		z: round(z, 1)
+	};
+}
+function attackerPed(attacker) {
+	if (attacker === 0 || !DoesEntityExist(attacker)) return 0;
+	let type = GetEntityType(attacker);
+	return type === 1 ? attacker : type === 2 ? GetPedInVehicleSeat(attacker, -1) : 0;
+}
+function deathInfo(ped, attacker, weapon) {
+	let cause = causeOf(weapon), killerPed = attackerPed(attacker), killer = killerPed !== 0 && killerPed !== ped ? sourceOfPed(killerPed) : null, coords = pointOf(ped), killedBy;
+	killedBy = killer === null ? killerPed !== 0 && killerPed !== ped ? "npc" : killerPed === ped ? "self" : "world" : "player";
+	let other = killedBy === "player" || killedBy === "npc", killerCoords = other ? pointOf(killerPed) : null;
+	return {
+		killer,
+		killedBy,
+		cause,
+		weapon,
+		coords,
+		killerCoords,
+		distance: killerCoords ? round(Math.hypot(coords.x - killerCoords.x, coords.y - killerCoords.y, coords.z - killerCoords.z), 1) : null,
+		inVehicle: GetVehiclePedIsIn(ped, !1) !== 0,
+		killerInVehicle: other && GetVehiclePedIsIn(killerPed, !1) !== 0
+	};
+}
 on("onPedDeath", (ped, attacker, weaponHash) => {
 	let source = sourceOfPed(ped);
-	source !== null && emit(CORE.playerDiedEvent, source, sourceOfPed(attacker), weaponHash);
+	if (source === null) return;
+	let info = deathInfo(ped, attacker, weaponHash);
+	emit(CORE.playerDiedEvent, source, info.killer, weaponHash, info);
 });
 // resource/server/player/offlinePosition.ts
 const finite = (v) => typeof v == "number" && Number.isFinite(v);
