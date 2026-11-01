@@ -19,6 +19,7 @@ registerExport("GetGangDefinition", (gang: unknown) =>
   typeof gang === "string" ? (gangDefs.get(gang) ?? null) : null,
 );
 registerExport("GetAccountTypes", () => Object.fromEntries(accountTypes));
+registerExport("GetUnemployedJob", () => settings.jobs.unemployed);
 
 // Job and gang definitions of scripts (owned by the caller, gone when it stops): `jobs/runtime.ts`.
 registerExport("RegisterJobDefinition", (name: unknown, def: unknown) =>
