@@ -563,7 +563,7 @@ function QBCore.Functions.TriggerClientCallback(name, source, ...)
         cb = args[1]
         first = 2
     end
-    local key = name .. id
+    local key = name .. '\0' .. id
     local entry = { callback = cb, promise = promise.new() }
     QBCore.ClientCallbacks[key] = entry
     SetTimeout(CLIENT_CALLBACK_TIMEOUT, function()
@@ -578,7 +578,7 @@ end
 RegisterNetEvent('QBCore:Server:TriggerClientCallback', function(name, ...)
     local src = source
     if type(name) ~= 'string' then return end
-    local key = name .. src
+    local key = name .. '\0' .. src
     local entry = QBCore.ClientCallbacks[key]
     -- Only a request this player was asked can be answered.
     if not entry or not Bridge.allow(src) then return end

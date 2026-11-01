@@ -18,9 +18,25 @@ local function knownVehicles()
     return byHash
 end
 
---- Types players' clients reported for models outside the shared list.
+--- Types players' clients reported for models outside the shared list: kept for the model only once two different
+--- players gave the same answer (ai-core's own `vehicleType` rule), so one modified client cannot set it for everyone.
 ---@type table<integer, string>
 local reported = {}
+---@type table<integer, table<string, integer>> hash -> type -> first player who answered it
+local votes = {}
+
+---@param hash integer
+---@param kind string
+---@param player integer
+local function vote(hash, kind, player)
+    local byKind = votes[hash] or {}
+    votes[hash] = byKind
+    local first = byKind[kind]
+    if first == nil then byKind[kind] = player
+    elseif first ~= player then
+        reported[hash], votes[hash] = kind, nil
+    end
+end
 
 ---@param model string|integer
 ---@return integer hash, string|nil name
@@ -66,7 +82,7 @@ function ESX.GetVehicleType(model, player, cb)
         if not player or not name then return nil end
         local kind = aiLib.triggerClientCallback('ai-core:vehicleType', player --[[@as integer]], { name }, 10000)
         if type(kind) ~= 'string' or not VEHICLE_TYPES[kind] then return nil end
-        reported[hash] = kind
+        vote(hash, kind, player --[[@as integer]])
         return kind
     end)
 end

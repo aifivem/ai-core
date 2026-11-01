@@ -29,13 +29,25 @@ provide('GetWeapons', BridgeQbox.weapons)
 --- Deprecated in Qbox, whose own list is empty.
 provide('GetLocations', function() return {} end)
 
---- Vehicle classes come from a client (the native is client-only), asked once per model and kept.
+--- GTA's vehicle class per category name of the shared vehicle list (GetVehicleClass numbering).
+local CLASS_OF = {
+    compacts = 0, sedans = 1, suvs = 2, coupes = 3, muscle = 4, sportsclassics = 5, sports = 6, super = 7,
+    motorcycles = 8, offroad = 9, industrial = 10, utility = 11, vans = 12, cycles = 13, boats = 14,
+    helicopters = 15, planes = 16, service = 17, emergency = 18, military = 19, commercial = 20, trains = 21,
+    openwheel = 22,
+}
+
+--- Classes of models outside the shared list, from players' clients (the native is client-only); kept for the model
+--- once two different players gave the same class, so one modified client cannot set it for everyone.
 ---@type table<integer, integer>
 local vehicleClasses = {}
 
 provide('GetVehicleClass', function(model)
     local hash = type(model) == 'string' and GetHashKey(model) or math.tointeger(tonumber(model))
     if not hash then return nil end
+    local listed = BridgeQbox.vehiclesByHash()[hash]
+    local fromList = listed and CLASS_OF[listed.category]
+    if fromList then return fromList end
     local known = vehicleClasses[hash]
     if known then return known end
     -- Up to three loaded players are asked, picked before waiting (the player list may change meanwhile).
@@ -44,14 +56,19 @@ provide('GetVehicleClass', function(model)
         askers[#askers + 1] = source
         if #askers >= 3 then break end
     end
+    local first, seen = nil, {}
     for _, source in ipairs(askers) do
         local class = math.tointeger(tonumber(aiLib.triggerClientCallback('ai-core:qbxVehicleClass', source, { hash }, 5000)))
         if class and class >= 0 and class <= 22 then
-            vehicleClasses[hash] = class
-            return class
+            if seen[class] then
+                vehicleClasses[hash] = class
+                return class
+            end
+            seen[class] = true
+            first = first or class
         end
     end
-    return nil
+    return first
 end)
 
 ---@type integer
