@@ -117,7 +117,8 @@ CREATE TABLE IF NOT EXISTS `ai_core_vrp_data` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Bans (resource/server/bans): identifiers as the connection gate sees them (without the `type:` prefix). Active ones
--- (not revoked, not expired) are read once at start and checked in memory; `active` serves that read.
+-- (not revoked, not expired) are read once at start and checked in memory; `active` serves that read and the expired
+-- list, `revoked` the revoked list, the identifier and name keys the admin search and a player's ban history.
 CREATE TABLE IF NOT EXISTS `ai_core_bans` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `fivem` VARCHAR(20) DEFAULT NULL,
@@ -132,5 +133,11 @@ CREATE TABLE IF NOT EXISTS `ai_core_bans` (
   `revoked_at` DATETIME DEFAULT NULL,
   `revoked_by` VARCHAR(64) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `active` (`revoked_at`, `expires_at`)
+  KEY `active` (`revoked_at`, `expires_at`),
+  KEY `revoked` (`revoked_at`),
+  KEY `fivem` (`fivem`),
+  KEY `license` (`license`),
+  KEY `discord` (`discord`),
+  KEY `ip` (`ip`),
+  KEY `name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -9,7 +9,7 @@ export const NuiMessage = {
   leaveCharacters: "leaveCharacters",
   /** data: { id: number, url: string }, a character's portrait arrived (from an appearance resource). */
   portrait: "portrait",
-  /** data: { panels: AdminPanelSnapshot[], texts }, the admin panel opens. */
+  /** data: { panels: AdminPanelSnapshot[], texts, target: AdminShowTarget | null }, the admin panel opens. */
   adminOpen: "adminOpen",
   /** data: AdminDelta, a record changed (by any admin or the script itself). */
   adminDelta: "adminDelta",
@@ -17,6 +17,8 @@ export const NuiMessage = {
   adminRecommendation: "adminRecommendation",
   /** data: PlayersDelta (`adminPlayers.ts`), a change on the open Players screen. */
   adminPlayers: "adminPlayers",
+  /** data: BansDelta (`adminBans.ts`), a ban changed while a ban screen is open. */
+  adminBans: "adminBans",
   /** data: { binds: KeyboardBind[], texts }, the keys screen opens. */
   keyboardOpen: "keyboardOpen",
   keyboardClose: "keyboardClose",
@@ -47,6 +49,8 @@ export const NuiCallback = {
   adminClose: "adminClose",
   /** ({ action: PlayersAction, args }) -> the server callback's answer (snapshot, page or PlayersResult). */
   adminPlayers: "adminPlayers",
+  /** ({ action: BansAction, args }) -> the server callback's answer (snapshot, page or BansResult). */
+  adminBans: "adminBans",
   /** ({ from: "ped" | "camera", ground?: boolean }) -> { x, y, z, heading }, the admin's position for a point field. */
   adminPosition: "adminPosition",
   /** ({ x, y, z, heading? }) -> true, teleports the admin to a point. */

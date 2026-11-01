@@ -25,7 +25,7 @@ interface Results {
 
 const EMPTY: Results = { query: "", rows: [], next: null, loading: false };
 
-function Panel({
+export function Panel({
   title,
   count,
   children,
@@ -51,7 +51,7 @@ function Panel({
   );
 }
 
-function RowButton({
+export function RowButton({
   onClick,
   children,
 }: {
@@ -74,7 +74,7 @@ function RowButton({
   );
 }
 
-function Who({ name, sub }: { name: string; sub: string }) {
+export function Who({ name, sub }: { name: string; sub: string }) {
   return (
     <span className="flex min-w-0 flex-1 flex-col gap-[0.4vh]">
       <span className="truncate text-[1.45vh] font-medium">{name}</span>

@@ -14,6 +14,7 @@ import {
   openCharacter,
   openPlayers,
 } from "./actions";
+import { BansCard } from "../bans/BansCard";
 import { AccountCard, InfoCard } from "./InfoCard";
 import { MemberCard } from "./MemberCard";
 import { MetaCard } from "./MetaCard";
@@ -75,6 +76,7 @@ function CharacterPage({ t }: { t: T }) {
               <PositionCard view={view} t={t} />
               <ItemsCard view={view} t={t} />
               <ActionsCard view={view} t={t} />
+              <BansCard view={view} t={t} />
               <MetaCard view={view} t={t} />
             </div>
           </div>

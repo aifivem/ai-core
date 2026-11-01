@@ -3,6 +3,8 @@ import { isRecord } from "@aicore-fivem/lib/shared";
 import {
   BAN_IDENTIFIERS,
   type BanInfo,
+  type BanListPage,
+  type BanRecord,
   type BansPage,
 } from "@aicore-fivem/shared";
 import { mysql } from "@aicore-fivem/mysql";
@@ -12,70 +14,26 @@ import { gate } from "../connection";
 import { databaseReady } from "../database";
 import { log } from "../log";
 import { coreLog } from "../logs";
+import {
+  historyOf,
+  listBans,
+  readBanQuery,
+  recordOf,
+  type ParsedBanQuery,
+} from "./query";
 import { BanStore, copyBan, type Identifiers } from "./store";
+import { identifiersOf, readTarget, type BanTargetFound } from "./targets";
+import { banWatchers } from "./watchers";
 
 /**
  * Bans (`ai_core_bans`): the active ones are read once at start and kept in memory by identifier; the connection gate
- * checks every joining player against them without a query. Banning and lifting change memory at once (the gate and
- * `IsBanned` see it), the row follows. Logged on ai-core's `bans` channel.
+ * checks every joining player against them without a query. Banning, changing and lifting change memory at once (the
+ * gate and `IsBanned` see it), the row follows, and admins with a ban screen open get the ban (`watchers.ts`).
+ * Logged on ai-core's `bans` channel.
  */
 
 const store = new BanStore();
 let loaded = false;
-
-/** Longest stored value per identifier type (the table's column sizes). */
-const MAX_LENGTH: Record<(typeof BAN_IDENTIFIERS)[number], number> = {
-  fivem: 20,
-  license: 60,
-  discord: 30,
-  ip: 45,
-};
-
-/** A source's identifiers as the gate sees them (`type` -> value without the prefix). */
-function identifiersOf(source: number): Identifiers {
-  const out: Identifiers = {};
-  for (const id of getPlayerIdentifiers(String(source))) {
-    const at = id.indexOf(":");
-    const type = id.slice(0, at);
-    if (at > 0 && (BAN_IDENTIFIERS as readonly string[]).includes(type))
-      out[type as keyof Identifiers] = id.slice(at + 1);
-  }
-  return out;
-}
-
-/** Identifiers from another resource: `license: "license:abc"` or `license: "abc"`; null when none is usable. */
-function readIdentifiers(raw: unknown): Identifiers | null {
-  if (!isRecord(raw)) return null;
-  const out: Identifiers = {};
-  let any = false;
-  for (const type of BAN_IDENTIFIERS) {
-    const value = raw[type];
-    if (typeof value !== "string") continue;
-    const text = value.trim().replace(new RegExp(`^${type}:`), "");
-    if (!text || text.length > MAX_LENGTH[type]) continue;
-    out[type] = text;
-    any = true;
-  }
-  return any ? out : null;
-}
-
-/** A target: an online player's server id or `{ identifiers }`. */
-function readTarget(
-  target: unknown,
-): { identifiers: Identifiers; source: number | null } | null {
-  if (typeof target === "number" && Number.isInteger(target) && target > 0) {
-    if (!GetPlayerName(String(target))) return null;
-    const identifiers = identifiersOf(target);
-    return Object.keys(identifiers).length > 0
-      ? { identifiers, source: target }
-      : null;
-  }
-  if (isRecord(target)) {
-    const identifiers = readIdentifiers(target.identifiers);
-    return identifiers ? { identifiers, source: null } : null;
-  }
-  return null;
-}
 
 const pad = (n: number): string => String(n).padStart(2, "0");
 /** Server local time `YYYY-MM-DD HH:MM`, or the permanent text. */
@@ -141,35 +99,48 @@ loadBans().catch((error: unknown) => {
   log.error("reading the bans failed: nobody is refused as banned", error);
 });
 
-/** Bans an online player (dropped at once) or identifiers; the row follows. Null on wrong arguments. */
-export function banPlayer(
-  target: unknown,
-  reason: unknown,
-  minutes: unknown,
+/** Minutes of a ban: undefined = wrong, null = permanent (at most 100 years). */
+export function readMinutes(minutes: unknown): number | null | undefined {
+  if (minutes == null) return null;
+  return typeof minutes === "number" &&
+    Number.isInteger(minutes) &&
+    minutes > 0 &&
+    minutes <= 52_560_000
+    ? minutes
+    : undefined;
+}
+
+export const readReason = (reason: unknown): string =>
+  typeof reason === "string" ? reason.trim().slice(0, 255) : "";
+
+/** The admin's server id for a log line, when `by` is one. */
+const adminOf = (by: unknown): number | undefined =>
+  typeof by === "number" && by > 0 ? by : undefined;
+
+/**
+ * Makes a ban: memory at once (matching online players dropped), the row follows, then the admin screens get it.
+ * `name` is the player's name kept with it (an online player's FiveM name when left out).
+ */
+export function createBan(
+  target: BanTargetFound,
+  reason: string,
+  minutes: number | null,
   by: unknown,
-  done: unknown,
-): boolean {
+  options: { name?: string; done?: (id: number | null) => void } = {},
+): void {
   const who = actorName(by, caller());
-  const found = readTarget(target);
-  const why = typeof reason === "string" ? reason.trim().slice(0, 255) : "";
-  const mins =
-    minutes == null
-      ? null
-      : typeof minutes === "number" && Number.isInteger(minutes) && minutes > 0
-        ? minutes
-        : undefined;
-  if (!found || !why || mins === undefined) return false;
   const now = Date.now();
   const ban: BanInfo = {
     id: 0,
-    identifiers: found.identifiers,
-    name: found.source
-      ? (GetPlayerName(String(found.source)) || "").slice(0, 64)
-      : "",
-    reason: why,
+    identifiers: target.identifiers,
+    name: (
+      options.name ??
+      (target.source ? GetPlayerName(String(target.source)) || "" : "")
+    ).slice(0, 64),
+    reason,
     by: who,
     created: now,
-    expires: mins === null ? null : now + mins * 60_000,
+    expires: minutes === null ? null : now + minutes * 60_000,
   };
   store.add(ban);
   // Everyone online who matches goes (one player, or every account behind the identifiers).
@@ -185,10 +156,11 @@ export function banPlayer(
   }
   coreLog(
     "bans",
-    `banned ${ban.name || JSON.stringify(ban.identifiers)}: ${why}`,
+    `banned ${ban.name || JSON.stringify(ban.identifiers)}: ${reason}`,
     {
       level: "warn",
-      metadata: { ...ban.identifiers, reason: why, minutes: mins, by: who },
+      source: adminOf(by),
+      metadata: { ...ban.identifiers, reason, minutes, by: who },
     },
   );
   const ids = ban.identifiers;
@@ -202,7 +174,7 @@ export function banPlayer(
         ids.discord ?? null,
         ids.ip ?? null,
         ban.name,
-        why,
+        reason,
         who,
         new Date(now),
         ban.expires === null ? null : new Date(ban.expires),
@@ -210,40 +182,107 @@ export function banPlayer(
     )
     .then(
       (id) => {
-        if (id) store.written(ban, id);
-        return id || null;
+        if (!id) return null;
+        store.written(ban, id);
+        banWatchers.put(recordOf(ban));
+        return id;
       },
       (error: unknown) => {
         log.error("writing a ban failed (it holds until a restart)", error);
         return null;
       },
     )
-    .then((id) => {
-      if (typeof done === "function") (done as (id: number | null) => void)(id);
-    })
+    .then((id) => options.done?.(id))
     .catch((error: unknown) => log.error("ban callback failed", error));
+}
+
+/** Bans an online player (dropped at once) or identifiers; the row follows. False on wrong arguments. */
+export function banPlayer(
+  target: unknown,
+  reason: unknown,
+  minutes: unknown,
+  by: unknown,
+  done: unknown,
+): boolean {
+  const found = readTarget(target);
+  const why = readReason(reason);
+  const mins = readMinutes(minutes);
+  if (!found || !why || mins === undefined) return false;
+  createBan(found, why, mins, by, {
+    done:
+      typeof done === "function"
+        ? (done as (id: number | null) => void)
+        : undefined,
+  });
   return true;
 }
 
-/** Lifts an active ban by id (memory at once, the row follows). */
-export function unbanPlayer(banId: unknown, by: unknown): boolean {
-  const who = actorName(by, caller());
+/** The active ban with this id (not yet expired). */
+function activeBan(banId: unknown, now: number): BanInfo | undefined {
   const ban =
     typeof banId === "number" && Number.isInteger(banId) && banId > 0
       ? store.get(banId)
       : undefined;
+  return ban && (ban.expires === null || ban.expires > now) ? ban : undefined;
+}
+
+/** Lifts an active ban by id (memory at once, the row follows). */
+export function unbanPlayer(banId: unknown, by: unknown): boolean {
+  const now = Date.now();
+  const ban = activeBan(banId, now);
   if (!ban) return false;
+  const who = actorName(by, caller());
   store.remove(ban);
   coreLog("bans", `lifted ban #${ban.id} (${ban.name || ban.reason})`, {
+    source: adminOf(by),
     metadata: { banId: ban.id, by: who },
   });
+  banWatchers.put(recordOf(ban, now, who));
   mysql
     .update(
       "UPDATE ai_core_bans SET revoked_at = ?, revoked_by = ? WHERE id = ? AND revoked_at IS NULL",
-      [new Date(), who, ban.id],
+      [new Date(now), who, ban.id],
     )
     .catch((error: unknown) =>
       log.error(`lifting ban #${ban.id} failed`, error),
+    );
+  return true;
+}
+
+/** Changes an active ban's reason and / or end (`minutes` from now, null = permanent); memory at once, the row follows. */
+export function editBan(banId: unknown, edit: unknown, by: unknown): boolean {
+  const now = Date.now();
+  const ban = activeBan(banId, now);
+  if (!ban || !isRecord(edit)) return false;
+  const reason =
+    edit.reason === undefined ? ban.reason : readReason(edit.reason);
+  const minutes =
+    edit.minutes === undefined ? undefined : readMinutes(edit.minutes);
+  if (!reason || (edit.minutes !== undefined && minutes === undefined))
+    return false;
+  const expires =
+    minutes === undefined
+      ? ban.expires
+      : minutes === null
+        ? null
+        : now + minutes * 60_000;
+  if (reason === ban.reason && expires === ban.expires) return true;
+  const who = actorName(by, caller());
+  const before = { reason: ban.reason, expires: ban.expires };
+  ban.reason = reason;
+  ban.expires = expires;
+  coreLog("bans", `changed ban #${ban.id} (${ban.name || reason})`, {
+    source: adminOf(by),
+    metadata: { banId: ban.id, before, reason, expires, by: who },
+  });
+  banWatchers.put(recordOf(ban));
+  mysql
+    .update(
+      "UPDATE ai_core_bans SET reason = ?, expires_at = ? WHERE id = ? AND revoked_at IS NULL",
+      [reason, expires === null ? null : new Date(expires), ban.id],
+    )
+    .catch((error: unknown) =>
+      log.error(`changing ban #${ban.id} failed`, error),
     );
   return true;
 }
@@ -258,4 +297,20 @@ export function getBans(page: unknown): BansPage {
   return store.page(
     typeof page === "number" && Number.isInteger(page) ? page : 1,
   );
+}
+
+/** Every ban of a target's identifiers (online player or `{ identifiers }`), newest first; [] on a wrong target. */
+export function banHistory(target: unknown): Promise<BanRecord[]> {
+  const found = readTarget(target);
+  return found ? historyOf(found.identifiers) : Promise.resolve([]);
+}
+
+/** A page of bans of a checked query. */
+export const banList = (query: ParsedBanQuery): Promise<BanListPage> =>
+  listBans(query, store);
+
+/** A page of bans; null on a wrong query. */
+export function findBans(query: unknown): Promise<BanListPage | null> {
+  const parsed = readBanQuery(query);
+  return parsed ? banList(parsed) : Promise.resolve(null);
 }

@@ -18,6 +18,12 @@ export class BanStore {
   private readonly all = new Set<BanInfo>();
   private readonly byId = new Map<number, BanInfo>();
   private readonly byIdentifier = new Map<string, Set<BanInfo>>();
+  /**
+   * Written bans by id ascending, for the newest-first keyset list. Lifted bans stay until more than half of the
+   * array is dead (walks skip what `all` no longer holds), so a lift never shifts a million-entry array.
+   */
+  private sorted: BanInfo[] = [];
+  private dead = 0;
 
   get size(): number {
     return this.all.size;
@@ -26,7 +32,10 @@ export class BanStore {
   add(ban: BanInfo): void {
     if (ban.id > 0 && this.byId.has(ban.id)) return;
     this.all.add(ban);
-    if (ban.id > 0) this.byId.set(ban.id, ban);
+    if (ban.id > 0) {
+      this.byId.set(ban.id, ban);
+      this.insertSorted(ban);
+    }
     for (const type of BAN_IDENTIFIERS) {
       const value = ban.identifiers[type];
       if (!value) continue;
@@ -42,12 +51,18 @@ export class BanStore {
     const copy = this.byId.get(id);
     if (copy && copy !== ban) this.remove(copy);
     ban.id = id;
-    if (this.all.has(ban)) this.byId.set(id, ban);
+    if (!this.all.has(ban)) return;
+    this.byId.set(id, ban);
+    this.insertSorted(ban);
   }
 
   remove(ban: BanInfo): void {
     if (!this.all.delete(ban)) return;
     if (ban.id > 0 && this.byId.get(ban.id) === ban) this.byId.delete(ban.id);
+    if (ban.id > 0 && ++this.dead > this.sorted.length / 2) {
+      this.sorted = this.sorted.filter((b) => this.all.has(b));
+      this.dead = 0;
+    }
     for (const type of BAN_IDENTIFIERS) {
       const value = ban.identifiers[type];
       if (!value) continue;
@@ -78,6 +93,42 @@ export class BanStore {
       }
     }
     return null;
+  }
+
+  /**
+   * Active written bans with an id below `before`, newest first, at most `limit` (expired ones met on the way are
+   * dropped). One binary search plus a walk over the page: the cost does not grow with the number of bans.
+   */
+  before(before: number, limit: number, now = Date.now()): BanInfo[] {
+    const out: BanInfo[] = [];
+    const expired: BanInfo[] = [];
+    for (let i = this.indexBelow(before); i >= 0 && out.length < limit; i--) {
+      const ban = this.sorted[i];
+      if (!ban || !this.all.has(ban)) continue;
+      if (ban.expires !== null && ban.expires <= now) expired.push(ban);
+      else out.push(ban);
+    }
+    for (const ban of expired) this.remove(ban);
+    return out;
+  }
+
+  /** Index of the last entry with an id below `id` (-1: none). */
+  private indexBelow(id: number): number {
+    let lo = 0;
+    let hi = this.sorted.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if ((this.sorted[mid]?.id ?? 0) < id) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo - 1;
+  }
+
+  /** Ids arrive in order (start read, then AUTO_INCREMENT), so this is a push; an out-of-order write is placed. */
+  private insertSorted(ban: BanInfo): void {
+    const last = this.sorted.at(-1);
+    if (!last || last.id < ban.id) this.sorted.push(ban);
+    else this.sorted.splice(this.indexBelow(ban.id) + 1, 0, ban);
   }
 
   /** Active bans newest first, `PAGE_SIZE` per page (page 1 first). */

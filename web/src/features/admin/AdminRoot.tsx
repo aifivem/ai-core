@@ -4,12 +4,13 @@ import { motion } from "motion/react";
 import { useNuiEvent } from "fivem-nui-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDoorOpen } from "@fortawesome/free-solid-svg-icons";
-import type {
-  AdminDelta,
-  AdminPanelSnapshot,
-  ExternalPanel,
-  Lookups,
-  UpdateInfo,
+import {
+  toAdminShowTarget,
+  type AdminDelta,
+  type AdminPanelSnapshot,
+  type ExternalPanel,
+  type Lookups,
+  type UpdateInfo,
 } from "@aicore-fivem/shared";
 import { NuiMessage } from "../../../../resource/common/nui";
 import { mockAdminOpen } from "../../dev/adminMock";
@@ -21,6 +22,7 @@ import { Editor } from "./Editor";
 import { GlobalSearch } from "./GlobalSearch";
 import { usePanelLang } from "./lang";
 import { RecordsView } from "./RecordsView";
+import { BansSection } from "./bans/BansSection";
 import { PlayersSection } from "./players/PlayersSection";
 import {
   onRecommendationDelta,
@@ -50,12 +52,13 @@ const NO_LOOKUPS: Lookups = {
 
 function onOpen(value: unknown): void {
   if (typeof value !== "object" || value === null) return;
-  const { panels, texts, lookups, external, updates } = value as {
+  const { panels, texts, lookups, external, updates, target } = value as {
     panels?: unknown;
     texts?: unknown;
     lookups?: unknown;
     external?: unknown;
     updates?: unknown;
+    target?: unknown;
   };
   // ai-core builds these objects itself; only the outer shape is checked.
   if (!Array.isArray(panels)) return;
@@ -69,6 +72,7 @@ function onOpen(value: unknown): void {
       : { ...NO_LOOKUPS, ped: PED_OPTIONS },
     Array.isArray(external) ? (external as ExternalPanel[]) : [],
     Array.isArray(updates) ? (updates as UpdateInfo[]) : [],
+    toAdminShowTarget(target),
   );
   openRecommendations(value);
 }
@@ -89,9 +93,12 @@ export function AdminRoot() {
   const coreTexts = useAppSelector((state) => state.admin.texts);
   const external = useAppSelector((state) => state.admin.external);
   const { resource, tab: tabId, id: externalId } = useParams({ strict: false });
-  const { key, char } = useSearch({ strict: false });
+  const { key, char, q } = useSearch({ strict: false });
   const players = useRouterState({
     select: (s) => s.location.pathname === "/admin/players",
+  });
+  const bans = useRouterState({
+    select: (s) => s.location.pathname === "/admin/bans",
   });
   const setup = useRouterState({
     select: (s) => s.location.pathname === "/admin/setup",
@@ -133,25 +140,29 @@ export function AdminRoot() {
   const page = externalId
     ? external.find((e) => e.id === externalId)
     : undefined;
-  const dashboard = !tab && !page && !setup && !players;
+  const dashboard = !tab && !page && !setup && !players && !bans;
   const title = players
     ? (coreTexts.ADMIN_PLAYERS ?? "")
-    : setup
-      ? (coreTexts.ADMIN_SETUP ?? "")
-      : page
-        ? page.label
-        : tab
-          ? t(tab.label)
-          : (coreTexts.ADMIN_DASHBOARD ?? "");
+    : bans
+      ? (coreTexts.ADMIN_BANS ?? "")
+      : setup
+        ? (coreTexts.ADMIN_SETUP ?? "")
+        : page
+          ? page.label
+          : tab
+            ? t(tab.label)
+            : (coreTexts.ADMIN_DASHBOARD ?? "");
   const subtitle = players
     ? (coreTexts.ADMIN_PLAYERS_DESC ?? "")
-    : setup
-      ? (coreTexts.ADMIN_SETUP_DESC ?? "")
-      : page
-        ? (page.description ?? page.resource)
-        : tab
-          ? t(tab.desc)
-          : (coreTexts.ADMIN_DASHBOARD_DESC ?? "");
+    : bans
+      ? (coreTexts.ADMIN_BANS_DESC ?? "")
+      : setup
+        ? (coreTexts.ADMIN_SETUP_DESC ?? "")
+        : page
+          ? (page.description ?? page.resource)
+          : tab
+            ? t(tab.desc)
+            : (coreTexts.ADMIN_DASHBOARD_DESC ?? "");
 
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-black/40">
@@ -200,6 +211,7 @@ export function AdminRoot() {
             {dashboard && <Dashboard />}
             {setup && <Setup />}
             {players && <PlayersSection char={char} t={t} />}
+            {bans && <BansSection q={q} t={t} />}
             {page?.url && (
               <iframe
                 title={page.label}

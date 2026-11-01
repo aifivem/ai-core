@@ -3,6 +3,7 @@ import type {
   AdminPanelSnapshot,
   AdminPatch,
   AdminResult,
+  AdminShowTarget,
   ExternalPanel,
   Lookups,
   UpdateInfo,
@@ -133,22 +134,41 @@ export function goDashboard(): void {
   void router.navigate({ to: "/admin" });
 }
 
-/** Opens on the place the admin left (same script and tab when they still exist), else on the dashboard. */
+/**
+ * Opens on the section another admin tool asked for (`target`), else on the place the admin left (same script and tab
+ * when they still exist), else on the dashboard.
+ */
 export function openPanel(
   panels: AdminPanelSnapshot[],
   texts: Record<string, string>,
   lookups: Lookups,
   external: ExternalPanel[],
   updates: UpdateInfo[],
+  target: AdminShowTarget | null = null,
 ): void {
   store.dispatch(opened({ panels, texts, lookups, external, updates }));
+  if (target?.section === "bans") {
+    void router.navigate({
+      to: "/admin/bans",
+      search: target.search ? { q: target.search } : {},
+    });
+    return;
+  }
+  if (target?.section === "players") {
+    void router.navigate({
+      to: "/admin/players",
+      search: target.charId === undefined ? {} : { char: target.charId },
+    });
+    return;
+  }
   const params: Record<string, unknown> =
     router.state.matches.at(-1)?.params ?? {};
   if (typeof params.id === "string" && external.some((e) => e.id === params.id))
     return;
   // A server that never finished the setup guide opens on it.
   if (!setupDone(panels)) return goSetup();
-  if (router.state.location.pathname === "/admin/players") return;
+  const path = router.state.location.pathname;
+  if (path === "/admin/players" || path === "/admin/bans") return;
   const panel = panels.find((p) => p.resource === params.resource);
   const tab = panel?.schema.tabs.find((t) => t.id === params.tab);
   if (!panel || !tab) goDashboard();

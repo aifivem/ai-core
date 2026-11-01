@@ -1,5 +1,6 @@
 import "./admin/host";
 import "./admin/items";
+import "./admin/bans";
 import "./admin/players";
 import { gangs, jobs, panel } from "./content";
 import { databaseReady } from "./database";

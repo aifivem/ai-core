@@ -546,6 +546,15 @@ const LIB_UI = {
 	"license",
 	"discord",
 	"ip"
+];
+function banStatus(ban, now) {
+	return ban.revoked === null ? ban.expires !== null && ban.expires <= now ? "expired" : "active" : "revoked";
+}
+const BAN_FILTERS = [
+	"active",
+	"expired",
+	"revoked",
+	"all"
 ], named = new Set();
 function registerExport(name, handler) {
 	named.add(name), globalThis.exports(name, handler);
@@ -20901,13 +20910,11 @@ recommendations.onChange((delta) => adminHost.recommendationChanged(delta)), reg
 		room: inventory.call("GetWeight", (a) => a.getWeight?.(who) ?? null, null)
 	};
 });
-// resource/common/adminPlayers.ts
-const ADMIN_PLAYERS = {
-	deltaEvent: "ai-core:client:adminPlayers",
-	teleportEvent: "ai-core:client:adminTeleport",
-	killEvent: "ai-core:client:adminKill",
-	callback: (action) => `ai-core:adminPlayers:${action}`
-}, COLUMNS = "id, user_id, citizenid, slot, firstname, lastname, birthdate, sex, nationality, pos_x, pos_y, pos_z, pos_h, metadata, last_played";
+// resource/common/adminBans.ts
+const ADMIN_BANS = {
+	deltaEvent: "ai-core:client:adminBans",
+	callback: (action) => `ai-core:adminBans:${action}`
+}, COLUMNS$1 = "id, user_id, citizenid, slot, firstname, lastname, birthdate, sex, nationality, pos_x, pos_y, pos_z, pos_h, metadata, last_played";
 function toDate(value) {
 	if (typeof value == "string") return value.slice(0, 10);
 	let date = new Date(value), pad = (n) => String(n).padStart(2, "0");
@@ -20941,19 +20948,19 @@ function toRow(raw) {
 	};
 }
 async function listCharacters(userId) {
-	return (await mysql.query(`SELECT ${COLUMNS} FROM ai_core_characters WHERE user_id = ? AND deleted_at IS NULL ORDER BY slot`, [userId]) ?? []).map(toRow);
+	return (await mysql.query(`SELECT ${COLUMNS$1} FROM ai_core_characters WHERE user_id = ? AND deleted_at IS NULL ORDER BY slot`, [userId]) ?? []).map(toRow);
 }
 async function listCharactersByLicense(license) {
-	let columns = COLUMNS.split(", ").map((c) => `c.${c}`).join(", ");
+	let columns = COLUMNS$1.split(", ").map((c) => `c.${c}`).join(", ");
 	return (await mysql.query(`SELECT ${columns} FROM ai_core_users u JOIN ai_core_characters c ON c.user_id = u.id AND c.deleted_at IS NULL
      WHERE u.license = ? ORDER BY u.id, c.slot`, [license]) ?? []).map(toRow);
 }
 async function getCharacter(userId, charId) {
-	let row = await mysql.single(`SELECT ${COLUMNS} FROM ai_core_characters WHERE id = ? AND user_id = ? AND deleted_at IS NULL`, [charId, userId]);
+	let row = await mysql.single(`SELECT ${COLUMNS$1} FROM ai_core_characters WHERE id = ? AND user_id = ? AND deleted_at IS NULL`, [charId, userId]);
 	return row ? toRow(row) : null;
 }
 async function findCharacter(charId) {
-	let row = await mysql.single(`SELECT ${COLUMNS} FROM ai_core_characters WHERE id = ? AND deleted_at IS NULL`, [charId]);
+	let row = await mysql.single(`SELECT ${COLUMNS$1} FROM ai_core_characters WHERE id = ? AND deleted_at IS NULL`, [charId]);
 	return row ? toRow(row) : null;
 }
 async function insertCharacter(userId, input) {
@@ -21302,6 +21309,16 @@ async function updatePosition(charId, p) {
 async function softDelete(charId) {
 	return (await mysql.update("UPDATE ai_core_characters SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL", [charId]) ?? 0) > 0;
 }
+async function accountOfCharacter(charId) {
+	return (await mysql.query("SELECT u.fivem, u.license, u.discord, u.name FROM ai_core_characters c JOIN ai_core_users u ON u.id = c.user_id WHERE c.id = ?", [charId]))?.[0] ?? null;
+}
+// resource/common/adminPlayers.ts
+const ADMIN_PLAYERS = {
+	deltaEvent: "ai-core:client:adminPlayers",
+	teleportEvent: "ai-core:client:adminTeleport",
+	killEvent: "ai-core:client:adminKill",
+	callback: (action) => `ai-core:adminPlayers:${action}`
+};
 // resource/server/admin/players/watchers.ts
 function onlineRow(player) {
 	let job = player.jobs.current();
@@ -21507,342 +21524,236 @@ const playerWatchers = new class {
 	async info(charId, info) {
 		return await updateInfo(charId, info), playerWatchers.char(charId, info), OK$2;
 	}
-}, parse = {
-	charId: (v) => typeof v == "number" && Number.isInteger(v) && v > 0 && v < 2 ** 32 ? v : null,
-	name: (v) => typeof v == "string" && /^[A-Za-z0-9_-]{1,48}$/.test(v) ? v : null,
-	int: (v, min, max) => typeof v == "number" && Number.isSafeInteger(v) && v >= min && v <= max ? v : null,
-	text: (v, min, max) => {
-		if (typeof v != "string") return null;
-		let text = v.trim();
-		return text.length >= min && text.length <= max ? text : null;
+}, OK$1 = { ok: !0 }, fail$1 = (error) => ({
+	ok: !1,
+	error
+}), BUSY$4 = fail$1("ADMIN_PLAYERS_ERR_BUSY"), GONE$1 = fail$1("ADMIN_PLAYERS_ERR_GONE"), HELD = Symbol("held"), LOADED = Symbol("loaded"), edits = new class {
+	queues = new Map();
+	run(charId, online, offline, gone, busy) {
+		let next = (this.queues.get(charId) ?? Promise.resolve()).then(() => this.attempt(charId, online, offline, gone, busy), () => this.attempt(charId, online, offline, gone, busy));
+		this.queues.set(charId, next);
+		let done = () => {
+			this.queues.get(charId) === next && this.queues.delete(charId);
+		};
+		return next.then(done, done), next;
 	}
-}, WRITE_RATE = {
-	count: 30,
-	windowMs: 1e4
-};
-function action(name, args, handler) {
-	onClientCallback(ADMIN_PLAYERS.callback(name), {
-		guards: [isAdmin()],
-		rate: WRITE_RATE,
-		args
-	}, handler);
-}
-const BUSY$4 = fail$2("ADMIN_PLAYERS_ERR_BUSY"), GONE$1 = fail$2("ADMIN_PLAYERS_ERR_GONE"), OFFLINE = fail$2("ADMIN_PLAYERS_ERR_OFFLINE");
-async function onCharacter(charId, online, offline) {
-	let player = players.byCharacter(charId);
-	return player ? online(player) : offline ? claims.run(charId, BUSY$4, async () => players.byCharacter(charId) ? BUSY$4 : await characterExists(charId) ? offline() : GONE$1) : OFFLINE;
-}
-function actorOf(admin) {
-	let fivem = players.get(admin)?.user.fivem;
-	return fivem ? `admin fivem:${fivem}` : `admin ${admin}`;
-}
-function logEdit(admin, charId, message, metadata = {}, level = "info") {
-	coreLog("admin", `players: ${message} (character #${charId})`, {
-		level,
-		source: admin,
-		target: players.byCharacter(charId)?.source,
-		metadata: {
-			charId,
-			...metadata
+	async attempt(charId, online, offline, gone, busy) {
+		for (let i = 0; i < 5; i++) {
+			let player = players.byCharacter(charId);
+			if (player) return online(player);
+			try {
+				await waitFor(() => !claims.has(charId) || void 0, 3e4, 50);
+			} catch {
+				return busy;
+			}
+			if (players.byCharacter(charId)) continue;
+			let result = await claims.run(charId, HELD, async () => players.byCharacter(charId) ? LOADED : await characterExists(charId) ? (await moneyWriter.idle(), offline()) : gone);
+			if (result !== HELD && result !== LOADED) return result;
 		}
+		return busy;
+	}
+}();
+function editCharacter(charId, online, offline) {
+	return edits.run(charId, online, offline, GONE$1, BUSY$4);
+}
+function readCharacter(charId, online, offline, missing) {
+	return edits.run(charId, online, offline, missing, missing);
+}
+const toCharId = (v) => typeof v == "number" && Number.isInteger(v) && v > 0 && v < 2 ** 32 ? v : null, INVALID$2 = fail$1("CORE_ERR_ARGS"), NAME$1 = /^[A-Za-z0-9_-]{1,48}$/, META_KEY = /^[A-Za-z0-9_.:-]{1,64}$/, nameOf = (v) => typeof v == "string" && NAME$1.test(v) ? v : null, gradeOf = (v) => typeof v == "number" && Number.isInteger(v) && v >= 0 && v <= 255 ? v : null;
+function answer$1(what, work, done, fallback) {
+	work.catch((error) => (log$3.error(`${what} failed`, error), fallback)).then((result) => {
+		typeof done == "function" && done(result);
+	}).catch((error) => log$3.error(`${what}: callback failed`, error));
+}
+const ERROR$1 = fail$1("ADMIN_PLAYERS_ERR_BUSY");
+function offlineMoney(mode, charId, account, amount, reason, done) {
+	let id = toCharId(charId), name = nameOf(account), by = caller(), why = typeof reason == "string" && reason ? reason.slice(0, 64) : by, min = mode === "set" ? 0 : 1, n = typeof amount == "number" && Number.isSafeInteger(amount) && amount >= min && amount <= 0xe8d4a51000 ? amount : null;
+	if (id === null || name === null || n === null) return answer$1("offline money", Promise.resolve(INVALID$2), done, INVALID$2);
+	let work = editCharacter(id, (player) => {
+		let r = mode === "set" ? player.wallet.set(name, n, why, by) : player.wallet.change(name, mode === "add" ? n : -n, why, by);
+		return r.ok ? { ok: !0 } : changeError(r.error);
+	}, () => offline.money(id, name, mode, n, why, by));
+	answer$1(`offline money of #${id}`, work, done, ERROR$1);
+}
+function offlineJob(charId, job, grade, done) {
+	let id = toCharId(charId), name = nameOf(job), g = gradeOf(grade);
+	if (id === null || name === null || g === null) return answer$1("offline job", Promise.resolve(INVALID$2), done, INVALID$2);
+	if (name === settings.jobs.unemployed) {
+		let result = fail$1("ADMIN_PLAYERS_ERR_JOB");
+		return answer$1("offline job", Promise.resolve(result), done, result);
+	}
+	let work = editCharacter(id, (player) => {
+		let r = player.jobs.set(name, g);
+		return r.ok ? { ok: !0 } : changeError(r.error);
+	}, () => offline.setJob(id, name, g));
+	answer$1(`offline job of #${id}`, work, done, ERROR$1);
+}
+function offlineRemoveJob(charId, job, done) {
+	let id = toCharId(charId), name = nameOf(job);
+	if (id === null || name === null) return answer$1("offline job", Promise.resolve(INVALID$2), done, INVALID$2);
+	let work = editCharacter(id, (player) => {
+		let r = player.jobs.remove(name);
+		return r.ok ? { ok: !0 } : changeError(r.error);
+	}, () => offline.removeJob(id, name));
+	answer$1(`offline job of #${id}`, work, done, ERROR$1);
+}
+function offlineGang(charId, gang, grade, done) {
+	let id = toCharId(charId), name = nameOf(gang), g = gradeOf(grade);
+	if (id === null || name === null || g === null) return answer$1("offline gang", Promise.resolve(INVALID$2), done, INVALID$2);
+	let work = editCharacter(id, (player) => {
+		let r = player.gangs.set(name, g);
+		return r.ok ? { ok: !0 } : changeError(r.error);
+	}, () => offline.setGang(id, name, g));
+	answer$1(`offline gang of #${id}`, work, done, ERROR$1);
+}
+function offlineRemoveGang(charId, gang, done) {
+	let id = toCharId(charId), name = nameOf(gang);
+	if (id === null || name === null) return answer$1("offline gang", Promise.resolve(INVALID$2), done, INVALID$2);
+	let work = editCharacter(id, (player) => {
+		let r = player.gangs.remove(name);
+		return r.ok ? { ok: !0 } : changeError(r.error);
+	}, () => offline.removeGang(id, name));
+	answer$1(`offline gang of #${id}`, work, done, ERROR$1);
+}
+function toMetaValue(value) {
+	if (value == null) return {
+		ok: !0,
+		value: null
+	};
+	try {
+		let text = JSON.stringify(value);
+		return text === void 0 ? {
+			ok: !1,
+			value: null
+		} : {
+			ok: !0,
+			value: JSON.parse(text)
+		};
+	} catch {
+		return {
+			ok: !1,
+			value: null
+		};
+	}
+}
+function offlineMeta(charId, key, value, done) {
+	let id = toCharId(charId), k = typeof key == "string" && META_KEY.test(key) ? key : null, v = toMetaValue(value);
+	if (id === null || k === null || !v.ok) return answer$1("offline metadata", Promise.resolve(INVALID$2), done, INVALID$2);
+	let work = editCharacter(id, (player) => (player.setMeta(k, v.value), { ok: !0 }), () => offline.meta(id, k, v.value));
+	answer$1(`offline metadata of #${id}`, work, done, ERROR$1);
+}
+// resource/server/characters/manage.ts
+const ERROR = fail$1("ADMIN_PLAYERS_ERR_BUSY"), INVALID$1 = fail$1("CORE_ERR_ARGS");
+function actorName(by, fallback) {
+	if (typeof by == "number" && by > 0) {
+		let name = GetPlayerName(String(by)), fivem = players.get(by)?.user.fivem;
+		return `${name || `#${by}`}${fivem ? ` (fivem:${fivem})` : ""}`.slice(0, 64);
+	}
+	return typeof by == "string" && by ? by.slice(0, 64) : fallback;
+}
+function deleteCharacterBy(charId, by, done) {
+	let id = toCharId(charId), who = actorName(by, caller());
+	if (id === null) return answer$1("delete character", Promise.resolve(INVALID$1), done, INVALID$1);
+	let work = editCharacter(id, () => fail$1("ADMIN_PLAYERS_ERR_ONLINE"), async () => {
+		let row = await findCharacter(id);
+		return !row || !await softDelete(id) ? GONE$1 : (playerWatchers.deleted(id), emit(CORE.characterDeletedEvent, id, row.userId), coreLog("characters", `deleted character #${id} (${who})`, {
+			level: "warn",
+			metadata: {
+				charId: id,
+				userId: row.userId,
+				by: who
+			}
+		}), OK$1);
 	});
+	answer$1(`delete character #${id}`, work, done, ERROR);
 }
-// resource/server/database.ts
-mysql.setPoolSize(GetConvarInt("ai_core_pool_size", 10));
-const databaseReady = createDatabaseTables(ResourceName, "sql/main.sql").catch((error) => {
-	throw log$3.error("database setup failed", error), error;
-}), WANTED = [
-	[
-		"ai_core_characters",
-		"search_first",
-		"`deleted_at`, `firstname`, `lastname`"
-	],
-	[
-		"ai_core_characters",
-		"search_last",
-		"`deleted_at`, `lastname`, `firstname`"
-	],
-	[
-		"ai_core_users",
-		"license",
-		"`license`"
-	],
-	[
-		"ai_core_users",
-		"discord",
-		"`discord`"
-	],
-	[
-		"ai_core_character_jobs",
-		"job",
-		"`job`, `char_id`, `grade`"
-	],
-	[
-		"ai_core_character_gangs",
-		"gang",
-		"`gang`, `char_id`, `grade`"
-	]
-];
-async function addMissing() {
-	let rows = await mysql.query("SELECT DISTINCT TABLE_NAME, INDEX_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN (?)", [[...new Set(WANTED.map(([table]) => table))]]) ?? [], have = new Set(rows.map((r) => `${r.TABLE_NAME}.${r.INDEX_NAME}`));
-	for (let [table, name, columns] of WANTED) have.has(`${table}.${name}`) || (log$3.info(`adding index ${name} to ${table}`), await mysql.query(`ALTER TABLE \`${table}\` ADD INDEX \`${name}\` (${columns}), ALGORITHM=INPLACE, LOCK=NONE`));
-}
-const searchReady = databaseReady.then(addMissing).catch((error) => log$3.error("adding the player search indexes failed", error)), FIRST = 2 ** 32;
-function parseSearch(raw) {
-	let q = raw.trim().replace(/\s+/g, " ");
-	if (q.length < 2 || q.length > 64) return null;
-	let prefixed = /^(fivem|license|discord):(\S+)$/i.exec(q);
-	if (prefixed?.[1] && prefixed[2]) return {
-		kind: "ids",
-		citizenid: null,
-		users: [{
-			column: prefixed[1].toLowerCase(),
-			value: prefixed[2]
-		}]
-	};
-	if (/^[0-9a-f]{40}$/i.test(q)) return {
-		kind: "ids",
-		citizenid: null,
-		users: [{
-			column: "license",
-			value: q.toLowerCase()
-		}]
-	};
-	if (/^\d+$/.test(q)) return {
-		kind: "ids",
-		citizenid: q.length <= 16 ? q : null,
-		users: [{
-			column: "fivem",
-			value: q
-		}, {
-			column: "discord",
-			value: q
-		}]
-	};
-	let [first = "", ...rest] = q.split(" ");
-	return {
-		kind: "name",
-		first,
-		last: rest.length > 0 ? rest.join(" ") : null
-	};
-}
-const prefix = (text) => `${text.replace(/[!%_]/g, (c) => `!${c}`)}%`, idsOf = (rows) => (rows ?? []).map((row) => row.id);
-async function searchIds(query, cursor) {
-	if (query.kind === "ids") {
-		let lists = await Promise.all([query.citizenid === null ? [] : idsOf(await mysql.query("SELECT id FROM ai_core_characters WHERE citizenid = ? AND deleted_at IS NULL", [query.citizenid])), ...query.users.map(async (match) => idsOf(await mysql.query(`SELECT c.id FROM ai_core_users u JOIN ai_core_characters c ON c.user_id = u.id AND c.deleted_at IS NULL WHERE u.${match.column} = ? LIMIT 50`, [match.value])))]);
-		return {
-			ids: [...new Set(lists.flat())].sort((a, b) => b - a).slice(0, 50),
-			more: !1
-		};
+function readPatch(raw) {
+	if (typeof raw != "object" || !raw) return INVALID$1;
+	let input = raw, patch = {};
+	if (input.firstname != null) {
+		let v = toName(input.firstname);
+		if (!v) return fail$1("CHAR_ERR_FIRSTNAME");
+		patch.firstname = v;
 	}
-	let before = cursor ?? FIRST, branches = query.last === null ? [mysql.query("SELECT id FROM ai_core_characters WHERE deleted_at IS NULL AND firstname LIKE ? ESCAPE '!' AND id < ? ORDER BY id DESC LIMIT 26", [prefix(query.first), before]), mysql.query("SELECT id FROM ai_core_characters WHERE deleted_at IS NULL AND lastname LIKE ? ESCAPE '!' AND id < ? ORDER BY id DESC LIMIT 26", [prefix(query.first), before])] : [mysql.query("SELECT id FROM ai_core_characters WHERE deleted_at IS NULL AND firstname LIKE ? ESCAPE '!' AND lastname LIKE ? ESCAPE '!' AND id < ? ORDER BY id DESC LIMIT 26", [
-		prefix(query.first),
-		prefix(query.last),
-		before
-	])], merged = [...new Set((await Promise.all(branches)).flatMap(idsOf))];
-	return merged.sort((a, b) => b - a), {
-		ids: merged.slice(0, 25),
-		more: merged.length > 25
-	};
-}
-async function search(query, cursor, online) {
-	let { ids, more } = await searchIds(query, cursor);
-	return ids.length === 0 ? {
-		rows: [],
-		next: null
-	} : {
-		rows: (await mysql.query("SELECT c.id, c.citizenid, c.firstname, c.lastname, c.last_played, u.name FROM ai_core_characters c JOIN ai_core_users u ON u.id = c.user_id WHERE c.id IN (?) ORDER BY c.id DESC", [ids]) ?? []).map((row) => ({
-			charId: row.id,
-			citizenid: row.citizenid,
-			name: `${row.firstname} ${row.lastname}`,
-			account: row.name,
-			lastPlayed: row.last_played,
-			source: online(row.id)
-		})),
-		next: more ? ids.at(-1) ?? null : null
-	};
-}
-// resource/server/admin/players/view.ts
-function pedPosition$1(source) {
-	let ped = GetPlayerPed(String(source));
-	return !ped || !DoesEntityExist(ped) ? null : {
-		...entityCoords(ped),
-		heading: GetEntityHeading(ped)
-	};
-}
-async function loadView(charId) {
-	let row = await findCharacter(charId);
-	if (!row) return null;
-	let user = await userOf(row.userId), base = {
-		charId,
-		citizenid: row.citizenid,
-		slot: row.slot,
-		user: {
-			id: row.userId,
-			fivem: user?.fivem ?? "",
-			license: user?.license ?? null,
-			discord: user?.discord ?? null,
-			name: user?.name ?? ""
-		},
-		lastPlayed: row.lastPlayed
-	}, player = players.byCharacter(charId);
-	if (player) {
-		let info = player.info();
-		return {
-			...base,
-			firstname: info.firstname,
-			lastname: info.lastname,
-			birthdate: info.birthdate,
-			sex: info.sex,
-			nationality: info.nationality,
-			source: player.source,
-			money: player.wallet.snapshot(),
-			jobs: player.jobs.all(),
-			duty: player.jobs.onDuty(),
-			gangs: player.gangs.all(),
-			activeGang: player.gangs.activeGang(),
-			metadata: player.metadata(),
-			position: pedPosition$1(player.source)
-		};
+	if (input.lastname != null) {
+		let v = toName(input.lastname);
+		if (!v) return fail$1("CHAR_ERR_LASTNAME");
+		patch.lastname = v;
 	}
-	let [balances, jobs, gangs] = await Promise.all([
-		storedBalances(charId),
-		loadJobs(charId),
-		loadGangs(charId)
-	]), money = {};
-	for (let [name, type] of accountTypes) money[name] = balances.get(name) ?? type.start;
+	if (input.birthdate != null) {
+		let v = toBirthdate(input.birthdate);
+		if (!v) return fail$1("CHAR_ERR_BIRTHDATE");
+		patch.birthdate = v;
+	}
+	if (input.nationality != null) {
+		let v = toNationality(input.nationality);
+		if (!v) return fail$1("CHAR_ERR_NATIONALITY");
+		patch.nationality = v;
+	}
+	if (input.sex != null) {
+		let v = toSex(input.sex);
+		if (!v) return fail$1("CHAR_ERR_SEX");
+		patch.sex = v;
+	}
+	return patch;
+}
+function setCharacterInfo(charId, raw, done) {
+	let id = toCharId(charId), patch = readPatch(raw);
+	if (id === null || "ok" in patch) {
+		let result = "ok" in patch ? patch : INVALID$1;
+		return answer$1("character info", Promise.resolve(result), done, result);
+	}
+	let work = editCharacter(id, async (player) => {
+		let info = {
+			...player.info(),
+			...patch
+		};
+		return info.sex === player.info().sex ? (await updateInfo(id, info), players.byCharacter(id) === player && player.setInfo(info), OK$1) : fail$1("ADMIN_PLAYERS_ERR_SEX_ONLINE");
+	}, async () => {
+		let row = await findCharacter(id);
+		if (!row) return GONE$1;
+		let { firstname, lastname, birthdate, sex, nationality } = row, info = {
+			firstname,
+			lastname,
+			birthdate,
+			sex,
+			nationality,
+			...patch
+		};
+		return offline.info(id, info);
+	});
+	answer$1(`character info of #${id}`, work, done, ERROR);
+}
+// resource/server/player/users.ts
+function identifier(source, type) {
+	let value = GetPlayerIdentifierByType(String(source), type);
+	return value ? value.slice(type.length + 1) : null;
+}
+function identify(source) {
+	let fivem = identifier(source, "fivem");
+	return fivem ? {
+		fivem,
+		license: identifier(source, "license"),
+		discord: identifier(source, "discord"),
+		name: (GetPlayerName(String(source)) || "").slice(0, 64)
+	} : null;
+}
+async function upsertUser(identity) {
+	await mysql.query("INSERT INTO ai_core_users (fivem, license, discord, name) VALUES (?, ?, ?, ?)\n     ON DUPLICATE KEY UPDATE license = VALUES(license), discord = VALUES(discord), name = VALUES(name), last_seen = NOW()", [
+		identity.fivem,
+		identity.license,
+		identity.discord,
+		identity.name
+	]);
+	let row = await db.first("ai_core_users", ["id", "char_slots"], { fivem: identity.fivem });
+	if (!row) throw Error(`user row missing after upsert (fivem:${identity.fivem})`);
 	return {
-		...base,
-		firstname: row.firstname,
-		lastname: row.lastname,
-		birthdate: row.birthdate,
-		sex: row.sex,
-		nationality: row.nationality,
-		source: null,
-		money,
-		jobs,
-		duty: null,
-		gangs: gangs.gangs,
-		activeGang: gangs.active,
-		metadata: row.metadata,
-		position: row.position
+		id: row.id,
+		fivem: identity.fivem,
+		license: identity.license,
+		charSlots: row.char_slots
 	};
 }
-// resource/server/admin/players/edit.ts
-const charArg = (v) => parse.charId(v);
-action("info", ([charId, raw]) => {
-	let id = charArg(charId);
-	if (id === null || typeof raw != "object" || !raw) return null;
-	let input = raw;
-	return [id, {
-		firstname: toName(input.firstname),
-		lastname: toName(input.lastname),
-		birthdate: toBirthdate(input.birthdate),
-		sex: toSex(input.sex),
-		nationality: toNationality(input.nationality)
-	}];
-}, async (source, charId, input) => {
-	let { firstname, lastname, birthdate, sex, nationality } = input;
-	if (!firstname) return fail$2("CHAR_ERR_FIRSTNAME");
-	if (!lastname) return fail$2("CHAR_ERR_LASTNAME");
-	if (!birthdate) return fail$2("CHAR_ERR_BIRTHDATE");
-	if (!sex) return fail$2("CHAR_ERR_SEX");
-	if (!nationality) return fail$2("CHAR_ERR_NATIONALITY");
-	let info = {
-		firstname,
-		lastname,
-		birthdate,
-		sex,
-		nationality
-	}, result = await onCharacter(charId, async (player) => player.info().sex === sex ? (await updateInfo(charId, info), player.setInfo(info), OK$2) : fail$2("ADMIN_PLAYERS_ERR_SEX_ONLINE"), () => offline.info(charId, info));
-	return result.ok && logEdit(source, charId, "changed the character info", info), result;
-}), action("money", ([charId, account, mode, amount, reason]) => {
-	let id = charArg(charId), name = parse.name(account), m = mode === "add" || mode === "remove" || mode === "set" ? mode : null, n = parse.int(amount, m === "set" ? 0 : 1, 0xe8d4a51000), why = parse.text(reason, 3, 64);
-	return id === null || name === null || m === null || n === null ? null : [
-		id,
-		name,
-		m,
-		n,
-		why
-	];
-}, async (source, charId, account, mode, amount, reason) => {
-	if (reason === null) return fail$2("ADMIN_PLAYERS_ERR_REASON");
-	let actor = actorOf(source), result = await onCharacter(charId, (player) => {
-		let r = mode === "set" ? player.wallet.set(account, amount, reason, actor) : player.wallet.change(account, mode === "add" ? amount : -amount, reason, actor);
-		return r.ok ? OK$2 : changeError(r.error);
-	}, () => offline.money(charId, account, mode, amount, reason, actor));
-	return result.ok && logEdit(source, charId, `money ${mode} ${amount} ${account}`, {
-		account,
-		mode,
-		amount,
-		reason
-	}), result;
-});
-const memberArgs = ([charId, name, grade]) => {
-	let id = charArg(charId), n = parse.name(name), g = parse.int(grade, 0, 255);
-	return id === null || n === null || g === null ? null : [
-		id,
-		n,
-		g
-	];
-}, leaveArgs = ([charId, name]) => {
-	let id = charArg(charId), n = parse.name(name);
-	return id === null || n === null ? null : [id, n];
-}, pickArgs = ([charId, name]) => {
-	let id = charArg(charId), n = name == null ? null : parse.name(name);
-	return id === null || name != null && n === null ? null : [id, n];
-};
-action("job", memberArgs, async (source, charId, job, grade) => {
-	if (job === settings.jobs.unemployed) return fail$2("ADMIN_PLAYERS_ERR_JOB");
-	let result = await onCharacter(charId, (player) => {
-		let r = player.jobs.set(job, grade);
-		return r.ok ? OK$2 : changeError(r.error);
-	}, () => offline.setJob(charId, job, grade));
-	return result.ok && logEdit(source, charId, `set job ${job} ${grade}`), result;
-}), action("removeJob", leaveArgs, async (source, charId, job) => {
-	let result = await onCharacter(charId, (player) => {
-		let r = player.jobs.remove(job);
-		return r.ok ? OK$2 : changeError(r.error);
-	}, () => offline.removeJob(charId, job));
-	return result.ok && logEdit(source, charId, `removed job ${job}`), result;
-}), action("duty", pickArgs, async (source, charId, job) => {
-	let result = await onCharacter(charId, (player) => {
-		let r = player.jobs.setDuty(job);
-		return r.ok ? OK$2 : changeError(r.error);
-	}, null);
-	return result.ok && logEdit(source, charId, `duty ${job ?? "off"}`), result;
-}), action("gang", memberArgs, async (source, charId, gang, grade) => {
-	let result = await onCharacter(charId, (player) => {
-		let r = player.gangs.set(gang, grade);
-		return r.ok ? OK$2 : changeError(r.error);
-	}, () => offline.setGang(charId, gang, grade));
-	return result.ok && logEdit(source, charId, `set gang ${gang} ${grade}`), result;
-}), action("removeGang", leaveArgs, async (source, charId, gang) => {
-	let result = await onCharacter(charId, (player) => {
-		let r = player.gangs.remove(gang);
-		return r.ok ? OK$2 : changeError(r.error);
-	}, () => offline.removeGang(charId, gang));
-	return result.ok && logEdit(source, charId, `removed gang ${gang}`), result;
-}), action("activeGang", pickArgs, async (source, charId, gang) => {
-	let result = await onCharacter(charId, (player) => {
-		let r = player.gangs.setActive(gang);
-		return r.ok ? OK$2 : changeError(r.error);
-	}, () => offline.setActiveGang(charId, gang));
-	return result.ok && logEdit(source, charId, `active gang ${gang ?? "none"}`), result;
-}), action("meta", ([charId, key, value]) => {
-	let id = charArg(charId), k = typeof key == "string" && /^[A-Za-z0-9_.-]{1,48}$/.test(key) ? key : null, ok = value === null || typeof value == "boolean" || typeof value == "number" && Number.isFinite(value) || typeof value == "string" && value.length <= 256;
-	return id === null || k === null || !ok ? null : [
-		id,
-		k,
-		value
-	];
-}, async (source, charId, key, value) => {
-	let result = await onCharacter(charId, (player) => (player.setMeta(key, value), OK$2), () => offline.meta(charId, key, value));
-	return result.ok && logEdit(source, charId, `metadata ${key}`, {
-		key,
-		value
-	}), result;
-});
 // resource/server/medical/adapters/ai-death.ts
 const death = resourceExport("ai-death"), aiDeath = {
 	resource: "ai-death",
@@ -21956,275 +21867,6 @@ const death = resourceExport("ai-death"), aiDeath = {
 	onSwitch: (next) => activeMedical.set(next?.resource)
 }), online = (v) => typeof v == "number" && isOnline(v);
 registerExport("GetMedicalSystem", () => medical.active?.resource ?? null), registerExport("RevivePlayer", (source) => online(source) && medical.call("revive", (a) => a.revive(source), !1)), registerExport("HealPlayer", (source) => online(source) && medical.call("heal", (a) => (a.heal(source), !0), !1)), registerExport("IsPlayerDead", (source) => online(source) && medical.call("isDead", (a) => a.isDead(source), !1));
-// resource/server/admin/players/world.ts
-function pedPosition(source) {
-	let ped = GetPlayerPed(String(source));
-	return {
-		...entityCoords(ped),
-		heading: GetEntityHeading(ped)
-	};
-}
-const charOnly = ([charId]) => {
-	let id = parse.charId(charId);
-	return id === null ? null : [id];
-};
-action("goto", charOnly, async (source, charId) => {
-	let player = players.byCharacter(charId), point = player ? pedPosition(player.source) : null;
-	if (!player) {
-		let view = await loadView(charId);
-		if (!view) return GONE$1;
-		point = view.position;
-	}
-	return point ? (emitNet(ADMIN_PLAYERS.teleportEvent, source, point), logEdit(source, charId, "went to the character", { ...point }), OK$2) : fail$2("ADMIN_PLAYERS_ERR_POSITION");
-}), action("bring", charOnly, async (source, charId) => {
-	let point = pedPosition(source), result = await onCharacter(charId, (player) => player.source === source ? fail$2("ADMIN_PLAYERS_ERR_SELF") : (emitNet(ADMIN_PLAYERS.teleportEvent, player.source, point), notify(player.source, Locale("ADMIN_PLAYERS_NOTIFY_BROUGHT"), "info"), playerWatchers.char(charId, { position: point }), OK$2), () => offline.position(charId, point));
-	return result.ok && logEdit(source, charId, "brought the character", { ...point }), result;
-}), action("kick", ([charId, reason]) => {
-	let id = parse.charId(charId), why = parse.text(reason ?? "", 0, 120);
-	return id === null || why === null ? null : [id, why];
-}, async (source, charId, reason) => await onCharacter(charId, (player) => player.source === source ? fail$2("ADMIN_PLAYERS_ERR_SELF") : (logEdit(source, charId, "kicked the player", { reason }, "warn"), DropPlayer(String(player.source), reason ? Locale("ADMIN_PLAYERS_KICKED_REASON", reason) : Locale("ADMIN_PLAYERS_KICKED")), OK$2), null)), action("revive", charOnly, async (source, charId) => {
-	if (!medical.active) return fail$2("ADMIN_PLAYERS_ERR_NO_DEATH");
-	let result = await onCharacter(charId, (player) => {
-		let target = player.source;
-		return medical.call("revive", (a) => a.revive(target), !1) || medical.call("heal", (a) => a.heal(target), void 0), notify(target, Locale("ADMIN_PLAYERS_NOTIFY_REVIVED"), "success"), OK$2;
-	}, null);
-	return result.ok && logEdit(source, charId, "revived the player"), result;
-}), action("kill", charOnly, async (source, charId) => {
-	let result = await onCharacter(charId, (player) => (emitNet(ADMIN_PLAYERS.killEvent, player.source), notify(player.source, Locale("ADMIN_PLAYERS_NOTIFY_KILLED"), "error"), OK$2), null);
-	return result.ok && logEdit(source, charId, "killed the player", {}, "warn"), result;
-}), action("item", ([charId, item, count, mode]) => {
-	let id = parse.charId(charId), name = parse.name(item), n = parse.int(count, 1, 1e4), m = mode === "give" || mode === "remove" ? mode : null;
-	return id === null || name === null || n === null || m === null ? null : [
-		id,
-		name.toLowerCase(),
-		n,
-		m
-	];
-}, async (source, charId, item, count, mode) => {
-	if (!inventory.call("GetItemDefinition", (a) => a.getItemDefinition(item), null)) return fail$2("ADMIN_PLAYERS_ERR_ITEM");
-	let result = await onCharacter(charId, (player) => {
-		let target = player.source;
-		if (mode === "give") return inventory.call("AddItem", (a) => a.addItem(target, item, count, void 0, void 0), !1) ? OK$2 : fail$2("ADMIN_PLAYERS_ERR_ITEM_FULL");
-		let has = inventory.call("GetItemCount", (a) => a.getItemCount(target, item, void 0), 0);
-		if (has <= 0) return fail$2("ADMIN_PLAYERS_ERR_ITEM_NONE");
-		let take = Math.min(count, has);
-		return inventory.call("RemoveItem", (a) => a.removeItem(target, item, take, void 0, void 0), !1) ? OK$2 : fail$2("ADMIN_PLAYERS_ERR_ITEM_NONE");
-	}, null);
-	return result.ok && logEdit(source, charId, `${mode} item ${item} x${count}`, {
-		item,
-		count,
-		mode
-	}), result;
-}), action("inventory", charOnly, async (source, charId) => {
-	let result = await onCharacter(charId, (player) => inventory.call("OpenInventory", (a) => a.openInventory(source, player.source), !1) ? OK$2 : fail$2("ADMIN_PLAYERS_ERR_INVENTORY"), null);
-	return result.ok && logEdit(source, charId, "opened the inventory"), result;
-}), action("delete", charOnly, async (source, charId) => {
-	if (players.byCharacter(charId)) return fail$2("ADMIN_PLAYERS_ERR_ONLINE");
-	let result = await claims.run(charId, BUSY$4, async () => {
-		if (players.byCharacter(charId)) return BUSY$4;
-		let row = await findCharacter(charId);
-		return !row || !await softDelete(charId) ? GONE$1 : (emit(CORE.characterDeletedEvent, charId, row.userId), OK$2);
-	});
-	return result.ok && (logEdit(source, charId, "deleted the character", {}, "warn"), playerWatchers.deleted(charId)), result;
-}), action("online", () => [], (source) => (playerWatchers.watchList(source), { ok: !0 })), action("search", ([query, cursor]) => {
-	let q = typeof query == "string" ? parseSearch(query) : null, c = cursor == null ? null : parse.charId(cursor);
-	return q && (cursor == null || c !== null) ? [q, c] : null;
-}, async (_source, query, cursor) => (await searchReady, search(query, cursor, (charId) => players.byCharacter(charId)?.source ?? null))), action("open", ([charId]) => {
-	let id = parse.charId(charId);
-	return id === null ? null : [id];
-}, async (source, charId) => {
-	playerWatchers.watchChar(source, charId);
-	let view = await loadView(charId);
-	return view || playerWatchers.unwatchChar(source), view;
-}), action("close", ([scope]) => scope === "char" || scope === "all" ? [scope] : null, (source, scope) => (scope === "all" ? playerWatchers.drop(source) : playerWatchers.unwatchChar(source), { ok: !0 }));
-const charOf = (source) => players.get(source)?.charId;
-on(CORE.playerLoadedEvent, (source, character) => {
-	playerWatchers.put(source), playerWatchers.watching(character.id) && loadView(character.id).then((view) => view && playerWatchers.view(view)).catch((error) => log$3.error(`admin view of #${character.id} failed`, error));
-}), on(CORE.playerUnloadedEvent, (source, charId) => {
-	playerWatchers.remove(source), playerWatchers.char(charId, {
-		source: null,
-		duty: null
-	});
-}), on(CORE.moneyChangedEvent, (source, account, balance) => {
-	let charId = charOf(source);
-	charId !== void 0 && playerWatchers.money(charId, account, balance);
-}), on(CORE.jobsChangedEvent, (source, jobs) => {
-	playerWatchers.put(source);
-	let charId = charOf(source);
-	charId !== void 0 && playerWatchers.char(charId, { jobs });
-}), on(CORE.dutyChangedEvent, (source, duty) => {
-	playerWatchers.put(source);
-	let charId = charOf(source);
-	charId !== void 0 && playerWatchers.char(charId, { duty });
-}), on(CORE.gangsChangedEvent, (source, gangs) => {
-	let charId = charOf(source);
-	charId !== void 0 && playerWatchers.char(charId, { gangs });
-}), on(CORE.activeGangChangedEvent, (source, activeGang) => {
-	let charId = charOf(source);
-	charId !== void 0 && playerWatchers.char(charId, { activeGang });
-});
-// resource/server/jobs/dutyCount.ts
-const counts = new Map(), published$1 = new GlobalGroup("ai:duty:", stateNumber);
-function changeDutyCount(job, delta) {
-	let next = Math.max(0, (counts.get(job) ?? 0) + delta);
-	counts.set(job, next), published$1.set(job, next);
-}
-function dutyCount(job) {
-	return counts.get(job) ?? 0;
-}
-function resetDutyCounts(jobs) {
-	for (let job of jobs) counts.set(job, 0), published$1.set(job, 0);
-}
-on(CORE.playerLoadedEvent, (source, character) => {
-	coreLog("characters", `loaded ${character.firstname} ${character.lastname} (${character.citizenid})`, {
-		source,
-		metadata: {
-			charId: character.id,
-			citizenid: character.citizenid
-		}
-	});
-}), on(CORE.playerUnloadedEvent, (source, charId, reason) => {
-	coreLog("characters", `unloaded character #${charId} (${reason})`, {
-		source,
-		metadata: {
-			charId,
-			reason
-		}
-	});
-}), on(CORE.moneyChangedEvent, (source, account, balance, delta, reason) => {
-	coreLog("money", `${delta > 0 ? "+" : ""}${delta} ${account} (${reason}), balance ${balance}`, {
-		source,
-		metadata: {
-			account,
-			delta,
-			balance,
-			reason
-		}
-	});
-}), on(CORE.jobsChangedEvent, (source, jobs) => {
-	coreLog("jobs", `jobs: ${jobs.map((j) => `${j.job}:${j.grade}`).join(", ") || "none"}`, {
-		source,
-		metadata: { jobs }
-	});
-}), on(CORE.dutyChangedEvent, (source, job) => {
-	coreLog("jobs", job ? `on duty: ${job}` : "off duty", {
-		source,
-		metadata: { duty: job }
-	});
-}), on(CORE.gangsChangedEvent, (source, gangs) => {
-	coreLog("gangs", `gangs: ${gangs.map((g) => `${g.gang}:${g.grade}`).join(", ") || "none"}`, {
-		source,
-		metadata: { gangs }
-	});
-});
-// resource/server/sourceMaps.ts
-const DIGIT = new Map([..."ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"].map((c, i) => [c, i]));
-function decodeVlq(text) {
-	let out = [], value = 0, shift = 0;
-	for (let char of text) {
-		let digit = DIGIT.get(char) ?? 0;
-		value += (digit & 31) << shift, digit & 32 ? shift += 5 : (out.push(value & 1 ? -(value >>> 1) : value >>> 1), value = 0, shift = 0);
-	}
-	return out;
-}
-function decode(raw) {
-	let json;
-	try {
-		json = JSON.parse(raw);
-	} catch {
-		return null;
-	}
-	if (!isRecord(json) || typeof json.mappings != "string" || !Array.isArray(json.sources)) return null;
-	let sources = json.sources.map((s) => String(s).replace(/^(\.\.\/)+/, "")), src = 0, srcLine = 0, srcCol = 0;
-	return {
-		sources,
-		lines: json.mappings.split(";").map((text) => {
-			let col = 0;
-			return text ? text.split(",").flatMap((segment) => {
-				let [dc = 0, ds, dl, dcol] = decodeVlq(segment);
-				return col += dc, ds === void 0 || dl === void 0 || dcol === void 0 ? [] : (src += ds, srcLine += dl, srcCol += dcol, [[
-					col,
-					src,
-					srcLine,
-					srcCol
-				]]);
-			}) : [];
-		})
-	};
-}
-const sourceMaps = new class {
-	maps = new Map();
-	constructor() {
-		on("onResourceStart", (resource) => this.maps.delete(resource));
-	}
-	get(resource) {
-		if (GetResourceState(resource) !== "started") return null;
-		if (!this.maps.has(resource)) {
-			let raw = LoadResourceFile(resource, "dist/client.js.map");
-			this.maps.set(resource, raw ? decode(raw) : null);
-		}
-		return this.maps.get(resource) ?? null;
-	}
-	resolve(text) {
-		let left = 20;
-		return text.replace(/@([\w.-]{1,64})\/dist\/client\.js:(\d+):(\d+)/g, (whole, resource, line, col) => {
-			if (left-- <= 0) return whole;
-			let map = this.get(resource), segments = map?.lines[Number(line) - 1 - 2];
-			if (!map || !segments?.length) return whole;
-			let column = Number(col) - 1, found;
-			for (let segment of segments) {
-				if ((segment[0] ?? 0) > column) break;
-				found = segment;
-			}
-			if (!found) return whole;
-			let [, src = 0, srcLine = 0, srcCol = 0] = found;
-			return `@${resource}/${map.sources[src] ?? "?"}:${srcLine + 1}:${srcCol + 1}`;
-		});
-	}
-}();
-// resource/server/clientErrors.ts
-onClientEvent(CORE.clientErrorEvent, {
-	args: ([resource, text]) => typeof resource == "string" && typeof text == "string" ? [resource, text] : null,
-	rate: {
-		count: 30,
-		windowMs: 6e4
-	}
-}, (source, resource, text) => {
-	coreLog("clientErrors", `[client error] ${logSafe(resource, 64)}: ${logSafe(sourceMaps.resolve(text.slice(0, 4e3)), 4e3)}`, {
-		level: "error",
-		source
-	});
-});
-// resource/server/player/users.ts
-function identifier(source, type) {
-	let value = GetPlayerIdentifierByType(String(source), type);
-	return value ? value.slice(type.length + 1) : null;
-}
-function identify(source) {
-	let fivem = identifier(source, "fivem");
-	return fivem ? {
-		fivem,
-		license: identifier(source, "license"),
-		discord: identifier(source, "discord"),
-		name: (GetPlayerName(String(source)) || "").slice(0, 64)
-	} : null;
-}
-async function upsertUser(identity) {
-	await mysql.query("INSERT INTO ai_core_users (fivem, license, discord, name) VALUES (?, ?, ?, ?)\n     ON DUPLICATE KEY UPDATE license = VALUES(license), discord = VALUES(discord), name = VALUES(name), last_seen = NOW()", [
-		identity.fivem,
-		identity.license,
-		identity.discord,
-		identity.name
-	]);
-	let row = await db.first("ai_core_users", ["id", "char_slots"], { fivem: identity.fivem });
-	if (!row) throw Error(`user row missing after upsert (fivem:${identity.fivem})`);
-	return {
-		id: row.id,
-		fivem: identity.fivem,
-		license: identity.license,
-		charSlots: row.char_slots
-	};
-}
 // resource/server/prison/adapters/ai-prison.ts
 const AI = "ai-prison", aiPrison = {
 	resource: AI,
@@ -22579,6 +22221,7 @@ const conflicts = new class {
 		return null;
 	}
 }();
+// resource/server/database.ts
 gate.add("ai-core:fivem", "ai-core", (source) => identify(source) ? null : Locale("CONNECT_NO_FIVEM")), gate.add("ai-core:conflicts", "ai-core", () => {
 	if (!settings.refuseOnConflict) return null;
 	let blocking = conflicts.blocking();
@@ -22596,7 +22239,1136 @@ gate.add("ai-core:fivem", "ai-core", (source) => identify(source) ? null : Local
 }), registerExport("RegisterReplacement", (remove, keep) => {
 	let names = (Array.isArray(remove) ? remove : [remove]).filter((n) => typeof n == "string" && n !== ""), from = caller(), owner = typeof keep == "string" && keep ? keep : from;
 	names.length > 0 && conflicts.declare(owner, names, from);
-}), registerExport("GetConflicts", () => conflicts.list().map((c) => ({ ...c })));
+}), registerExport("GetConflicts", () => conflicts.list().map((c) => ({ ...c }))), mysql.setPoolSize(GetConvarInt("ai_core_pool_size", 10));
+const databaseReady = createDatabaseTables(ResourceName, "sql/main.sql").catch((error) => {
+	throw log$3.error("database setup failed", error), error;
+});
+var BanStore = class {
+	all = new Set();
+	byId = new Map();
+	byIdentifier = new Map();
+	sorted = [];
+	dead = 0;
+	get size() {
+		return this.all.size;
+	}
+	add(ban) {
+		if (!(ban.id > 0 && this.byId.has(ban.id))) {
+			this.all.add(ban), ban.id > 0 && (this.byId.set(ban.id, ban), this.insertSorted(ban));
+			for (let type of BAN_IDENTIFIERS) {
+				let value = ban.identifiers[type];
+				if (!value) continue;
+				let key = `${type}:${value}`, set = this.byIdentifier.get(key);
+				set || this.byIdentifier.set(key, set = new Set()), set.add(ban);
+			}
+		}
+	}
+	written(ban, id) {
+		let copy = this.byId.get(id);
+		copy && copy !== ban && this.remove(copy), ban.id = id, this.all.has(ban) && (this.byId.set(id, ban), this.insertSorted(ban));
+	}
+	remove(ban) {
+		if (this.all.delete(ban)) {
+			ban.id > 0 && this.byId.get(ban.id) === ban && this.byId.delete(ban.id), ban.id > 0 && ++this.dead > this.sorted.length / 2 && (this.sorted = this.sorted.filter((b) => this.all.has(b)), this.dead = 0);
+			for (let type of BAN_IDENTIFIERS) {
+				let value = ban.identifiers[type];
+				if (!value) continue;
+				let key = `${type}:${value}`, set = this.byIdentifier.get(key);
+				set?.delete(ban), set?.size === 0 && this.byIdentifier.delete(key);
+			}
+		}
+	}
+	get(id) {
+		return this.byId.get(id);
+	}
+	find(identifiers, now = Date.now()) {
+		for (let type of BAN_IDENTIFIERS) {
+			let value = identifiers[type];
+			if (!value) continue;
+			let set = this.byIdentifier.get(`${type}:${value}`);
+			if (set) for (let ban of set) if (ban.expires !== null && ban.expires <= now) this.remove(ban);
+			else return ban;
+		}
+		return null;
+	}
+	before(before, limit, now = Date.now()) {
+		let out = [], expired = [];
+		for (let i = this.indexBelow(before); i >= 0 && out.length < limit; i--) {
+			let ban = this.sorted[i];
+			ban && this.all.has(ban) && (ban.expires !== null && ban.expires <= now ? expired.push(ban) : out.push(ban));
+		}
+		for (let ban of expired) this.remove(ban);
+		return out;
+	}
+	indexBelow(id) {
+		let lo = 0, hi = this.sorted.length;
+		for (; lo < hi;) {
+			let mid = lo + hi >>> 1;
+			(this.sorted[mid]?.id ?? 0) < id ? lo = mid + 1 : hi = mid;
+		}
+		return lo - 1;
+	}
+	insertSorted(ban) {
+		let last = this.sorted.at(-1);
+		!last || last.id < ban.id ? this.sorted.push(ban) : this.sorted.splice(this.indexBelow(ban.id) + 1, 0, ban);
+	}
+	page(page, now = Date.now()) {
+		for (let ban of this.all) ban.expires !== null && ban.expires <= now && this.remove(ban);
+		let list = [...this.all].reverse(), start = (Math.max(1, page) - 1) * 50;
+		return {
+			bans: list.slice(start, start + 50).map(copyBan),
+			total: list.length
+		};
+	}
+};
+function copyBan(ban) {
+	return {
+		...ban,
+		identifiers: { ...ban.identifiers }
+	};
+}
+const FIRST$1 = 2 ** 32, COLUMNS = "id, fivem, license, discord, ip, name, reason, banned_by, created_at, expires_at, revoked_at, revoked_by";
+function toRecord(row) {
+	let identifiers = {};
+	for (let type of BAN_IDENTIFIERS) {
+		let value = row[type];
+		value && (identifiers[type] = value);
+	}
+	return {
+		id: row.id,
+		identifiers,
+		name: row.name,
+		reason: row.reason,
+		by: row.banned_by,
+		created: row.created_at,
+		expires: row.expires_at,
+		revoked: row.revoked_at,
+		revokedBy: row.revoked_by
+	};
+}
+const recordOf = (ban, revoked = null, revokedBy = null) => ({
+	...copyBan(ban),
+	revoked,
+	revokedBy
+});
+async function matchAny(pairs) {
+	if (pairs.length === 0) return [];
+	let sql = pairs.map(([column]) => `(SELECT ${COLUMNS} FROM ai_core_bans WHERE ${column} = ? ORDER BY id DESC LIMIT 100)`).join(" UNION ");
+	return (await mysql.query(`${sql} ORDER BY id DESC LIMIT 100`, pairs.map(([, value]) => value)) ?? []).map(toRecord);
+}
+function historyOf(identifiers) {
+	return matchAny(BAN_IDENTIFIERS.flatMap((type) => {
+		let value = identifiers[type];
+		return value ? [[type, value]] : [];
+	}));
+}
+function parseBanSearch(raw) {
+	let q = raw.trim().replace(/^#/, "");
+	if (q.length < 1 || q.length > 64) return null;
+	let prefixed = /^(fivem|license|discord|ip):(\S+)$/i.exec(q);
+	if (prefixed?.[1] && prefixed[2]) return {
+		kind: "match",
+		pairs: [[prefixed[1].toLowerCase(), prefixed[2]]]
+	};
+	if (/^\d+$/.test(q)) {
+		let id = Number(q), pairs = [["fivem", q], ["discord", q]];
+		return id > 0 && id < FIRST$1 && pairs.unshift(["id", id]), {
+			kind: "match",
+			pairs
+		};
+	}
+	return /^[0-9a-f]{40}$/i.test(q) ? {
+		kind: "match",
+		pairs: [["license", q.toLowerCase()]]
+	} : /^\d{1,3}(\.\d{1,3}){3}$/.test(q) ? {
+		kind: "match",
+		pairs: [["ip", q]]
+	} : q.length >= 2 ? {
+		kind: "name",
+		prefix: q
+	} : null;
+}
+function readBanQuery(raw) {
+	if (!isRecord(raw)) return null;
+	let filter = raw.filter ?? "all";
+	if (!BAN_FILTERS.includes(filter)) return null;
+	let search = null;
+	if (raw.search != null && raw.search !== "" && (typeof raw.search != "string" || (search = parseBanSearch(raw.search), !search))) return null;
+	let cursor = null;
+	if (raw.cursor != null) {
+		let c = raw.cursor;
+		if (!isRecord(c) || typeof c.id != "number" || !Number.isInteger(c.id) || c.id < 1 || c.id > FIRST$1 || c.at !== null && !(typeof c.at == "number" && Number.isFinite(c.at))) return null;
+		cursor = {
+			id: c.id,
+			at: c.at
+		};
+	}
+	return {
+		filter,
+		search,
+		cursor
+	};
+}
+const prefix$1 = (text) => `${text.replace(/[!%_]/g, (c) => `!${c}`)}%`;
+function stateSql(filter, now) {
+	switch (filter) {
+		case "active": return ["revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?)", [now]];
+		case "expired": return ["revoked_at IS NULL AND expires_at <= ?", [now]];
+		case "revoked": return ["revoked_at IS NOT NULL", []];
+		case "all": return ["1 = 1", []];
+		default: return filter;
+	}
+}
+function paged(rows, at) {
+	let bans = rows.slice(0, 50), last = bans.at(-1);
+	return {
+		bans,
+		next: rows.length > 50 && last ? {
+			id: last.id,
+			at: at(last)
+		} : null
+	};
+}
+const select$1 = async (sql, params) => (await mysql.query(sql, params) ?? []).map(toRecord);
+async function listBans(query, store, now = Date.now()) {
+	let { filter, search, cursor } = query, date = new Date(now);
+	if (search?.kind === "match") return {
+		bans: (await matchAny(search.pairs)).filter((ban) => filter === "all" || banStatus(ban, now) === filter),
+		next: null
+	};
+	let before = cursor?.id ?? FIRST$1;
+	if (search?.kind === "name") {
+		let [state, params] = stateSql(filter, date);
+		return paged(await select$1(`SELECT ${COLUMNS} FROM ai_core_bans WHERE name LIKE ? ESCAPE '!' AND id < ? AND ${state} ORDER BY id DESC LIMIT 51`, [
+			prefix$1(search.prefix),
+			before,
+			...params
+		]), () => null);
+	}
+	switch (filter) {
+		case "active": return paged(store.before(before, 51, now).map((ban) => recordOf(ban)), () => null);
+		case "all": return paged(await select$1(`SELECT ${COLUMNS} FROM ai_core_bans WHERE id < ? ORDER BY id DESC LIMIT 51`, [before]), () => null);
+		case "revoked": {
+			let at = cursor?.at;
+			return paged(await select$1(at == null ? `SELECT ${COLUMNS} FROM ai_core_bans WHERE revoked_at IS NOT NULL ORDER BY revoked_at DESC, id DESC LIMIT 51` : `SELECT ${COLUMNS} FROM ai_core_bans WHERE revoked_at IS NOT NULL AND (revoked_at < ? OR (revoked_at = ? AND id < ?)) ORDER BY revoked_at DESC, id DESC LIMIT 51`, at == null ? [] : [
+				new Date(at),
+				new Date(at),
+				before
+			]), (ban) => ban.revoked);
+		}
+		case "expired": {
+			let at = cursor?.at;
+			return paged(await select$1(at == null ? `SELECT ${COLUMNS} FROM ai_core_bans WHERE revoked_at IS NULL AND expires_at <= ? ORDER BY expires_at DESC, id DESC LIMIT 51` : `SELECT ${COLUMNS} FROM ai_core_bans WHERE revoked_at IS NULL AND expires_at <= ? AND (expires_at < ? OR (expires_at = ? AND id < ?)) ORDER BY expires_at DESC, id DESC LIMIT 51`, at == null ? [date] : [
+				date,
+				new Date(at),
+				new Date(at),
+				before
+			]), (ban) => ban.expires);
+		}
+		default: return filter;
+	}
+}
+// resource/server/bans/targets.ts
+const MAX_LENGTH = {
+	fivem: 20,
+	license: 60,
+	discord: 30,
+	ip: 45
+};
+function identifiersOf(source) {
+	let out = {};
+	for (let id of getPlayerIdentifiers(String(source))) {
+		let at = id.indexOf(":"), type = id.slice(0, at);
+		at > 0 && BAN_IDENTIFIERS.includes(type) && (out[type] = id.slice(at + 1));
+	}
+	return out;
+}
+function readIdentifiers(raw) {
+	if (!isRecord(raw)) return null;
+	let out = {}, any = !1;
+	for (let type of BAN_IDENTIFIERS) {
+		let value = raw[type];
+		if (typeof value != "string") continue;
+		let text = value.trim().replace(RegExp(`^${type}:`), "");
+		!text || text.length > MAX_LENGTH[type] || (out[type] = text, any = !0);
+	}
+	return any ? out : null;
+}
+function readTarget(target) {
+	if (typeof target == "number" && Number.isInteger(target) && target > 0) {
+		if (!GetPlayerName(String(target))) return null;
+		let identifiers = identifiersOf(target);
+		return Object.keys(identifiers).length > 0 ? {
+			identifiers,
+			source: target
+		} : null;
+	}
+	if (isRecord(target)) {
+		let identifiers = readIdentifiers(target.identifiers);
+		return identifiers ? {
+			identifiers,
+			source: null
+		} : null;
+	}
+	return null;
+}
+const banWatchers = new class {
+	lists = new PlayerMap();
+	histories = new PlayerMap();
+	watchList(admin) {
+		this.lists.set(admin, !0);
+	}
+	watchHistory(admin, identifiers) {
+		this.histories.set(admin, identifiers);
+	}
+	stop(admin) {
+		this.lists.delete(admin), this.histories.delete(admin);
+	}
+	put(ban) {
+		if (this.lists.size === 0 && this.histories.size === 0) return;
+		let delta = {
+			kind: "put",
+			ban
+		};
+		for (let admin of this.lists.keys()) emitNet(ADMIN_BANS.deltaEvent, admin, delta);
+		for (let [admin, ids] of this.histories) !this.lists.has(admin) && BAN_IDENTIFIERS.some((t) => ban.identifiers[t] && ids[t] === ban.identifiers[t]) && emitNet(ADMIN_BANS.deltaEvent, admin, delta);
+	}
+}(), store$2 = new BanStore();
+let loaded = !1;
+const pad = (n) => String(n).padStart(2, "0");
+function expiryText(expires) {
+	if (expires === null) return Locale("BAN_PERMANENT");
+	let d = new Date(expires);
+	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+const refusal = (ban) => Locale("BAN_REFUSED", ban.reason, expiryText(ban.expires), ban.id || "-");
+gate.add("ai-core:bans", "ai-core", (_source, identifiers) => {
+	if (!loaded) return Locale("BAN_STARTING");
+	let ban = store$2.find(identifiers);
+	return ban ? refusal(ban) : null;
+});
+async function loadBans() {
+	await databaseReady;
+	let rows = await mysql.query("SELECT id, fivem, license, discord, ip, name, reason, banned_by, created_at, expires_at FROM ai_core_bans\n       WHERE revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?) ORDER BY id", [new Date()]) ?? [];
+	for (let row of rows) {
+		let identifiers = {};
+		for (let type of BAN_IDENTIFIERS) {
+			let value = row[type];
+			value && (identifiers[type] = value);
+		}
+		store$2.add({
+			id: row.id,
+			identifiers,
+			name: row.name,
+			reason: row.reason,
+			by: row.banned_by,
+			created: row.created_at,
+			expires: row.expires_at
+		});
+	}
+	loaded = !0, log$3.info(`${store$2.size} active bans`);
+}
+loadBans().catch((error) => {
+	loaded = !0, log$3.error("reading the bans failed: nobody is refused as banned", error);
+});
+function readMinutes(minutes) {
+	return minutes == null ? null : typeof minutes == "number" && Number.isInteger(minutes) && minutes > 0 && minutes <= 5256e4 ? minutes : void 0;
+}
+const readReason = (reason) => typeof reason == "string" ? reason.trim().slice(0, 255) : "", adminOf = (by) => typeof by == "number" && by > 0 ? by : void 0;
+function createBan(target, reason, minutes, by, options = {}) {
+	let who = actorName(by, caller()), now = Date.now(), ban = {
+		id: 0,
+		identifiers: target.identifiers,
+		name: (options.name ?? (target.source && GetPlayerName(String(target.source)) || "")).slice(0, 64),
+		reason,
+		by: who,
+		created: now,
+		expires: minutes === null ? null : now + minutes * 6e4
+	};
+	store$2.add(ban);
+	for (let id of getPlayers()) {
+		let source = Number(id), ids = identifiersOf(source);
+		BAN_IDENTIFIERS.some((t) => ban.identifiers[t] && ids[t] === ban.identifiers[t]) && DropPlayer(String(source), refusal(ban));
+	}
+	coreLog("bans", `banned ${ban.name || JSON.stringify(ban.identifiers)}: ${reason}`, {
+		level: "warn",
+		source: adminOf(by),
+		metadata: {
+			...ban.identifiers,
+			reason,
+			minutes,
+			by: who
+		}
+	});
+	let ids = ban.identifiers;
+	mysql.insert("INSERT INTO ai_core_bans (fivem, license, discord, ip, name, reason, banned_by, created_at, expires_at)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", [
+		ids.fivem ?? null,
+		ids.license ?? null,
+		ids.discord ?? null,
+		ids.ip ?? null,
+		ban.name,
+		reason,
+		who,
+		new Date(now),
+		ban.expires === null ? null : new Date(ban.expires)
+	]).then((id) => id ? (store$2.written(ban, id), banWatchers.put(recordOf(ban)), id) : null, (error) => (log$3.error("writing a ban failed (it holds until a restart)", error), null)).then((id) => options.done?.(id)).catch((error) => log$3.error("ban callback failed", error));
+}
+function banPlayer(target, reason, minutes, by, done) {
+	let found = readTarget(target), why = readReason(reason), mins = readMinutes(minutes);
+	return !found || !why || mins === void 0 ? !1 : (createBan(found, why, mins, by, { done: typeof done == "function" ? done : void 0 }), !0);
+}
+function activeBan(banId, now) {
+	let ban = typeof banId == "number" && Number.isInteger(banId) && banId > 0 ? store$2.get(banId) : void 0;
+	return ban && (ban.expires === null || ban.expires > now) ? ban : void 0;
+}
+function unbanPlayer(banId, by) {
+	let now = Date.now(), ban = activeBan(banId, now);
+	if (!ban) return !1;
+	let who = actorName(by, caller());
+	return store$2.remove(ban), coreLog("bans", `lifted ban #${ban.id} (${ban.name || ban.reason})`, {
+		source: adminOf(by),
+		metadata: {
+			banId: ban.id,
+			by: who
+		}
+	}), banWatchers.put(recordOf(ban, now, who)), mysql.update("UPDATE ai_core_bans SET revoked_at = ?, revoked_by = ? WHERE id = ? AND revoked_at IS NULL", [
+		new Date(now),
+		who,
+		ban.id
+	]).catch((error) => log$3.error(`lifting ban #${ban.id} failed`, error)), !0;
+}
+function editBan(banId, edit, by) {
+	let now = Date.now(), ban = activeBan(banId, now);
+	if (!ban || !isRecord(edit)) return !1;
+	let reason = edit.reason === void 0 ? ban.reason : readReason(edit.reason), minutes = edit.minutes === void 0 ? void 0 : readMinutes(edit.minutes);
+	if (!reason || edit.minutes !== void 0 && minutes === void 0) return !1;
+	let expires = minutes === void 0 ? ban.expires : minutes === null ? null : now + minutes * 6e4;
+	if (reason === ban.reason && expires === ban.expires) return !0;
+	let who = actorName(by, caller()), before = {
+		reason: ban.reason,
+		expires: ban.expires
+	};
+	return ban.reason = reason, ban.expires = expires, coreLog("bans", `changed ban #${ban.id} (${ban.name || reason})`, {
+		source: adminOf(by),
+		metadata: {
+			banId: ban.id,
+			before,
+			reason,
+			expires,
+			by: who
+		}
+	}), banWatchers.put(recordOf(ban)), mysql.update("UPDATE ai_core_bans SET reason = ?, expires_at = ? WHERE id = ? AND revoked_at IS NULL", [
+		reason,
+		expires === null ? null : new Date(expires),
+		ban.id
+	]).catch((error) => log$3.error(`changing ban #${ban.id} failed`, error)), !0;
+}
+function isBanned(target) {
+	let found = readTarget(target), ban = found ? store$2.find(found.identifiers) : null;
+	return ban ? copyBan(ban) : null;
+}
+function getBans(page) {
+	return store$2.page(typeof page == "number" && Number.isInteger(page) ? page : 1);
+}
+function banHistory(target) {
+	let found = readTarget(target);
+	return found ? historyOf(found.identifiers) : Promise.resolve([]);
+}
+const banList = (query) => listBans(query, store$2);
+function findBans(query) {
+	let parsed = readBanQuery(query);
+	return parsed ? banList(parsed) : Promise.resolve(null);
+}
+// resource/server/admin/players/gate.ts
+const parse = {
+	charId: (v) => typeof v == "number" && Number.isInteger(v) && v > 0 && v < 2 ** 32 ? v : null,
+	name: (v) => typeof v == "string" && /^[A-Za-z0-9_-]{1,48}$/.test(v) ? v : null,
+	int: (v, min, max) => typeof v == "number" && Number.isSafeInteger(v) && v >= min && v <= max ? v : null,
+	text: (v, min, max) => {
+		if (typeof v != "string") return null;
+		let text = v.trim();
+		return text.length >= min && text.length <= max ? text : null;
+	}
+}, WRITE_RATE = {
+	count: 30,
+	windowMs: 1e4
+};
+function action$1(name, args, handler) {
+	onClientCallback(ADMIN_PLAYERS.callback(name), {
+		guards: [isAdmin()],
+		rate: WRITE_RATE,
+		args
+	}, handler);
+}
+const BUSY$3 = fail$2("ADMIN_PLAYERS_ERR_BUSY"), GONE = fail$2("ADMIN_PLAYERS_ERR_GONE"), OFFLINE = fail$2("ADMIN_PLAYERS_ERR_OFFLINE");
+async function onCharacter(charId, online, offline) {
+	let player = players.byCharacter(charId);
+	return player ? online(player) : offline ? claims.run(charId, BUSY$3, async () => players.byCharacter(charId) ? BUSY$3 : await characterExists(charId) ? offline() : GONE) : OFFLINE;
+}
+function actorOf(admin) {
+	let fivem = players.get(admin)?.user.fivem;
+	return fivem ? `admin fivem:${fivem}` : `admin ${admin}`;
+}
+function logEdit(admin, charId, message, metadata = {}, level = "info") {
+	coreLog("admin", `players: ${message} (character #${charId})`, {
+		level,
+		source: admin,
+		target: players.byCharacter(charId)?.source,
+		metadata: {
+			charId,
+			...metadata
+		}
+	});
+}
+// resource/server/admin/bans.ts
+const RATE = {
+	count: 30,
+	windowMs: 1e4
+};
+function action(name, args, handler) {
+	onClientCallback(ADMIN_BANS.callback(name), {
+		guards: [isAdmin()],
+		rate: RATE,
+		args
+	}, handler);
+}
+async function subjectOfCharacter(charId) {
+	let source = players.byCharacter(charId)?.source;
+	if (source !== void 0) return {
+		identifiers: identifiersOf(source),
+		source
+	};
+	let account = await accountOfCharacter(charId);
+	if (!account) return null;
+	let identifiers = { fivem: account.fivem };
+	return account.license && (identifiers.license = account.license), account.discord && (identifiers.discord = account.discord), {
+		identifiers,
+		source: null,
+		name: account.name
+	};
+}
+const sameAccount = (a, b) => BAN_IDENTIFIERS.some((t) => t !== "ip" && a[t] && a[t] === b[t]);
+action("list", ([query]) => {
+	let q = readBanQuery(query);
+	return q ? [q] : null;
+}, async (source, query) => (banWatchers.watchList(source), {
+	...await banList(query),
+	now: Date.now()
+})), action("history", ([charId]) => {
+	let id = parse.charId(charId);
+	return id === null ? null : [id];
+}, async (source, charId) => {
+	let subject = await subjectOfCharacter(charId);
+	return subject ? (banWatchers.watchHistory(source, subject.identifiers), {
+		bans: await historyOf(subject.identifiers),
+		now: Date.now()
+	}) : null;
+}), action("close", () => [], (source) => (banWatchers.stop(source), { ok: !0 })), action("ban", ([subject, reason, minutes]) => {
+	let why = readReason(reason), mins = readMinutes(minutes);
+	if (!isRecord(subject) || why.length < 3 || mins === void 0) return null;
+	if (subject.charId !== void 0) {
+		let charId = parse.charId(subject.charId);
+		return charId === null ? null : [
+			{ charId },
+			why,
+			mins
+		];
+	}
+	let identifiers = readIdentifiers(subject.identifiers);
+	return identifiers ? [
+		{ identifiers },
+		why,
+		mins
+	] : null;
+}, async (source, subject, reason, minutes) => {
+	let target = "charId" in subject ? await subjectOfCharacter(subject.charId) : {
+		identifiers: subject.identifiers,
+		source: null
+	};
+	return target ? sameAccount(target.identifiers, identifiersOf(source)) ? fail$3("ADMIN_BANS_ERR_SELF") : isBanned({ identifiers: target.identifiers }) ? fail$3("ADMIN_BANS_ERR_ALREADY") : (createBan(target, reason, minutes, source, { name: "name" in target ? target.name : void 0 }), { ok: !0 }) : fail$3("ADMIN_PLAYERS_ERR_GONE");
+}), action("unban", ([banId]) => {
+	let id = parse.charId(banId);
+	return id === null ? null : [id];
+}, (source, banId) => unbanPlayer(banId, source) ? { ok: !0 } : fail$3("ADMIN_BANS_ERR_GONE")), action("edit", ([banId, reason, minutes]) => {
+	let id = parse.charId(banId), why = readReason(reason);
+	if (id === null || why.length < 3) return null;
+	if (minutes === !1) return [
+		id,
+		why,
+		!1
+	];
+	let mins = readMinutes(minutes);
+	return mins === void 0 ? null : [
+		id,
+		why,
+		mins
+	];
+}, (source, banId, reason, minutes) => editBan(banId, minutes === !1 ? { reason } : {
+	reason,
+	minutes
+}, source) ? { ok: !0 } : fail$3("ADMIN_BANS_ERR_GONE"));
+// resource/server/admin/players/indexes.ts
+const WANTED = [
+	[
+		"ai_core_characters",
+		"search_first",
+		"`deleted_at`, `firstname`, `lastname`"
+	],
+	[
+		"ai_core_characters",
+		"search_last",
+		"`deleted_at`, `lastname`, `firstname`"
+	],
+	[
+		"ai_core_users",
+		"license",
+		"`license`"
+	],
+	[
+		"ai_core_users",
+		"discord",
+		"`discord`"
+	],
+	[
+		"ai_core_character_jobs",
+		"job",
+		"`job`, `char_id`, `grade`"
+	],
+	[
+		"ai_core_character_gangs",
+		"gang",
+		"`gang`, `char_id`, `grade`"
+	],
+	[
+		"ai_core_bans",
+		"revoked",
+		"`revoked_at`"
+	],
+	[
+		"ai_core_bans",
+		"fivem",
+		"`fivem`"
+	],
+	[
+		"ai_core_bans",
+		"license",
+		"`license`"
+	],
+	[
+		"ai_core_bans",
+		"discord",
+		"`discord`"
+	],
+	[
+		"ai_core_bans",
+		"ip",
+		"`ip`"
+	],
+	[
+		"ai_core_bans",
+		"name",
+		"`name`"
+	]
+];
+async function addMissing() {
+	let rows = await mysql.query("SELECT DISTINCT TABLE_NAME, INDEX_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN (?)", [[...new Set(WANTED.map(([table]) => table))]]) ?? [], have = new Set(rows.map((r) => `${r.TABLE_NAME}.${r.INDEX_NAME}`));
+	for (let [table, name, columns] of WANTED) have.has(`${table}.${name}`) || (log$3.info(`adding index ${name} to ${table}`), await mysql.query(`ALTER TABLE \`${table}\` ADD INDEX \`${name}\` (${columns}), ALGORITHM=INPLACE, LOCK=NONE`));
+}
+const searchReady = databaseReady.then(addMissing).catch((error) => log$3.error("adding the player search indexes failed", error)), FIRST = 2 ** 32;
+function parseSearch(raw) {
+	let q = raw.trim().replace(/\s+/g, " ");
+	if (q.length < 2 || q.length > 64) return null;
+	let prefixed = /^(fivem|license|discord):(\S+)$/i.exec(q);
+	if (prefixed?.[1] && prefixed[2]) return {
+		kind: "ids",
+		citizenid: null,
+		users: [{
+			column: prefixed[1].toLowerCase(),
+			value: prefixed[2]
+		}]
+	};
+	if (/^[0-9a-f]{40}$/i.test(q)) return {
+		kind: "ids",
+		citizenid: null,
+		users: [{
+			column: "license",
+			value: q.toLowerCase()
+		}]
+	};
+	if (/^\d+$/.test(q)) return {
+		kind: "ids",
+		citizenid: q.length <= 16 ? q : null,
+		users: [{
+			column: "fivem",
+			value: q
+		}, {
+			column: "discord",
+			value: q
+		}]
+	};
+	let [first = "", ...rest] = q.split(" ");
+	return {
+		kind: "name",
+		first,
+		last: rest.length > 0 ? rest.join(" ") : null
+	};
+}
+const prefix = (text) => `${text.replace(/[!%_]/g, (c) => `!${c}`)}%`, idsOf = (rows) => (rows ?? []).map((row) => row.id);
+async function searchIds(query, cursor) {
+	if (query.kind === "ids") {
+		let lists = await Promise.all([query.citizenid === null ? [] : idsOf(await mysql.query("SELECT id FROM ai_core_characters WHERE citizenid = ? AND deleted_at IS NULL", [query.citizenid])), ...query.users.map(async (match) => idsOf(await mysql.query(`SELECT c.id FROM ai_core_users u JOIN ai_core_characters c ON c.user_id = u.id AND c.deleted_at IS NULL WHERE u.${match.column} = ? LIMIT 50`, [match.value])))]);
+		return {
+			ids: [...new Set(lists.flat())].sort((a, b) => b - a).slice(0, 50),
+			more: !1
+		};
+	}
+	let before = cursor ?? FIRST, branches = query.last === null ? [mysql.query("SELECT id FROM ai_core_characters WHERE deleted_at IS NULL AND firstname LIKE ? ESCAPE '!' AND id < ? ORDER BY id DESC LIMIT 26", [prefix(query.first), before]), mysql.query("SELECT id FROM ai_core_characters WHERE deleted_at IS NULL AND lastname LIKE ? ESCAPE '!' AND id < ? ORDER BY id DESC LIMIT 26", [prefix(query.first), before])] : [mysql.query("SELECT id FROM ai_core_characters WHERE deleted_at IS NULL AND firstname LIKE ? ESCAPE '!' AND lastname LIKE ? ESCAPE '!' AND id < ? ORDER BY id DESC LIMIT 26", [
+		prefix(query.first),
+		prefix(query.last),
+		before
+	])], merged = [...new Set((await Promise.all(branches)).flatMap(idsOf))];
+	return merged.sort((a, b) => b - a), {
+		ids: merged.slice(0, 25),
+		more: merged.length > 25
+	};
+}
+async function search(query, cursor, online) {
+	let { ids, more } = await searchIds(query, cursor);
+	return ids.length === 0 ? {
+		rows: [],
+		next: null
+	} : {
+		rows: (await mysql.query("SELECT c.id, c.citizenid, c.firstname, c.lastname, c.last_played, u.name FROM ai_core_characters c JOIN ai_core_users u ON u.id = c.user_id WHERE c.id IN (?) ORDER BY c.id DESC", [ids]) ?? []).map((row) => ({
+			charId: row.id,
+			citizenid: row.citizenid,
+			name: `${row.firstname} ${row.lastname}`,
+			account: row.name,
+			lastPlayed: row.last_played,
+			source: online(row.id)
+		})),
+		next: more ? ids.at(-1) ?? null : null
+	};
+}
+// resource/server/admin/players/view.ts
+function pedPosition$1(source) {
+	let ped = GetPlayerPed(String(source));
+	return !ped || !DoesEntityExist(ped) ? null : {
+		...entityCoords(ped),
+		heading: GetEntityHeading(ped)
+	};
+}
+async function loadView(charId) {
+	let row = await findCharacter(charId);
+	if (!row) return null;
+	let user = await userOf(row.userId), base = {
+		charId,
+		citizenid: row.citizenid,
+		slot: row.slot,
+		user: {
+			id: row.userId,
+			fivem: user?.fivem ?? "",
+			license: user?.license ?? null,
+			discord: user?.discord ?? null,
+			name: user?.name ?? ""
+		},
+		lastPlayed: row.lastPlayed
+	}, player = players.byCharacter(charId);
+	if (player) {
+		let info = player.info();
+		return {
+			...base,
+			firstname: info.firstname,
+			lastname: info.lastname,
+			birthdate: info.birthdate,
+			sex: info.sex,
+			nationality: info.nationality,
+			source: player.source,
+			money: player.wallet.snapshot(),
+			jobs: player.jobs.all(),
+			duty: player.jobs.onDuty(),
+			gangs: player.gangs.all(),
+			activeGang: player.gangs.activeGang(),
+			metadata: player.metadata(),
+			position: pedPosition$1(player.source)
+		};
+	}
+	let [balances, jobs, gangs] = await Promise.all([
+		storedBalances(charId),
+		loadJobs(charId),
+		loadGangs(charId)
+	]), money = {};
+	for (let [name, type] of accountTypes) money[name] = balances.get(name) ?? type.start;
+	return {
+		...base,
+		firstname: row.firstname,
+		lastname: row.lastname,
+		birthdate: row.birthdate,
+		sex: row.sex,
+		nationality: row.nationality,
+		source: null,
+		money,
+		jobs,
+		duty: null,
+		gangs: gangs.gangs,
+		activeGang: gangs.active,
+		metadata: row.metadata,
+		position: row.position
+	};
+}
+// resource/server/admin/players/edit.ts
+const charArg = (v) => parse.charId(v);
+action$1("info", ([charId, raw]) => {
+	let id = charArg(charId);
+	if (id === null || typeof raw != "object" || !raw) return null;
+	let input = raw;
+	return [id, {
+		firstname: toName(input.firstname),
+		lastname: toName(input.lastname),
+		birthdate: toBirthdate(input.birthdate),
+		sex: toSex(input.sex),
+		nationality: toNationality(input.nationality)
+	}];
+}, async (source, charId, input) => {
+	let { firstname, lastname, birthdate, sex, nationality } = input;
+	if (!firstname) return fail$2("CHAR_ERR_FIRSTNAME");
+	if (!lastname) return fail$2("CHAR_ERR_LASTNAME");
+	if (!birthdate) return fail$2("CHAR_ERR_BIRTHDATE");
+	if (!sex) return fail$2("CHAR_ERR_SEX");
+	if (!nationality) return fail$2("CHAR_ERR_NATIONALITY");
+	let info = {
+		firstname,
+		lastname,
+		birthdate,
+		sex,
+		nationality
+	}, result = await onCharacter(charId, async (player) => player.info().sex === sex ? (await updateInfo(charId, info), player.setInfo(info), OK$2) : fail$2("ADMIN_PLAYERS_ERR_SEX_ONLINE"), () => offline.info(charId, info));
+	return result.ok && logEdit(source, charId, "changed the character info", info), result;
+}), action$1("money", ([charId, account, mode, amount, reason]) => {
+	let id = charArg(charId), name = parse.name(account), m = mode === "add" || mode === "remove" || mode === "set" ? mode : null, n = parse.int(amount, m === "set" ? 0 : 1, 0xe8d4a51000), why = parse.text(reason, 3, 64);
+	return id === null || name === null || m === null || n === null ? null : [
+		id,
+		name,
+		m,
+		n,
+		why
+	];
+}, async (source, charId, account, mode, amount, reason) => {
+	if (reason === null) return fail$2("ADMIN_PLAYERS_ERR_REASON");
+	let actor = actorOf(source), result = await onCharacter(charId, (player) => {
+		let r = mode === "set" ? player.wallet.set(account, amount, reason, actor) : player.wallet.change(account, mode === "add" ? amount : -amount, reason, actor);
+		return r.ok ? OK$2 : changeError(r.error);
+	}, () => offline.money(charId, account, mode, amount, reason, actor));
+	return result.ok && logEdit(source, charId, `money ${mode} ${amount} ${account}`, {
+		account,
+		mode,
+		amount,
+		reason
+	}), result;
+});
+const memberArgs = ([charId, name, grade]) => {
+	let id = charArg(charId), n = parse.name(name), g = parse.int(grade, 0, 255);
+	return id === null || n === null || g === null ? null : [
+		id,
+		n,
+		g
+	];
+}, leaveArgs = ([charId, name]) => {
+	let id = charArg(charId), n = parse.name(name);
+	return id === null || n === null ? null : [id, n];
+}, pickArgs = ([charId, name]) => {
+	let id = charArg(charId), n = name == null ? null : parse.name(name);
+	return id === null || name != null && n === null ? null : [id, n];
+};
+action$1("job", memberArgs, async (source, charId, job, grade) => {
+	if (job === settings.jobs.unemployed) return fail$2("ADMIN_PLAYERS_ERR_JOB");
+	let result = await onCharacter(charId, (player) => {
+		let r = player.jobs.set(job, grade);
+		return r.ok ? OK$2 : changeError(r.error);
+	}, () => offline.setJob(charId, job, grade));
+	return result.ok && logEdit(source, charId, `set job ${job} ${grade}`), result;
+}), action$1("removeJob", leaveArgs, async (source, charId, job) => {
+	let result = await onCharacter(charId, (player) => {
+		let r = player.jobs.remove(job);
+		return r.ok ? OK$2 : changeError(r.error);
+	}, () => offline.removeJob(charId, job));
+	return result.ok && logEdit(source, charId, `removed job ${job}`), result;
+}), action$1("duty", pickArgs, async (source, charId, job) => {
+	let result = await onCharacter(charId, (player) => {
+		let r = player.jobs.setDuty(job);
+		return r.ok ? OK$2 : changeError(r.error);
+	}, null);
+	return result.ok && logEdit(source, charId, `duty ${job ?? "off"}`), result;
+}), action$1("gang", memberArgs, async (source, charId, gang, grade) => {
+	let result = await onCharacter(charId, (player) => {
+		let r = player.gangs.set(gang, grade);
+		return r.ok ? OK$2 : changeError(r.error);
+	}, () => offline.setGang(charId, gang, grade));
+	return result.ok && logEdit(source, charId, `set gang ${gang} ${grade}`), result;
+}), action$1("removeGang", leaveArgs, async (source, charId, gang) => {
+	let result = await onCharacter(charId, (player) => {
+		let r = player.gangs.remove(gang);
+		return r.ok ? OK$2 : changeError(r.error);
+	}, () => offline.removeGang(charId, gang));
+	return result.ok && logEdit(source, charId, `removed gang ${gang}`), result;
+}), action$1("activeGang", pickArgs, async (source, charId, gang) => {
+	let result = await onCharacter(charId, (player) => {
+		let r = player.gangs.setActive(gang);
+		return r.ok ? OK$2 : changeError(r.error);
+	}, () => offline.setActiveGang(charId, gang));
+	return result.ok && logEdit(source, charId, `active gang ${gang ?? "none"}`), result;
+}), action$1("meta", ([charId, key, value]) => {
+	let id = charArg(charId), k = typeof key == "string" && /^[A-Za-z0-9_.-]{1,48}$/.test(key) ? key : null, ok = value === null || typeof value == "boolean" || typeof value == "number" && Number.isFinite(value) || typeof value == "string" && value.length <= 256;
+	return id === null || k === null || !ok ? null : [
+		id,
+		k,
+		value
+	];
+}, async (source, charId, key, value) => {
+	let result = await onCharacter(charId, (player) => (player.setMeta(key, value), OK$2), () => offline.meta(charId, key, value));
+	return result.ok && logEdit(source, charId, `metadata ${key}`, {
+		key,
+		value
+	}), result;
+});
+// resource/server/admin/players/world.ts
+function pedPosition(source) {
+	let ped = GetPlayerPed(String(source));
+	return {
+		...entityCoords(ped),
+		heading: GetEntityHeading(ped)
+	};
+}
+const charOnly = ([charId]) => {
+	let id = parse.charId(charId);
+	return id === null ? null : [id];
+};
+action$1("goto", charOnly, async (source, charId) => {
+	let player = players.byCharacter(charId), point = player ? pedPosition(player.source) : null;
+	if (!player) {
+		let view = await loadView(charId);
+		if (!view) return GONE;
+		point = view.position;
+	}
+	return point ? (emitNet(ADMIN_PLAYERS.teleportEvent, source, point), logEdit(source, charId, "went to the character", { ...point }), OK$2) : fail$2("ADMIN_PLAYERS_ERR_POSITION");
+}), action$1("bring", charOnly, async (source, charId) => {
+	let point = pedPosition(source), result = await onCharacter(charId, (player) => player.source === source ? fail$2("ADMIN_PLAYERS_ERR_SELF") : (emitNet(ADMIN_PLAYERS.teleportEvent, player.source, point), notify(player.source, Locale("ADMIN_PLAYERS_NOTIFY_BROUGHT"), "info"), playerWatchers.char(charId, { position: point }), OK$2), () => offline.position(charId, point));
+	return result.ok && logEdit(source, charId, "brought the character", { ...point }), result;
+}), action$1("kick", ([charId, reason]) => {
+	let id = parse.charId(charId), why = parse.text(reason ?? "", 0, 120);
+	return id === null || why === null ? null : [id, why];
+}, async (source, charId, reason) => await onCharacter(charId, (player) => player.source === source ? fail$2("ADMIN_PLAYERS_ERR_SELF") : (logEdit(source, charId, "kicked the player", { reason }, "warn"), DropPlayer(String(player.source), reason ? Locale("ADMIN_PLAYERS_KICKED_REASON", reason) : Locale("ADMIN_PLAYERS_KICKED")), OK$2), null)), action$1("revive", charOnly, async (source, charId) => {
+	if (!medical.active) return fail$2("ADMIN_PLAYERS_ERR_NO_DEATH");
+	let result = await onCharacter(charId, (player) => {
+		let target = player.source;
+		return medical.call("revive", (a) => a.revive(target), !1) || medical.call("heal", (a) => a.heal(target), void 0), notify(target, Locale("ADMIN_PLAYERS_NOTIFY_REVIVED"), "success"), OK$2;
+	}, null);
+	return result.ok && logEdit(source, charId, "revived the player"), result;
+}), action$1("kill", charOnly, async (source, charId) => {
+	let result = await onCharacter(charId, (player) => (emitNet(ADMIN_PLAYERS.killEvent, player.source), notify(player.source, Locale("ADMIN_PLAYERS_NOTIFY_KILLED"), "error"), OK$2), null);
+	return result.ok && logEdit(source, charId, "killed the player", {}, "warn"), result;
+}), action$1("item", ([charId, item, count, mode]) => {
+	let id = parse.charId(charId), name = parse.name(item), n = parse.int(count, 1, 1e4), m = mode === "give" || mode === "remove" ? mode : null;
+	return id === null || name === null || n === null || m === null ? null : [
+		id,
+		name.toLowerCase(),
+		n,
+		m
+	];
+}, async (source, charId, item, count, mode) => {
+	if (!inventory.call("GetItemDefinition", (a) => a.getItemDefinition(item), null)) return fail$2("ADMIN_PLAYERS_ERR_ITEM");
+	let result = await onCharacter(charId, (player) => {
+		let target = player.source;
+		if (mode === "give") return inventory.call("AddItem", (a) => a.addItem(target, item, count, void 0, void 0), !1) ? OK$2 : fail$2("ADMIN_PLAYERS_ERR_ITEM_FULL");
+		let has = inventory.call("GetItemCount", (a) => a.getItemCount(target, item, void 0), 0);
+		if (has <= 0) return fail$2("ADMIN_PLAYERS_ERR_ITEM_NONE");
+		let take = Math.min(count, has);
+		return inventory.call("RemoveItem", (a) => a.removeItem(target, item, take, void 0, void 0), !1) ? OK$2 : fail$2("ADMIN_PLAYERS_ERR_ITEM_NONE");
+	}, null);
+	return result.ok && logEdit(source, charId, `${mode} item ${item} x${count}`, {
+		item,
+		count,
+		mode
+	}), result;
+}), action$1("inventory", charOnly, async (source, charId) => {
+	let result = await onCharacter(charId, (player) => inventory.call("OpenInventory", (a) => a.openInventory(source, player.source), !1) ? OK$2 : fail$2("ADMIN_PLAYERS_ERR_INVENTORY"), null);
+	return result.ok && logEdit(source, charId, "opened the inventory"), result;
+}), action$1("delete", charOnly, async (source, charId) => {
+	if (players.byCharacter(charId)) return fail$2("ADMIN_PLAYERS_ERR_ONLINE");
+	let result = await claims.run(charId, BUSY$3, async () => {
+		if (players.byCharacter(charId)) return BUSY$3;
+		let row = await findCharacter(charId);
+		return !row || !await softDelete(charId) ? GONE : (emit(CORE.characterDeletedEvent, charId, row.userId), OK$2);
+	});
+	return result.ok && (logEdit(source, charId, "deleted the character", {}, "warn"), playerWatchers.deleted(charId)), result;
+}), action$1("online", () => [], (source) => (playerWatchers.watchList(source), { ok: !0 })), action$1("search", ([query, cursor]) => {
+	let q = typeof query == "string" ? parseSearch(query) : null, c = cursor == null ? null : parse.charId(cursor);
+	return q && (cursor == null || c !== null) ? [q, c] : null;
+}, async (_source, query, cursor) => (await searchReady, search(query, cursor, (charId) => players.byCharacter(charId)?.source ?? null))), action$1("open", ([charId]) => {
+	let id = parse.charId(charId);
+	return id === null ? null : [id];
+}, async (source, charId) => {
+	playerWatchers.watchChar(source, charId);
+	let view = await loadView(charId);
+	return view || playerWatchers.unwatchChar(source), view;
+}), action$1("close", ([scope]) => scope === "char" || scope === "all" ? [scope] : null, (source, scope) => (scope === "all" ? playerWatchers.drop(source) : playerWatchers.unwatchChar(source), { ok: !0 }));
+const charOf = (source) => players.get(source)?.charId;
+on(CORE.playerLoadedEvent, (source, character) => {
+	playerWatchers.put(source), playerWatchers.watching(character.id) && loadView(character.id).then((view) => view && playerWatchers.view(view)).catch((error) => log$3.error(`admin view of #${character.id} failed`, error));
+}), on(CORE.playerUnloadedEvent, (source, charId) => {
+	playerWatchers.remove(source), playerWatchers.char(charId, {
+		source: null,
+		duty: null
+	});
+}), on(CORE.moneyChangedEvent, (source, account, balance) => {
+	let charId = charOf(source);
+	charId !== void 0 && playerWatchers.money(charId, account, balance);
+}), on(CORE.jobsChangedEvent, (source, jobs) => {
+	playerWatchers.put(source);
+	let charId = charOf(source);
+	charId !== void 0 && playerWatchers.char(charId, { jobs });
+}), on(CORE.dutyChangedEvent, (source, duty) => {
+	playerWatchers.put(source);
+	let charId = charOf(source);
+	charId !== void 0 && playerWatchers.char(charId, { duty });
+}), on(CORE.gangsChangedEvent, (source, gangs) => {
+	let charId = charOf(source);
+	charId !== void 0 && playerWatchers.char(charId, { gangs });
+}), on(CORE.activeGangChangedEvent, (source, activeGang) => {
+	let charId = charOf(source);
+	charId !== void 0 && playerWatchers.char(charId, { activeGang });
+});
+// resource/server/jobs/dutyCount.ts
+const counts = new Map(), published$1 = new GlobalGroup("ai:duty:", stateNumber);
+function changeDutyCount(job, delta) {
+	let next = Math.max(0, (counts.get(job) ?? 0) + delta);
+	counts.set(job, next), published$1.set(job, next);
+}
+function dutyCount(job) {
+	return counts.get(job) ?? 0;
+}
+function resetDutyCounts(jobs) {
+	for (let job of jobs) counts.set(job, 0), published$1.set(job, 0);
+}
+on(CORE.playerLoadedEvent, (source, character) => {
+	coreLog("characters", `loaded ${character.firstname} ${character.lastname} (${character.citizenid})`, {
+		source,
+		metadata: {
+			charId: character.id,
+			citizenid: character.citizenid
+		}
+	});
+}), on(CORE.playerUnloadedEvent, (source, charId, reason) => {
+	coreLog("characters", `unloaded character #${charId} (${reason})`, {
+		source,
+		metadata: {
+			charId,
+			reason
+		}
+	});
+}), on(CORE.moneyChangedEvent, (source, account, balance, delta, reason) => {
+	coreLog("money", `${delta > 0 ? "+" : ""}${delta} ${account} (${reason}), balance ${balance}`, {
+		source,
+		metadata: {
+			account,
+			delta,
+			balance,
+			reason
+		}
+	});
+}), on(CORE.jobsChangedEvent, (source, jobs) => {
+	coreLog("jobs", `jobs: ${jobs.map((j) => `${j.job}:${j.grade}`).join(", ") || "none"}`, {
+		source,
+		metadata: { jobs }
+	});
+}), on(CORE.dutyChangedEvent, (source, job) => {
+	coreLog("jobs", job ? `on duty: ${job}` : "off duty", {
+		source,
+		metadata: { duty: job }
+	});
+}), on(CORE.gangsChangedEvent, (source, gangs) => {
+	coreLog("gangs", `gangs: ${gangs.map((g) => `${g.gang}:${g.grade}`).join(", ") || "none"}`, {
+		source,
+		metadata: { gangs }
+	});
+});
+// resource/server/sourceMaps.ts
+const DIGIT = new Map([..."ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"].map((c, i) => [c, i]));
+function decodeVlq(text) {
+	let out = [], value = 0, shift = 0;
+	for (let char of text) {
+		let digit = DIGIT.get(char) ?? 0;
+		value += (digit & 31) << shift, digit & 32 ? shift += 5 : (out.push(value & 1 ? -(value >>> 1) : value >>> 1), value = 0, shift = 0);
+	}
+	return out;
+}
+function decode(raw) {
+	let json;
+	try {
+		json = JSON.parse(raw);
+	} catch {
+		return null;
+	}
+	if (!isRecord(json) || typeof json.mappings != "string" || !Array.isArray(json.sources)) return null;
+	let sources = json.sources.map((s) => String(s).replace(/^(\.\.\/)+/, "")), src = 0, srcLine = 0, srcCol = 0;
+	return {
+		sources,
+		lines: json.mappings.split(";").map((text) => {
+			let col = 0;
+			return text ? text.split(",").flatMap((segment) => {
+				let [dc = 0, ds, dl, dcol] = decodeVlq(segment);
+				return col += dc, ds === void 0 || dl === void 0 || dcol === void 0 ? [] : (src += ds, srcLine += dl, srcCol += dcol, [[
+					col,
+					src,
+					srcLine,
+					srcCol
+				]]);
+			}) : [];
+		})
+	};
+}
+const sourceMaps = new class {
+	maps = new Map();
+	constructor() {
+		on("onResourceStart", (resource) => this.maps.delete(resource));
+	}
+	get(resource) {
+		if (GetResourceState(resource) !== "started") return null;
+		if (!this.maps.has(resource)) {
+			let raw = LoadResourceFile(resource, "dist/client.js.map");
+			this.maps.set(resource, raw ? decode(raw) : null);
+		}
+		return this.maps.get(resource) ?? null;
+	}
+	resolve(text) {
+		let left = 20;
+		return text.replace(/@([\w.-]{1,64})\/dist\/client\.js:(\d+):(\d+)/g, (whole, resource, line, col) => {
+			if (left-- <= 0) return whole;
+			let map = this.get(resource), segments = map?.lines[Number(line) - 1 - 2];
+			if (!map || !segments?.length) return whole;
+			let column = Number(col) - 1, found;
+			for (let segment of segments) {
+				if ((segment[0] ?? 0) > column) break;
+				found = segment;
+			}
+			if (!found) return whole;
+			let [, src = 0, srcLine = 0, srcCol = 0] = found;
+			return `@${resource}/${map.sources[src] ?? "?"}:${srcLine + 1}:${srcCol + 1}`;
+		});
+	}
+}();
+// resource/server/clientErrors.ts
+onClientEvent(CORE.clientErrorEvent, {
+	args: ([resource, text]) => typeof resource == "string" && typeof text == "string" ? [resource, text] : null,
+	rate: {
+		count: 30,
+		windowMs: 6e4
+	}
+}, (source, resource, text) => {
+	coreLog("clientErrors", `[client error] ${logSafe(resource, 64)}: ${logSafe(sourceMaps.resolve(text.slice(0, 4e3)), 4e3)}`, {
+		level: "error",
+		source
+	});
+});
 // resource/server/multichar/screen.ts
 const OWN = { resource: CORE.resource }, published = new GlobalKey(CORE.characterScreenKey, stateString), handlers = [], picker = new AdapterPicker({
 	category: "character screen",
@@ -23037,13 +23809,13 @@ async function characterScreen(user) {
 	};
 }
 // resource/server/player/spawn.ts
-const BUSY$3 = {
+const BUSY$2 = {
 	ok: !1,
 	error: "CHAR_ERR_BUSY"
 }, choosing = new PlayerMap(), awaiting = new PlayerMap();
 onClientCallback(CORE.spawnChoiceCallback, { args: oneArg((v) => readInt(v, 0, 63)) }, (source, id) => {
 	let options = choosing.get(source), spawn = options?.[id], player = players.get(source);
-	return !options || !spawn || !player ? BUSY$3 : (choosing.delete(source), emitNet(CORE.spawnEvent, source, spawn), emit(CORE.playerSpawnedEvent, source, player.charId), { ok: !0 });
+	return !options || !spawn || !player ? BUSY$2 : (choosing.delete(source), emitNet(CORE.spawnEvent, source, spawn), emit(CORE.playerSpawnedEvent, source, player.charId), { ok: !0 });
 }), onClientEvent(CORE.externalSpawnedEvent, (source) => {
 	let charId = awaiting.get(source);
 	charId !== void 0 && players.get(source)?.charId === charId && (awaiting.delete(source), emit(CORE.playerSpawnedEvent, source, charId));
@@ -23080,7 +23852,7 @@ function spawnCharacter(source, player, row) {
 	return choosing.set(source, options), emitNet(CORE.chooseSpawnEvent, source, labels), !1;
 }
 // resource/server/player/session.ts
-const lock = new SourceLock(), BUSY$2 = {
+const lock = new SourceLock(), BUSY$1 = {
 	ok: !1,
 	error: "CHAR_ERR_BUSY"
 };
@@ -23098,12 +23870,12 @@ onClientCallback(CORE.charactersCallback, async (source) => players.get(source) 
 }));
 const charIdArg = ([charId]) => typeof charId == "number" && Number.isInteger(charId) && charId > 0 ? [charId] : null;
 onClientCallback(CORE.createCharacterCallback, { args: ([raw]) => [raw] }, async (source, raw) => {
-	if (externalScreen()) return BUSY$2;
+	if (externalScreen()) return BUSY$1;
 	let user = selecting.get(source), input = toCreateCharacter(raw);
 	return user ? "error" in input ? {
 		ok: !1,
 		error: input.error
-	} : lock.run(source, BUSY$2, () => createNow(source, user, input)) : BUSY$2;
+	} : lock.run(source, BUSY$1, () => createNow(source, user, input)) : BUSY$1;
 });
 async function createNow(source, user, input) {
 	let characters = await listCharacters(user.id), slots = slotsOf(user), taken = new Set(characters.map((c) => c.slot)), slot = input.slot;
@@ -23127,24 +23899,24 @@ async function createNow(source, user, input) {
 }
 function createCharacterFor(source, input) {
 	let user = selecting.get(source);
-	return user ? lock.run(source, BUSY$2, () => createNow(source, user, input)) : Promise.resolve(BUSY$2);
+	return user ? lock.run(source, BUSY$1, () => createNow(source, user, input)) : Promise.resolve(BUSY$1);
 }
 function loginCharacterFor(source, find) {
 	let user = selecting.get(source);
-	return user ? lock.run(source, BUSY$2, async () => {
+	return user ? lock.run(source, BUSY$1, async () => {
 		let charId = await find(user);
 		return charId === null ? {
 			ok: !1,
 			error: "CHAR_ERR_GONE"
 		} : loadCharacter(source, charId);
-	}) : Promise.resolve(BUSY$2);
+	}) : Promise.resolve(BUSY$1);
 }
-onClientCallback(CORE.selectCharacterCallback, { args: charIdArg }, async (source, charId) => externalScreen() || !selecting.has(source) ? BUSY$2 : lock.run(source, BUSY$2, () => loadCharacter(source, charId))), onClientCallback(CORE.deleteCharacterCallback, { args: charIdArg }, async (source, charId) => {
+onClientCallback(CORE.selectCharacterCallback, { args: charIdArg }, async (source, charId) => externalScreen() || !selecting.has(source) ? BUSY$1 : lock.run(source, BUSY$1, () => loadCharacter(source, charId))), onClientCallback(CORE.deleteCharacterCallback, { args: charIdArg }, async (source, charId) => {
 	let user = selecting.get(source);
-	return externalScreen() || !user ? BUSY$2 : settings.characters.canDelete ? players.byCharacter(charId) ? {
+	return externalScreen() || !user ? BUSY$1 : settings.characters.canDelete ? players.byCharacter(charId) ? {
 		ok: !1,
 		error: "CHAR_ERR_ONLINE"
-	} : lock.run(source, BUSY$2, async () => await deleteCharacter(user.id, charId) ? (emit(CORE.characterDeletedEvent, charId, user.id), coreLog("characters", `deleted character #${charId}`, {
+	} : lock.run(source, BUSY$1, async () => await deleteCharacter(user.id, charId) ? (emit(CORE.characterDeletedEvent, charId, user.id), coreLog("characters", `deleted character #${charId}`, {
 		level: "warn",
 		source,
 		metadata: { charId }
@@ -23157,11 +23929,11 @@ onClientCallback(CORE.selectCharacterCallback, { args: charIdArg }, async (sourc
 	};
 });
 function loadCharacter(source, charId) {
-	return claims.run(charId, BUSY$2, () => loadNow(source, charId));
+	return claims.run(charId, BUSY$1, () => loadNow(source, charId));
 }
 async function loadNow(source, charId) {
 	let user = selecting.get(source);
-	if (!user) return BUSY$2;
+	if (!user) return BUSY$1;
 	if (players.byCharacter(charId)) return {
 		ok: !1,
 		error: "CHAR_ERR_ONLINE"
@@ -23173,12 +23945,12 @@ async function loadNow(source, charId) {
 			error: "CHAR_ERR_GONE"
 		};
 		let player = await Player$1.load(source, user, row);
-		if (!GetPlayerName(String(source)) || !selecting.has(source)) return player.release(), BUSY$2;
+		if (!GetPlayerName(String(source)) || !selecting.has(source)) return player.release(), BUSY$1;
 		selecting.delete(source), players.add(player), player.sendSnapshot();
 		let spawned = spawnCharacter(source, player, row);
 		return emit(CORE.playerLoadedEvent, source, player.info()), spawned && emit(CORE.playerSpawnedEvent, source, player.charId), log$3.info(`loaded #${player.charId} ${player.fullName} (src ${source})`), { ok: !0 };
 	} catch (error) {
-		return log$3.error(`loading character ${charId} for ${source} failed`, error), BUSY$2;
+		return log$3.error(`loading character ${charId} for ${source} failed`, error), BUSY$1;
 	}
 }
 async function unloadCharacter(player, reason) {
@@ -23204,125 +23976,6 @@ registerExport("SwitchCharacter", switchCharacter), on("playerDropped", () => {
 	let player = players.get(source);
 	player && unloadCharacter(player, "dropped");
 });
-// resource/server/characters/edit.ts
-const OK$1 = { ok: !0 }, fail$1 = (error) => ({
-	ok: !1,
-	error
-}), BUSY$1 = fail$1("ADMIN_PLAYERS_ERR_BUSY"), GONE = fail$1("ADMIN_PLAYERS_ERR_GONE"), HELD = Symbol("held"), LOADED = Symbol("loaded"), edits = new class {
-	queues = new Map();
-	run(charId, online, offline, gone, busy) {
-		let next = (this.queues.get(charId) ?? Promise.resolve()).then(() => this.attempt(charId, online, offline, gone, busy), () => this.attempt(charId, online, offline, gone, busy));
-		this.queues.set(charId, next);
-		let done = () => {
-			this.queues.get(charId) === next && this.queues.delete(charId);
-		};
-		return next.then(done, done), next;
-	}
-	async attempt(charId, online, offline, gone, busy) {
-		for (let i = 0; i < 5; i++) {
-			let player = players.byCharacter(charId);
-			if (player) return online(player);
-			try {
-				await waitFor(() => !claims.has(charId) || void 0, 3e4, 50);
-			} catch {
-				return busy;
-			}
-			if (players.byCharacter(charId)) continue;
-			let result = await claims.run(charId, HELD, async () => players.byCharacter(charId) ? LOADED : await characterExists(charId) ? (await moneyWriter.idle(), offline()) : gone);
-			if (result !== HELD && result !== LOADED) return result;
-		}
-		return busy;
-	}
-}();
-function editCharacter(charId, online, offline) {
-	return edits.run(charId, online, offline, GONE, BUSY$1);
-}
-function readCharacter(charId, online, offline, missing) {
-	return edits.run(charId, online, offline, missing, missing);
-}
-const toCharId = (v) => typeof v == "number" && Number.isInteger(v) && v > 0 && v < 2 ** 32 ? v : null, INVALID$2 = fail$1("CORE_ERR_ARGS"), NAME$1 = /^[A-Za-z0-9_-]{1,48}$/, META_KEY = /^[A-Za-z0-9_.:-]{1,64}$/, nameOf = (v) => typeof v == "string" && NAME$1.test(v) ? v : null, gradeOf = (v) => typeof v == "number" && Number.isInteger(v) && v >= 0 && v <= 255 ? v : null;
-function answer$1(what, work, done, fallback) {
-	work.catch((error) => (log$3.error(`${what} failed`, error), fallback)).then((result) => {
-		typeof done == "function" && done(result);
-	}).catch((error) => log$3.error(`${what}: callback failed`, error));
-}
-const ERROR$1 = fail$1("ADMIN_PLAYERS_ERR_BUSY");
-function offlineMoney(mode, charId, account, amount, reason, done) {
-	let id = toCharId(charId), name = nameOf(account), by = caller(), why = typeof reason == "string" && reason ? reason.slice(0, 64) : by, min = mode === "set" ? 0 : 1, n = typeof amount == "number" && Number.isSafeInteger(amount) && amount >= min && amount <= 0xe8d4a51000 ? amount : null;
-	if (id === null || name === null || n === null) return answer$1("offline money", Promise.resolve(INVALID$2), done, INVALID$2);
-	let work = editCharacter(id, (player) => {
-		let r = mode === "set" ? player.wallet.set(name, n, why, by) : player.wallet.change(name, mode === "add" ? n : -n, why, by);
-		return r.ok ? { ok: !0 } : changeError(r.error);
-	}, () => offline.money(id, name, mode, n, why, by));
-	answer$1(`offline money of #${id}`, work, done, ERROR$1);
-}
-function offlineJob(charId, job, grade, done) {
-	let id = toCharId(charId), name = nameOf(job), g = gradeOf(grade);
-	if (id === null || name === null || g === null) return answer$1("offline job", Promise.resolve(INVALID$2), done, INVALID$2);
-	if (name === settings.jobs.unemployed) {
-		let result = fail$1("ADMIN_PLAYERS_ERR_JOB");
-		return answer$1("offline job", Promise.resolve(result), done, result);
-	}
-	let work = editCharacter(id, (player) => {
-		let r = player.jobs.set(name, g);
-		return r.ok ? { ok: !0 } : changeError(r.error);
-	}, () => offline.setJob(id, name, g));
-	answer$1(`offline job of #${id}`, work, done, ERROR$1);
-}
-function offlineRemoveJob(charId, job, done) {
-	let id = toCharId(charId), name = nameOf(job);
-	if (id === null || name === null) return answer$1("offline job", Promise.resolve(INVALID$2), done, INVALID$2);
-	let work = editCharacter(id, (player) => {
-		let r = player.jobs.remove(name);
-		return r.ok ? { ok: !0 } : changeError(r.error);
-	}, () => offline.removeJob(id, name));
-	answer$1(`offline job of #${id}`, work, done, ERROR$1);
-}
-function offlineGang(charId, gang, grade, done) {
-	let id = toCharId(charId), name = nameOf(gang), g = gradeOf(grade);
-	if (id === null || name === null || g === null) return answer$1("offline gang", Promise.resolve(INVALID$2), done, INVALID$2);
-	let work = editCharacter(id, (player) => {
-		let r = player.gangs.set(name, g);
-		return r.ok ? { ok: !0 } : changeError(r.error);
-	}, () => offline.setGang(id, name, g));
-	answer$1(`offline gang of #${id}`, work, done, ERROR$1);
-}
-function offlineRemoveGang(charId, gang, done) {
-	let id = toCharId(charId), name = nameOf(gang);
-	if (id === null || name === null) return answer$1("offline gang", Promise.resolve(INVALID$2), done, INVALID$2);
-	let work = editCharacter(id, (player) => {
-		let r = player.gangs.remove(name);
-		return r.ok ? { ok: !0 } : changeError(r.error);
-	}, () => offline.removeGang(id, name));
-	answer$1(`offline gang of #${id}`, work, done, ERROR$1);
-}
-function toMetaValue(value) {
-	if (value == null) return {
-		ok: !0,
-		value: null
-	};
-	try {
-		let text = JSON.stringify(value);
-		return text === void 0 ? {
-			ok: !1,
-			value: null
-		} : {
-			ok: !0,
-			value: JSON.parse(text)
-		};
-	} catch {
-		return {
-			ok: !1,
-			value: null
-		};
-	}
-}
-function offlineMeta(charId, key, value, done) {
-	let id = toCharId(charId), k = typeof key == "string" && META_KEY.test(key) ? key : null, v = toMetaValue(value);
-	if (id === null || k === null || !v.ok) return answer$1("offline metadata", Promise.resolve(INVALID$2), done, INVALID$2);
-	let work = editCharacter(id, (player) => (player.setMeta(k, v.value), { ok: !0 }), () => offline.meta(id, k, v.value));
-	answer$1(`offline metadata of #${id}`, work, done, ERROR$1);
-}
 // resource/server/multichar/projection/ddl.ts
 const PROJECTION_TABLES = [
 	"players",
@@ -23799,7 +24452,7 @@ on(CORE.playerLoadedEvent, (source) => {
 const fail = (error) => ({
 	ok: !1,
 	error
-}), OK = { ok: !0 }, INVALID$1 = fail("CHAR_ERR_INVALID"), BUSY = fail("CHAR_ERR_BUSY"), preparing = new PlayerMap();
+}), OK = { ok: !0 }, INVALID = fail("CHAR_ERR_INVALID"), BUSY = fail("CHAR_ERR_BUSY"), preparing = new PlayerMap();
 async function prepare(source) {
 	await databaseReady;
 	let identity = identify(source);
@@ -23828,9 +24481,9 @@ async function find(user, ref) {
 	return ("slot" in ref ? list.find((c) => c.slot === ref.slot) : list.find((c) => c.citizenid === ref.citizenid))?.id ?? null;
 }
 function toNewCharacter(raw) {
-	if (!isRecord(raw)) return INVALID$1;
+	if (!isRecord(raw)) return INVALID;
 	let firstname = toName(raw.firstname), lastname = toName(raw.lastname), birthdate = toBirthdate(raw.birthdate), sex = toSex(raw.sex), nationality = raw.nationality == null || raw.nationality === "" ? "" : toNationality(raw.nationality), slot = raw.slot == null ? null : readInt(raw.slot, 1, 255);
-	return raw.slot != null && slot === null ? INVALID$1 : firstname ? lastname ? birthdate ? sex ? nationality === null ? fail("CHAR_ERR_NATIONALITY") : {
+	return raw.slot != null && slot === null ? INVALID : firstname ? lastname ? birthdate ? sex ? nationality === null ? fail("CHAR_ERR_NATIONALITY") : {
 		slot,
 		firstname,
 		lastname,
@@ -23842,20 +24495,20 @@ function toNewCharacter(raw) {
 const whenPrepared = (source) => preparing.get(source) ?? Promise.resolve();
 registerExport("GetCharacterScreen", () => externalScreen() ?? CORE.resource), registerExport("LoginCharacter", (source, ref, done) => {
 	let src = toSource(source), pick = toRef(ref);
-	if (src === null || pick === null) return answer$1("login", Promise.resolve(INVALID$1), done, INVALID$1);
+	if (src === null || pick === null) return answer$1("login", Promise.resolve(INVALID), done, INVALID);
 	let work = whenPrepared(src).then(() => loginCharacterFor(src, (user) => find(user, pick)));
 	answer$1(`login of ${src}`, work, done, BUSY);
 }), registerExport("CreateAndLoginCharacter", (source, raw, done) => {
 	let src = toSource(source), input = toNewCharacter(raw);
 	if (src === null || "ok" in input) {
-		let result = src === null ? INVALID$1 : input;
+		let result = src === null ? INVALID : input;
 		return answer$1("create", Promise.resolve(result), done, result);
 	}
 	let work = whenPrepared(src).then(() => createCharacterFor(src, input));
 	answer$1(`create for ${src}`, work, done, BUSY);
 }), registerExport("LogoutCharacter", (source, done) => {
 	let src = toSource(source);
-	if (src === null) return answer$1("logout", Promise.resolve(INVALID$1), done, INVALID$1);
+	if (src === null) return answer$1("logout", Promise.resolve(INVALID), done, INVALID);
 	let work = logoutCharacter(src).then((ok) => ok ? OK : fail("CHAR_ERR_NOT_LOADED"));
 	answer$1(`logout of ${src}`, work, done, BUSY);
 }), onScreenSwitch((external) => {
@@ -24116,290 +24769,6 @@ function transferMoney(from, to, amount, reason, fee = 0) {
 	let a = sideOf(from), b = sideOf(to);
 	return !a || !b || a.key === b.key || !a.change(-(amount + fee), reason) ? !1 : b.change(amount, reason) ? !0 : (a.change(amount + fee, `${reason}:refund`), !1);
 }
-// resource/server/characters/manage.ts
-const ERROR = fail$1("ADMIN_PLAYERS_ERR_BUSY"), INVALID = fail$1("CORE_ERR_ARGS");
-function actorName(by, fallback) {
-	if (typeof by == "number" && by > 0) {
-		let name = GetPlayerName(String(by)), fivem = players.get(by)?.user.fivem;
-		return `${name || `#${by}`}${fivem ? ` (fivem:${fivem})` : ""}`.slice(0, 64);
-	}
-	return typeof by == "string" && by ? by.slice(0, 64) : fallback;
-}
-function deleteCharacterBy(charId, by, done) {
-	let id = toCharId(charId), who = actorName(by, caller());
-	if (id === null) return answer$1("delete character", Promise.resolve(INVALID), done, INVALID);
-	let work = editCharacter(id, () => fail$1("ADMIN_PLAYERS_ERR_ONLINE"), async () => {
-		let row = await findCharacter(id);
-		return !row || !await softDelete(id) ? GONE : (playerWatchers.deleted(id), emit(CORE.characterDeletedEvent, id, row.userId), coreLog("characters", `deleted character #${id} (${who})`, {
-			level: "warn",
-			metadata: {
-				charId: id,
-				userId: row.userId,
-				by: who
-			}
-		}), OK$1);
-	});
-	answer$1(`delete character #${id}`, work, done, ERROR);
-}
-function readPatch(raw) {
-	if (typeof raw != "object" || !raw) return INVALID;
-	let input = raw, patch = {};
-	if (input.firstname != null) {
-		let v = toName(input.firstname);
-		if (!v) return fail$1("CHAR_ERR_FIRSTNAME");
-		patch.firstname = v;
-	}
-	if (input.lastname != null) {
-		let v = toName(input.lastname);
-		if (!v) return fail$1("CHAR_ERR_LASTNAME");
-		patch.lastname = v;
-	}
-	if (input.birthdate != null) {
-		let v = toBirthdate(input.birthdate);
-		if (!v) return fail$1("CHAR_ERR_BIRTHDATE");
-		patch.birthdate = v;
-	}
-	if (input.nationality != null) {
-		let v = toNationality(input.nationality);
-		if (!v) return fail$1("CHAR_ERR_NATIONALITY");
-		patch.nationality = v;
-	}
-	if (input.sex != null) {
-		let v = toSex(input.sex);
-		if (!v) return fail$1("CHAR_ERR_SEX");
-		patch.sex = v;
-	}
-	return patch;
-}
-function setCharacterInfo(charId, raw, done) {
-	let id = toCharId(charId), patch = readPatch(raw);
-	if (id === null || "ok" in patch) {
-		let result = "ok" in patch ? patch : INVALID;
-		return answer$1("character info", Promise.resolve(result), done, result);
-	}
-	let work = editCharacter(id, async (player) => {
-		let info = {
-			...player.info(),
-			...patch
-		};
-		return info.sex === player.info().sex ? (await updateInfo(id, info), players.byCharacter(id) === player && player.setInfo(info), OK$1) : fail$1("ADMIN_PLAYERS_ERR_SEX_ONLINE");
-	}, async () => {
-		let row = await findCharacter(id);
-		if (!row) return GONE;
-		let { firstname, lastname, birthdate, sex, nationality } = row, info = {
-			firstname,
-			lastname,
-			birthdate,
-			sex,
-			nationality,
-			...patch
-		};
-		return offline.info(id, info);
-	});
-	answer$1(`character info of #${id}`, work, done, ERROR);
-}
-var BanStore = class {
-	all = new Set();
-	byId = new Map();
-	byIdentifier = new Map();
-	get size() {
-		return this.all.size;
-	}
-	add(ban) {
-		if (!(ban.id > 0 && this.byId.has(ban.id))) {
-			this.all.add(ban), ban.id > 0 && this.byId.set(ban.id, ban);
-			for (let type of BAN_IDENTIFIERS) {
-				let value = ban.identifiers[type];
-				if (!value) continue;
-				let key = `${type}:${value}`, set = this.byIdentifier.get(key);
-				set || this.byIdentifier.set(key, set = new Set()), set.add(ban);
-			}
-		}
-	}
-	written(ban, id) {
-		let copy = this.byId.get(id);
-		copy && copy !== ban && this.remove(copy), ban.id = id, this.all.has(ban) && this.byId.set(id, ban);
-	}
-	remove(ban) {
-		if (this.all.delete(ban)) {
-			ban.id > 0 && this.byId.get(ban.id) === ban && this.byId.delete(ban.id);
-			for (let type of BAN_IDENTIFIERS) {
-				let value = ban.identifiers[type];
-				if (!value) continue;
-				let key = `${type}:${value}`, set = this.byIdentifier.get(key);
-				set?.delete(ban), set?.size === 0 && this.byIdentifier.delete(key);
-			}
-		}
-	}
-	get(id) {
-		return this.byId.get(id);
-	}
-	find(identifiers, now = Date.now()) {
-		for (let type of BAN_IDENTIFIERS) {
-			let value = identifiers[type];
-			if (!value) continue;
-			let set = this.byIdentifier.get(`${type}:${value}`);
-			if (set) for (let ban of set) if (ban.expires !== null && ban.expires <= now) this.remove(ban);
-			else return ban;
-		}
-		return null;
-	}
-	page(page, now = Date.now()) {
-		for (let ban of this.all) ban.expires !== null && ban.expires <= now && this.remove(ban);
-		let list = [...this.all].reverse(), start = (Math.max(1, page) - 1) * 50;
-		return {
-			bans: list.slice(start, start + 50).map(copyBan),
-			total: list.length
-		};
-	}
-};
-function copyBan(ban) {
-	return {
-		...ban,
-		identifiers: { ...ban.identifiers }
-	};
-}
-// resource/server/bans/index.ts
-const store$2 = new BanStore();
-let loaded = !1;
-const MAX_LENGTH = {
-	fivem: 20,
-	license: 60,
-	discord: 30,
-	ip: 45
-};
-function identifiersOf(source) {
-	let out = {};
-	for (let id of getPlayerIdentifiers(String(source))) {
-		let at = id.indexOf(":"), type = id.slice(0, at);
-		at > 0 && BAN_IDENTIFIERS.includes(type) && (out[type] = id.slice(at + 1));
-	}
-	return out;
-}
-function readIdentifiers(raw) {
-	if (!isRecord(raw)) return null;
-	let out = {}, any = !1;
-	for (let type of BAN_IDENTIFIERS) {
-		let value = raw[type];
-		if (typeof value != "string") continue;
-		let text = value.trim().replace(RegExp(`^${type}:`), "");
-		!text || text.length > MAX_LENGTH[type] || (out[type] = text, any = !0);
-	}
-	return any ? out : null;
-}
-function readTarget(target) {
-	if (typeof target == "number" && Number.isInteger(target) && target > 0) {
-		if (!GetPlayerName(String(target))) return null;
-		let identifiers = identifiersOf(target);
-		return Object.keys(identifiers).length > 0 ? {
-			identifiers,
-			source: target
-		} : null;
-	}
-	if (isRecord(target)) {
-		let identifiers = readIdentifiers(target.identifiers);
-		return identifiers ? {
-			identifiers,
-			source: null
-		} : null;
-	}
-	return null;
-}
-const pad = (n) => String(n).padStart(2, "0");
-function expiryText(expires) {
-	if (expires === null) return Locale("BAN_PERMANENT");
-	let d = new Date(expires);
-	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-const refusal = (ban) => Locale("BAN_REFUSED", ban.reason, expiryText(ban.expires), ban.id || "-");
-gate.add("ai-core:bans", "ai-core", (_source, identifiers) => {
-	if (!loaded) return Locale("BAN_STARTING");
-	let ban = store$2.find(identifiers);
-	return ban ? refusal(ban) : null;
-});
-async function loadBans() {
-	await databaseReady;
-	let rows = await mysql.query("SELECT id, fivem, license, discord, ip, name, reason, banned_by, created_at, expires_at FROM ai_core_bans\n       WHERE revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?) ORDER BY id", [new Date()]) ?? [];
-	for (let row of rows) {
-		let identifiers = {};
-		for (let type of BAN_IDENTIFIERS) {
-			let value = row[type];
-			value && (identifiers[type] = value);
-		}
-		store$2.add({
-			id: row.id,
-			identifiers,
-			name: row.name,
-			reason: row.reason,
-			by: row.banned_by,
-			created: row.created_at,
-			expires: row.expires_at
-		});
-	}
-	loaded = !0, log$3.info(`${store$2.size} active bans`);
-}
-loadBans().catch((error) => {
-	loaded = !0, log$3.error("reading the bans failed: nobody is refused as banned", error);
-});
-function banPlayer(target, reason, minutes, by, done) {
-	let who = actorName(by, caller()), found = readTarget(target), why = typeof reason == "string" ? reason.trim().slice(0, 255) : "", mins = minutes == null ? null : typeof minutes == "number" && Number.isInteger(minutes) && minutes > 0 ? minutes : void 0;
-	if (!found || !why || mins === void 0) return !1;
-	let now = Date.now(), ban = {
-		id: 0,
-		identifiers: found.identifiers,
-		name: found.source ? (GetPlayerName(String(found.source)) || "").slice(0, 64) : "",
-		reason: why,
-		by: who,
-		created: now,
-		expires: mins === null ? null : now + mins * 6e4
-	};
-	store$2.add(ban);
-	for (let id of getPlayers()) {
-		let source = Number(id), ids = identifiersOf(source);
-		BAN_IDENTIFIERS.some((t) => ban.identifiers[t] && ids[t] === ban.identifiers[t]) && DropPlayer(String(source), refusal(ban));
-	}
-	coreLog("bans", `banned ${ban.name || JSON.stringify(ban.identifiers)}: ${why}`, {
-		level: "warn",
-		metadata: {
-			...ban.identifiers,
-			reason: why,
-			minutes: mins,
-			by: who
-		}
-	});
-	let ids = ban.identifiers;
-	return mysql.insert("INSERT INTO ai_core_bans (fivem, license, discord, ip, name, reason, banned_by, created_at, expires_at)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", [
-		ids.fivem ?? null,
-		ids.license ?? null,
-		ids.discord ?? null,
-		ids.ip ?? null,
-		ban.name,
-		why,
-		who,
-		new Date(now),
-		ban.expires === null ? null : new Date(ban.expires)
-	]).then((id) => (id && store$2.written(ban, id), id || null), (error) => (log$3.error("writing a ban failed (it holds until a restart)", error), null)).then((id) => {
-		typeof done == "function" && done(id);
-	}).catch((error) => log$3.error("ban callback failed", error)), !0;
-}
-function unbanPlayer(banId, by) {
-	let who = actorName(by, caller()), ban = typeof banId == "number" && Number.isInteger(banId) && banId > 0 ? store$2.get(banId) : void 0;
-	return ban ? (store$2.remove(ban), coreLog("bans", `lifted ban #${ban.id} (${ban.name || ban.reason})`, { metadata: {
-		banId: ban.id,
-		by: who
-	} }), mysql.update("UPDATE ai_core_bans SET revoked_at = ?, revoked_by = ? WHERE id = ? AND revoked_at IS NULL", [
-		new Date(),
-		who,
-		ban.id
-	]).catch((error) => log$3.error(`lifting ban #${ban.id} failed`, error)), !0) : !1;
-}
-function isBanned(target) {
-	let found = readTarget(target), ban = found ? store$2.find(found.identifiers) : null;
-	return ban ? copyBan(ban) : null;
-}
-function getBans(page) {
-	return store$2.page(typeof page == "number" && Number.isInteger(page) ? page : 1);
-}
 // resource/server/characters/read.ts
 function infoOf(row) {
 	return {
@@ -24616,7 +24985,7 @@ registerExport("GetPlayerData", (src) => players.get(src)?.snapshot() ?? null), 
 })), registerExport("GetGangMembers", (gang, done, after, limit) => answer$1("gang members", membersOf("gang", gang, after, limit), done, {
 	members: [],
 	next: null
-})), registerExport("AddOfflineMoney", (c, a, n, r, done) => offlineMoney("add", c, a, n, r, done)), registerExport("RemoveOfflineMoney", (c, a, n, r, done) => offlineMoney("remove", c, a, n, r, done)), registerExport("SetOfflineMoney", (c, a, n, r, done) => offlineMoney("set", c, a, n, r, done)), registerExport("SetOfflineJob", offlineJob), registerExport("RemoveOfflineJob", offlineRemoveJob), registerExport("SetOfflineGang", offlineGang), registerExport("RemoveOfflineGang", offlineRemoveGang), registerExport("SetOfflineMeta", offlineMeta), registerExport("SetCharacterInfo", setCharacterInfo), registerExport("DeleteCharacter", (charId, by, done) => deleteCharacterBy(charId, by, done)), registerExport("BanPlayer", (target, reason, minutes, by, done) => banPlayer(target, reason, minutes, by, done)), registerExport("UnbanPlayer", (banId, by) => unbanPlayer(banId, by)), registerExport("IsBanned", isBanned), registerExport("GetBans", (page) => getBans(page)), registerExport("RegisterJobDefinition", (name, def) => runtimeJobs.register(name, def)), registerExport("RemoveJobDefinition", (name) => runtimeJobs.remove(name)), registerExport("RegisterGangDefinition", (name, def) => runtimeGangs.register(name, def)), registerExport("RemoveGangDefinition", (name) => runtimeGangs.remove(name)), registerExport("SetPaycheckEnabled", setPaycheckEnabled), registerExport("IsPaycheckEnabled", isPaycheckEnabled), registerExport("GetPlayTime", (target, done) => getPlayTime(target, done)), registerExport("SavePlayer", (source, done) => savePlayer(source, done));
+})), registerExport("AddOfflineMoney", (c, a, n, r, done) => offlineMoney("add", c, a, n, r, done)), registerExport("RemoveOfflineMoney", (c, a, n, r, done) => offlineMoney("remove", c, a, n, r, done)), registerExport("SetOfflineMoney", (c, a, n, r, done) => offlineMoney("set", c, a, n, r, done)), registerExport("SetOfflineJob", offlineJob), registerExport("RemoveOfflineJob", offlineRemoveJob), registerExport("SetOfflineGang", offlineGang), registerExport("RemoveOfflineGang", offlineRemoveGang), registerExport("SetOfflineMeta", offlineMeta), registerExport("SetCharacterInfo", setCharacterInfo), registerExport("DeleteCharacter", (charId, by, done) => deleteCharacterBy(charId, by, done)), registerExport("BanPlayer", (target, reason, minutes, by, done) => banPlayer(target, reason, minutes, by, done)), registerExport("UnbanPlayer", (banId, by) => unbanPlayer(banId, by)), registerExport("IsBanned", isBanned), registerExport("GetBans", (page) => getBans(page)), registerExport("GetBanHistory", (target, done) => answer$1("ban history", banHistory(target), done, [])), registerExport("ListBans", (query, done) => answer$1("ban list", findBans(query), done, null)), registerExport("EditBan", (banId, edit, by) => editBan(banId, edit, by)), registerExport("RegisterJobDefinition", (name, def) => runtimeJobs.register(name, def)), registerExport("RemoveJobDefinition", (name) => runtimeJobs.remove(name)), registerExport("RegisterGangDefinition", (name, def) => runtimeGangs.register(name, def)), registerExport("RemoveGangDefinition", (name) => runtimeGangs.remove(name)), registerExport("SetPaycheckEnabled", setPaycheckEnabled), registerExport("IsPaycheckEnabled", isPaycheckEnabled), registerExport("GetPlayTime", (target, done) => getPlayTime(target, done)), registerExport("SavePlayer", (source, done) => savePlayer(source, done));
 // resource/server/vehicleKeys/index.ts
 const activeKeys = new GlobalKey("ai:vehicleKeys", stateString), layer$3 = new AdapterPicker({
 	category: "vehicle keys",

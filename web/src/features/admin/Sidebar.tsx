@@ -3,6 +3,7 @@ import { useParams, useRouterState } from "@tanstack/react-router";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faFilter,
+  faGavel,
   faGauge,
   faShieldHalved,
   faUsers,
@@ -13,6 +14,7 @@ import { useAppSelector } from "../../store";
 import { goDashboard, goTo } from "./actions";
 import { iconOf } from "./icons";
 import { EXTERNAL_TAB, OtherPanelsNav } from "./OtherPanelsNav";
+import { goBans } from "./bans/actions";
 import { goPlayers } from "./players/actions";
 import { NavGroup, NavLabel, navRow, tabRow } from "./SidebarItems";
 
@@ -39,6 +41,9 @@ export function Sidebar({
   const { id: externalId } = useParams({ strict: false });
   const players = useRouterState({
     select: (s) => s.location.pathname === "/admin/players",
+  });
+  const bans = useRouterState({
+    select: (s) => s.location.pathname === "/admin/bans",
   });
   const [filter, setFilter] = useState("");
   const q = filter.trim().toLocaleLowerCase();
@@ -98,6 +103,19 @@ export function Sidebar({
             aria-hidden
           />
           <NavLabel text={fill(core, "ADMIN_PLAYERS")} />
+        </button>
+        <button
+          type="button"
+          aria-current={bans ? "page" : undefined}
+          onClick={() => goBans()}
+          className={navRow(bans)}
+        >
+          <FontAwesomeIcon
+            icon={faGavel}
+            className="w-[1.8vh] shrink-0 text-[1.6vh]"
+            aria-hidden
+          />
+          <NavLabel text={fill(core, "ADMIN_BANS")} />
         </button>
         <label className="flex h-[3.6vh] items-center gap-[0.8vh] rounded-full border border-white/8 bg-[#2222224D] px-[1.2vh] transition-[border-color] duration-150 focus-within:border-tgi-green-40">
           <FontAwesomeIcon

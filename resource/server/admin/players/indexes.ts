@@ -3,7 +3,7 @@ import { databaseReady } from "../../database";
 import { log } from "../../log";
 
 /**
- * Indexes the player search and the member lists (`GetJobMembers`) need (sql/main.sql has them for new installs). The table installer never adds keys to
+ * Indexes the player search, the member lists (`GetJobMembers`) and the ban search / history need (sql/main.sql has them for new installs). The table installer never adds keys to
  * existing tables, so a database from before them gets them here once: an in-place, lock-free `ADD INDEX` (InnoDB
  * builds a secondary index without copying the table; seconds at 1M rows, MariaDB 10.0+ / MySQL 5.6+).
  */
@@ -22,6 +22,12 @@ const WANTED = [
   ["ai_core_users", "discord", "`discord`"],
   ["ai_core_character_jobs", "job", "`job`, `char_id`, `grade`"],
   ["ai_core_character_gangs", "gang", "`gang`, `char_id`, `grade`"],
+  ["ai_core_bans", "revoked", "`revoked_at`"],
+  ["ai_core_bans", "fivem", "`fivem`"],
+  ["ai_core_bans", "license", "`license`"],
+  ["ai_core_bans", "discord", "`discord`"],
+  ["ai_core_bans", "ip", "`ip`"],
+  ["ai_core_bans", "name", "`name`"],
 ] as const;
 
 async function addMissing(): Promise<void> {

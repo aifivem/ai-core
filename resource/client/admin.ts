@@ -9,7 +9,11 @@ import {
   vehicleLabel,
 } from "@aicore-fivem/lib/client";
 import { isRecord, record, round as roundTo } from "@aicore-fivem/lib/shared";
-import { ADMIN } from "@aicore-fivem/shared";
+import {
+  ADMIN,
+  toAdminShowTarget,
+  type AdminShowTarget,
+} from "@aicore-fivem/shared";
 import { Locale } from "common";
 import { NuiCallback, NuiMessage } from "common/nui";
 import { pickEntity, pickPoint, placeNames } from "./freecam";
@@ -40,7 +44,8 @@ class AdminPanelClient {
   private open = false;
   private opening = false;
 
-  async show(): Promise<void> {
+  /** `target`: the section to open on (another admin tool asked for it), else where the admin left. */
+  async show(target: AdminShowTarget | null = null): Promise<void> {
     if (this.open || this.opening || !isLoaded()) return;
     this.opening = true;
     // The keybinds live on clients: the admin's own list fills the panel's Keybinds tab.
@@ -59,6 +64,7 @@ class AdminPanelClient {
         ...answer,
         lookups: { ...record(answer.lookups), vehicle: vehicleModels() },
         texts: loadLocaleTexts(),
+        target,
       },
     });
   }
@@ -84,7 +90,11 @@ new Keybind({
   defaultKey: "F10",
   onPressed: () => void panel.show(),
 });
-onServerEvent(ADMIN.showEvent, () => void panel.show());
+onServerEvent(
+  ADMIN.showEvent,
+  { args: ([target]) => [toAdminShowTarget(target)] },
+  (target) => void panel.show(target),
+);
 
 // The NUI checks the delta's shape itself; here it is only passed on while the panel is open.
 onServerEvent(ADMIN.deltaEvent, { args: ([delta]) => [delta] }, (delta) => {

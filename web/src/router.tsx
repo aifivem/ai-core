@@ -55,6 +55,14 @@ const playersRoute = createRoute({
       : {},
   component: () => null,
 });
+/** The Bans section, `?q=` a search to start with. */
+const bansRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/bans",
+  validateSearch: (search: Record<string, unknown>): { q?: string } =>
+    typeof search.q === "string" ? { q: search.q } : {},
+  component: () => null,
+});
 const adminRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/$resource/$tab",
@@ -74,6 +82,7 @@ export const router = createRouter({
     setupRoute,
     externalRoute,
     playersRoute,
+    bansRoute,
     adminRoute,
   ]),
   history: createMemoryHistory({ initialEntries: [start] }),

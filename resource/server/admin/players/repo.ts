@@ -85,3 +85,24 @@ export async function softDelete(charId: number): Promise<boolean> {
   );
   return (changed ?? 0) > 0;
 }
+
+/** The account behind a character (deleted ones too: a ban may follow a deletion). */
+export async function accountOfCharacter(charId: number): Promise<{
+  fivem: string;
+  license: string | null;
+  discord: string | null;
+  name: string;
+} | null> {
+  const rows = await mysql.query<
+    Array<{
+      fivem: string;
+      license: string | null;
+      discord: string | null;
+      name: string;
+    }>
+  >(
+    "SELECT u.fivem, u.license, u.discord, u.name FROM ai_core_characters c JOIN ai_core_users u ON u.id = c.user_id WHERE c.id = ?",
+    [charId],
+  );
+  return rows?.[0] ?? null;
+}

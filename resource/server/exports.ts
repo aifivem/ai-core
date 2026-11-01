@@ -9,7 +9,15 @@ import { dutyCount } from "./jobs/dutyCount";
 import { sharedAccounts } from "./money/book";
 import { transferMoney } from "./money/transfer";
 import { players, selecting } from "./player/registry";
-import { banPlayer, getBans, isBanned, unbanPlayer } from "./bans";
+import {
+  banHistory,
+  banPlayer,
+  editBan,
+  findBans,
+  getBans,
+  isBanned,
+  unbanPlayer,
+} from "./bans";
 import { toCharId } from "./characters/edit";
 import { deleteCharacterBy, setCharacterInfo } from "./characters/manage";
 import { getCharactersOfUser, getOfflineCharacter } from "./characters/read";
@@ -288,6 +296,15 @@ registerExport("UnbanPlayer", (banId: unknown, by?: unknown) =>
 );
 registerExport("IsBanned", isBanned);
 registerExport("GetBans", (page?: unknown) => getBans(page));
+registerExport("GetBanHistory", (target: unknown, done: unknown) =>
+  answer("ban history", banHistory(target), done, []),
+);
+registerExport("ListBans", (query: unknown, done: unknown) =>
+  answer("ban list", findBans(query), done, null),
+);
+registerExport("EditBan", (banId: unknown, edit: unknown, by?: unknown) =>
+  editBan(banId, edit, by),
+);
 
 // Job and gang definitions of scripts (owned by the caller, gone when it stops): `jobs/runtime.ts`.
 registerExport("RegisterJobDefinition", (name: unknown, def: unknown) =>

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
+import { cn } from "../../lib/utils";
 
 interface DialogProps {
   open: boolean;
@@ -7,6 +8,8 @@ interface DialogProps {
   title: string;
   description?: string;
   children: ReactNode;
+  /** Overrides the panel's classes (a wider dialog: `w-[64vh]`). */
+  className?: string;
 }
 
 /** TGIANN modal (aicore-ui): 0.6 black scrim, solid panel, display-font title; Escape and the scrim close it. */
@@ -16,12 +19,18 @@ export function Dialog({
   title,
   description,
   children,
+  className,
 }: DialogProps) {
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-[90] animate-fade bg-black/60" />
-        <DialogPrimitive.Content className="fixed inset-0 z-[91] m-auto flex h-fit w-[46vh] animate-pop flex-col gap-[1.8vh] rounded-[1.6vh] bg-panel p-[2.4vh] [box-shadow:0_0_0_1px_rgba(255,255,255,0.1),inset_0_0.1vh_0_rgba(255,255,255,0.06),0_2.4vh_6.4vh_rgba(0,0,0,0.6)]">
+        <DialogPrimitive.Content
+          className={cn(
+            "fixed inset-0 z-[91] m-auto flex h-fit w-[46vh] animate-pop flex-col gap-[1.8vh] rounded-[1.6vh] bg-panel p-[2.4vh] [box-shadow:0_0_0_1px_rgba(255,255,255,0.1),inset_0_0.1vh_0_rgba(255,255,255,0.06),0_2.4vh_6.4vh_rgba(0,0,0,0.6)]",
+            className,
+          )}
+        >
           <div className="flex flex-col gap-[0.8vh]">
             <DialogPrimitive.Title className="font-display text-[1.8vh] leading-[1.15] font-extrabold tracking-[-0.01em] uppercase">
               {title}

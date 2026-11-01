@@ -5,6 +5,7 @@ import "./definitions";
 import "./keybinds";
 import "./keyHints";
 import "./admin";
+import "./adminBans";
 import "./adminPlayers";
 import "./zoneDraw";
 import "./cacheWatch";
