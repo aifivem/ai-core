@@ -28,7 +28,10 @@ g.setInterval = () => 1;
 g.clearInterval = () => undefined;
 g.GetCurrentResourceName = () => "ai-voice";
 // The lib's gate reads FiveM's `exports` and registers event handlers at import.
-g.exports = new Proxy({}, { get: () => new Proxy({}, { get: () => () => null }) });
+g.exports = new Proxy(
+  {},
+  { get: () => new Proxy({}, { get: () => () => null }) },
+);
 g.on = () => undefined;
 g.onNet = () => undefined;
 g.AddEventHandler = () => undefined;
@@ -38,9 +41,8 @@ g.AddStateBagChangeHandler = () => 0;
 g.setTick = () => 1;
 g.clearTick = () => undefined;
 
-const { EnhancedRouter } = await import(
-  "../../ai-voice/resource/server/enhanced"
-);
+const { EnhancedRouter } =
+  await import("../../ai-voice/resource/server/routing/enhanced");
 
 const total = () => Object.values(calls).reduce((a, b) => a + b, 0);
 const reset = () => {

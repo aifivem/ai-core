@@ -28,7 +28,15 @@ const duty = (s: number) => (s % 10 === 0 ? "police" : null);
 g.exports = {
   "ai-core": {
     GetLoadedSources: () => Array.from({ length: online }, (_, i) => i + 1),
-    GetCharacter: (s: number) => ({ id: s, citizenid: String(s), slot: 1, firstname: "A", lastname: "B", birthdate: "1990-01-01", sex: "male" }),
+    GetCharacter: (s: number) => ({
+      id: s,
+      citizenid: String(s),
+      slot: 1,
+      firstname: "A",
+      lastname: "B",
+      birthdate: "1990-01-01",
+      sex: "male",
+    }),
     GetJobs: (s: number) => [{ job: duty(s) ?? "unemployed", grade: 0 }],
     GetGangs: () => [],
     GetDutyJob: duty,
@@ -40,12 +48,15 @@ const common = await import(
 );
 // Only `online` and `registerExport` of the lib's server index: the index pulls modules that need more natives.
 const { online: onlineMirror } = await import(
-  join(import.meta.dir, "../../../../packages/lib/src/server/online.ts")
+  join(import.meta.dir, "../../../../packages/lib/src/server/online/online.ts")
 );
 plugin({
   name: "ai-policealert-common",
   setup(build) {
-    build.module("common/alerts", () => ({ exports: common, loader: "object" }));
+    build.module("common/alerts", () => ({
+      exports: common,
+      loader: "object",
+    }));
     build.module("@aicore-fivem/lib/server", () => ({
       exports: {
         online: onlineMirror,
@@ -58,9 +69,8 @@ plugin({
   },
 });
 
-const { AlertBoard } = await import(
-  "../../ai-policealert/resource/server/alerts"
-);
+const { AlertBoard } =
+  await import("../../ai-policealert/resource/server/alerts/board");
 const alert = (i: number) => ({
   code: "10-71",
   title: "Shots fired",
@@ -73,7 +83,13 @@ const alert = (i: number) => ({
 });
 
 for (const live of [100, 1_000, 5_000]) {
-  const board = new AlertBoard(() => ({ jobs: ["police"], alertSeconds: 600 }));
+  // The script's own reader fills every setting the board reads; the most alerts an officer may hold.
+  const settings = common.readSettings({
+    jobs: ["police"],
+    alertSeconds: 600,
+    maxAlerts: 100,
+  });
+  const board = new AlertBoard(() => settings);
   sent.length = 0;
   let t = performance.now();
   for (let i = 0; i < live; i++) board.add(alert(i));

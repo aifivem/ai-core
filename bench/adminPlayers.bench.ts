@@ -20,6 +20,11 @@ plugin({
 });
 
 const g = globalThis as Record<string, unknown>;
+// Natives the lib reads at import (`gate.ts` takes ai-core's exports, the state classes the side): no-ops here.
+g.GetCurrentResourceName = () => "ai-core";
+g.IsDuplicityVersion = () => true;
+g.on = g.onNet = () => undefined;
+g.exports = new Proxy(() => undefined, { get: () => ({}) });
 const sent: { target: number; bytes: number }[] = [];
 g.GetPlayerName = (s: string) => `Steam_Account_${s}`;
 g.emitNet = (_name: string, target: number, ...args: unknown[]) =>
