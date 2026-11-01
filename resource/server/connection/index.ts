@@ -56,7 +56,8 @@ class ConnectionGate {
   }
 }
 
-const gate = new ConnectionGate();
+/** ai-core's own checks are added by their modules (bans) after the two below. */
+export const gate = new ConnectionGate();
 gate.add("ai-core:fivem", "ai-core", (source) =>
   identify(source) ? null : Locale("CONNECT_NO_FIVEM"),
 );
