@@ -53,6 +53,20 @@ end
 ---@type table<integer, xPlayer>
 local xPlayers = {}
 
+--- ESX's player function overrides (`ESX.RegisterPlayerFunctionOverrides`): index -> { fnName = fun(xPlayer): function }.
+---@type table<string, table<string, fun(self: xPlayer): function>>
+local functionOverrides = {}
+
+---@param self table
+---@param funcs table<string, fun(self: xPlayer): function>
+local function applyOverrides(self, funcs)
+    for fnName, fn in pairs(funcs) do
+        local ok, result = pcall(fn, self)
+        if ok then self[fnName] = result
+        else print(('[^3WARNING^7] xPlayer override %s failed: %s'):format(fnName, result)) end
+    end
+end
+
 ---@param source integer
 ---@return xPlayer|nil
 local function build(source)
@@ -132,6 +146,7 @@ local function build(source)
     function self.get(key) return self.variables[key] end
     function self.getMeta(key) return mirror.metadata[key] end
     function self.setMeta(key, value) core:SetMeta(source, key, value) end
+    for _, funcs in pairs(functionOverrides) do applyOverrides(self, funcs) end
     xPlayers[source] = self --[[@as xPlayer]]
     return self --[[@as xPlayer]]
 end
@@ -247,6 +262,22 @@ function ESX.GetPlayerIdFromIdentifier(identifier) return Bridge.sourceByCitizen
 function ESX.DoesJobExist(job, grade)
     local definition = Bridge.jobDefinitions()[job]
     return definition ~= nil and definition.grades[(tonumber(grade) or 0) + 1] ~= nil
+end
+
+--- Replaces xPlayer functions (an inventory's item functions): each `overrides[fnName](xPlayer)` returns the new
+--- function. Applied to every xPlayer built from now on and to the loaded ones (a restarted script registers again).
+---@param index string
+---@param overrides table<string, fun(self: xPlayer): function>
+function ESX.RegisterPlayerFunctionOverrides(index, overrides)
+    if type(index) ~= 'string' or type(overrides) ~= 'table' then return end
+    functionOverrides[index] = overrides
+    for _, x in pairs(xPlayers) do applyOverrides(x, overrides) end
+end
+
+--- ESX picks one override set here; every registered set is applied already (as in current ESX).
+---@param index string
+function ESX.SetPlayerFunctionOverride(index)
+    if not index or not functionOverrides[index] then print('[^3WARNING^7] No valid index provided.') end
 end
 
 ---@param key? string
