@@ -2,7 +2,7 @@ import { registerExport } from "@aicore-fivem/lib/server";
 import { AdapterPicker } from "common/adapters";
 import { log } from "../log";
 import { players } from "../player/registry";
-import { refillMetadata, STRESS_SYSTEMS } from "./registry";
+import { addMetadataNeed, refillMetadata, STRESS_SYSTEMS } from "./registry";
 
 /** ai-core's stress layer: stress goes to whichever HUD keeps it (first running in registry order). */
 const layer = new AdapterPicker({
@@ -31,4 +31,22 @@ registerExport("RefillNeeds", (source: unknown) => {
     return false;
   if (!layer.active) return refillMetadata(source);
   return layer.call("refill", (a) => (a.refill(source), true), false);
+});
+registerExport("AddNeed", (source: unknown, need: unknown, amount: unknown) => {
+  if (
+    typeof source !== "number" ||
+    players.get(source) === undefined ||
+    (need !== "hunger" && need !== "thirst") ||
+    typeof amount !== "number" ||
+    !Number.isFinite(amount) ||
+    amount === 0 ||
+    Math.abs(amount) > 100
+  )
+    return false;
+  if (!layer.active) return addMetadataNeed(source, need, amount);
+  return layer.call(
+    "addNeed",
+    (a) => (a.addNeed(source, need, amount), true),
+    false,
+  );
 });

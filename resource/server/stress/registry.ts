@@ -10,7 +10,11 @@ export interface StressAdapter {
   add(source: number, amount: number): void;
   /** Hunger and thirst to full. */
   refill(source: number): void;
+  /** Adds hunger or thirst (0-100 scale; a negative amount takes it away). */
+  addNeed(source: number, need: Need, amount: number): void;
 }
+
+export type Need = "hunger" | "thirst";
 
 const hud = resourceExport("ai-hud");
 
@@ -27,6 +31,28 @@ export function refillMetadata(source: number): boolean {
   return true;
 }
 
+/** QB's way for one need: the metadata key (0-100), then `hud:client:UpdateNeeds` with both values. Also the fallback without a HUD. */
+export function addMetadataNeed(
+  source: number,
+  need: Need,
+  amount: number,
+): boolean {
+  const player = players.get(source);
+  if (!player) return false;
+  const value = (key: Need): number => {
+    const v = player.getMeta(key);
+    return typeof v === "number" && Number.isFinite(v) ? v : 100;
+  };
+  player.setMeta(need, Math.min(100, Math.max(0, value(need) + amount)));
+  TriggerClientEvent(
+    "hud:client:UpdateNeeds",
+    source,
+    value("hunger"),
+    value("thirst"),
+  );
+  return true;
+}
+
 /**
  * QB's stress API (`hud:server:GainStress` / `RelieveStress`) takes the player from the event's source, so the
  * player's own client sends it (ai-core's client relay, `client/stress.ts`).
@@ -37,6 +63,7 @@ const qbEvents = (resource: string, version?: string): StressAdapter => ({
   add: (source, amount) =>
     TriggerClientEvent(CORE.stressRelayEvent, source, amount),
   refill: (source) => void refillMetadata(source),
+  addNeed: (source, need, amount) => void addMetadataNeed(source, need, amount),
 });
 
 /**
@@ -57,5 +84,6 @@ export const STRESS_SYSTEMS: readonly StressAdapter[] = [
       hud.SetNeed(source, "hunger", 100);
       hud.SetNeed(source, "thirst", 100);
     },
+    addNeed: (source, need, amount) => hud.AddNeed(source, need, amount),
   },
 ];

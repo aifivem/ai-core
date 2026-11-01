@@ -4,4 +4,10 @@ return {
     ---@param src integer
     ---@return boolean
     refill = function(src) return exports['ai-core']:RefillNeeds(src) end,
+    ---Adds hunger or thirst (0-100 scale; a negative amount takes it away), a food or drink's value.
+    ---@param src integer
+    ---@param need 'hunger'|'thirst'
+    ---@param amount number
+    ---@return boolean
+    add = function(src, need, amount) return exports['ai-core']:AddNeed(src, need, amount) end,
 }

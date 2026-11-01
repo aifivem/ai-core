@@ -25756,11 +25756,21 @@ function refillMetadata(source) {
 	let player = players.get(source);
 	return player ? (player.setMeta("hunger", 100), player.setMeta("thirst", 100), TriggerClientEvent("hud:client:UpdateNeeds", source, 100, 100), !0) : !1;
 }
+function addMetadataNeed(source, need, amount) {
+	let player = players.get(source);
+	if (!player) return !1;
+	let value = (key) => {
+		let v = player.getMeta(key);
+		return typeof v == "number" && Number.isFinite(v) ? v : 100;
+	};
+	return player.setMeta(need, Math.min(100, Math.max(0, value(need) + amount))), TriggerClientEvent("hud:client:UpdateNeeds", source, value("hunger"), value("thirst")), !0;
+}
 const qbEvents = (resource, version) => ({
 	resource,
 	version,
 	add: (source, amount) => TriggerClientEvent(CORE.stressRelayEvent, source, amount),
-	refill: (source) => void refillMetadata(source)
+	refill: (source) => void refillMetadata(source),
+	addNeed: (source, need, amount) => void addMetadataNeed(source, need, amount)
 }), layer$1 = new AdapterPicker({
 	category: "stress",
 	adapters: [
@@ -25774,13 +25784,14 @@ const qbEvents = (resource, version) => ({
 			add: (source, amount) => hud.AddNeed(source, "stress", amount),
 			refill: (source) => {
 				hud.SetNeed(source, "hunger", 100), hud.SetNeed(source, "thirst", 100);
-			}
+			},
+			addNeed: (source, need, amount) => hud.AddNeed(source, need, amount)
 		}
 	],
 	log: log$3,
 	noneText: "no HUD with stress runs: stress changes are dropped"
 });
-registerExport("GetStressSystem", () => layer$1.active?.resource ?? null), registerExport("AddStress", (source, amount) => typeof source != "number" || !Number.isInteger(source) || source <= 0 || typeof amount != "number" || !Number.isFinite(amount) || amount === 0 || Math.abs(amount) > 100 ? !1 : layer$1.call("add", (a) => (a.add(source, amount), !0), !1)), registerExport("RefillNeeds", (source) => typeof source != "number" || players.get(source) === void 0 ? !1 : layer$1.active ? layer$1.call("refill", (a) => (a.refill(source), !0), !1) : refillMetadata(source));
+registerExport("GetStressSystem", () => layer$1.active?.resource ?? null), registerExport("AddStress", (source, amount) => typeof source != "number" || !Number.isInteger(source) || source <= 0 || typeof amount != "number" || !Number.isFinite(amount) || amount === 0 || Math.abs(amount) > 100 ? !1 : layer$1.call("add", (a) => (a.add(source, amount), !0), !1)), registerExport("RefillNeeds", (source) => typeof source != "number" || players.get(source) === void 0 ? !1 : layer$1.active ? layer$1.call("refill", (a) => (a.refill(source), !0), !1) : refillMetadata(source)), registerExport("AddNeed", (source, need, amount) => typeof source != "number" || players.get(source) === void 0 || need !== "hunger" && need !== "thirst" || typeof amount != "number" || !Number.isFinite(amount) || amount === 0 || Math.abs(amount) > 100 ? !1 : layer$1.active ? layer$1.call("addNeed", (a) => (a.addNeed(source, need, amount), !0), !1) : addMetadataNeed(source, need, amount));
 // resource/server/notify/index.ts
 const activeNotify = new GlobalKey(CORE.notifyStateKey, stateString), layer = new AdapterPicker({
 	category: "notifications",

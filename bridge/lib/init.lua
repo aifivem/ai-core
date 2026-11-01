@@ -130,7 +130,7 @@ end
 ---@field buckets table server: `acquire(tag)`, `release(id)` (ai-core's routing bucket allocator)
 ---@field bans table server: `ban` (waits), `unban`, `edit`, `isBanned`, `list`, `history` / `search` (wait)
 ---@field isPrimeTime fun(job?: string): boolean server
----@field needs table server: `refill(src)` (hunger and thirst to full)
+---@field needs table server: `refill(src)` (hunger and thirst to full), `add(src, need, amount)`
 ---@field appearance table client `apply(ped, look)`, `read(ped)`, `openMenu(menu)`, `wearOutfit(outfit)`, `reloadSkin()`; server `get(charId)` (waits), `provider()`: looks through ai-core's appearance layer
 ---@diagnostic disable-next-line: lowercase-global
 aiLib = setmetatable({ side = side, loadPart = loadModule }, {
