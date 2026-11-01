@@ -119,6 +119,18 @@ end
 ---@field mdt table client `open()`; server `record(record)`, `provider()`: police MDT through ai-core
 ---@field ems { available: (fun(jobs: string[]): integer), distress: (fun(src: integer, call: table): boolean), provider: (fun(): string?) } server: free medics and distress calls through ai-core
 ---@field world table client `pauseSync` / `resumeSync`; server time and weather
+---@field money table server `get`, `add`, `remove`, `set` (a loaded player's account), `sharedGet` / `sharedAdd` / `sharedRemove` (job / gang accounts), `transfer(from, to, amount, reason?, fee?)`, `history(account, query?)` (ledger rows, waits)
+---@field jobs table server: `current`, `list`, `duty`, `setDuty`, `set`, `remove`, `onDutyCount`, `gangs`, `activeGang`, `setActiveGang`, `setGang`, `removeGang` of a loaded player
+---@field characters table server: characters by id, loaded or not (`search(text, cursor?)`, `get`, `ofUser`, `jobMembers`, `gangMembers`, offline money / jobs / gangs / meta / info, `remove`, `playTime`, `save`, `setOfflinePosition`, `setPaycheck`, `isPaid`; most wait)
+---@field definitions table server: `job(name)` / `gang(name)` (cached, dropped on a change), `registerJob` / `removeJob`, `registerGang` / `removeGang`
+---@field fuel table server `get(vehicle)`, `set(vehicle, level)`, `provider()`; client `get(vehicle)` (the `fuel` bag)
+---@field medical table server `revive`, `heal`, `isDead`, `provider()`; client `isDead()`, `onChange(fn)`
+---@field doors table server: `setLocked(id, locked, by?)`, `isLocked(id)`, `provider()`
+---@field garages table server: `impound`, `store`, `open`, `stored(src)` (waits), `provider()`
+---@field buckets table server: `acquire(tag)`, `release(id)` (ai-core's routing bucket allocator)
+---@field bans table server: `ban` (waits), `unban`, `edit`, `isBanned`, `list`, `history` / `search` (wait)
+---@field isPrimeTime fun(job?: string): boolean server
+---@field needs table server: `refill(src)` (hunger and thirst to full)
 ---@field appearance table client `apply(ped, look)`, `read(ped)`, `openMenu(menu)`, `wearOutfit(outfit)`, `reloadSkin()`; server `get(charId)` (waits), `provider()`: looks through ai-core's appearance layer
 ---@diagnostic disable-next-line: lowercase-global
 aiLib = setmetatable({ side = side, loadPart = loadModule }, {
