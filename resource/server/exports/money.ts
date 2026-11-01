@@ -1,5 +1,7 @@
 import { registerExport } from "@aicore-fivem/lib/server";
+import { answer } from "../characters/answer";
 import { sharedAccounts } from "../money/book";
+import { accountHistory } from "../money/history";
 import { transferMoney } from "../money/transfer";
 import { positive, reasonOf } from "./args";
 
@@ -50,4 +52,12 @@ registerExport(
     reason?: unknown,
     fee?: unknown,
   ) => transferMoney(from, to, amount, reasonOf(reason), fee ?? 0),
+);
+registerExport(
+  "GetAccountHistory",
+  (account: unknown, done: unknown, query?: unknown) =>
+    answer("account history", accountHistory(account, query), done, {
+      rows: [],
+      next: null,
+    }),
 );

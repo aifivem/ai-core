@@ -3,6 +3,7 @@ import { toCharId } from "../characters/edit";
 import { deleteCharacterBy, setCharacterInfo } from "../characters/manage";
 import { getCharactersOfUser, getOfflineCharacter } from "../characters/read";
 import { answer } from "../characters/answer";
+import { searchCharacters } from "../characters/search";
 import {
   offlineGang,
   offlineJob,
@@ -25,6 +26,14 @@ registerExport("GetOfflineCharacter", (charId: unknown, done: unknown) => {
   const work = id === null ? Promise.resolve(null) : getOfflineCharacter(id);
   answer(`character #${id}`, work, done, null);
 });
+registerExport(
+  "SearchCharacters",
+  (text: unknown, done: unknown, cursor?: unknown) =>
+    answer("character search", searchCharacters(text, cursor), done, {
+      characters: [],
+      next: null,
+    }),
+);
 registerExport("GetCharactersOfUser", (user: unknown, done: unknown) =>
   answer("characters of an account", getCharactersOfUser(user), done, []),
 );

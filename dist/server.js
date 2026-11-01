@@ -48,7 +48,7 @@ function waitFor(check, timeoutMs = 1e4, intervalMs = 0) {
 function num(value, fallback, min = -Infinity, max = Infinity) {
 	return typeof value == "number" && Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
 }
-function int(value, fallback, min = -Infinity, max = Infinity) {
+function int$1(value, fallback, min = -Infinity, max = Infinity) {
 	return Math.round(num(value, fallback, min, max));
 }
 function bool$2(value, fallback) {
@@ -607,7 +607,7 @@ function entityCoords(entity) {
 		z
 	};
 }
-const coordsOf = (source) => entityCoords(GetPlayerPed(String(source))), core$28 = resourceExport(CORE.resource), log$10 = createLogger(GetCurrentResourceName()), isAdmin = (ace = ADMIN.ace) => (source) => !!IsPlayerAceAllowed(String(source), ace) || `not allowed (${ace})`, hasCharacter = () => (source) => core$28.GetCharacter(source) !== null || "no character loaded", gates = new Set();
+const coordsOf = (source) => entityCoords(GetPlayerPed(String(source))), core$29 = resourceExport(CORE.resource), log$10 = createLogger(GetCurrentResourceName()), isAdmin = (ace = ADMIN.ace) => (source) => !!IsPlayerAceAllowed(String(source), ace) || `not allowed (${ace})`, hasCharacter = () => (source) => core$29.GetCharacter(source) !== null || "no character loaded", gates = new Set();
 on("playerDropped", () => {
 	let source = Number(globalThis.source);
 	for (let gate of gates) gate.release(source);
@@ -715,7 +715,7 @@ function toPatch(value) {
 		default: return null;
 	}
 }
-const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$27 = resourceExport(CORE.resource), ERR = {
+const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$28 = resourceExport(CORE.resource), ERR = {
 	type: "ADMIN_ERR_TYPE",
 	range: "ADMIN_ERR_RANGE",
 	length: "ADMIN_ERR_LENGTH",
@@ -729,7 +729,7 @@ const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(va
 		if (cached && Date.now() - cached.at < 2e3) return cached.values.size > 0 ? cached.values : null;
 		let list = [];
 		try {
-			list = core$27.GetLookupValues(source);
+			list = core$28.GetLookupValues(source);
 		} catch {}
 		let values = new Set(Array.isArray(list) ? list.filter((v) => typeof v == "string") : []);
 		return this.lists.set(source, {
@@ -995,7 +995,7 @@ function writeSchema(resource, name, text, log) {
 	(0, node_fs_promises.mkdir)(dir, { recursive: !0 }).then(() => (0, node_fs_promises.writeFile)(`${dir}/${name}.schema.json`, text, "utf8")).catch((error) => log.error(`writing ${resource}/${path} failed`, error));
 }
 // ../../../packages/lib/src/server/admin/panelFiles.ts
-const core$26 = resourceExport(CORE.resource);
+const core$27 = resourceExport(CORE.resource);
 var PanelFiles = class {
 	schema;
 	data = new Map();
@@ -1039,7 +1039,7 @@ var PanelFiles = class {
 		let spec = this.schema.files[file], data = this.get(file), value = key === void 0 ? data : data[key] ?? null;
 		this.dataFiles.get(file)?.write(data), this.views.changed(file, key, value);
 		for (let handler of this.handlers.get(file) ?? []) handler(key, value);
-		if (core$26.AdminPanelChanged({
+		if (core$27.AdminPanelChanged({
 			resource: this.resource,
 			file,
 			key,
@@ -1061,7 +1061,7 @@ var PanelFiles = class {
 	}
 };
 // ../../../packages/lib/src/server/admin/panel.ts
-const core$25 = resourceExport(CORE.resource);
+const core$26 = resourceExport(CORE.resource);
 var AdminPanel = class extends PanelFiles {
 	rules = new Map();
 	actions = new Map();
@@ -1070,7 +1070,7 @@ var AdminPanel = class extends PanelFiles {
 		super(schema), registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelData", () => this.dataSnapshot()), registerExport("AdminPanelSummary", () => this.summary()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges), { rate: {
 			count: 4,
 			windowMs: 1e4
-		} }), setImmediate(() => core$25.RegisterAdminPanel(this.resource));
+		} }), setImmediate(() => core$26.RegisterAdminPanel(this.resource));
 	}
 	rule(file, rule) {
 		this.rules.set(file, rule);
@@ -1176,7 +1176,7 @@ function notify(source, text, kind = "info", duration, title) {
 }
 resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/online/mirror.ts
-const core$23 = resourceExport(CORE.resource);
+const core$24 = resourceExport(CORE.resource);
 function reindex(index, source, before, after) {
 	for (let name of before) {
 		let set = index.get(name);
@@ -1204,11 +1204,11 @@ var OnlineMirror = class {
 				gangs: [],
 				gangNames: [],
 				duty: null
-			}), this.setJobs(source, core$23.GetJobs(source) ?? []), this.setGangs(source, core$23.GetGangs(source) ?? []), this.setDuty(source, core$23.GetDutyJob(source));
+			}), this.setJobs(source, core$24.GetJobs(source) ?? []), this.setGangs(source, core$24.GetGangs(source) ?? []), this.setDuty(source, core$24.GetDutyJob(source));
 		};
 		on(CORE.playerLoadedEvent, load), on(CORE.playerUnloadedEvent, (source) => this.drop(source)), on(CORE.jobsChangedEvent, (source, jobs) => this.setJobs(source, jobs)), on(CORE.gangsChangedEvent, (source, gangs) => this.setGangs(source, gangs)), on(CORE.dutyChangedEvent, (source, job) => this.setDuty(source, job));
-		for (let source of core$23.GetLoadedSources()) {
-			let character = core$23.GetCharacter(source);
+		for (let source of core$24.GetLoadedSources()) {
+			let character = core$24.GetCharacter(source);
 			character && load(source, character);
 		}
 	}
@@ -1269,10 +1269,10 @@ var OnlineMirror = class {
 		return this.start(), this.players.get(source)?.gangs.find((m) => m.gang === gang)?.grade ?? null;
 	}
 	jobMembers(job) {
-		return this.start(), this.jobIndex.get(job) ?? EMPTY$1;
+		return this.start(), this.jobIndex.get(job) ?? EMPTY$3;
 	}
 	gangMembers(gang) {
-		return this.start(), this.gangIndex.get(gang) ?? EMPTY$1;
+		return this.start(), this.gangIndex.get(gang) ?? EMPTY$3;
 	}
 	dutyJob(source) {
 		return this.start(), this.players.get(source)?.duty ?? null;
@@ -1302,10 +1302,10 @@ var OnlineMirror = class {
 		return count;
 	}
 	onDutyFor(job) {
-		return this.start(), this.onDuty.get(job) ?? EMPTY$1;
+		return this.start(), this.onDuty.get(job) ?? EMPTY$3;
 	}
 };
-const EMPTY$1 = new Set();
+const EMPTY$3 = new Set();
 new OnlinePlayers(), resourceExport(CORE.resource), resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/netEntity.ts
 function entityFromNet(netId, type) {
@@ -1370,7 +1370,7 @@ on(CORE.playerUnloadedEvent, (source) => {
 	settle && settle(!1);
 });
 // ../../../packages/lib/src/server/definitions.ts
-const core$19 = resourceExport("ai-core");
+const core$20 = resourceExport("ai-core");
 new class {
 	jobs = new Map();
 	gangs = new Map();
@@ -1381,23 +1381,23 @@ new class {
 	}
 	job(name) {
 		let def = this.jobs.get(name);
-		return def === void 0 && this.jobs.set(name, def = core$19.GetJobDefinition(name) ?? null), def;
+		return def === void 0 && this.jobs.set(name, def = core$20.GetJobDefinition(name) ?? null), def;
 	}
 	registerJob(name, definition) {
-		return core$19.RegisterJobDefinition(name, definition);
+		return core$20.RegisterJobDefinition(name, definition);
 	}
 	removeJob(name) {
-		return core$19.RemoveJobDefinition(name);
+		return core$20.RemoveJobDefinition(name);
 	}
 	registerGang(name, definition) {
-		return core$19.RegisterGangDefinition(name, definition);
+		return core$20.RegisterGangDefinition(name, definition);
 	}
 	removeGang(name) {
-		return core$19.RemoveGangDefinition(name);
+		return core$20.RemoveGangDefinition(name);
 	}
 	gang(name) {
 		let def = this.gangs.get(name);
-		return def === void 0 && this.gangs.set(name, def = core$19.GetGangDefinition(name) ?? null), def;
+		return def === void 0 && this.gangs.set(name, def = core$20.GetGangDefinition(name) ?? null), def;
 	}
 }();
 const log$7 = createLogger(GetCurrentResourceName());
@@ -16203,7 +16203,7 @@ var PlayerState$1 = class extends Mirror {
 		GlobalState.set(this.prefix + id, value ?? null, !0), this.put(id, value);
 	}
 };
-resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource);
+resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/index.ts
 function isOnline(source) {
 	return !!GetPlayerName(String(source));
@@ -17659,7 +17659,7 @@ const PRIME_TIME_SYSTEM_NAMES = ["tgiann-policealert"], PRIME_SOURCES = [
 	offPrimeMultiplier: .5,
 	start: 18,
 	finish: 1
-}, hour = (value, fallback) => int(value, fallback, 0, 23);
+}, hour = (value, fallback) => int$1(value, fallback, 0, 23);
 function readPrimeTime(raw) {
 	let v = record(raw), source = typeof v.source == "string" && PRIME_SOURCES.includes(v.source) ? v.source : "auto";
 	return {
@@ -18202,8 +18202,8 @@ function readScene(raw) {
 		fov: num(s.fov, DEFAULT_SCENE.fov, 20, 90),
 		time: {
 			enabled: bool$2(time.enabled, DEFAULT_SCENE.time.enabled),
-			hour: int(time.hour, DEFAULT_SCENE.time.hour, 0, 23),
-			minute: int(time.minute, DEFAULT_SCENE.time.minute, 0, 59),
+			hour: int$1(time.hour, DEFAULT_SCENE.time.hour, 0, 23),
+			minute: int$1(time.minute, DEFAULT_SCENE.time.minute, 0, 59),
 			weather: isWeather(time.weather) ? time.weather : DEFAULT_SCENE.time.weather
 		},
 		spots: spots.length ? spots : DEFAULT_SCENE.spots
@@ -19273,27 +19273,27 @@ function readSettings(raw) {
 			background: brand.background === "wet-drive" ? "wet-drive" : "skyline"
 		},
 		characters: {
-			slots: int(chars.slots, 3, 1, 10),
+			slots: int$1(chars.slots, 3, 1, 10),
 			canDelete: bool$2(chars.canDelete, !0),
-			minAge: int(chars.minAge, 18, 0, 99)
+			minAge: int$1(chars.minAge, 18, 0, 99)
 		},
 		jobs: {
 			multiJob: bool$2(jobs.multiJob, !0),
-			maxJobs: int(jobs.maxJobs, 3, 1, 20),
+			maxJobs: int$1(jobs.maxJobs, 3, 1, 20),
 			unemployed: str(jobs.unemployed, "unemployed", 32),
 			restoreDuty: bool$2(jobs.restoreDuty, !1)
 		},
 		gangs: {
 			multiGang: bool$2(gangs.multiGang, !0),
-			maxGangs: int(gangs.maxGangs, 2, 1, 20)
+			maxGangs: int$1(gangs.maxGangs, 2, 1, 20)
 		},
 		paycheck: {
-			intervalMinutes: int(pay.intervalMinutes, 15, 0, 1440),
+			intervalMinutes: int$1(pay.intervalMinutes, 15, 0, 1440),
 			account: str(pay.account, "bank", 32),
 			fromJobAccount: bool$2(pay.fromJobAccount, !1)
 		},
 		primeTime: readPrimeTime(s.primeTime),
-		saveIntervalMinutes: int(s.saveIntervalMinutes, 5, 1, 60),
+		saveIntervalMinutes: int$1(s.saveIntervalMinutes, 5, 1, 60),
 		inventory: str(s.inventory, "auto", 32),
 		vehicleKeys: str(s.vehicleKeys, "auto", 32),
 		dispatch: str(s.dispatch, "auto", 32),
@@ -19339,9 +19339,9 @@ function readGrades(raw) {
 		let v = record(g);
 		return {
 			label: str(v.label, "Member"),
-			salary: int(v.salary, 0, 0),
+			salary: int$1(v.salary, 0, 0),
 			boss: bool$2(v.boss, !1),
-			offPrimePayment: int(v.offPrimePayment, 0, 0)
+			offPrimePayment: int$1(v.offPrimePayment, 0, 0)
 		};
 	});
 	return grades.length ? grades : [{
@@ -19353,7 +19353,7 @@ function readGrades(raw) {
 }
 const readAccount = (v) => ({
 	label: str(v.label, "Account"),
-	start: int(v.start, 0),
+	start: int$1(v.start, 0),
 	allowNegative: bool$2(v.allowNegative, !1)
 }), readJob = (v) => ({
 	label: str(v.label, "Job"),
@@ -24744,6 +24744,56 @@ const jobView = (def) => ({
 	grades: def.grades
 }), runtimeJobs = new RuntimeDefinitions("job", jobs, readJob, jobView, CORE.runtimeJobPrefix), runtimeGangs = new RuntimeDefinitions("gang", gangs, readGang, gangView, CORE.runtimeGangPrefix);
 registerExport("GetBranding", () => ({ ...settings.branding })), registerExport("GetJobDefinitions", () => Object.fromEntries(jobs)), registerExport("GetGangDefinitions", () => Object.fromEntries(gangs)), registerExport("GetJobDefinition", (job) => typeof job == "string" ? jobs.get(job) ?? null : null), registerExport("GetGangDefinition", (gang) => typeof gang == "string" ? gangs.get(gang) ?? null : null), registerExport("GetAccountTypes", () => Object.fromEntries(accountTypes)), registerExport("RegisterJobDefinition", (name, def) => runtimeJobs.register(name, def)), registerExport("RemoveJobDefinition", (name) => runtimeJobs.remove(name)), registerExport("RegisterGangDefinition", (name, def) => runtimeGangs.register(name, def)), registerExport("RemoveGangDefinition", (name) => runtimeGangs.remove(name));
+// resource/server/money/history.ts
+const EMPTY$2 = {
+	rows: [],
+	next: null
+}, OWNERS = new Set([
+	"character",
+	"job",
+	"gang"
+]);
+function readRef(ref) {
+	if (!isRecord(ref) || typeof ref.account != "string" || !ref.account) return null;
+	if (typeof ref.source == "number") {
+		let player = players.get(ref.source);
+		return player ? {
+			ownerType: "character",
+			ownerId: String(player.charId),
+			account: ref.account
+		} : null;
+	}
+	return typeof ref.owner == "string" && OWNERS.has(ref.owner) && typeof ref.id == "string" && ref.id ? {
+		ownerType: ref.owner,
+		ownerId: ref.id,
+		account: ref.account
+	} : null;
+}
+const int = (v, min, max) => typeof v == "number" && Number.isSafeInteger(v) && v >= min && v <= max ? v : null;
+async function accountHistory(ref, query) {
+	let account = readRef(ref);
+	if (!account) return EMPTY$2;
+	let q = isRecord(query) ? query : {}, limit = int(q.limit, 1, 200) ?? 50, before = int(q.before, 1, 2 ** 53 - 1), since = int(q.since, 0, 2 ** 53 - 1), accountId = await mysql.scalar("SELECT id FROM ai_core_accounts WHERE owner_type = ? AND owner_id = ? AND name = ?", [
+		account.ownerType,
+		account.ownerId,
+		account.account
+	]);
+	if (!accountId) return EMPTY$2;
+	let where = ["account_id = ?"], params = [accountId];
+	before !== null && (where.push("id < ?"), params.push(before)), since !== null && (where.push("created_at >= FROM_UNIXTIME(?)"), params.push(since));
+	let rows = await mysql.query(`SELECT id, amount, balance_after, reason, actor, UNIX_TIMESTAMP(created_at) AS at FROM ai_core_transactions WHERE ${where.join(" AND ")} ORDER BY created_at DESC, id DESC LIMIT ?`, [...params, limit + 1]), page = (rows ?? []).slice(0, limit).map((r) => ({
+		id: Number(r.id),
+		amount: Number(r.amount),
+		balance: Number(r.balance_after),
+		reason: r.reason,
+		actor: r.actor,
+		at: Number(r.at)
+	}));
+	return {
+		rows: page,
+		next: (rows ?? []).length > limit ? page.at(-1)?.id ?? null : null
+	};
+}
 // resource/server/money/transfer.ts
 function sideOf(ref) {
 	if (!isRecord(ref) || typeof ref.account != "string") return null;
@@ -24770,7 +24820,10 @@ function transferMoney(from, to, amount, reason, fee = 0) {
 	let a = sideOf(from), b = sideOf(to);
 	return !a || !b || a.key === b.key || !a.change(-(amount + fee), reason) ? !1 : b.change(amount, reason) ? !0 : (a.change(amount + fee, `${reason}:refund`), !1);
 }
-registerExport("GetSharedMoney", (ownerType, ownerId, account) => sharedAccounts.get(ownerType, ownerId, account)?.balance ?? null), registerExport("AddSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("RemoveSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(-amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("TransferMoney", (from, to, amount, reason, fee) => transferMoney(from, to, amount, reasonOf(reason), fee ?? 0));
+registerExport("GetSharedMoney", (ownerType, ownerId, account) => sharedAccounts.get(ownerType, ownerId, account)?.balance ?? null), registerExport("AddSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("RemoveSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(-amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("TransferMoney", (from, to, amount, reason, fee) => transferMoney(from, to, amount, reasonOf(reason), fee ?? 0)), registerExport("GetAccountHistory", (account, done, query) => answer$1("account history", accountHistory(account, query), done, {
+	rows: [],
+	next: null
+}));
 // resource/server/characters/read.ts
 function infoOf(row) {
 	return {
@@ -24844,6 +24897,31 @@ async function getCharactersOfUser(user) {
 		...infoOf(row),
 		lastPlayed: row.lastPlayed
 	}));
+}
+// resource/server/characters/search.ts
+const EMPTY$1 = {
+	characters: [],
+	next: null
+};
+async function searchCharacters(text, cursor) {
+	let query = typeof text == "string" ? parseSearch(text) : null;
+	if (!query) return EMPTY$1;
+	let { ids, more } = await searchIds(query, typeof cursor == "number" && Number.isSafeInteger(cursor) ? cursor : null);
+	if (ids.length === 0) return EMPTY$1;
+	let rows = await mysql.query(`SELECT id, citizenid, firstname, lastname FROM ai_core_characters WHERE id IN (${ids.map(() => "?").join(", ")})`, ids), byId = new Map((rows ?? []).map((row) => [row.id, row]));
+	return {
+		characters: ids.flatMap((id) => {
+			let row = byId.get(id);
+			return row ? [{
+				charId: row.id,
+				citizenid: row.citizenid,
+				firstname: row.firstname,
+				lastname: row.lastname,
+				source: players.byCharacter(row.id)?.source ?? null
+			}] : [];
+		}),
+		next: more ? ids.at(-1) ?? null : null
+	};
 }
 // resource/server/characters/writes.ts
 const INVALID = fail$1("CORE_ERR_ARGS"), NAME$1 = /^[A-Za-z0-9_-]{1,48}$/, META_KEY = /^[A-Za-z0-9_.:-]{1,64}$/, nameOf = (v) => typeof v == "string" && NAME$1.test(v) ? v : null, gradeOf = (v) => typeof v == "number" && Number.isInteger(v) && v >= 0 && v <= 255 ? v : null, ERROR = fail$1("ADMIN_PLAYERS_ERR_BUSY");
@@ -24999,7 +25077,10 @@ function savePlayer(source, done) {
 registerExport("GetOfflineCharacter", (charId, done) => {
 	let id = toCharId(charId), work = id === null ? Promise.resolve(null) : getOfflineCharacter(id);
 	answer$1(`character #${id}`, work, done, null);
-}), registerExport("GetCharactersOfUser", (user, done) => answer$1("characters of an account", getCharactersOfUser(user), done, [])), registerExport("GetJobMembers", (job, done, after, limit) => answer$1("job members", membersOf("job", job, after, limit), done, {
+}), registerExport("SearchCharacters", (text, done, cursor) => answer$1("character search", searchCharacters(text, cursor), done, {
+	characters: [],
+	next: null
+})), registerExport("GetCharactersOfUser", (user, done) => answer$1("characters of an account", getCharactersOfUser(user), done, [])), registerExport("GetJobMembers", (job, done, after, limit) => answer$1("job members", membersOf("job", job, after, limit), done, {
 	members: [],
 	next: null
 })), registerExport("GetGangMembers", (gang, done, after, limit) => answer$1("gang members", membersOf("gang", gang, after, limit), done, {
