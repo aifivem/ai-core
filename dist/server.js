@@ -121,7 +121,7 @@ function readVec4(value) {
 	};
 }
 // ../../../packages/lib/src/shared/action.ts
-const fail$1 = (error) => ({
+const fail$3 = (error) => ({
 	ok: !1,
 	error
 }), flatDistance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y), normalizePlate = (plate) => plate.trim().toUpperCase(), isPublic = (rule) => rule.jobs.length === 0 && rule.gangs.length === 0, isObject = (value) => typeof value == "object" && !!value && !Array.isArray(value);
@@ -307,6 +307,9 @@ const CORE = {
 	activeGangChangedEvent: "ai-core:activeGangChanged",
 	metaChangedEvent: "ai-core:metaChanged",
 	definitionsChangedEvent: "ai-core:definitionsChanged",
+	characterDeletedEvent: "ai-core:characterDeleted",
+	runtimeJobPrefix: "ai:jobdef:",
+	runtimeGangPrefix: "ai:gangdef:",
 	characterScreenEvent: "ai-core:characterScreen",
 	inventoryChangedEvent: "ai-core:inventoryChanged",
 	itemUsedEvent: "ai-core:itemUsed",
@@ -337,12 +340,16 @@ const CORE = {
 	spawnEvent: "ai-core:client:spawn",
 	chooseSpawnEvent: "ai-core:client:chooseSpawn",
 	spawnChoiceCallback: "ai-core:spawnChoice",
-	openCharactersEvent: "ai-core:client:openCharacters"
-}, NAME$1 = /^[A-Za-zÀ-ɏ][A-Za-zÀ-ɏ' -]{1,19}$/, DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+	openCharactersEvent: "ai-core:client:openCharacters",
+	characterScreenKey: "ai:characterScreen",
+	externalLoadedEvent: "ai-core:client:externalLoaded",
+	externalSpawnedEvent: "ai-core:externalSpawned",
+	externalLogoutEvent: "ai-core:client:externalLogout"
+}, NAME$3 = /^[A-Za-zÀ-ɏ][A-Za-zÀ-ɏ' -]{1,19}$/, DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 function toName(value) {
 	if (typeof value != "string") return null;
 	let name = value.trim().replace(/\s+/g, " ");
-	return NAME$1.test(name) ? name : null;
+	return NAME$3.test(name) ? name : null;
 }
 function toBirthdate(value, minAge = 18, now = new Date()) {
 	if (typeof value != "string") return null;
@@ -378,8 +385,8 @@ function toCreateCharacter(value) {
 		nationality
 	} : { error: "CHAR_ERR_NATIONALITY" } : { error: "CHAR_ERR_SEX" } : { error: "CHAR_ERR_BIRTHDATE" } : { error: "CHAR_ERR_LASTNAME" } : { error: "CHAR_ERR_FIRSTNAME" };
 }
-// ../../../packages/shared/src/vehicleKeys.ts
-const KEY_PURPOSES = [
+// ../../../packages/shared/src/inventory.ts
+const ITEM_DEFINITIONS_CHANGED_EVENT = "ai-core:itemDefinitionsChanged", KEY_PURPOSES = [
 	"purchase",
 	"garage",
 	"job",
@@ -528,7 +535,12 @@ const LIB_UI = {
 	minigameForCallback: "ai-lib:minigameFor",
 	zoneEvent: "ai-lib:client:zone",
 	modelPointEvent: "ai-lib:client:modelPoint"
-}, VRP = { configEvent: "ai-core:vrp:config" }, named = new Set();
+}, VRP = { configEvent: "ai-core:vrp:config" }, BAN_IDENTIFIERS = [
+	"fivem",
+	"license",
+	"discord",
+	"ip"
+], named = new Set();
 function registerExport(name, handler) {
 	named.add(name), globalThis.exports(name, handler);
 	let first = name.charAt(0), twin = (first === first.toUpperCase() ? first.toLowerCase() : first.toUpperCase()) + name.slice(1);
@@ -580,7 +592,7 @@ function entityCoords(entity) {
 		z
 	};
 }
-const coordsOf = (source) => entityCoords(GetPlayerPed(String(source))), core$26 = resourceExport(CORE.resource), log$10 = createLogger(GetCurrentResourceName()), isAdmin = (ace = ADMIN.ace) => (source) => !!IsPlayerAceAllowed(String(source), ace) || `not allowed (${ace})`, hasCharacter = () => (source) => core$26.GetCharacter(source) !== null || "no character loaded", gates = new Set();
+const coordsOf = (source) => entityCoords(GetPlayerPed(String(source))), core$27 = resourceExport(CORE.resource), log$10 = createLogger(GetCurrentResourceName()), isAdmin = (ace = ADMIN.ace) => (source) => !!IsPlayerAceAllowed(String(source), ace) || `not allowed (${ace})`, hasCharacter = () => (source) => core$27.GetCharacter(source) !== null || "no character loaded", gates = new Set();
 on("playerDropped", () => {
 	let source = Number(globalThis.source);
 	for (let gate of gates) gate.release(source);
@@ -688,7 +700,7 @@ function toPatch(value) {
 		default: return null;
 	}
 }
-const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$25 = resourceExport(CORE.resource), ERR = {
+const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(value)), core$26 = resourceExport(CORE.resource), ERR = {
 	type: "ADMIN_ERR_TYPE",
 	range: "ADMIN_ERR_RANGE",
 	length: "ADMIN_ERR_LENGTH",
@@ -702,7 +714,7 @@ const clone = (value) => value === void 0 ? value : JSON.parse(JSON.stringify(va
 		if (cached && Date.now() - cached.at < 2e3) return cached.values.size > 0 ? cached.values : null;
 		let list = [];
 		try {
-			list = core$25.GetLookupValues(source);
+			list = core$26.GetLookupValues(source);
 		} catch {}
 		let values = new Set(Array.isArray(list) ? list.filter((v) => typeof v == "string") : []);
 		return this.lists.set(source, {
@@ -967,7 +979,7 @@ function writeSchema(resource, name, text, log) {
 	(0, node_fs_promises.mkdir)(dir, { recursive: !0 }).then(() => (0, node_fs_promises.writeFile)(`${dir}/${name}.schema.json`, text, "utf8")).catch((error) => log.error(`writing ${resource}/${path} failed`, error));
 }
 // ../../../packages/lib/src/server/admin/panel.ts
-const core$24 = resourceExport(CORE.resource);
+const core$25 = resourceExport(CORE.resource);
 var AdminPanel = class {
 	schema;
 	data = new Map();
@@ -986,7 +998,7 @@ var AdminPanel = class {
 		registerExport("AdminPanelSnapshot", () => this.snapshot()), registerExport("AdminPanelData", () => this.dataSnapshot()), registerExport("AdminPanelSummary", () => this.summary()), registerExport("AdminPanelApply", (admin, patch) => this.apply(admin, patch)), onClientCallback(ADMIN.worldChangesCallback(this.resource), () => Object.fromEntries(this.worldChanges), { rate: {
 			count: 4,
 			windowMs: 1e4
-		} }), setImmediate(() => core$24.RegisterAdminPanel(this.resource));
+		} }), setImmediate(() => core$25.RegisterAdminPanel(this.resource));
 	}
 	get(file) {
 		return this.data.get(file) ?? {};
@@ -1100,7 +1112,7 @@ var AdminPanel = class {
 		let spec = this.schema.files[file], data = this.get(file), value = key === void 0 ? data : data[key] ?? null;
 		this.dataFiles.get(file)?.write(data), this.views.changed(file, key, value);
 		for (let handler of this.handlers.get(file) ?? []) handler(key, value);
-		if (core$24.AdminPanelChanged({
+		if (core$25.AdminPanelChanged({
 			resource: this.resource,
 			file,
 			key,
@@ -1131,17 +1143,18 @@ function labelOf(record, path) {
 	return typeof at == "string" && at !== "" ? at : null;
 }
 // ../../../packages/lib/src/server/notify.ts
-function notify(source, text, kind = "info", duration) {
+function notify(source, text, kind = "info", duration, title) {
 	let notification = {
 		text,
 		kind,
-		duration
+		duration,
+		title
 	};
 	emitNet(LIB_UI.notifyEvent, source, notification);
 }
 resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/online.ts
-const core$22 = resourceExport(CORE.resource);
+const core$23 = resourceExport(CORE.resource);
 function reindex(index, source, before, after) {
 	for (let name of before) {
 		let set = index.get(name);
@@ -1169,11 +1182,11 @@ var OnlinePlayers = class {
 				gangs: [],
 				gangNames: [],
 				duty: null
-			}), this.setJobs(source, core$22.GetJobs(source) ?? []), this.setGangs(source, core$22.GetGangs(source) ?? []), this.setDuty(source, core$22.GetDutyJob(source));
+			}), this.setJobs(source, core$23.GetJobs(source) ?? []), this.setGangs(source, core$23.GetGangs(source) ?? []), this.setDuty(source, core$23.GetDutyJob(source));
 		};
 		on(CORE.playerLoadedEvent, load), on(CORE.playerUnloadedEvent, (source) => this.drop(source)), on(CORE.jobsChangedEvent, (source, jobs) => this.setJobs(source, jobs)), on(CORE.gangsChangedEvent, (source, gangs) => this.setGangs(source, gangs)), on(CORE.dutyChangedEvent, (source, job) => this.setDuty(source, job));
-		for (let source of core$22.GetLoadedSources()) {
-			let character = core$22.GetCharacter(source);
+		for (let source of core$23.GetLoadedSources()) {
+			let character = core$23.GetCharacter(source);
 			character && load(source, character);
 		}
 	}
@@ -1333,7 +1346,7 @@ on(CORE.playerUnloadedEvent, (source) => {
 	settle && settle(!1);
 });
 // ../../../packages/lib/src/server/definitions.ts
-const core$18 = resourceExport("ai-core");
+const core$19 = resourceExport("ai-core");
 new class {
 	jobs = new Map();
 	gangs = new Map();
@@ -1344,11 +1357,23 @@ new class {
 	}
 	job(name) {
 		let def = this.jobs.get(name);
-		return def === void 0 && this.jobs.set(name, def = core$18.GetJobDefinition(name) ?? null), def;
+		return def === void 0 && this.jobs.set(name, def = core$19.GetJobDefinition(name) ?? null), def;
+	}
+	registerJob(name, definition) {
+		return core$19.RegisterJobDefinition(name, definition);
+	}
+	removeJob(name) {
+		return core$19.RemoveJobDefinition(name);
+	}
+	registerGang(name, definition) {
+		return core$19.RegisterGangDefinition(name, definition);
+	}
+	removeGang(name) {
+		return core$19.RemoveGangDefinition(name);
 	}
 	gang(name) {
 		let def = this.gangs.get(name);
-		return def === void 0 && this.gangs.set(name, def = core$18.GetGangDefinition(name) ?? null), def;
+		return def === void 0 && this.gangs.set(name, def = core$19.GetGangDefinition(name) ?? null), def;
 	}
 }();
 // ../../../packages/lib/src/server/command.ts
@@ -16147,7 +16172,7 @@ var GlobalGroup$1 = class extends Mirror {
 		GlobalState.set(this.prefix + id, value ?? null, !0), this.put(id, value);
 	}
 };
-resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource);
+resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource), resourceExport(CORE.resource);
 // ../../../packages/lib/src/server/index.ts
 function isOnline(source) {
 	return !!GetPlayerName(String(source));
@@ -17362,6 +17387,102 @@ const hourField = (path, label) => ({
 			}]
 		}
 	]
+}, MULTICHARS = [
+	{
+		resource: "tgiann-multichar",
+		version: "2.0.1"
+	},
+	{
+		resource: "qb-multicharacter",
+		version: "1.5.0"
+	},
+	{
+		resource: "esx_multicharacter",
+		version: "1.16.3"
+	},
+	{ resource: "0r-multicharacterv3" },
+	{ resource: "0r-multicharacterv2" },
+	{ resource: "0r-multicharacter" },
+	{ resource: "um-multicharacter" }
+], CHARACTER_SCREEN_SECTIONS = {
+	characterScreen: {
+		type: "enum",
+		values: [
+			"auto",
+			"ai-core",
+			...MULTICHARS.map((m) => m.resource)
+		]
+	},
+	frameworkTables: {
+		type: "enum",
+		values: [
+			"auto",
+			"on",
+			"off"
+		]
+	},
+	characterScreenActive: {
+		type: "text",
+		min: 0,
+		max: 64,
+		optional: !0
+	}
+}, CHARACTER_SCREEN_DEFAULTS = {
+	characterScreen: "auto",
+	frameworkTables: "auto"
+}, characterScreenCard = {
+	icon: "id-card",
+	title: "ADMIN_C_CHARACTER_SCREEN",
+	desc: "ADMIN_C_CHARACTER_SCREEN_DESC",
+	fields: [
+		{
+			widget: "select",
+			path: "characterScreen",
+			label: "ADMIN_F_CHARACTER_SCREEN",
+			hint: "ADMIN_H_CHARACTER_SCREEN",
+			options: [
+				{
+					value: "auto",
+					label: "ADMIN_O_CHARACTER_SCREEN_AUTO"
+				},
+				{
+					value: "ai-core",
+					label: "ADMIN_O_CHARACTER_SCREEN_CORE"
+				},
+				...MULTICHARS.map(({ resource }) => ({
+					value: resource,
+					label: resource
+				}))
+			]
+		},
+		{
+			widget: "info",
+			path: "characterScreenActive",
+			label: "ADMIN_F_CHARACTER_SCREEN_ACTIVE",
+			hint: "ADMIN_H_CHARACTER_SCREEN_ACTIVE",
+			values: { "ai-core": "ADMIN_O_CHARACTER_SCREEN_CORE" }
+		},
+		{
+			widget: "select",
+			path: "frameworkTables",
+			label: "ADMIN_F_FRAMEWORK_TABLES",
+			hint: "ADMIN_H_FRAMEWORK_TABLES",
+			options: [
+				{
+					value: "auto",
+					label: "ADMIN_O_FRAMEWORK_TABLES_AUTO"
+				},
+				{
+					value: "on",
+					label: "ADMIN_O_FRAMEWORK_TABLES_ON"
+				},
+				{
+					value: "off",
+					label: "ADMIN_O_FRAMEWORK_TABLES_OFF"
+				}
+			]
+		}
+	]
 }, ID$1 = "^[a-z0-9_]{2,32}$", text$13 = (max, min = 1) => ({
 	type: "text",
 	min,
@@ -17584,10 +17705,12 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 							}
 						}
 					},
-					characterScene: sceneSection
+					characterScene: sceneSection,
+					...CHARACTER_SCREEN_SECTIONS
 				},
 				defaults: {
 					characterScene: DEFAULT_SCENE,
+					...CHARACTER_SCREEN_DEFAULTS,
 					primeTime: DEFAULT_PRIME_TIME,
 					inventory: "auto",
 					vehicleKeys: "auto",
@@ -17850,6 +17973,7 @@ function coreSchema(accounts, inventories = [], keySystems = [], alertSystems = 
 							}
 						]
 					},
+					characterScreenCard,
 					{
 						icon: "floppy-disk",
 						title: "ADMIN_C_SAVING",
@@ -18603,13 +18727,15 @@ const RESOURCE$28 = "ai-inventory", inv$1 = resourceExport(RESOURCE$28), imageOf
 			maxWeight: w.maxWeight
 		} : null;
 	},
+	setMetadata: (ref, slot, metadata) => inv$1.SetMetadata(ref, slot, metadata) === !0,
+	setMaxWeight: (source, grams) => inv$1.SetMaxWeight(source, grams) === !0,
 	registerUsableItem: (name, handler) => inv$1.RegisterUsableItem(name, handler),
 	registerShop: (shop) => inv$1.RegisterShop(shop.name, shop.label, shop.items),
 	openShop: (source, name) => inv$1.OpenShop(source, name) === !0
 };
 on("ai-inventory:usedItem", (source, name, _slot, _metadata, status) => {
 	emit(CORE.itemUsedEvent, source, name, isRecord(status) ? status : null);
-});
+}), on("ai-inventory:itemsChanged", () => emit(ITEM_DEFINITIONS_CHANGED_EVENT));
 // resource/server/inventory/adapters/codem-inventory.ts
 const RESOURCE$27 = "codem-inventory", call$7 = (name, ...args) => callExport(RESOURCE$27, name, ...args), codemImage = (name, image) => `nui://${RESOURCE$27}/html/itemimages/${image || `${name}.png`}`, stacksOf$4 = (ref) => rows$1(typeof ref == "number" ? call$7("GetInventory", players.get(ref)?.citizenid, ref) : call$7("GetStashItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []), codemInventory = {
 	resource: RESOURCE$27,
@@ -18626,7 +18752,9 @@ const RESOURCE$27 = "codem-inventory", call$7 = (name, ...args) => callExport(RE
 		let list = call$7("GetItemList");
 		return isRecord(list) ? definition(list[name], name, codemImage) : null;
 	},
-	getItemDefinitions: () => definitions(call$7("GetItemList"), codemImage)
+	getItemDefinitions: () => definitions(call$7("GetItemList"), codemImage),
+	setMetadata: (ref, slot, metadata) => typeof ref == "number" && (call$7("SetItemMetadata", ref, slot, metadata), !0),
+	setMaxWeight: () => !1
 }, RESOURCE$26 = "core_inventory", call$6 = (name, ...args) => callExport(RESOURCE$26, name, ...args), inv = (ref) => typeof ref == "number" ? ref : `stash-${ref}`, labels = new Map();
 function stacksOf$3(ref) {
 	let data = call$6("getInventory", inv(ref)), content = isRecord(data) ? data.content : void 0;
@@ -18650,7 +18778,9 @@ const coreInventory = {
 		let list = call$6("getItemsList");
 		return isRecord(list) ? definition(list[name], name) : null;
 	},
-	getItemDefinitions: () => definitions(call$6("getItemsList"))
+	getItemDefinitions: () => definitions(call$6("getItemsList")),
+	setMetadata: (ref, slot, metadata) => (call$6("setMetadata", inv(ref), slot, metadata), !0),
+	setMaxWeight: () => !1
 }, RESOURCE$25 = "jaksam_inventory", call$5 = (name, ...args) => callExport(RESOURCE$25, name, ...args), item$1 = (raw, name) => isRecord(raw) ? definition({
 	...raw,
 	stack: raw.stackable !== !1
@@ -18681,7 +18811,9 @@ const coreInventory = {
 			def && (out[name] = def);
 		}
 		return out;
-	}
+	},
+	setMetadata: () => !1,
+	setMaxWeight: () => !1
 }, RESOURCE$24 = "origen_inventory", call$4 = (name, ...args) => callExport(RESOURCE$24, name, ...args), stacksOf$2 = (ref) => rows$1(call$4("getInventoryItems", ref)).flatMap((row) => stack(row, (name) => name) ?? []), origenInventory = {
 	resource: RESOURCE$24,
 	version: "",
@@ -18696,7 +18828,9 @@ const coreInventory = {
 	registerStash: (stash) => void call$4("RegisterStash", stash.name, stash.label, stash.slots, stash.maxWeight),
 	openInventory: () => !1,
 	getItemDefinition: (name) => definition(call$4("Items", name), name),
-	getItemDefinitions: () => definitions(call$4("Items"))
+	getItemDefinitions: () => definitions(call$4("Items")),
+	setMetadata: (ref, slot, metadata) => typeof ref == "number" && (call$4("setMetadata", ref, slot, metadata), !0),
+	setMaxWeight: () => !1
 }, oxImage = (name, image) => `nui://ox_inventory/web/images/${image || `${name}.png`}`, RESOURCE$23 = "ox_inventory", call$3 = (name, ...args) => callExport(RESOURCE$23, name, ...args), oxInventory = {
 	resource: RESOURCE$23,
 	version: "2.48.1",
@@ -18717,6 +18851,8 @@ const coreInventory = {
 			maxWeight: inv.maxWeight
 		} : null;
 	},
+	setMetadata: (ref, slot, metadata) => first$1(call$3("GetSlot", ref, slot)) != null && (call$3("SetMetadata", ref, slot, metadata), !0),
+	setMaxWeight: (source, grams) => isRecord(first$1(call$3("GetInventory", source))) ? (call$3("SetMaxWeight", source, grams), !0) : !1,
 	registerShop: (shop) => void call$3("RegisterShop", shop.name, {
 		name: shop.label,
 		inventory: shop.items.map((p) => ({
@@ -18750,7 +18886,13 @@ const stacksOf$1 = (ref) => rows$1(itemsOf$1(ref)).flatMap((row) => stack(row, (
 	}),
 	openInventory: (source, ref) => (call$2(typeof ref == "number" ? "OpenInventoryById" : "OpenInventory", source, ref), !0),
 	getItemDefinition: () => null,
-	getItemDefinitions: () => ({})
+	getItemDefinitions: () => ({}),
+	setMetadata: (ref, slot, metadata) => {
+		if (typeof ref != "number") return !1;
+		let item = first$1(call$2("GetItemBySlot", ref, slot));
+		return isRecord(item) && typeof item.name == "string" && isTrue(call$2("SetItemData", ref, item.name, "info", metadata, slot));
+	},
+	setMaxWeight: () => !1
 }, RESOURCE$21 = "qs-inventory", call$1 = (name, ...args) => callExport(RESOURCE$21, name, ...args), qsImage = (name, image) => `nui://${RESOURCE$21}/html/images/${image || `${name}.png`}`, stashes = new Map(), stashId = (name) => `Stash_${name}`, notRefused = (value) => first$1(value) !== !1, stacksOf = (ref) => rows$1(typeof ref == "number" ? call$1("GetInventory", ref) : call$1("GetStashItems", stashId(ref))).flatMap((row) => stack(row, (name) => name) ?? []), qsInventory = {
 	resource: RESOURCE$21,
 	version: "",
@@ -18774,7 +18916,9 @@ const stacksOf$1 = (ref) => rows$1(itemsOf$1(ref)).flatMap((row) => stack(row, (
 		let list = call$1("GetItemList");
 		return isRecord(list) ? definition(list[name], name, qsImage) : null;
 	},
-	getItemDefinitions: () => definitions(call$1("GetItemList"), qsImage)
+	getItemDefinitions: () => definitions(call$1("GetItemList"), qsImage),
+	setMetadata: (ref, slot, metadata) => typeof ref == "number" && (call$1("SetItemMetadata", ref, slot, metadata), !0),
+	setMaxWeight: () => !1
 }, RESOURCE$20 = "tgiann-inventory", call = (name, ...args) => callExport(RESOURCE$20, name, ...args);
 function item(name) {
 	try {
@@ -18811,6 +18955,8 @@ const itemsOf = (ref) => call(typeof ref == "number" ? "GetPlayerItems" : "GetIn
 				maxWeight: data.maxWeight
 			};
 		},
+		setMetadata: (ref, slot, metadata) => typeof ref == "number" && !isRecord(first$1(call("GetItemBySlot", ref, slot))) ? !1 : (call("SetMetadata", ref, slot, metadata), !0),
+		setMaxWeight: (source, grams) => (call("SetMaxWeight", source, grams), !0),
 		registerShop: (shop) => void call("RegisterShop", shop.name, shop.items.map((p) => ({
 			name: p.name,
 			price: p.price,
@@ -19636,7 +19782,9 @@ function readSettings(raw) {
 				}] : [];
 			}) : []
 		},
-		characterScene: readScene(s.characterScene)
+		characterScene: readScene(s.characterScene),
+		characterScreen: str(s.characterScreen, "auto", 64),
+		frameworkTables: s.frameworkTables === "on" || s.frameworkTables === "off" ? s.frameworkTables : "auto"
 	};
 }
 function readGrades(raw) {
@@ -19863,7 +20011,7 @@ registerExport("RegisterExternalPanel", (spec) => {
 	found && externalPanels.declare(found);
 });
 // resource/server/admin/keybinds.ts
-const FILE = "keybinds", NAME = /^[\w.-]{1,64}$/, KEYBOARD = new Set([
+const FILE = "keybinds", NAME$2 = /^[\w.-]{1,64}$/, KEYBOARD = new Set([
 	..."ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
 	...Array.from({ length: 24 }, (_, i) => `F${i + 1}`),
 	...Array.from({ length: 10 }, (_, i) => `NUMPAD${i}`),
@@ -19930,7 +20078,7 @@ const FILE = "keybinds", NAME = /^[\w.-]{1,64}$/, KEYBOARD = new Set([
 function readKeybind(value) {
 	if (!isRecord(value)) return null;
 	let resource = text$9(value.resource, 64), name = text$9(value.name, 64), description = text$9(value.description, 120), defaultKey = text$9(value.defaultKey, 32), mapper = text$9(value.mapper, 32), hint = value.hint === "foot" || value.hint === "vehicle" || value.hint === "always" ? value.hint : void 0;
-	return !resource || !name || !NAME.test(name) || description === null || defaultKey === null || !mapper ? null : {
+	return !resource || !name || !NAME$2.test(name) || description === null || defaultKey === null || !mapper ? null : {
 		resource,
 		name,
 		description,
@@ -19963,6 +20111,29 @@ panel.rule(FILE, (_key, next) => {
 	let key = typeof next.key == "string" ? next.key.toUpperCase() : "";
 	return key === "" ? null : next.mapper === "keyboard" ? KEYBOARD.has(key) ? null : "ADMIN_ERR_KEY" : next.mapper === "MOUSE_BUTTON" ? MOUSE.has(key) ? null : "ADMIN_ERR_KEY" : null;
 });
+// resource/server/inventory/clientDefinitions.ts
+var ClientItemDefinitions = class {
+	read;
+	snapshot = {};
+	sent = new Map();
+	constructor(read) {
+		this.read = read, onClientCallback("ai-core:itemDefinitions", () => this.snapshot, { rate: {
+			count: 2,
+			windowMs: 1e4
+		} });
+	}
+	refresh() {
+		let next = this.read();
+		if (!next) return;
+		let changes = {}, changed = !1, names = new Set(Object.keys(next));
+		for (let name of names) {
+			let def = next[name], json = JSON.stringify(def);
+			this.sent.get(name) !== json && (this.sent.set(name, json), changes[name] = def, changed = !0);
+		}
+		for (let name of this.sent.keys()) names.has(name) || (this.sent.delete(name), changes[name] = null, changed = !0);
+		this.snapshot = next, changed && emitNet("ai-core:client:itemDefinitions", -1, changes);
+	}
+};
 // resource/common/adapters.ts
 function provides(resource) {
 	return Array.from({ length: GetNumResourceMetadata(resource, "provide") }, (_, i) => GetResourceMetadata(resource, "provide", i));
@@ -20090,6 +20261,9 @@ var InventoryLayer = class {
 	isUsable(name) {
 		return this.usable.has(name);
 	}
+	usableNames() {
+		return [...this.usable.keys()];
+	}
 	useItem(source, name, item) {
 		let handler = this.usable.get(name);
 		if (!handler) return !1;
@@ -20109,10 +20283,10 @@ var InventoryLayer = class {
 	}
 };
 // resource/server/inventory/index.ts
-const activeInventory = new GlobalKey("ai:inventory", stateString), inventory = new InventoryLayer(INVENTORIES, settings.inventory, log$3, (resource) => {
-	activeInventory.set(resource ?? void 0), emit(CORE.inventoryChangedEvent, resource);
+const activeInventory = new GlobalKey("ai:inventory", stateString), clientDefinitions = new ClientItemDefinitions(() => inventory.call("GetItemDefinitions", (a) => a.getItemDefinitions(), null)), inventory = new InventoryLayer(INVENTORIES, settings.inventory, log$3, (resource) => {
+	activeInventory.set(resource ?? void 0), emit(CORE.inventoryChangedEvent, resource), resource && queueMicrotask(() => clientDefinitions.refresh());
 });
-panel.onChange("settings", () => inventory.setChoice(settings.inventory));
+panel.onChange("settings", () => inventory.setChoice(settings.inventory)), on(ITEM_DEFINITIONS_CHANGED_EVENT, () => clientDefinitions.refresh());
 const ref = (v) => typeof v == "number" || typeof v == "string" && v !== "" ? v : null, name = (v) => typeof v == "string" && v !== "" ? v : null, amount = (v) => v == null ? 1 : typeof v == "number" && Number.isFinite(v) && v >= 1 ? Math.floor(v) : null, meta = (v) => isRecord(v) ? v : void 0, slot = (v) => typeof v == "number" && Number.isInteger(v) && v > 0 ? v : void 0;
 registerExport("AddItem", (inv, item, count, metadata, at) => {
 	let [r, i, n] = [
@@ -20194,7 +20368,14 @@ registerExport("RegisterShop", (id, label, items) => {
 }), registerExport("GetInventoryWeight", (source) => typeof source == "number" ? inventory.call("GetInventoryWeight", (a) => a.getWeight?.(source) ?? null, null) : null), registerExport("GetItemDefinitions", () => inventory.call("GetItemDefinitions", (a) => a.getItemDefinitions(), {})), registerExport("UseItem", (source, item, data) => {
 	let n = name(item);
 	return typeof source == "number" && n !== null && inventory.useItem(source, n, data);
-}), registerExport("IsUsableItem", (item) => typeof item == "string" && inventory.isUsable(item));
+}), registerExport("IsUsableItem", (item) => typeof item == "string" && inventory.isUsable(item)), registerExport("GetUsableItems", () => inventory.usableNames()), registerExport("SetItemMetadata", (inv, at, metadata) => {
+	let [r, s] = [ref(inv), slot(at)];
+	return r !== null && s !== void 0 && isRecord(metadata) && inventory.call("SetItemMetadata", (a) => a.setMetadata(r, s, { ...metadata }), !1);
+}), registerExport("SetMaxWeight", (source, grams) => {
+	if (typeof source != "number" || typeof grams != "number" || !Number.isFinite(grams) || grams < 0) return !1;
+	let limit = Math.floor(grams);
+	return inventory.call("SetMaxWeight", (a) => a.setMaxWeight(source, limit), !1);
+});
 // resource/server/admin/lookups.ts
 const SOURCES = [
 	"item",
@@ -20756,6 +20937,11 @@ function toRow(raw) {
 async function listCharacters(userId) {
 	return (await mysql.query(`SELECT ${COLUMNS} FROM ai_core_characters WHERE user_id = ? AND deleted_at IS NULL ORDER BY slot`, [userId]) ?? []).map(toRow);
 }
+async function listCharactersByLicense(license) {
+	let columns = COLUMNS.split(", ").map((c) => `c.${c}`).join(", ");
+	return (await mysql.query(`SELECT ${columns} FROM ai_core_users u JOIN ai_core_characters c ON c.user_id = u.id AND c.deleted_at IS NULL
+     WHERE u.license = ? ORDER BY u.id, c.slot`, [license]) ?? []).map(toRow);
+}
 async function getCharacter(userId, charId) {
 	let row = await mysql.single(`SELECT ${COLUMNS} FROM ai_core_characters WHERE id = ? AND user_id = ? AND deleted_at IS NULL`, [charId, userId]);
 	return row ? toRow(row) : null;
@@ -20848,6 +21034,39 @@ function deleteGang(charId, gang) {
 function saveActiveGang(charId, gang) {
 	return mysql.query("UPDATE ai_core_character_gangs SET active = (gang = ?) WHERE char_id = ?", [gang ?? "", charId]);
 }
+async function saveOnlyJob(charId, job, grade) {
+	if (!await mysql.transaction([{
+		query: "DELETE FROM ai_core_character_jobs WHERE char_id = ? AND job <> ?",
+		values: [charId, job]
+	}, {
+		query: "INSERT INTO ai_core_character_jobs (char_id, job, grade) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE grade = VALUES(grade)",
+		values: [
+			charId,
+			job,
+			grade
+		]
+	}])) throw Error(`job ${job} of #${charId} rolled back`);
+}
+async function saveGangMembership(charId, gang, grade, only, activate) {
+	if (!await mysql.transaction([
+		...only ? [{
+			query: "DELETE FROM ai_core_character_gangs WHERE char_id = ? AND gang <> ?",
+			values: [charId, gang]
+		}] : [],
+		{
+			query: "INSERT INTO ai_core_character_gangs (char_id, gang, grade) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE grade = VALUES(grade)",
+			values: [
+				charId,
+				gang,
+				grade
+			]
+		},
+		...activate ? [{
+			query: "UPDATE ai_core_character_gangs SET active = (gang = ?) WHERE char_id = ?",
+			values: [gang, charId]
+		}] : []
+	])) throw Error(`gang ${gang} of #${charId} rolled back`);
+}
 // resource/server/money/writer.ts
 const CHUNK = 1e3;
 function balanceStatements(entries) {
@@ -20880,11 +21099,19 @@ function ledgerStatements(entries) {
 	}
 	return out;
 }
+function outcome() {
+	let resolve = () => void 0;
+	return {
+		promise: new Promise((r) => resolve = r),
+		resolve
+	};
+}
 const moneyWriter = new class {
 	pending = [];
 	attached = [];
 	timer = null;
 	chain = Promise.resolve();
+	asked = null;
 	push(entry) {
 		this.pending.push(entry), this.timer ??= setTimeout(() => this.flush(), 50);
 	}
@@ -20894,23 +21121,39 @@ const moneyWriter = new class {
 			values
 		}), this.timer ??= setTimeout(() => this.flush(), 50);
 	}
+	collecting() {
+		return this.pending.length > 0 || this.attached.length > 0;
+	}
 	flush() {
-		this.timer && clearTimeout(this.timer), this.timer = null;
-		let batch = this.pending, attached = this.attached;
-		(batch.length !== 0 || attached.length !== 0) && (this.pending = [], this.attached = [], this.chain = this.chain.then(async () => {
+		if (this.timer && clearTimeout(this.timer), this.timer = null, !this.collecting()) return;
+		let batch = this.pending, attached = this.attached, asked = this.asked;
+		this.pending = [], this.attached = [], this.asked = null, this.chain = this.chain.then(async () => {
+			let committed = !1;
 			try {
-				if (!await mysql.transaction([
+				if (committed = await mysql.transaction([
 					...balanceStatements(batch),
 					...ledgerStatements(batch),
 					...attached
-				])) throw Error("transaction rolled back");
+				]), !committed) throw Error("transaction rolled back");
 			} catch (error) {
 				log$3.error(`money write of ${batch.length} changes failed`, error);
 			}
-		}));
+			asked?.resolve(committed);
+		});
+	}
+	result() {
+		return this.asked ??= outcome(), this.asked.promise;
 	}
 	idle() {
 		return this.flush(), this.chain;
+	}
+	commit() {
+		if (!this.collecting()) return this.chain.then(() => !0);
+		let result = this.result();
+		return this.flush(), result;
+	}
+	settled() {
+		return this.collecting() ? this.result().then(() => void 0) : this.chain;
 	}
 }();
 // resource/server/money/account.ts
@@ -21175,7 +21418,7 @@ const playerWatchers = new class {
 		for (let admin of this.list.keys()) sendList(admin, delta);
 		this.dirty.size > 0 && this.schedule();
 	}
-}(), OK = { ok: !0 }, fail = (error) => ({
+}(), OK$2 = { ok: !0 }, fail$2 = (error) => ({
 	ok: !1,
 	error
 }), CHANGE_ERRORS = {
@@ -21187,55 +21430,52 @@ const playerWatchers = new class {
 	NO_ACCOUNT: "ADMIN_PLAYERS_ERR_ACCOUNT",
 	INVALID_AMOUNT: "ADMIN_PLAYERS_ERR_AMOUNT",
 	INSUFFICIENT_FUNDS: "ADMIN_PLAYERS_ERR_FUNDS"
-}, changeError = (error) => fail(CHANGE_ERRORS[error] ?? "ADMIN_PLAYERS_ERR_BUSY"), gradeOk = (grades, grade) => Number.isInteger(grade) && grade >= 0 && grade < grades, offline = {
+}, changeError = (error) => fail$2(CHANGE_ERRORS[error] ?? "ADMIN_PLAYERS_ERR_BUSY"), gradeOk = (grades, grade) => Number.isInteger(grade) && grade >= 0 && grade < grades, offline = {
 	async money(charId, name, mode, amount, reason, actor) {
 		let account = (await loadAccounts("character", String(charId))).get(name);
 		if (!account) return changeError("NO_ACCOUNT");
 		let result = mode === "set" ? account.set(amount, reason, actor) : account.change(mode === "add" ? amount : -amount, reason, actor);
-		return result.ok ? (await account.idle(), playerWatchers.money(charId, name, result.balance), OK) : changeError(result.error);
+		return result.ok ? await moneyWriter.commit() ? (playerWatchers.money(charId, name, result.balance), OK$2) : fail$2("ADMIN_PLAYERS_ERR_WRITE") : changeError(result.error);
 	},
 	async setJob(charId, job, grade) {
 		let def = jobs.get(job);
 		if (!def) return changeError("UNKNOWN_JOB");
 		if (!gradeOk(def.grades.length, grade)) return changeError("INVALID_GRADE");
-		let list = await loadJobs(charId), existing = list.find((m) => m.job === job);
+		let list = await loadJobs(charId), existing = list.find((m) => m.job === job), only = !existing && !settings.jobs.multiJob;
 		if (existing) existing.grade = grade;
 		else {
-			if (!settings.jobs.multiJob) {
-				for (let other of list) await deleteJob(charId, other.job);
-				list = [];
-			} else if (list.length >= settings.jobs.maxJobs) return changeError("LIMIT");
+			if (only) list = [];
+			else if (list.length >= settings.jobs.maxJobs) return changeError("LIMIT");
 			list.push({
 				job,
 				grade
 			});
 		}
-		return await saveJob(charId, job, grade), playerWatchers.char(charId, { jobs: list }), OK;
+		return only ? await saveOnlyJob(charId, job, grade) : await saveJob(charId, job, grade), playerWatchers.char(charId, { jobs: list }), OK$2;
 	},
 	async removeJob(charId, job) {
 		let list = await loadJobs(charId);
-		return list.some((m) => m.job === job) ? (await deleteJob(charId, job), playerWatchers.char(charId, { jobs: list.filter((m) => m.job !== job) }), OK) : changeError("NOT_MEMBER");
+		return list.some((m) => m.job === job) ? (await deleteJob(charId, job), playerWatchers.char(charId, { jobs: list.filter((m) => m.job !== job) }), OK$2) : changeError("NOT_MEMBER");
 	},
 	async setGang(charId, gang, grade) {
 		let def = gangs.get(gang);
 		if (!def) return changeError("UNKNOWN_GANG");
 		if (!gradeOk(def.grades.length, grade)) return changeError("INVALID_GRADE");
-		let data = await loadGangs(charId), list = data.gangs, active = data.active, existing = list.find((m) => m.gang === gang);
+		let data = await loadGangs(charId), list = data.gangs, active = data.active, existing = list.find((m) => m.gang === gang), only = !existing && !settings.gangs.multiGang;
 		if (existing) existing.grade = grade;
 		else {
-			if (!settings.gangs.multiGang) {
-				for (let other of list) await deleteGang(charId, other.gang);
-				list = [], active = null;
-			} else if (list.length >= settings.gangs.maxGangs) return changeError("LIMIT");
+			if (only) list = [], active = null;
+			else if (list.length >= settings.gangs.maxGangs) return changeError("LIMIT");
 			list.push({
 				gang,
 				grade
 			});
 		}
-		return await saveGang(charId, gang, grade), active || (active = gang, await saveActiveGang(charId, gang)), playerWatchers.char(charId, {
+		let activate = !active;
+		return await saveGangMembership(charId, gang, grade, only, activate), activate && (active = gang), playerWatchers.char(charId, {
 			gangs: list,
 			activeGang: active
-		}), OK;
+		}), OK$2;
 	},
 	async removeGang(charId, gang) {
 		let data = await loadGangs(charId);
@@ -21245,21 +21485,21 @@ const playerWatchers = new class {
 		return active === gang && (active = list[0]?.gang ?? null, await saveActiveGang(charId, active)), playerWatchers.char(charId, {
 			gangs: list,
 			activeGang: active
-		}), OK;
+		}), OK$2;
 	},
 	async setActiveGang(charId, gang) {
 		let data = await loadGangs(charId);
-		return gang !== null && !data.gangs.some((m) => m.gang === gang) ? changeError("NOT_MEMBER") : (await saveActiveGang(charId, gang), playerWatchers.char(charId, { activeGang: gang }), OK);
+		return gang !== null && !data.gangs.some((m) => m.gang === gang) ? changeError("NOT_MEMBER") : (await saveActiveGang(charId, gang), playerWatchers.char(charId, { activeGang: gang }), OK$2);
 	},
 	async meta(charId, key, value) {
 		let row = await findCharacter(charId);
-		return row ? (value === null ? delete row.metadata[key] : row.metadata[key] = value, await updateMetadata(charId, row.metadata), playerWatchers.meta(charId, key, value), OK) : fail("ADMIN_PLAYERS_ERR_GONE");
+		return row ? (value === null ? delete row.metadata[key] : row.metadata[key] = value, await updateMetadata(charId, row.metadata), playerWatchers.meta(charId, key, value), OK$2) : fail$2("ADMIN_PLAYERS_ERR_GONE");
 	},
 	async position(charId, p) {
-		return await updatePosition(charId, p), playerWatchers.char(charId, { position: p }), OK;
+		return await updatePosition(charId, p), playerWatchers.char(charId, { position: p }), OK$2;
 	},
 	async info(charId, info) {
-		return await updateInfo(charId, info), playerWatchers.char(charId, info), OK;
+		return await updateInfo(charId, info), playerWatchers.char(charId, info), OK$2;
 	}
 }, parse = {
 	charId: (v) => typeof v == "number" && Number.isInteger(v) && v > 0 && v < 2 ** 32 ? v : null,
@@ -21281,10 +21521,10 @@ function action(name, args, handler) {
 		args
 	}, handler);
 }
-const BUSY$1 = fail("ADMIN_PLAYERS_ERR_BUSY"), GONE = fail("ADMIN_PLAYERS_ERR_GONE"), OFFLINE = fail("ADMIN_PLAYERS_ERR_OFFLINE");
+const BUSY$4 = fail$2("ADMIN_PLAYERS_ERR_BUSY"), GONE$1 = fail$2("ADMIN_PLAYERS_ERR_GONE"), OFFLINE = fail$2("ADMIN_PLAYERS_ERR_OFFLINE");
 async function onCharacter(charId, online, offline) {
 	let player = players.byCharacter(charId);
-	return player ? online(player) : offline ? claims.run(charId, BUSY$1, async () => players.byCharacter(charId) ? BUSY$1 : await characterExists(charId) ? offline() : GONE) : OFFLINE;
+	return player ? online(player) : offline ? claims.run(charId, BUSY$4, async () => players.byCharacter(charId) ? BUSY$4 : await characterExists(charId) ? offline() : GONE$1) : OFFLINE;
 }
 function actorOf(admin) {
 	let fivem = players.get(admin)?.user.fivem;
@@ -21325,11 +21565,21 @@ const databaseReady = createDatabaseTables(ResourceName, "sql/main.sql").catch((
 		"ai_core_users",
 		"discord",
 		"`discord`"
+	],
+	[
+		"ai_core_character_jobs",
+		"job",
+		"`job`, `char_id`, `grade`"
+	],
+	[
+		"ai_core_character_gangs",
+		"gang",
+		"`gang`, `char_id`, `grade`"
 	]
 ];
 async function addMissing() {
 	let rows = await mysql.query("SELECT DISTINCT TABLE_NAME, INDEX_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN (?)", [[...new Set(WANTED.map(([table]) => table))]]) ?? [], have = new Set(rows.map((r) => `${r.TABLE_NAME}.${r.INDEX_NAME}`));
-	for (let [table, name, columns] of WANTED) have.has(`${table}.${name}`) || (log$3.info(`adding index ${name} to ${table} (player search)`), await mysql.query(`ALTER TABLE \`${table}\` ADD INDEX \`${name}\` (${columns}), ALGORITHM=INPLACE, LOCK=NONE`));
+	for (let [table, name, columns] of WANTED) have.has(`${table}.${name}`) || (log$3.info(`adding index ${name} to ${table}`), await mysql.query(`ALTER TABLE \`${table}\` ADD INDEX \`${name}\` (${columns}), ALGORITHM=INPLACE, LOCK=NONE`));
 }
 const searchReady = databaseReady.then(addMissing).catch((error) => log$3.error("adding the player search indexes failed", error)), FIRST = 2 ** 32;
 function parseSearch(raw) {
@@ -21487,18 +21737,18 @@ action("info", ([charId, raw]) => {
 	}];
 }, async (source, charId, input) => {
 	let { firstname, lastname, birthdate, sex, nationality } = input;
-	if (!firstname) return fail("CHAR_ERR_FIRSTNAME");
-	if (!lastname) return fail("CHAR_ERR_LASTNAME");
-	if (!birthdate) return fail("CHAR_ERR_BIRTHDATE");
-	if (!sex) return fail("CHAR_ERR_SEX");
-	if (!nationality) return fail("CHAR_ERR_NATIONALITY");
+	if (!firstname) return fail$2("CHAR_ERR_FIRSTNAME");
+	if (!lastname) return fail$2("CHAR_ERR_LASTNAME");
+	if (!birthdate) return fail$2("CHAR_ERR_BIRTHDATE");
+	if (!sex) return fail$2("CHAR_ERR_SEX");
+	if (!nationality) return fail$2("CHAR_ERR_NATIONALITY");
 	let info = {
 		firstname,
 		lastname,
 		birthdate,
 		sex,
 		nationality
-	}, result = await onCharacter(charId, async (player) => player.info().sex === sex ? (await updateInfo(charId, info), player.setInfo(info), OK) : fail("ADMIN_PLAYERS_ERR_SEX_ONLINE"), () => offline.info(charId, info));
+	}, result = await onCharacter(charId, async (player) => player.info().sex === sex ? (await updateInfo(charId, info), player.setInfo(info), OK$2) : fail$2("ADMIN_PLAYERS_ERR_SEX_ONLINE"), () => offline.info(charId, info));
 	return result.ok && logEdit(source, charId, "changed the character info", info), result;
 }), action("money", ([charId, account, mode, amount, reason]) => {
 	let id = charArg(charId), name = parse.name(account), m = mode === "add" || mode === "remove" || mode === "set" ? mode : null, n = parse.int(amount, m === "set" ? 0 : 1, 0xe8d4a51000), why = parse.text(reason, 3, 64);
@@ -21510,10 +21760,10 @@ action("info", ([charId, raw]) => {
 		why
 	];
 }, async (source, charId, account, mode, amount, reason) => {
-	if (reason === null) return fail("ADMIN_PLAYERS_ERR_REASON");
+	if (reason === null) return fail$2("ADMIN_PLAYERS_ERR_REASON");
 	let actor = actorOf(source), result = await onCharacter(charId, (player) => {
 		let r = mode === "set" ? player.wallet.set(account, amount, reason, actor) : player.wallet.change(account, mode === "add" ? amount : -amount, reason, actor);
-		return r.ok ? OK : changeError(r.error);
+		return r.ok ? OK$2 : changeError(r.error);
 	}, () => offline.money(charId, account, mode, amount, reason, actor));
 	return result.ok && logEdit(source, charId, `money ${mode} ${amount} ${account}`, {
 		account,
@@ -21537,40 +21787,40 @@ const memberArgs = ([charId, name, grade]) => {
 	return id === null || name != null && n === null ? null : [id, n];
 };
 action("job", memberArgs, async (source, charId, job, grade) => {
-	if (job === settings.jobs.unemployed) return fail("ADMIN_PLAYERS_ERR_JOB");
+	if (job === settings.jobs.unemployed) return fail$2("ADMIN_PLAYERS_ERR_JOB");
 	let result = await onCharacter(charId, (player) => {
 		let r = player.jobs.set(job, grade);
-		return r.ok ? OK : changeError(r.error);
+		return r.ok ? OK$2 : changeError(r.error);
 	}, () => offline.setJob(charId, job, grade));
 	return result.ok && logEdit(source, charId, `set job ${job} ${grade}`), result;
 }), action("removeJob", leaveArgs, async (source, charId, job) => {
 	let result = await onCharacter(charId, (player) => {
 		let r = player.jobs.remove(job);
-		return r.ok ? OK : changeError(r.error);
+		return r.ok ? OK$2 : changeError(r.error);
 	}, () => offline.removeJob(charId, job));
 	return result.ok && logEdit(source, charId, `removed job ${job}`), result;
 }), action("duty", pickArgs, async (source, charId, job) => {
 	let result = await onCharacter(charId, (player) => {
 		let r = player.jobs.setDuty(job);
-		return r.ok ? OK : changeError(r.error);
+		return r.ok ? OK$2 : changeError(r.error);
 	}, null);
 	return result.ok && logEdit(source, charId, `duty ${job ?? "off"}`), result;
 }), action("gang", memberArgs, async (source, charId, gang, grade) => {
 	let result = await onCharacter(charId, (player) => {
 		let r = player.gangs.set(gang, grade);
-		return r.ok ? OK : changeError(r.error);
+		return r.ok ? OK$2 : changeError(r.error);
 	}, () => offline.setGang(charId, gang, grade));
 	return result.ok && logEdit(source, charId, `set gang ${gang} ${grade}`), result;
 }), action("removeGang", leaveArgs, async (source, charId, gang) => {
 	let result = await onCharacter(charId, (player) => {
 		let r = player.gangs.remove(gang);
-		return r.ok ? OK : changeError(r.error);
+		return r.ok ? OK$2 : changeError(r.error);
 	}, () => offline.removeGang(charId, gang));
 	return result.ok && logEdit(source, charId, `removed gang ${gang}`), result;
 }), action("activeGang", pickArgs, async (source, charId, gang) => {
 	let result = await onCharacter(charId, (player) => {
 		let r = player.gangs.setActive(gang);
-		return r.ok ? OK : changeError(r.error);
+		return r.ok ? OK$2 : changeError(r.error);
 	}, () => offline.setActiveGang(charId, gang));
 	return result.ok && logEdit(source, charId, `active gang ${gang ?? "none"}`), result;
 }), action("meta", ([charId, key, value]) => {
@@ -21581,7 +21831,7 @@ action("job", memberArgs, async (source, charId, job, grade) => {
 		value
 	];
 }, async (source, charId, key, value) => {
-	let result = await onCharacter(charId, (player) => (player.setMeta(key, value), OK), () => offline.meta(charId, key, value));
+	let result = await onCharacter(charId, (player) => (player.setMeta(key, value), OK$2), () => offline.meta(charId, key, value));
 	return result.ok && logEdit(source, charId, `metadata ${key}`, {
 		key,
 		value
@@ -21716,25 +21966,25 @@ action("goto", charOnly, async (source, charId) => {
 	let player = players.byCharacter(charId), point = player ? pedPosition(player.source) : null;
 	if (!player) {
 		let view = await loadView(charId);
-		if (!view) return GONE;
+		if (!view) return GONE$1;
 		point = view.position;
 	}
-	return point ? (emitNet(ADMIN_PLAYERS.teleportEvent, source, point), logEdit(source, charId, "went to the character", { ...point }), OK) : fail("ADMIN_PLAYERS_ERR_POSITION");
+	return point ? (emitNet(ADMIN_PLAYERS.teleportEvent, source, point), logEdit(source, charId, "went to the character", { ...point }), OK$2) : fail$2("ADMIN_PLAYERS_ERR_POSITION");
 }), action("bring", charOnly, async (source, charId) => {
-	let point = pedPosition(source), result = await onCharacter(charId, (player) => player.source === source ? fail("ADMIN_PLAYERS_ERR_SELF") : (emitNet(ADMIN_PLAYERS.teleportEvent, player.source, point), notify(player.source, Locale("ADMIN_PLAYERS_NOTIFY_BROUGHT"), "info"), playerWatchers.char(charId, { position: point }), OK), () => offline.position(charId, point));
+	let point = pedPosition(source), result = await onCharacter(charId, (player) => player.source === source ? fail$2("ADMIN_PLAYERS_ERR_SELF") : (emitNet(ADMIN_PLAYERS.teleportEvent, player.source, point), notify(player.source, Locale("ADMIN_PLAYERS_NOTIFY_BROUGHT"), "info"), playerWatchers.char(charId, { position: point }), OK$2), () => offline.position(charId, point));
 	return result.ok && logEdit(source, charId, "brought the character", { ...point }), result;
 }), action("kick", ([charId, reason]) => {
 	let id = parse.charId(charId), why = parse.text(reason ?? "", 0, 120);
 	return id === null || why === null ? null : [id, why];
-}, async (source, charId, reason) => await onCharacter(charId, (player) => player.source === source ? fail("ADMIN_PLAYERS_ERR_SELF") : (logEdit(source, charId, "kicked the player", { reason }, "warn"), DropPlayer(String(player.source), reason ? Locale("ADMIN_PLAYERS_KICKED_REASON", reason) : Locale("ADMIN_PLAYERS_KICKED")), OK), null)), action("revive", charOnly, async (source, charId) => {
-	if (!medical.active) return fail("ADMIN_PLAYERS_ERR_NO_DEATH");
+}, async (source, charId, reason) => await onCharacter(charId, (player) => player.source === source ? fail$2("ADMIN_PLAYERS_ERR_SELF") : (logEdit(source, charId, "kicked the player", { reason }, "warn"), DropPlayer(String(player.source), reason ? Locale("ADMIN_PLAYERS_KICKED_REASON", reason) : Locale("ADMIN_PLAYERS_KICKED")), OK$2), null)), action("revive", charOnly, async (source, charId) => {
+	if (!medical.active) return fail$2("ADMIN_PLAYERS_ERR_NO_DEATH");
 	let result = await onCharacter(charId, (player) => {
 		let target = player.source;
-		return medical.call("revive", (a) => a.revive(target), !1) || medical.call("heal", (a) => a.heal(target), void 0), notify(target, Locale("ADMIN_PLAYERS_NOTIFY_REVIVED"), "success"), OK;
+		return medical.call("revive", (a) => a.revive(target), !1) || medical.call("heal", (a) => a.heal(target), void 0), notify(target, Locale("ADMIN_PLAYERS_NOTIFY_REVIVED"), "success"), OK$2;
 	}, null);
 	return result.ok && logEdit(source, charId, "revived the player"), result;
 }), action("kill", charOnly, async (source, charId) => {
-	let result = await onCharacter(charId, (player) => (emitNet(ADMIN_PLAYERS.killEvent, player.source), notify(player.source, Locale("ADMIN_PLAYERS_NOTIFY_KILLED"), "error"), OK), null);
+	let result = await onCharacter(charId, (player) => (emitNet(ADMIN_PLAYERS.killEvent, player.source), notify(player.source, Locale("ADMIN_PLAYERS_NOTIFY_KILLED"), "error"), OK$2), null);
 	return result.ok && logEdit(source, charId, "killed the player", {}, "warn"), result;
 }), action("item", ([charId, item, count, mode]) => {
 	let id = parse.charId(charId), name = parse.name(item), n = parse.int(count, 1, 1e4), m = mode === "give" || mode === "remove" ? mode : null;
@@ -21745,14 +21995,14 @@ action("goto", charOnly, async (source, charId) => {
 		m
 	];
 }, async (source, charId, item, count, mode) => {
-	if (!inventory.call("GetItemDefinition", (a) => a.getItemDefinition(item), null)) return fail("ADMIN_PLAYERS_ERR_ITEM");
+	if (!inventory.call("GetItemDefinition", (a) => a.getItemDefinition(item), null)) return fail$2("ADMIN_PLAYERS_ERR_ITEM");
 	let result = await onCharacter(charId, (player) => {
 		let target = player.source;
-		if (mode === "give") return inventory.call("AddItem", (a) => a.addItem(target, item, count, void 0, void 0), !1) ? OK : fail("ADMIN_PLAYERS_ERR_ITEM_FULL");
+		if (mode === "give") return inventory.call("AddItem", (a) => a.addItem(target, item, count, void 0, void 0), !1) ? OK$2 : fail$2("ADMIN_PLAYERS_ERR_ITEM_FULL");
 		let has = inventory.call("GetItemCount", (a) => a.getItemCount(target, item, void 0), 0);
-		if (has <= 0) return fail("ADMIN_PLAYERS_ERR_ITEM_NONE");
+		if (has <= 0) return fail$2("ADMIN_PLAYERS_ERR_ITEM_NONE");
 		let take = Math.min(count, has);
-		return inventory.call("RemoveItem", (a) => a.removeItem(target, item, take, void 0, void 0), !1) ? OK : fail("ADMIN_PLAYERS_ERR_ITEM_NONE");
+		return inventory.call("RemoveItem", (a) => a.removeItem(target, item, take, void 0, void 0), !1) ? OK$2 : fail$2("ADMIN_PLAYERS_ERR_ITEM_NONE");
 	}, null);
 	return result.ok && logEdit(source, charId, `${mode} item ${item} x${count}`, {
 		item,
@@ -21760,11 +22010,15 @@ action("goto", charOnly, async (source, charId) => {
 		mode
 	}), result;
 }), action("inventory", charOnly, async (source, charId) => {
-	let result = await onCharacter(charId, (player) => inventory.call("OpenInventory", (a) => a.openInventory(source, player.source), !1) ? OK : fail("ADMIN_PLAYERS_ERR_INVENTORY"), null);
+	let result = await onCharacter(charId, (player) => inventory.call("OpenInventory", (a) => a.openInventory(source, player.source), !1) ? OK$2 : fail$2("ADMIN_PLAYERS_ERR_INVENTORY"), null);
 	return result.ok && logEdit(source, charId, "opened the inventory"), result;
 }), action("delete", charOnly, async (source, charId) => {
-	if (players.byCharacter(charId)) return fail("ADMIN_PLAYERS_ERR_ONLINE");
-	let result = await claims.run(charId, BUSY$1, async () => players.byCharacter(charId) ? BUSY$1 : await softDelete(charId) ? OK : GONE);
+	if (players.byCharacter(charId)) return fail$2("ADMIN_PLAYERS_ERR_ONLINE");
+	let result = await claims.run(charId, BUSY$4, async () => {
+		if (players.byCharacter(charId)) return BUSY$4;
+		let row = await findCharacter(charId);
+		return !row || !await softDelete(charId) ? GONE$1 : (emit(CORE.characterDeletedEvent, charId, row.userId), OK$2);
+	});
 	return result.ok && (logEdit(source, charId, "deleted the character", {}, "warn"), playerWatchers.deleted(charId)), result;
 }), action("online", () => [], (source) => (playerWatchers.watchList(source), { ok: !0 })), action("search", ([query, cursor]) => {
 	let q = typeof query == "string" ? parseSearch(query) : null, c = cursor == null ? null : parse.charId(cursor);
@@ -21804,16 +22058,16 @@ on(CORE.playerLoadedEvent, (source, character) => {
 	charId !== void 0 && playerWatchers.char(charId, { activeGang });
 });
 // resource/server/jobs/dutyCount.ts
-const counts = new Map(), published = new GlobalGroup("ai:duty:", stateNumber);
+const counts = new Map(), published$1 = new GlobalGroup("ai:duty:", stateNumber);
 function changeDutyCount(job, delta) {
 	let next = Math.max(0, (counts.get(job) ?? 0) + delta);
-	counts.set(job, next), published.set(job, next);
+	counts.set(job, next), published$1.set(job, next);
 }
 function dutyCount(job) {
 	return counts.get(job) ?? 0;
 }
 function resetDutyCounts(jobs) {
-	for (let job of jobs) counts.set(job, 0), published.set(job, 0);
+	for (let job of jobs) counts.set(job, 0), published$1.set(job, 0);
 }
 on(CORE.playerLoadedEvent, (source, character) => {
 	coreLog("characters", `loaded ${character.firstname} ${character.lastname} (${character.citizenid})`, {
@@ -22337,6 +22591,38 @@ gate.add("ai-core:fivem", "ai-core", (source) => identify(source) ? null : Local
 	let names = (Array.isArray(remove) ? remove : [remove]).filter((n) => typeof n == "string" && n !== ""), from = caller(), owner = typeof keep == "string" && keep ? keep : from;
 	names.length > 0 && conflicts.declare(owner, names, from);
 }), registerExport("GetConflicts", () => conflicts.list().map((c) => ({ ...c })));
+// resource/server/multichar/screen.ts
+const OWN = { resource: CORE.resource }, published = new GlobalKey(CORE.characterScreenKey, stateString), handlers = [], picker = new AdapterPicker({
+	category: "character screen",
+	adapters: [...MULTICHARS, OWN],
+	log: log$3,
+	choice: settings.characterScreen,
+	onSwitch: (next) => {
+		let external = next && next.resource !== CORE.resource ? next.resource : null;
+		published.set(external ?? void 0), log$3.info(external ? `characterScreenChanged: ${external} shows the character screen; ai-core's own screen, its bucket and its spawn are off` : "characterScreenChanged: ai-core's own character screen is on"), setImmediate(() => {
+			let current = panel.get("settings"), shown = external ?? CORE.resource;
+			current.characterScreenActive !== shown && panel.commit("settings", void 0, {
+				...current,
+				characterScreenActive: shown
+			});
+		});
+		for (let handler of handlers) handler(external);
+	}
+});
+panel.onChange("settings", () => picker.setChoice(settings.characterScreen));
+function externalScreen() {
+	let active = picker.active;
+	return active && active.resource !== CORE.resource ? active.resource : null;
+}
+function onScreenSwitch(handler) {
+	handlers.push(handler);
+}
+function multicharInstalled() {
+	return MULTICHARS.some((m) => {
+		let state = GetResourceState(m.resource);
+		return state !== "missing" && state !== "unknown";
+	});
+}
 // resource/server/buckets/pool.ts
 const buckets = new class {
 	next = 1e3;
@@ -22597,6 +22883,8 @@ var Wallet = class {
 	jobs;
 	gangs;
 	writes;
+	paycheck = !0;
+	counted = Date.now();
 	constructor(source, user, row, wallet, jobs, gangs, writes) {
 		this.source = source, this.user = user, this.row = row, this.wallet = wallet, this.jobs = jobs, this.gangs = gangs, this.writes = writes;
 	}
@@ -22668,7 +22956,16 @@ var Wallet = class {
 		let value = this.row.metadata.health;
 		return typeof value == "number" && Number.isFinite(value) && value > 100 ? Math.round(value) : 0;
 	}
+	playTime() {
+		return this.storedPlayTime() + Math.floor((Date.now() - this.counted) / 1e3);
+	}
+	storedPlayTime() {
+		let value = this.row.metadata.playtime;
+		return typeof value == "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
+	}
 	saveData() {
+		let seconds = Math.floor((Date.now() - this.counted) / 1e3);
+		seconds > 0 && (this.counted += seconds * 1e3, this.setMeta("playtime", this.storedPlayTime() + seconds));
 		let ped = GetPlayerPed(String(this.source));
 		if (ped && DoesEntityExist(ped)) {
 			let [x = 0, y = 0, z = 0] = GetEntityCoords(ped);
@@ -22733,12 +23030,55 @@ async function characterScreen(user) {
 		scene: settings.characterScene
 	};
 }
+// resource/server/player/spawn.ts
+const BUSY$3 = {
+	ok: !1,
+	error: "CHAR_ERR_BUSY"
+}, choosing = new PlayerMap(), awaiting = new PlayerMap();
+onClientCallback(CORE.spawnChoiceCallback, { args: oneArg((v) => readInt(v, 0, 63)) }, (source, id) => {
+	let options = choosing.get(source), spawn = options?.[id], player = players.get(source);
+	return !options || !spawn || !player ? BUSY$3 : (choosing.delete(source), emitNet(CORE.spawnEvent, source, spawn), emit(CORE.playerSpawnedEvent, source, player.charId), { ok: !0 });
+}), onClientEvent(CORE.externalSpawnedEvent, (source) => {
+	let charId = awaiting.get(source);
+	charId !== void 0 && players.get(source)?.charId === charId && (awaiting.delete(source), emit(CORE.playerSpawnedEvent, source, charId));
+}), on(CORE.playerUnloadedEvent, (source) => awaiting.delete(source));
+function spawnCharacter(source, player, row) {
+	if (externalScreen()) return awaiting.set(source, player.charId), emitNet(CORE.externalLoadedEvent, source, player.armour(), player.health()), !1;
+	enterWorldBucket(source);
+	let base = {
+		model: row.sex === "female" ? "mp_f_freemode_01" : "mp_m_freemode_01",
+		armour: player.armour(),
+		health: player.health()
+	}, points = settings.spawn.choose ? settings.spawn.points : [];
+	if (points.length === 0) return emitNet(CORE.spawnEvent, source, {
+		...player.spawnPosition(),
+		...base
+	}), !0;
+	let options = [], labels = [];
+	row.position && (labels.push({
+		id: options.length,
+		label: "",
+		last: !0
+	}), options.push({
+		...row.position,
+		...base
+	}));
+	for (let p of points) labels.push({
+		id: options.length,
+		label: p.label,
+		last: !1
+	}), options.push({
+		...p.coords,
+		...base
+	});
+	return choosing.set(source, options), emitNet(CORE.chooseSpawnEvent, source, labels), !1;
+}
 // resource/server/player/session.ts
-const lock = new SourceLock(), BUSY = {
+const lock = new SourceLock(), BUSY$2 = {
 	ok: !1,
 	error: "CHAR_ERR_BUSY"
 };
-onClientCallback(CORE.charactersCallback, async (source) => players.get(source) ? null : lock.run(source, null, async () => {
+onClientCallback(CORE.charactersCallback, async (source) => players.get(source) || externalScreen() ? null : lock.run(source, null, async () => {
 	await databaseReady;
 	let user = selecting.get(source);
 	if (!user) {
@@ -22756,33 +23096,48 @@ onClientCallback(CORE.createCharacterCallback, { args: ([raw]) => [raw] }, async
 	return user ? "error" in input ? {
 		ok: !1,
 		error: input.error
-	} : lock.run(source, BUSY, async () => {
-		let characters = await listCharacters(user.id);
-		if (input.slot > slotsOf(user) || characters.length >= slotsOf(user)) return {
-			ok: !1,
-			error: "CHAR_ERR_LIMIT"
-		};
-		if (characters.some((c) => c.slot === input.slot)) return {
-			ok: !1,
-			error: "CHAR_ERR_SLOT_TAKEN"
-		};
-		let id = await insertCharacter(user.id, input);
-		return coreLog("characters", `created ${input.firstname} ${input.lastname} in slot ${input.slot}`, {
-			source,
-			metadata: { charId: id }
-		}), loadCharacter(source, id);
-	}) : BUSY;
+	} : lock.run(source, BUSY$2, () => createNow(source, user, input)) : BUSY$2;
 });
-const choosing = new PlayerMap();
-onClientCallback(CORE.spawnChoiceCallback, { args: oneArg((v) => readInt(v, 0, 63)) }, (source, id) => {
-	let options = choosing.get(source), spawn = options?.[id], player = players.get(source);
-	return !options || !spawn || !player ? BUSY : (choosing.delete(source), emitNet(CORE.spawnEvent, source, spawn), emit(CORE.playerSpawnedEvent, source, player.charId), { ok: !0 });
-}), onClientCallback(CORE.selectCharacterCallback, { args: charIdArg }, async (source, charId) => selecting.has(source) ? lock.run(source, BUSY, () => loadCharacter(source, charId)) : BUSY), onClientCallback(CORE.deleteCharacterCallback, { args: charIdArg }, async (source, charId) => {
+async function createNow(source, user, input) {
+	let characters = await listCharacters(user.id), slots = slotsOf(user), taken = new Set(characters.map((c) => c.slot)), slot = input.slot;
+	for (let s = 1; slot === null && s <= slots; s++) taken.has(s) || (slot = s);
+	if (slot === null || slot > slots || characters.length >= slots) return {
+		ok: !1,
+		error: "CHAR_ERR_LIMIT"
+	};
+	if (taken.has(slot)) return {
+		ok: !1,
+		error: "CHAR_ERR_SLOT_TAKEN"
+	};
+	let id = await insertCharacter(user.id, {
+		...input,
+		slot
+	});
+	return coreLog("characters", `created ${input.firstname} ${input.lastname} in slot ${slot}`, {
+		source,
+		metadata: { charId: id }
+	}), loadCharacter(source, id);
+}
+function createCharacterFor(source, input) {
+	let user = selecting.get(source);
+	return user ? lock.run(source, BUSY$2, () => createNow(source, user, input)) : Promise.resolve(BUSY$2);
+}
+function loginCharacterFor(source, find) {
+	let user = selecting.get(source);
+	return user ? lock.run(source, BUSY$2, async () => {
+		let charId = await find(user);
+		return charId === null ? {
+			ok: !1,
+			error: "CHAR_ERR_GONE"
+		} : loadCharacter(source, charId);
+	}) : Promise.resolve(BUSY$2);
+}
+onClientCallback(CORE.selectCharacterCallback, { args: charIdArg }, async (source, charId) => selecting.has(source) ? lock.run(source, BUSY$2, () => loadCharacter(source, charId)) : BUSY$2), onClientCallback(CORE.deleteCharacterCallback, { args: charIdArg }, async (source, charId) => {
 	let user = selecting.get(source);
 	return user ? settings.characters.canDelete ? players.byCharacter(charId) ? {
 		ok: !1,
 		error: "CHAR_ERR_ONLINE"
-	} : lock.run(source, BUSY, async () => await deleteCharacter(user.id, charId) ? (coreLog("characters", `deleted character #${charId}`, {
+	} : lock.run(source, BUSY$2, async () => await deleteCharacter(user.id, charId) ? (emit(CORE.characterDeletedEvent, charId, user.id), coreLog("characters", `deleted character #${charId}`, {
 		level: "warn",
 		source,
 		metadata: { charId }
@@ -22792,14 +23147,14 @@ onClientCallback(CORE.spawnChoiceCallback, { args: oneArg((v) => readInt(v, 0, 6
 	}) : {
 		ok: !1,
 		error: "CHAR_ERR_NO_DELETE"
-	} : BUSY;
+	} : BUSY$2;
 });
 function loadCharacter(source, charId) {
-	return claims.run(charId, BUSY, () => loadNow(source, charId));
+	return claims.run(charId, BUSY$2, () => loadNow(source, charId));
 }
 async function loadNow(source, charId) {
 	let user = selecting.get(source);
-	if (!user) return BUSY;
+	if (!user) return BUSY$2;
 	if (players.byCharacter(charId)) return {
 		ok: !1,
 		error: "CHAR_ERR_ONLINE"
@@ -22811,62 +23166,693 @@ async function loadNow(source, charId) {
 			error: "CHAR_ERR_GONE"
 		};
 		let player = await Player$1.load(source, user, row);
-		if (!GetPlayerName(String(source)) || !selecting.has(source)) return player.release(), BUSY;
-		selecting.delete(source), players.add(player), enterWorldBucket(source), player.sendSnapshot();
-		let base = {
-			model: row.sex === "female" ? "mp_f_freemode_01" : "mp_m_freemode_01",
-			armour: player.armour(),
-			health: player.health()
-		}, points = settings.spawn.choose ? settings.spawn.points : [];
-		if (points.length === 0) emitNet(CORE.spawnEvent, source, {
-			...player.spawnPosition(),
-			...base
-		});
-		else {
-			let options = [], labels = [];
-			row.position && (labels.push({
-				id: options.length,
-				label: "",
-				last: !0
-			}), options.push({
-				...row.position,
-				...base
-			}));
-			for (let p of points) labels.push({
-				id: options.length,
-				label: p.label,
-				last: !1
-			}), options.push({
-				...p.coords,
-				...base
-			});
-			choosing.set(source, options), emitNet(CORE.chooseSpawnEvent, source, labels);
-		}
-		return emit(CORE.playerLoadedEvent, source, player.info()), points.length === 0 && emit(CORE.playerSpawnedEvent, source, player.charId), log$3.info(`loaded #${player.charId} ${player.fullName} (src ${source})`), { ok: !0 };
+		if (!GetPlayerName(String(source)) || !selecting.has(source)) return player.release(), BUSY$2;
+		selecting.delete(source), players.add(player), player.sendSnapshot();
+		let spawned = spawnCharacter(source, player, row);
+		return emit(CORE.playerLoadedEvent, source, player.info()), spawned && emit(CORE.playerSpawnedEvent, source, player.charId), log$3.info(`loaded #${player.charId} ${player.fullName} (src ${source})`), { ok: !0 };
 	} catch (error) {
-		return log$3.error(`loading character ${charId} for ${source} failed`, error), BUSY;
+		return log$3.error(`loading character ${charId} for ${source} failed`, error), BUSY$2;
 	}
 }
 async function unloadCharacter(player, reason) {
 	emit(CORE.playerUnloadedEvent, player.source, player.charId, reason), players.remove(player), player.release(), await claims.hold(player.charId, async () => {
-		try {
-			await saveCharacters([player.saveData()]);
-		} catch (error) {
-			log$3.error(`saving #${player.charId} on unload failed`, error);
-		}
+		let save = saveCharacters([player.saveData()]).catch((error) => log$3.error(`saving #${player.charId} on unload failed`, error));
+		await Promise.all([
+			save,
+			player.writes.idle(),
+			moneyWriter.settled()
+		]);
 	});
 }
-function switchCharacter(source) {
+function logoutCharacter(source) {
 	let player = players.get(source);
-	return player ? (lock.run(source, null, async () => {
-		await unloadCharacter(player, "switch"), selecting.set(source, player.user), emitNet(CORE.openCharactersEvent, source);
-	}), !0) : !1;
+	return player ? lock.run(source, !1, async () => players.get(source) === player && (await unloadCharacter(player, "switch"), selecting.set(source, player.user), emitNet(externalScreen() ? CORE.externalLogoutEvent : CORE.openCharactersEvent, source), !0)) : Promise.resolve(!1);
+}
+function switchCharacter(source) {
+	return players.get(source) ? (logoutCharacter(source), !0) : !1;
 }
 registerExport("SwitchCharacter", switchCharacter), on("playerDropped", () => {
 	let source = Number(globalThis.source);
 	lock.release(source), selecting.delete(source), leaveSelectBucket(source);
 	let player = players.get(source);
 	player && unloadCharacter(player, "dropped");
+});
+// resource/server/characters/edit.ts
+const OK$1 = { ok: !0 }, fail$1 = (error) => ({
+	ok: !1,
+	error
+}), BUSY$1 = fail$1("ADMIN_PLAYERS_ERR_BUSY"), GONE = fail$1("ADMIN_PLAYERS_ERR_GONE"), HELD = Symbol("held"), LOADED = Symbol("loaded"), edits = new class {
+	queues = new Map();
+	run(charId, online, offline, gone, busy) {
+		let next = (this.queues.get(charId) ?? Promise.resolve()).then(() => this.attempt(charId, online, offline, gone, busy), () => this.attempt(charId, online, offline, gone, busy));
+		this.queues.set(charId, next);
+		let done = () => {
+			this.queues.get(charId) === next && this.queues.delete(charId);
+		};
+		return next.then(done, done), next;
+	}
+	async attempt(charId, online, offline, gone, busy) {
+		for (let i = 0; i < 5; i++) {
+			let player = players.byCharacter(charId);
+			if (player) return online(player);
+			try {
+				await waitFor(() => !claims.has(charId) || void 0, 3e4, 50);
+			} catch {
+				return busy;
+			}
+			if (players.byCharacter(charId)) continue;
+			let result = await claims.run(charId, HELD, async () => players.byCharacter(charId) ? LOADED : await characterExists(charId) ? (await moneyWriter.idle(), offline()) : gone);
+			if (result !== HELD && result !== LOADED) return result;
+		}
+		return busy;
+	}
+}();
+function editCharacter(charId, online, offline) {
+	return edits.run(charId, online, offline, GONE, BUSY$1);
+}
+function readCharacter(charId, online, offline, missing) {
+	return edits.run(charId, online, offline, missing, missing);
+}
+const toCharId = (v) => typeof v == "number" && Number.isInteger(v) && v > 0 && v < 2 ** 32 ? v : null, INVALID$2 = fail$1("CORE_ERR_ARGS"), NAME$1 = /^[A-Za-z0-9_-]{1,48}$/, META_KEY = /^[A-Za-z0-9_.:-]{1,64}$/, nameOf = (v) => typeof v == "string" && NAME$1.test(v) ? v : null, gradeOf = (v) => typeof v == "number" && Number.isInteger(v) && v >= 0 && v <= 255 ? v : null;
+function answer$1(what, work, done, fallback) {
+	work.catch((error) => (log$3.error(`${what} failed`, error), fallback)).then((result) => {
+		typeof done == "function" && done(result);
+	}).catch((error) => log$3.error(`${what}: callback failed`, error));
+}
+const ERROR$1 = fail$1("ADMIN_PLAYERS_ERR_BUSY");
+function offlineMoney(mode, charId, account, amount, reason, done) {
+	let id = toCharId(charId), name = nameOf(account), by = caller(), why = typeof reason == "string" && reason ? reason.slice(0, 64) : by, min = mode === "set" ? 0 : 1, n = typeof amount == "number" && Number.isSafeInteger(amount) && amount >= min && amount <= 0xe8d4a51000 ? amount : null;
+	if (id === null || name === null || n === null) return answer$1("offline money", Promise.resolve(INVALID$2), done, INVALID$2);
+	let work = editCharacter(id, (player) => {
+		let r = mode === "set" ? player.wallet.set(name, n, why, by) : player.wallet.change(name, mode === "add" ? n : -n, why, by);
+		return r.ok ? { ok: !0 } : changeError(r.error);
+	}, () => offline.money(id, name, mode, n, why, by));
+	answer$1(`offline money of #${id}`, work, done, ERROR$1);
+}
+function offlineJob(charId, job, grade, done) {
+	let id = toCharId(charId), name = nameOf(job), g = gradeOf(grade);
+	if (id === null || name === null || g === null) return answer$1("offline job", Promise.resolve(INVALID$2), done, INVALID$2);
+	if (name === settings.jobs.unemployed) {
+		let result = fail$1("ADMIN_PLAYERS_ERR_JOB");
+		return answer$1("offline job", Promise.resolve(result), done, result);
+	}
+	let work = editCharacter(id, (player) => {
+		let r = player.jobs.set(name, g);
+		return r.ok ? { ok: !0 } : changeError(r.error);
+	}, () => offline.setJob(id, name, g));
+	answer$1(`offline job of #${id}`, work, done, ERROR$1);
+}
+function offlineRemoveJob(charId, job, done) {
+	let id = toCharId(charId), name = nameOf(job);
+	if (id === null || name === null) return answer$1("offline job", Promise.resolve(INVALID$2), done, INVALID$2);
+	let work = editCharacter(id, (player) => {
+		let r = player.jobs.remove(name);
+		return r.ok ? { ok: !0 } : changeError(r.error);
+	}, () => offline.removeJob(id, name));
+	answer$1(`offline job of #${id}`, work, done, ERROR$1);
+}
+function offlineGang(charId, gang, grade, done) {
+	let id = toCharId(charId), name = nameOf(gang), g = gradeOf(grade);
+	if (id === null || name === null || g === null) return answer$1("offline gang", Promise.resolve(INVALID$2), done, INVALID$2);
+	let work = editCharacter(id, (player) => {
+		let r = player.gangs.set(name, g);
+		return r.ok ? { ok: !0 } : changeError(r.error);
+	}, () => offline.setGang(id, name, g));
+	answer$1(`offline gang of #${id}`, work, done, ERROR$1);
+}
+function offlineRemoveGang(charId, gang, done) {
+	let id = toCharId(charId), name = nameOf(gang);
+	if (id === null || name === null) return answer$1("offline gang", Promise.resolve(INVALID$2), done, INVALID$2);
+	let work = editCharacter(id, (player) => {
+		let r = player.gangs.remove(name);
+		return r.ok ? { ok: !0 } : changeError(r.error);
+	}, () => offline.removeGang(id, name));
+	answer$1(`offline gang of #${id}`, work, done, ERROR$1);
+}
+function toMetaValue(value) {
+	if (value == null) return {
+		ok: !0,
+		value: null
+	};
+	try {
+		let text = JSON.stringify(value);
+		return text === void 0 ? {
+			ok: !1,
+			value: null
+		} : {
+			ok: !0,
+			value: JSON.parse(text)
+		};
+	} catch {
+		return {
+			ok: !1,
+			value: null
+		};
+	}
+}
+function offlineMeta(charId, key, value, done) {
+	let id = toCharId(charId), k = typeof key == "string" && META_KEY.test(key) ? key : null, v = toMetaValue(value);
+	if (id === null || k === null || !v.ok) return answer$1("offline metadata", Promise.resolve(INVALID$2), done, INVALID$2);
+	let work = editCharacter(id, (player) => (player.setMeta(k, v.value), { ok: !0 }), () => offline.meta(id, k, v.value));
+	answer$1(`offline metadata of #${id}`, work, done, ERROR$1);
+}
+// resource/server/multichar/projection/ddl.ts
+const PROJECTION_TABLES = [
+	"players",
+	"users",
+	"jobs",
+	"job_grades"
+], MARK = "ai-core projection", TAIL = `ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='${MARK}: rebuilt from ai_core_* tables while an external character screen runs; inserts and updates are ignored, a deleted row soft-deletes the ai-core character'`, CREATE = {
+	players: `CREATE TABLE \`players\` (
+    \`id\` INT UNSIGNED NOT NULL,
+    \`citizenid\` VARCHAR(16) NOT NULL,
+    \`user_id\` INT UNSIGNED NOT NULL,
+    \`cid\` INT NOT NULL,
+    \`license\` VARCHAR(60) NOT NULL,
+    \`name\` VARCHAR(64) NOT NULL DEFAULT '',
+    \`money\` TEXT NOT NULL,
+    \`charinfo\` TEXT NOT NULL,
+    \`job\` TEXT NOT NULL,
+    \`gang\` TEXT NOT NULL,
+    \`position\` TEXT NOT NULL,
+    \`metadata\` LONGTEXT NOT NULL,
+    \`inventory\` LONGTEXT DEFAULT NULL,
+    \`last_updated\` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (\`citizenid\`),
+    UNIQUE KEY \`id\` (\`id\`),
+    KEY \`user_id\` (\`user_id\`),
+    KEY \`license\` (\`license\`)
+  ) ${TAIL}`,
+	users: `CREATE TABLE \`users\` (
+    \`identifier\` VARCHAR(64) NOT NULL,
+    \`id\` INT UNSIGNED NOT NULL,
+    \`user_id\` INT UNSIGNED NOT NULL,
+    \`accounts\` LONGTEXT NOT NULL,
+    \`group\` VARCHAR(50) NOT NULL DEFAULT 'user',
+    \`inventory\` LONGTEXT DEFAULT NULL,
+    \`job\` VARCHAR(32) NOT NULL DEFAULT 'unemployed',
+    \`job_grade\` INT NOT NULL DEFAULT 0,
+    \`loadout\` LONGTEXT DEFAULT NULL,
+    \`metadata\` LONGTEXT DEFAULT NULL,
+    \`position\` LONGTEXT DEFAULT NULL,
+    \`firstname\` VARCHAR(32) NOT NULL DEFAULT '',
+    \`lastname\` VARCHAR(32) NOT NULL DEFAULT '',
+    \`dateofbirth\` VARCHAR(10) NOT NULL DEFAULT '',
+    \`sex\` VARCHAR(1) NOT NULL DEFAULT 'm',
+    \`height\` INT NOT NULL DEFAULT 0,
+    \`skin\` LONGTEXT DEFAULT NULL,
+    \`disabled\` TINYINT(1) DEFAULT 0,
+    \`last_seen\` DATETIME DEFAULT NULL,
+    PRIMARY KEY (\`identifier\`),
+    UNIQUE KEY \`id\` (\`id\`),
+    KEY \`user_id\` (\`user_id\`)
+  ) ${TAIL}`,
+	jobs: `CREATE TABLE \`jobs\` (
+    \`name\` VARCHAR(50) NOT NULL,
+    \`label\` VARCHAR(50) NOT NULL DEFAULT '',
+    \`whitelisted\` TINYINT(1) NOT NULL DEFAULT 0,
+    PRIMARY KEY (\`name\`)
+  ) ${TAIL}`,
+	job_grades: `CREATE TABLE \`job_grades\` (
+    \`id\` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    \`job_name\` VARCHAR(50) NOT NULL,
+    \`grade\` INT NOT NULL,
+    \`name\` VARCHAR(50) NOT NULL,
+    \`label\` VARCHAR(50) NOT NULL,
+    \`salary\` INT NOT NULL DEFAULT 0,
+    \`skin_male\` LONGTEXT NOT NULL,
+    \`skin_female\` LONGTEXT NOT NULL,
+    PRIMARY KEY (\`id\`),
+    UNIQUE KEY \`job_grade\` (\`job_name\`, \`grade\`)
+  ) ${TAIL}`
+}, TRIGGERS = {
+	players: "ai_core_players_deleted",
+	users: "ai_core_users_deleted"
+}, triggerSql = (table, name) => `CREATE TRIGGER \`${name}\` AFTER DELETE ON \`${table}\` FOR EACH ROW
+   IF @ai_core_projection IS NULL THEN
+     INSERT IGNORE INTO \`ai_core_deleted_log\` (\`char_id\`, \`user_id\`)
+       SELECT \`id\`, \`user_id\` FROM \`ai_core_characters\` WHERE \`id\` = OLD.\`id\` AND \`deleted_at\` IS NULL;
+     UPDATE \`ai_core_characters\` SET \`deleted_at\` = NOW() WHERE \`id\` = OLD.\`id\` AND \`deleted_at\` IS NULL;
+   END IF`;
+async function inspect() {
+	let rows = await mysql.query("SELECT TABLE_NAME, TABLE_COMMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN (?)", [PROJECTION_TABLES]), ours = new Set(), foreign = new Set();
+	for (let row of rows ?? []) {
+		let name = PROJECTION_TABLES.find((t) => t === row.TABLE_NAME);
+		name && (row.TABLE_COMMENT.startsWith(MARK) ? ours.add(name) : foreign.add(name));
+	}
+	return {
+		ours,
+		foreign
+	};
+}
+async function dropTables(names) {
+	for (let name of names) await mysql.query(`DROP TABLE IF EXISTS \`${name}\``);
+}
+async function createTable(name) {
+	await mysql.query(CREATE[name]);
+	let trigger = TRIGGERS[name];
+	return trigger ? mysql.query(triggerSql(name, trigger)).then(() => null, (error) => error ?? "unknown error") : null;
+}
+// resource/server/multichar/projection/deletes.ts
+async function noticeDeletes(userIds) {
+	if (userIds !== null && userIds.length === 0) return;
+	let rows;
+	try {
+		if (rows = (userIds === null ? await mysql.query("SELECT char_id, user_id FROM ai_core_deleted_log") : await mysql.query("SELECT char_id, user_id FROM ai_core_deleted_log WHERE user_id IN (?)", [userIds])) ?? [], rows.length === 0) return;
+		await mysql.query("DELETE FROM ai_core_deleted_log WHERE char_id IN (?)", [rows.map((row) => row.char_id)]);
+	} catch (error) {
+		log$3.error("reading characters deleted through the framework tables", error);
+		return;
+	}
+	for (let row of rows) emit(CORE.characterDeletedEvent, row.char_id, row.user_id), coreLog("characters", `deleted character #${row.char_id} (framework tables)`, {
+		level: "warn",
+		metadata: {
+			charId: row.char_id,
+			userId: row.user_id
+		}
+	});
+}
+// resource/server/multichar/projection/read.ts
+function stateOf(player) {
+	let active = player.gangs.activeGang();
+	return {
+		info: player.info(),
+		money: player.wallet.snapshot(),
+		job: player.jobs.current(),
+		onDuty: player.jobs.onDuty() !== null,
+		gang: active ? {
+			gang: active,
+			grade: player.gangs.grade(active) ?? 0
+		} : null,
+		metadata: player.metadata(),
+		position: player.spawnPosition()
+	};
+}
+function parseMeta(text) {
+	try {
+		let value = JSON.parse(text);
+		return isRecord(value) ? value : {};
+	} catch {
+		return {};
+	}
+}
+async function readCharacters(userIds, live) {
+	if (userIds.length === 0) return [];
+	let rows = await mysql.query("SELECT c.id, c.user_id, c.citizenid, c.slot, c.firstname, c.lastname, DATE_FORMAT(c.birthdate, '%Y-%m-%d') AS birthdate,\n         c.sex, c.nationality, c.pos_x, c.pos_y, c.pos_z, c.pos_h, c.metadata,\n         DATE_FORMAT(c.last_played, '%Y-%m-%d %H:%i:%s') AS last_played, u.license, u.name\n       FROM ai_core_characters c JOIN ai_core_users u ON u.id = c.user_id\n       WHERE c.user_id IN (?) AND c.deleted_at IS NULL AND u.license IS NOT NULL", [userIds]) ?? [], stored = rows.filter((r) => !live(r.id)).map((r) => r.id), [money, jobs, gangs] = stored.length === 0 ? [
+		[],
+		[],
+		[]
+	] : await Promise.all([
+		mysql.query("SELECT owner_id, name, balance FROM ai_core_accounts WHERE owner_type = 'character' AND owner_id IN (?)", [stored.map(String)]),
+		mysql.query("SELECT char_id, job, grade FROM ai_core_character_jobs WHERE char_id IN (?) ORDER BY char_id, job", [stored]),
+		mysql.query("SELECT char_id, gang, grade FROM ai_core_character_gangs WHERE char_id IN (?) AND active = 1", [stored])
+	]), moneyOf = new Map();
+	for (let m of money ?? []) {
+		let id = Number(m.owner_id), bag = moneyOf.get(id) ?? {};
+		bag[m.name] = Number(m.balance), moneyOf.set(id, bag);
+	}
+	let jobsOf = new Map();
+	for (let j of jobs ?? []) jobsOf.set(j.char_id, [...jobsOf.get(j.char_id) ?? [], {
+		job: j.job,
+		grade: j.grade
+	}]);
+	let gangOf = new Map((gangs ?? []).map((g) => [g.char_id, {
+		gang: g.gang,
+		grade: g.grade
+	}]));
+	return rows.map((r) => {
+		let base = {
+			userId: r.user_id,
+			license: r.license,
+			playerName: r.name,
+			lastPlayed: r.last_played
+		}, state = live(r.id);
+		if (state) return {
+			...state,
+			...base
+		};
+		let metadata = parseMeta(r.metadata), list = jobsOf.get(r.id) ?? [], job = list.find((m) => m.job === metadata.lastDutyJob) ?? list[0] ?? {
+			job: settings.jobs.unemployed,
+			grade: 0
+		}, position = r.pos_x !== null && r.pos_y !== null && r.pos_z !== null ? {
+			x: r.pos_x,
+			y: r.pos_y,
+			z: r.pos_z,
+			heading: r.pos_h ?? 0
+		} : null;
+		return {
+			...base,
+			info: {
+				id: r.id,
+				citizenid: r.citizenid,
+				slot: r.slot,
+				firstname: r.firstname,
+				lastname: r.lastname,
+				birthdate: r.birthdate,
+				sex: r.sex === "female" ? "female" : "male",
+				nationality: r.nationality
+			},
+			money: moneyOf.get(r.id) ?? {},
+			job,
+			onDuty: !1,
+			gang: gangOf.get(r.id) ?? null,
+			metadata,
+			position
+		};
+	});
+}
+// resource/server/multichar/projection/rows.ts
+function qbJob(c) {
+	let known = jobs.has(c.job.job), name = known ? c.job.job : settings.jobs.unemployed, def = jobs.get(name), level = known ? c.job.grade : 0, grade = def?.grades[level] ?? def?.grades[0];
+	return {
+		name,
+		label: def?.label ?? name,
+		type: def?.type ?? "none",
+		payment: grade?.salary ?? 0,
+		onduty: c.onDuty,
+		isboss: grade?.boss ?? !1,
+		grade: {
+			name: grade?.label ?? "",
+			level
+		}
+	};
+}
+function qbGang(c) {
+	let def = c.gang ? gangs.get(c.gang.gang) : void 0;
+	if (!c.gang || !def) return {
+		name: "none",
+		label: "No Gang Affiliation",
+		isboss: !1,
+		grade: {
+			name: "none",
+			level: 0
+		}
+	};
+	let grade = def.grades[c.gang.grade] ?? def.grades[0];
+	return {
+		name: c.gang.gang,
+		label: def.label,
+		isboss: grade?.boss ?? !1,
+		grade: {
+			name: grade?.label ?? "",
+			level: c.gang.grade
+		}
+	};
+}
+const where = (c) => c.position ?? settings.spawn.default;
+function qbRow(c) {
+	let { info } = c;
+	return [
+		info.id,
+		info.citizenid,
+		c.userId,
+		info.slot,
+		`license:${c.license}`,
+		c.playerName,
+		JSON.stringify(c.money),
+		JSON.stringify({
+			firstname: info.firstname,
+			lastname: info.lastname,
+			birthdate: info.birthdate,
+			gender: +(info.sex === "female"),
+			nationality: info.nationality,
+			cid: info.slot
+		}),
+		JSON.stringify(qbJob(c)),
+		JSON.stringify(qbGang(c)),
+		JSON.stringify(where(c)),
+		JSON.stringify(c.metadata),
+		null
+	];
+}
+function esxAccounts(money) {
+	let out = {
+		money: 0,
+		bank: 0,
+		black_money: 0
+	};
+	for (let [name, balance] of Object.entries(money)) out[name === "cash" ? "money" : name] = balance;
+	return out;
+}
+function esxRow(c) {
+	let { info } = c, known = jobs.has(c.job.job), height = c.metadata.height;
+	return [
+		`char${info.slot}:${c.license}`,
+		info.id,
+		c.userId,
+		JSON.stringify(esxAccounts(c.money)),
+		"user",
+		null,
+		known ? c.job.job : settings.jobs.unemployed,
+		known ? c.job.grade : 0,
+		null,
+		JSON.stringify(c.metadata),
+		JSON.stringify(where(c)),
+		info.firstname,
+		info.lastname,
+		info.birthdate,
+		info.sex === "female" ? "f" : "m",
+		typeof height == "number" && Number.isFinite(height) ? Math.round(height) : 0,
+		null,
+		0,
+		c.lastPlayed
+	];
+}
+function jobRows(names) {
+	let jobs$1 = [], grades = [];
+	for (let name of names) {
+		let def = jobs.get(name);
+		def && (jobs$1.push([
+			name,
+			def.label.slice(0, 50),
+			+!def.listed
+		]), def.grades.forEach((g, level) => grades.push([
+			name,
+			level,
+			g.label.toLowerCase().replace(/\s+/g, "_").slice(0, 50),
+			g.label.slice(0, 50),
+			g.salary,
+			"{}",
+			"{}"
+		])));
+	}
+	return {
+		jobs: jobs$1,
+		grades
+	};
+}
+async function insertRows(query, table, columns, rows) {
+	for (let i = 0; i < rows.length; i += 500) {
+		let part = rows.slice(i, i + 500), one = `(${part[0]?.map(() => "?").join(", ")})`;
+		await query(`INSERT INTO \`${table}\` (${columns}) VALUES ${part.map(() => one).join(", ")}`, part.flat());
+	}
+}
+async function writeJobs(names, owned) {
+	let { jobs, grades } = jobRows(names);
+	await mysql.startTransaction(async (query) => {
+		owned.has("jobs") && (await query("DELETE FROM `jobs` WHERE name IN (?)", [names]), await insertRows(query, "jobs", "name, label, whitelisted", jobs)), owned.has("job_grades") && (await query("DELETE FROM `job_grades` WHERE job_name IN (?)", [names]), await insertRows(query, "job_grades", "job_name, grade, name, label, salary, skin_male, skin_female", grades));
+	}) || log$3.error(`writing jobs ${names.join(", ")} failed`);
+}
+async function holders(keys, owned) {
+	if (!owned.has("players")) return [];
+	let out = [];
+	for (let column of ["job", "gang"]) {
+		let names = keys.filter((k) => k.startsWith(`${column}s:`)).map((k) => k.slice(column.length + 2));
+		if (names.length === 0) continue;
+		let rows = await mysql.query(`SELECT DISTINCT user_id FROM players WHERE JSON_UNQUOTE(JSON_EXTRACT(\`${column}\`, '$.name')) IN (?)`, [names]);
+		for (let row of rows ?? []) out.push(row.user_id);
+	}
+	return out;
+}
+async function writeAccounts(ids, removed, owned, live) {
+	let chars = await readCharacters(ids, live), all = [...ids, ...removed], targets = [[
+		"players",
+		"id, citizenid, user_id, cid, license, name, money, charinfo, job, gang, position, metadata, inventory",
+		chars.map(qbRow)
+	], [
+		"users",
+		"identifier, id, user_id, accounts, `group`, inventory, job, job_grade, loadout, metadata, position, firstname, lastname, dateofbirth, sex, height, skin, disabled, last_seen",
+		chars.map(esxRow)
+	]];
+	await mysql.startTransaction(async (query) => {
+		await query("SET @ai_core_projection = 1");
+		for (let [table, columns, rows] of targets) owned.has(table) && (await query(`DELETE FROM \`${table}\` WHERE user_id IN (?)`, [all]), await insertRows(query, table, columns, rows));
+		await query("SET @ai_core_projection = NULL");
+	}) || log$3.error(`writing framework rows of ${all.length} accounts failed`);
+}
+function take(set, max = Infinity) {
+	let out = [];
+	for (let value of set) {
+		if (out.length >= max) break;
+		out.push(value);
+	}
+	for (let value of out) set.delete(value);
+	return out;
+}
+const projection = new class {
+	on = !1;
+	settled = !1;
+	booting = !0;
+	owned = new Set();
+	chain = Promise.resolve();
+	scheduled = !1;
+	dirty = new Set();
+	gone = new Set();
+	jobNames = new Set();
+	members = new Set();
+	captured = new Map();
+	accounts = new PlayerMap({ onDrop: (_source, userId) => this.forget(userId) });
+	active() {
+		let mode = settings.frameworkTables;
+		return mode === "auto" ? externalScreen() !== null || this.booting && multicharInstalled() : mode === "on";
+	}
+	connected(source, userId) {
+		this.accounts.set(source, userId), this.refresh(userId);
+	}
+	unloaded(source, charId, reason) {
+		let player = players.get(source);
+		reason === "switch" && player && (this.captured.set(charId, stateOf(player)), this.refresh(player.user.id));
+	}
+	deleted(userId) {
+		for (let other of this.accounts.values()) if (other === userId) return this.refresh(userId);
+	}
+	definitionChanged(file, name) {
+		(file === "jobs" || file === "gangs") && (file === "jobs" && this.jobNames.add(name), this.members.add(`${file}:${name}`), this.schedule());
+	}
+	reconcile() {
+		this.run(async () => {
+			let want = this.active();
+			this.settled && want === this.on || (this.settled = !0, want ? await this.enable() : await this.disable());
+		});
+	}
+	endBoot() {
+		this.booting = !1, this.reconcile();
+	}
+	refresh(userId) {
+		this.gone.delete(userId), this.dirty.add(userId), this.schedule();
+	}
+	forget(userId) {
+		for (let other of this.accounts.values()) if (other === userId) return;
+		this.dirty.delete(userId), this.gone.add(userId), this.schedule();
+	}
+	run(work) {
+		this.chain = this.chain.then(work).catch((error) => log$3.error("framework tables", error));
+	}
+	schedule() {
+		this.scheduled || (this.scheduled = !0, this.run(() => this.flush()));
+	}
+	async enable() {
+		let { ours, foreign } = await inspect();
+		foreign.size > 0 && log$3.warn(`framework tables ${[...foreign].join(", ")} exist and are not ai-core's (a server moved from QB / ESX): ai-core never writes them; the external character screen reads what is in them`), await dropTables(ours), await noticeDeletes(null);
+		let made = new Set();
+		for (let table of PROJECTION_TABLES) {
+			if (foreign.has(table)) continue;
+			let failed = await createTable(table);
+			made.add(table), failed !== null && log$3.warn(`no delete trigger on ${table}: a character deleted through it stays in ai-core`, failed);
+		}
+		this.owned = made, this.on = !0;
+		for (let name of jobs.keys()) this.jobNames.add(name);
+		for (let userId of this.accounts.values()) this.dirty.add(userId);
+		for (let user of selecting.values()) this.dirty.add(user.id);
+		for (let player of players.all()) this.dirty.add(player.user.id);
+		log$3.info(`framework tables on: ${[...made].join(", ")}`), this.schedule();
+	}
+	async disable() {
+		let { ours } = await inspect();
+		await dropTables(ours), await noticeDeletes(null), (this.on || ours.size > 0) && log$3.info(`framework tables off: ${[...ours].join(", ") || "none"}`), this.on = !1, this.owned.clear();
+	}
+	async flush() {
+		if (this.scheduled = !1, !this.on) {
+			for (let set of [
+				this.dirty,
+				this.gone,
+				this.jobNames,
+				this.members
+			]) set.clear();
+			this.captured.clear();
+			return;
+		}
+		let live = (charId) => {
+			let player = players.byCharacter(charId);
+			return player ? stateOf(player) : this.captured.get(charId);
+		};
+		for (; this.jobNames.size + this.members.size + this.dirty.size + this.gone.size > 0;) {
+			if (this.jobNames.size > 0 && await writeJobs(take(this.jobNames), this.owned), this.members.size > 0) for (let userId of await holders(take(this.members), this.owned)) this.dirty.add(userId);
+			let ids = take(this.dirty, 100), removed = take(this.gone, 1e3);
+			ids.length + removed.length > 0 && (await noticeDeletes([...ids, ...removed]), await writeAccounts(ids, removed, this.owned, live));
+		}
+		this.captured.clear();
+	}
+}();
+on(CORE.playerLoadedEvent, (source) => {
+	let player = players.get(source);
+	player && projection.connected(source, player.user.id);
+}), on(CORE.playerUnloadedEvent, (source, charId, reason) => projection.unloaded(source, charId, reason)), on(CORE.characterDeletedEvent, (_charId, userId) => projection.deleted(userId)), on(CORE.definitionsChangedEvent, (file, name) => projection.definitionChanged(file, name)), onScreenSwitch(() => projection.reconcile()), panel.onChange("settings", () => projection.reconcile()), databaseReady.then(() => projection.reconcile()).catch((error) => log$3.error("framework tables", error)), setTimeout(() => projection.endBoot(), 6e4);
+// resource/server/multichar/login.ts
+const fail = (error) => ({
+	ok: !1,
+	error
+}), OK = { ok: !0 }, INVALID$1 = fail("CHAR_ERR_INVALID"), BUSY = fail("CHAR_ERR_BUSY"), preparing = new PlayerMap();
+async function prepare(source) {
+	await databaseReady;
+	let identity = identify(source);
+	if (!identity || players.get(source)) return;
+	let user = selecting.get(source) ?? await upsertUser(identity);
+	GetPlayerName(String(source)) && !players.get(source) && (selecting.set(source, user), projection.connected(source, user.id));
+}
+on("playerJoining", () => {
+	let source = Number(globalThis.source);
+	(externalScreen() || projection.active()) && preparing.set(source, prepare(source).catch((error) => log$3.error(`preparing the account of ${source} failed`, error)));
+});
+function toSource(value) {
+	let source = readInt(value, 1, 2147483647);
+	return source !== null && GetPlayerName(String(source)) ? source : null;
+}
+function toRef(value) {
+	let id = readInt(value, 1, 2147483647);
+	if (id !== null) return { id };
+	if (!isRecord(value)) return null;
+	let slot = readInt(value.slot, 1, 255);
+	return slot === null ? typeof value.citizenid == "string" && value.citizenid.length > 0 && value.citizenid.length <= 16 ? { citizenid: value.citizenid } : null : { slot };
+}
+async function find(user, ref) {
+	if ("id" in ref) return ref.id;
+	let list = await listCharacters(user.id);
+	return ("slot" in ref ? list.find((c) => c.slot === ref.slot) : list.find((c) => c.citizenid === ref.citizenid))?.id ?? null;
+}
+function toNewCharacter(raw) {
+	if (!isRecord(raw)) return INVALID$1;
+	let firstname = toName(raw.firstname), lastname = toName(raw.lastname), birthdate = toBirthdate(raw.birthdate), sex = toSex(raw.sex), nationality = raw.nationality == null || raw.nationality === "" ? "" : toNationality(raw.nationality), slot = raw.slot == null ? null : readInt(raw.slot, 1, 255);
+	return raw.slot != null && slot === null ? INVALID$1 : firstname ? lastname ? birthdate ? sex ? nationality === null ? fail("CHAR_ERR_NATIONALITY") : {
+		slot,
+		firstname,
+		lastname,
+		birthdate,
+		sex,
+		nationality
+	} : fail("CHAR_ERR_SEX") : fail("CHAR_ERR_BIRTHDATE") : fail("CHAR_ERR_LASTNAME") : fail("CHAR_ERR_FIRSTNAME");
+}
+const whenPrepared = (source) => preparing.get(source) ?? Promise.resolve();
+registerExport("GetCharacterScreen", () => externalScreen() ?? CORE.resource), registerExport("LoginCharacter", (source, ref, done) => {
+	let src = toSource(source), pick = toRef(ref);
+	if (src === null || pick === null) return answer$1("login", Promise.resolve(INVALID$1), done, INVALID$1);
+	let work = whenPrepared(src).then(() => loginCharacterFor(src, (user) => find(user, pick)));
+	answer$1(`login of ${src}`, work, done, BUSY);
+}), registerExport("CreateAndLoginCharacter", (source, raw, done) => {
+	let src = toSource(source), input = toNewCharacter(raw);
+	if (src === null || "ok" in input) {
+		let result = src === null ? INVALID$1 : input;
+		return answer$1("create", Promise.resolve(result), done, result);
+	}
+	let work = whenPrepared(src).then(() => createCharacterFor(src, input));
+	answer$1(`create for ${src}`, work, done, BUSY);
+}), registerExport("LogoutCharacter", (source, done) => {
+	let src = toSource(source);
+	if (src === null) return answer$1("logout", Promise.resolve(INVALID$1), done, INVALID$1);
+	let work = logoutCharacter(src).then((ok) => ok ? OK : fail("CHAR_ERR_NOT_LOADED"));
+	answer$1(`logout of ${src}`, work, done, BUSY);
+}), onScreenSwitch((external) => {
+	for (let source of selecting.keys()) external ? enterWorldBucket(source) : emitNet(CORE.openCharactersEvent, source);
 });
 // resource/server/player/deaths.ts
 function sourceOfPed(ped) {
@@ -22970,6 +23956,7 @@ function salaryOf(job, grade, offPrime) {
 async function payAll() {
 	let offPrime = new Map(), due = [];
 	for (let player of players.all()) {
+		if (!player.paycheck) continue;
 		let job = player.jobs.onDuty();
 		if (!job) continue;
 		let grade = player.jobs.grade(job);
@@ -22985,7 +23972,7 @@ async function payAll() {
 	}
 	let funds = new Map();
 	if (settings.paycheck.fromJobAccount) for (let job of new Set(due.map((d) => d.job))) funds.set(job, await sharedAccounts.load("job", job));
-	for (let { player, job, salary } of due) if (players.get(player.source) === player && player.jobs.onDuty() === job) {
+	for (let { player, job, salary } of due) if (players.get(player.source) === player && player.paycheck && player.jobs.onDuty() === job) {
 		if (settings.paycheck.fromJobAccount) {
 			let account = funds.get(job)?.get(settings.paycheck.account);
 			if (!account || !account.change(-salary, "PAYCHECK_PAID", player.citizenid).ok) continue;
@@ -23026,12 +24013,507 @@ function transferMoney(from, to, amount, reason, fee = 0) {
 	let a = sideOf(from), b = sideOf(to);
 	return !a || !b || a.key === b.key || !a.change(-(amount + fee), reason) ? !1 : b.change(amount, reason) ? !0 : (a.change(amount + fee, `${reason}:refund`), !1);
 }
+// resource/server/characters/manage.ts
+const ERROR = fail$1("ADMIN_PLAYERS_ERR_BUSY"), INVALID = fail$1("CORE_ERR_ARGS");
+function actorName(by, fallback) {
+	if (typeof by == "number" && by > 0) {
+		let name = GetPlayerName(String(by)), fivem = players.get(by)?.user.fivem;
+		return `${name || `#${by}`}${fivem ? ` (fivem:${fivem})` : ""}`.slice(0, 64);
+	}
+	return typeof by == "string" && by ? by.slice(0, 64) : fallback;
+}
+function deleteCharacterBy(charId, by, done) {
+	let id = toCharId(charId), who = actorName(by, caller());
+	if (id === null) return answer$1("delete character", Promise.resolve(INVALID), done, INVALID);
+	let work = editCharacter(id, () => fail$1("ADMIN_PLAYERS_ERR_ONLINE"), async () => {
+		let row = await findCharacter(id);
+		return !row || !await softDelete(id) ? GONE : (playerWatchers.deleted(id), emit(CORE.characterDeletedEvent, id, row.userId), coreLog("characters", `deleted character #${id} (${who})`, {
+			level: "warn",
+			metadata: {
+				charId: id,
+				userId: row.userId,
+				by: who
+			}
+		}), OK$1);
+	});
+	answer$1(`delete character #${id}`, work, done, ERROR);
+}
+function readPatch(raw) {
+	if (typeof raw != "object" || !raw) return INVALID;
+	let input = raw, patch = {};
+	if (input.firstname != null) {
+		let v = toName(input.firstname);
+		if (!v) return fail$1("CHAR_ERR_FIRSTNAME");
+		patch.firstname = v;
+	}
+	if (input.lastname != null) {
+		let v = toName(input.lastname);
+		if (!v) return fail$1("CHAR_ERR_LASTNAME");
+		patch.lastname = v;
+	}
+	if (input.birthdate != null) {
+		let v = toBirthdate(input.birthdate);
+		if (!v) return fail$1("CHAR_ERR_BIRTHDATE");
+		patch.birthdate = v;
+	}
+	if (input.nationality != null) {
+		let v = toNationality(input.nationality);
+		if (!v) return fail$1("CHAR_ERR_NATIONALITY");
+		patch.nationality = v;
+	}
+	if (input.sex != null) {
+		let v = toSex(input.sex);
+		if (!v) return fail$1("CHAR_ERR_SEX");
+		patch.sex = v;
+	}
+	return patch;
+}
+function setCharacterInfo(charId, raw, done) {
+	let id = toCharId(charId), patch = readPatch(raw);
+	if (id === null || "ok" in patch) {
+		let result = "ok" in patch ? patch : INVALID;
+		return answer$1("character info", Promise.resolve(result), done, result);
+	}
+	let work = editCharacter(id, async (player) => {
+		let info = {
+			...player.info(),
+			...patch
+		};
+		return info.sex === player.info().sex ? (await updateInfo(id, info), players.byCharacter(id) === player && player.setInfo(info), OK$1) : fail$1("ADMIN_PLAYERS_ERR_SEX_ONLINE");
+	}, async () => {
+		let row = await findCharacter(id);
+		if (!row) return GONE;
+		let { firstname, lastname, birthdate, sex, nationality } = row, info = {
+			firstname,
+			lastname,
+			birthdate,
+			sex,
+			nationality,
+			...patch
+		};
+		return offline.info(id, info);
+	});
+	answer$1(`character info of #${id}`, work, done, ERROR);
+}
+var BanStore = class {
+	all = new Set();
+	byId = new Map();
+	byIdentifier = new Map();
+	get size() {
+		return this.all.size;
+	}
+	add(ban) {
+		if (!(ban.id > 0 && this.byId.has(ban.id))) {
+			this.all.add(ban), ban.id > 0 && this.byId.set(ban.id, ban);
+			for (let type of BAN_IDENTIFIERS) {
+				let value = ban.identifiers[type];
+				if (!value) continue;
+				let key = `${type}:${value}`, set = this.byIdentifier.get(key);
+				set || this.byIdentifier.set(key, set = new Set()), set.add(ban);
+			}
+		}
+	}
+	written(ban, id) {
+		let copy = this.byId.get(id);
+		copy && copy !== ban && this.remove(copy), ban.id = id, this.all.has(ban) && this.byId.set(id, ban);
+	}
+	remove(ban) {
+		if (this.all.delete(ban)) {
+			ban.id > 0 && this.byId.get(ban.id) === ban && this.byId.delete(ban.id);
+			for (let type of BAN_IDENTIFIERS) {
+				let value = ban.identifiers[type];
+				if (!value) continue;
+				let key = `${type}:${value}`, set = this.byIdentifier.get(key);
+				set?.delete(ban), set?.size === 0 && this.byIdentifier.delete(key);
+			}
+		}
+	}
+	get(id) {
+		return this.byId.get(id);
+	}
+	find(identifiers, now = Date.now()) {
+		for (let type of BAN_IDENTIFIERS) {
+			let value = identifiers[type];
+			if (!value) continue;
+			let set = this.byIdentifier.get(`${type}:${value}`);
+			if (set) for (let ban of set) if (ban.expires !== null && ban.expires <= now) this.remove(ban);
+			else return ban;
+		}
+		return null;
+	}
+	page(page, now = Date.now()) {
+		for (let ban of this.all) ban.expires !== null && ban.expires <= now && this.remove(ban);
+		let list = [...this.all].reverse(), start = (Math.max(1, page) - 1) * 50;
+		return {
+			bans: list.slice(start, start + 50).map(copyBan),
+			total: list.length
+		};
+	}
+};
+function copyBan(ban) {
+	return {
+		...ban,
+		identifiers: { ...ban.identifiers }
+	};
+}
+// resource/server/bans/index.ts
+const store$2 = new BanStore();
+let loaded = !1;
+const MAX_LENGTH = {
+	fivem: 20,
+	license: 60,
+	discord: 30,
+	ip: 45
+};
+function identifiersOf(source) {
+	let out = {};
+	for (let id of getPlayerIdentifiers(String(source))) {
+		let at = id.indexOf(":"), type = id.slice(0, at);
+		at > 0 && BAN_IDENTIFIERS.includes(type) && (out[type] = id.slice(at + 1));
+	}
+	return out;
+}
+function readIdentifiers(raw) {
+	if (!isRecord(raw)) return null;
+	let out = {}, any = !1;
+	for (let type of BAN_IDENTIFIERS) {
+		let value = raw[type];
+		if (typeof value != "string") continue;
+		let text = value.trim().replace(RegExp(`^${type}:`), "");
+		!text || text.length > MAX_LENGTH[type] || (out[type] = text, any = !0);
+	}
+	return any ? out : null;
+}
+function readTarget(target) {
+	if (typeof target == "number" && Number.isInteger(target) && target > 0) {
+		if (!GetPlayerName(String(target))) return null;
+		let identifiers = identifiersOf(target);
+		return Object.keys(identifiers).length > 0 ? {
+			identifiers,
+			source: target
+		} : null;
+	}
+	if (isRecord(target)) {
+		let identifiers = readIdentifiers(target.identifiers);
+		return identifiers ? {
+			identifiers,
+			source: null
+		} : null;
+	}
+	return null;
+}
+const pad = (n) => String(n).padStart(2, "0");
+function expiryText(expires) {
+	if (expires === null) return Locale("BAN_PERMANENT");
+	let d = new Date(expires);
+	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+const refusal = (ban) => Locale("BAN_REFUSED", ban.reason, expiryText(ban.expires), ban.id || "-");
+gate.add("ai-core:bans", "ai-core", (_source, identifiers) => {
+	if (!loaded) return Locale("BAN_STARTING");
+	let ban = store$2.find(identifiers);
+	return ban ? refusal(ban) : null;
+});
+async function loadBans() {
+	await databaseReady;
+	let rows = await mysql.query("SELECT id, fivem, license, discord, ip, name, reason, banned_by, created_at, expires_at FROM ai_core_bans\n       WHERE revoked_at IS NULL AND (expires_at IS NULL OR expires_at > ?) ORDER BY id", [new Date()]) ?? [];
+	for (let row of rows) {
+		let identifiers = {};
+		for (let type of BAN_IDENTIFIERS) {
+			let value = row[type];
+			value && (identifiers[type] = value);
+		}
+		store$2.add({
+			id: row.id,
+			identifiers,
+			name: row.name,
+			reason: row.reason,
+			by: row.banned_by,
+			created: row.created_at,
+			expires: row.expires_at
+		});
+	}
+	loaded = !0, log$3.info(`${store$2.size} active bans`);
+}
+loadBans().catch((error) => {
+	loaded = !0, log$3.error("reading the bans failed: nobody is refused as banned", error);
+});
+function banPlayer(target, reason, minutes, by, done) {
+	let who = actorName(by, caller()), found = readTarget(target), why = typeof reason == "string" ? reason.trim().slice(0, 255) : "", mins = minutes == null ? null : typeof minutes == "number" && Number.isInteger(minutes) && minutes > 0 ? minutes : void 0;
+	if (!found || !why || mins === void 0) return !1;
+	let now = Date.now(), ban = {
+		id: 0,
+		identifiers: found.identifiers,
+		name: found.source ? (GetPlayerName(String(found.source)) || "").slice(0, 64) : "",
+		reason: why,
+		by: who,
+		created: now,
+		expires: mins === null ? null : now + mins * 6e4
+	};
+	store$2.add(ban);
+	for (let id of getPlayers()) {
+		let source = Number(id), ids = identifiersOf(source);
+		BAN_IDENTIFIERS.some((t) => ban.identifiers[t] && ids[t] === ban.identifiers[t]) && DropPlayer(String(source), refusal(ban));
+	}
+	coreLog("bans", `banned ${ban.name || JSON.stringify(ban.identifiers)}: ${why}`, {
+		level: "warn",
+		metadata: {
+			...ban.identifiers,
+			reason: why,
+			minutes: mins,
+			by: who
+		}
+	});
+	let ids = ban.identifiers;
+	return mysql.insert("INSERT INTO ai_core_bans (fivem, license, discord, ip, name, reason, banned_by, created_at, expires_at)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", [
+		ids.fivem ?? null,
+		ids.license ?? null,
+		ids.discord ?? null,
+		ids.ip ?? null,
+		ban.name,
+		why,
+		who,
+		new Date(now),
+		ban.expires === null ? null : new Date(ban.expires)
+	]).then((id) => (id && store$2.written(ban, id), id || null), (error) => (log$3.error("writing a ban failed (it holds until a restart)", error), null)).then((id) => {
+		typeof done == "function" && done(id);
+	}).catch((error) => log$3.error("ban callback failed", error)), !0;
+}
+function unbanPlayer(banId, by) {
+	let who = actorName(by, caller()), ban = typeof banId == "number" && Number.isInteger(banId) && banId > 0 ? store$2.get(banId) : void 0;
+	return ban ? (store$2.remove(ban), coreLog("bans", `lifted ban #${ban.id} (${ban.name || ban.reason})`, { metadata: {
+		banId: ban.id,
+		by: who
+	} }), mysql.update("UPDATE ai_core_bans SET revoked_at = ?, revoked_by = ? WHERE id = ? AND revoked_at IS NULL", [
+		new Date(),
+		who,
+		ban.id
+	]).catch((error) => log$3.error(`lifting ban #${ban.id} failed`, error)), !0) : !1;
+}
+function isBanned(target) {
+	let found = readTarget(target), ban = found ? store$2.find(found.identifiers) : null;
+	return ban ? copyBan(ban) : null;
+}
+function getBans(page) {
+	return store$2.page(typeof page == "number" && Number.isInteger(page) ? page : 1);
+}
+// resource/server/characters/read.ts
+function infoOf(row) {
+	return {
+		id: row.id,
+		citizenid: row.citizenid,
+		slot: row.slot,
+		firstname: row.firstname,
+		lastname: row.lastname,
+		birthdate: row.birthdate,
+		sex: row.sex,
+		nationality: row.nationality,
+		userId: row.userId
+	};
+}
+function fromPlayer(player) {
+	let data = player.snapshot(), ped = GetPlayerPed(String(player.source)), at = coordsOf(player.source);
+	return {
+		info: {
+			...player.info(),
+			userId: player.user.id
+		},
+		money: data.money,
+		jobs: data.jobs,
+		gangs: data.gangs,
+		activeGang: data.activeGang,
+		metadata: data.metadata,
+		position: ped ? {
+			x: at.x,
+			y: at.y,
+			z: at.z,
+			heading: GetEntityHeading(ped)
+		} : player.spawnPosition(),
+		lastSeen: Date.now(),
+		source: player.source
+	};
+}
+async function fromDatabase(charId) {
+	let [row, balances, jobs, gangs] = await Promise.all([
+		findCharacter(charId),
+		storedBalances(charId),
+		loadJobs(charId),
+		loadGangs(charId)
+	]);
+	if (!row) return null;
+	let money = {};
+	for (let [name, type] of accountTypes) money[name] = balances.get(name) ?? type.start;
+	return {
+		info: infoOf(row),
+		money,
+		jobs,
+		gangs: gangs.gangs,
+		activeGang: gangs.active,
+		metadata: row.metadata,
+		position: row.position,
+		lastSeen: row.lastPlayed,
+		source: null
+	};
+}
+function getOfflineCharacter(charId) {
+	return readCharacter(charId, fromPlayer, () => fromDatabase(charId), null);
+}
+const LICENSE = /^(?:license:)?([0-9a-f]{40})$/i;
+async function getCharactersOfUser(user) {
+	let rows = [];
+	if (typeof user == "number" && Number.isInteger(user) && user > 0) rows = await listCharacters(user);
+	else if (typeof user == "string") {
+		let license = LICENSE.exec(user.trim())?.[1]?.toLowerCase();
+		license && (rows = await listCharactersByLicense(license));
+	}
+	return rows.map((row) => ({
+		...infoOf(row),
+		lastPlayed: row.lastPlayed
+	}));
+}
+// resource/server/jobs/members.ts
+const TABLES = {
+	job: {
+		table: "ai_core_character_jobs",
+		column: "job"
+	},
+	gang: {
+		table: "ai_core_character_gangs",
+		column: "gang"
+	}
+}, NAME = /^[A-Za-z0-9_-]{1,48}$/;
+async function membersOf(kind, name, after, limit) {
+	if (typeof name != "string" || !NAME.test(name)) return {
+		members: [],
+		next: null
+	};
+	let from = typeof after == "number" && Number.isInteger(after) && after > 0 ? after : 0, size = typeof limit == "number" && Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 500) : 100, { table, column } = TABLES[kind], rows = await mysql.query(`SELECT m.char_id, m.grade, c.citizenid, c.firstname, c.lastname
+       FROM ${table} m JOIN ai_core_characters c ON c.id = m.char_id AND c.deleted_at IS NULL
+       WHERE m.${column} = ? AND m.char_id > ? ORDER BY m.char_id LIMIT ?`, [
+		name,
+		from,
+		size + 1
+	]) ?? [], more = rows.length > size, page = more ? rows.slice(0, size) : rows, members = [];
+	for (let row of page) {
+		let player = players.byCharacter(row.char_id), grade = player ? kind === "job" ? player.jobs.grade(name) : player.gangs.grade(name) : row.grade;
+		grade !== null && members.push({
+			charId: row.char_id,
+			citizenid: row.citizenid,
+			firstname: row.firstname,
+			lastname: row.lastname,
+			grade,
+			source: player?.source ?? null
+		});
+	}
+	return {
+		members,
+		next: more ? page.at(-1)?.char_id ?? null : null
+	};
+}
+// resource/server/jobs/runtime.ts
+var RuntimeDefinitions = class {
+	kind;
+	target;
+	read;
+	view;
+	owned;
+	published;
+	file;
+	constructor(kind, target, read, view, prefix) {
+		this.kind = kind, this.target = target, this.read = read, this.view = view, this.file = kind === "job" ? "jobs" : "gangs", this.published = new GlobalGroup(prefix, (v) => isRecord(v) ? v : void 0);
+		for (let name of this.published.ids()) this.published.set(name, void 0);
+		this.owned = new ByResource({ onDrop: (resource, name, def) => {
+			this.target.get(name) === def && (this.target.delete(name), this.published.set(name, void 0), emit(CORE.definitionsChangedEvent, this.file, name), log$3.info(`${this.file} ${name} of ${resource} removed (stopped)`));
+		} }), panel.onChange(this.file, (key, value) => {
+			key !== void 0 && value !== null && this.owned.get(key) && (this.owned.delete(key), this.published.set(key, void 0));
+		});
+	}
+	register(name, definition) {
+		let owner = caller();
+		if (typeof name != "string" || !ID_PATTERN.test(name) || !isRecord(definition)) return {
+			ok: !1,
+			error: "CORE_ERR_ARGS"
+		};
+		let mine = this.owned.get(name);
+		if (this.target.has(name) && mine === void 0) return {
+			ok: !1,
+			error: "CORE_ERR_DEFINITION_PANEL"
+		};
+		if (mine !== void 0 && this.owned.ownerOf(name) !== owner) return {
+			ok: !1,
+			error: "CORE_ERR_DEFINITION_OWNER"
+		};
+		let def = this.read(definition);
+		return this.owned.set(name, def, owner), this.target.set(name, def), this.published.set(name, this.view(def)), emit(CORE.definitionsChangedEvent, this.file, name), this.prepare(name), { ok: !0 };
+	}
+	remove(name) {
+		if (typeof name != "string") return !1;
+		let def = this.owned.get(name);
+		return def === void 0 || this.owned.ownerOf(name) !== caller() ? !1 : (this.owned.delete(name), this.target.get(name) === def && this.target.delete(name), this.published.set(name, void 0), emit(CORE.definitionsChangedEvent, this.file, name), !0);
+	}
+	prepare(name) {
+		this.kind === "job" && dutyCount(name) === 0 && resetDutyCounts([name]), sharedAccounts.load(this.kind, name).catch((error) => log$3.error(`loading the accounts of ${this.kind} ${name} failed`, error));
+	}
+};
+const jobView = (def) => ({
+	label: def.label,
+	type: def.type,
+	defaultDuty: def.defaultDuty,
+	listed: def.listed,
+	grades: def.grades
+}), gangView = (def) => ({
+	label: def.label,
+	grades: def.grades
+}), runtimeJobs = new RuntimeDefinitions("job", jobs, readJob, jobView, CORE.runtimeJobPrefix), runtimeGangs = new RuntimeDefinitions("gang", gangs, readGang, gangView, CORE.runtimeGangPrefix);
+// resource/server/player/extras.ts
+function setPaycheckEnabled(source, on) {
+	let player = typeof source == "number" ? players.get(source) : void 0;
+	return !player || typeof on != "boolean" ? !1 : (player.paycheck = on, !0);
+}
+function isPaycheckEnabled(source) {
+	return typeof source == "number" ? players.get(source)?.paycheck ?? !1 : !1;
+}
+const storedPlayTime = (metadata) => {
+	let value = metadata.playtime;
+	return typeof value == "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
+};
+function getPlayTime(target, done) {
+	if (typeof target == "number") {
+		let seconds = players.get(target)?.playTime() ?? null;
+		return typeof done == "function" && done(seconds), seconds;
+	}
+	let charId = isRecord(target) ? toCharId(target.charId) : null, loaded = charId === null ? void 0 : players.byCharacter(charId);
+	if (charId === null || loaded) {
+		let seconds = loaded?.playTime() ?? null;
+		return typeof done == "function" && done(seconds), seconds;
+	}
+	let work = readCharacter(charId, (player) => player.playTime(), async () => {
+		let row = await findCharacter(charId);
+		return row ? storedPlayTime(row.metadata) : null;
+	}, null);
+	return answer$1(`play time of #${charId}`, work, done, null), null;
+}
+function savePlayer(source, done) {
+	let player = typeof source == "number" ? players.get(source) : void 0;
+	if (!player) return answer$1("save player", Promise.resolve(!1), done, !1);
+	let work = saveCharacters([player.saveData()]).then(() => player.idle()).then(() => !0).catch((error) => (log$3.error(`saving #${player.charId} failed`, error), !1));
+	answer$1(`save #${player.charId}`, work, done, !1);
+}
 // resource/server/exports.ts
 const positive = (amount) => typeof amount == "number" && Number.isSafeInteger(amount) && amount > 0, reasonOf = (reason) => typeof reason == "string" && reason ? reason : caller();
 registerExport("GetPlayerData", (src) => players.get(src)?.snapshot() ?? null), registerExport("GetCharacter", (src) => players.get(src)?.info() ?? null), registerExport("GetSourceByCharId", (charId) => players.byCharacter(charId)?.source ?? null), registerExport("GetSourceByCitizenId", (citizenid) => players.byCitizen(citizenid)?.source ?? null), registerExport("GetLoadedSources", () => [...players.all()].map((player) => player.source)), registerExport("GetUserId", (src) => players.get(src)?.user.id ?? selecting.get(src)?.id ?? null), registerExport("GetFivemId", (src) => players.get(src)?.user.fivem ?? null), registerExport("GetMoney", (src, account) => players.get(src)?.wallet.get(account) ?? null), registerExport("AddMoney", (src, account, amount, reason) => positive(amount) ? players.get(src)?.wallet.change(account, amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("RemoveMoney", (src, account, amount, reason) => positive(amount) ? players.get(src)?.wallet.change(account, -amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("SetMoney", (src, account, amount, reason) => players.get(src)?.wallet.set(account, amount, reasonOf(reason)).ok ?? !1), registerExport("GetJobs", (src) => players.get(src)?.jobs.all() ?? null), registerExport("GetCurrentJob", (src) => players.get(src)?.jobs.current() ?? null), registerExport("GetDutyJob", (src) => players.get(src)?.jobs.onDuty() ?? null), registerExport("SetDuty", (src, job) => players.get(src)?.jobs.setDuty(job).ok ?? !1), registerExport("SetJob", (src, job, grade) => players.get(src)?.jobs.set(job, grade).ok ?? !1), registerExport("RemoveJob", (src, job) => players.get(src)?.jobs.remove(job).ok ?? !1), registerExport("GetOnDutyCount", (job) => dutyCount(job)), registerExport("GetGangs", (src) => players.get(src)?.gangs.all() ?? null), registerExport("GetActiveGang", (src) => players.get(src)?.gangs.activeGang() ?? null), registerExport("SetGang", (src, gang, grade) => players.get(src)?.gangs.set(gang, grade).ok ?? !1), registerExport("RemoveGang", (src, gang) => players.get(src)?.gangs.remove(gang).ok ?? !1), registerExport("SetActiveGang", (src, gang) => players.get(src)?.gangs.setActive(gang).ok ?? !1), registerExport("GetMeta", (src, key) => players.get(src)?.getMeta(key) ?? null), registerExport("SetMeta", (src, key, value) => {
 	let player = players.get(src);
 	return !player || typeof key != "string" ? !1 : (player.setMeta(key, value), !0);
-}), registerExport("GetBranding", () => ({ ...settings.branding })), registerExport("GetJobDefinitions", () => Object.fromEntries(jobs)), registerExport("GetGangDefinitions", () => Object.fromEntries(gangs)), registerExport("GetJobDefinition", (job) => typeof job == "string" ? jobs.get(job) ?? null : null), registerExport("GetGangDefinition", (gang) => typeof gang == "string" ? gangs.get(gang) ?? null : null), registerExport("GetAccountTypes", () => Object.fromEntries(accountTypes)), registerExport("GetSharedMoney", (ownerType, ownerId, account) => sharedAccounts.get(ownerType, ownerId, account)?.balance ?? null), registerExport("AddSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("RemoveSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(-amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("TransferMoney", (from, to, amount, reason, fee) => transferMoney(from, to, amount, reasonOf(reason), fee ?? 0));
+}), registerExport("GetBranding", () => ({ ...settings.branding })), registerExport("GetJobDefinitions", () => Object.fromEntries(jobs)), registerExport("GetGangDefinitions", () => Object.fromEntries(gangs)), registerExport("GetJobDefinition", (job) => typeof job == "string" ? jobs.get(job) ?? null : null), registerExport("GetGangDefinition", (gang) => typeof gang == "string" ? gangs.get(gang) ?? null : null), registerExport("GetAccountTypes", () => Object.fromEntries(accountTypes)), registerExport("GetSharedMoney", (ownerType, ownerId, account) => sharedAccounts.get(ownerType, ownerId, account)?.balance ?? null), registerExport("AddSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("RemoveSharedMoney", (ownerType, ownerId, account, amount, reason) => positive(amount) ? sharedAccounts.get(ownerType, ownerId, account)?.change(-amount, reasonOf(reason)).ok ?? !1 : !1), registerExport("TransferMoney", (from, to, amount, reason, fee) => transferMoney(from, to, amount, reasonOf(reason), fee ?? 0)), registerExport("GetOfflineCharacter", (charId, done) => {
+	let id = toCharId(charId), work = id === null ? Promise.resolve(null) : getOfflineCharacter(id);
+	answer$1(`character #${id}`, work, done, null);
+}), registerExport("GetCharactersOfUser", (user, done) => answer$1("characters of an account", getCharactersOfUser(user), done, [])), registerExport("GetJobMembers", (job, done, after, limit) => answer$1("job members", membersOf("job", job, after, limit), done, {
+	members: [],
+	next: null
+})), registerExport("GetGangMembers", (gang, done, after, limit) => answer$1("gang members", membersOf("gang", gang, after, limit), done, {
+	members: [],
+	next: null
+})), registerExport("AddOfflineMoney", (c, a, n, r, done) => offlineMoney("add", c, a, n, r, done)), registerExport("RemoveOfflineMoney", (c, a, n, r, done) => offlineMoney("remove", c, a, n, r, done)), registerExport("SetOfflineMoney", (c, a, n, r, done) => offlineMoney("set", c, a, n, r, done)), registerExport("SetOfflineJob", offlineJob), registerExport("RemoveOfflineJob", offlineRemoveJob), registerExport("SetOfflineGang", offlineGang), registerExport("RemoveOfflineGang", offlineRemoveGang), registerExport("SetOfflineMeta", offlineMeta), registerExport("SetCharacterInfo", setCharacterInfo), registerExport("DeleteCharacter", (charId, by, done) => deleteCharacterBy(charId, by, done)), registerExport("BanPlayer", (target, reason, minutes, by, done) => banPlayer(target, reason, minutes, by, done)), registerExport("UnbanPlayer", (banId, by) => unbanPlayer(banId, by)), registerExport("IsBanned", isBanned), registerExport("GetBans", (page) => getBans(page)), registerExport("RegisterJobDefinition", (name, def) => runtimeJobs.register(name, def)), registerExport("RemoveJobDefinition", (name) => runtimeJobs.remove(name)), registerExport("RegisterGangDefinition", (name, def) => runtimeGangs.register(name, def)), registerExport("RemoveGangDefinition", (name) => runtimeGangs.remove(name)), registerExport("SetPaycheckEnabled", setPaycheckEnabled), registerExport("IsPaycheckEnabled", isPaycheckEnabled), registerExport("GetPlayTime", (target, done) => getPlayTime(target, done)), registerExport("SavePlayer", (source, done) => savePlayer(source, done));
 // resource/server/vehicleKeys/index.ts
 const activeKeys = new GlobalKey("ai:vehicleKeys", stateString), layer$3 = new AdapterPicker({
 	category: "vehicle keys",
@@ -23057,15 +24539,23 @@ function target(vehicle) {
 		plate: plateOf(vehicle)
 	};
 }
+const has = (source, t) => layer$3.call("has", (a) => !a.has || a.has(source, t), !0), tell = (source, t) => emitNet("ai-core:client:vehicleKeyHeld", source, t.plate, has(source, t));
 registerExport("GiveVehicleKeys", (source, vehicle, purpose) => {
 	let t = target(vehicle);
-	typeof source == "number" && t && layer$3.call("give", (a) => a.give(source, t, toKeyPurpose(purpose)), void 0);
+	typeof source == "number" && t && (layer$3.call("give", (a) => a.give(source, t, toKeyPurpose(purpose)), void 0), tell(source, t));
 }), registerExport("RemoveVehicleKeys", (source, vehicle) => {
 	let t = target(vehicle);
-	typeof source == "number" && t && layer$3.call("remove", (a) => a.remove(source, t), void 0);
+	typeof source == "number" && t && (layer$3.call("remove", (a) => a.remove(source, t), void 0), tell(source, t));
 }), registerExport("HasVehicleKeys", (source, vehicle) => {
 	let t = target(vehicle);
-	return typeof source != "number" || !t ? !1 : layer$3.call("has", (a) => !a.has || a.has(source, t), !0);
+	return typeof source == "number" && t !== null && has(source, t);
+}), onClientCallback("ai-core:vehicleKeys:has", { args: ([v]) => {
+	if (typeof v == "string") return v.length <= 16 ? [v] : null;
+	let netId = readId(v);
+	return netId === null ? null : [netId];
+} }, (source, v) => {
+	let t = target(typeof v == "number" ? vehicleFromNet(v) : v);
+	return t !== null && has(source, t);
 });
 // resource/server/interaction.ts
 const style = new GlobalKey(CORE.interactionStateKey, stateString), publish$1 = () => style.set(settings.interaction);
@@ -23311,7 +24801,7 @@ onClientCallback(CORE.payBillCallback, {
 	lock: !0
 }, (source, id) => {
 	let error = payBill(source, id);
-	return error ? fail$1(error) : { ok: !0 };
+	return error ? fail$3(error) : { ok: !0 };
 }), on(CORE.playerLoadedEvent, (source) => {
 	let charId = players.get(source)?.charId;
 	charId !== void 0 && inOrder(charId, () => load(charId));
@@ -23756,7 +25246,7 @@ const cache = new class {
 		this.entries.delete(charId);
 	}
 }();
-on(CORE.playerLoadedEvent, (_source, info) => cache.drop(info.id)), on(CORE.playerUnloadedEvent, (_source, charId) => cache.drop(charId));
+on(CORE.playerLoadedEvent, (_source, info) => cache.drop(info.id)), on(CORE.playerUnloadedEvent, (_source, charId) => cache.drop(charId)), on(CORE.characterDeletedEvent, (charId) => cache.drop(charId));
 function getCharacterInfo(charId, done) {
 	let id = readId(charId);
 	if (id === null) return done(null);
