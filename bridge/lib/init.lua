@@ -71,7 +71,7 @@ end
 ---@field onClientEvent fun(name: string, handler: (fun(source: integer, ...: any)), options?: table) server
 ---@field aiLog fun(channel: string, message: string, options?: table) server
 ---@field prison { jail: (fun(src: integer, minutes: integer, by?: integer): boolean), release: (fun(src: integer): boolean), timeLeft: (fun(src: integer): integer) } server: jail sentences through ai-core
----@field online table server: `character`, `name`, `jobs`, `gangs`, `jobGrade`, `gangGrade`, `dutyJob`, `sources`
+---@field online table server: `character`, `name`, `jobs`, `gangs`, `jobGrade`, `gangGrade`, `dutyJob`, `sources`, `sourceOf(citizenid)`, `characters()`
 ---@field nearestVehicleTo fun(source: integer, metres: number, filter?: fun(vehicle: integer): boolean): integer server
 ---@field vehicleFromNet fun(netId: any): integer server: the live vehicle behind a client's net id, or 0
 ---@field vehicleNearPlayer fun(source: integer, netId: any, options?: { metres?: number, driver?: boolean }): integer server
@@ -110,7 +110,7 @@ end
 ---@field vehicleType fun(model: string|integer, asker: integer): string?, integer server: the spawn type a player's client gives (kept once two players agree; waits) and the model hash
 ---@field playersNear fun(source: integer, radius: number): integer[] server
 ---@field playersNearCoords fun(coords: vector3, radius: number, bucket?: integer): integer[] server: loaded players near a point (walks every loaded player)
----@field inventory table client `openInventory`, `hasItem`, `currentWeapon`, `itemCount`, `itemDefinition`, `items`, `onCount`; server the item calls through ai-core (and `registerShop`, `openShop`, `setItemMetadata`, `setMaxWeight`, `usableItems`)
+---@field inventory table client `openInventory`, `hasItem`, `currentWeapon`, `itemCount`, `itemDefinition`, `itemDefinitions`, `items`, `itemsBySlot`, `firstStack`, `onCount`; server the item calls through ai-core (and `registerShop`, `openShop`, `setItemMetadata`, `setMaxWeight`, `usableItems`)
 ---@field vehicleKeys table server `give(source, vehicle, purpose?)`, `remove(source, vehicle)`, `has(source, vehicle)`; client `has(vehicle)` (entity or plate)
 ---@field phone table server
 ---@field dispatch { alert: (fun(alert: AiLibDispatchAlert): boolean) } server: police alerts through ai-core's alert system

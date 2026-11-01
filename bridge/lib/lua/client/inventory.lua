@@ -23,6 +23,22 @@ return {
     ---client list (ask your server).
     ---@return table[]?
     items = function() return exports['ai-core']:GetItems() end,
+    ---The player's stacks by slot; nil when the active inventory has no client list.
+    ---@return table<integer, table>?
+    itemsBySlot = function()
+        local list = exports['ai-core']:GetItems()
+        if not list then return nil end
+        local out = {}
+        for _, stack in ipairs(list) do out[stack.slot] = stack end
+        return out
+    end,
+    ---The first stack of an item the player holds; nil when none (or no client list).
+    ---@return table?
+    firstStack = function(item)
+        for _, stack in ipairs(exports['ai-core']:GetItems() or {}) do
+            if stack.name == item then return stack end
+        end
+    end,
     ---Runs `handler(item, count, previous)` each time the player's total of an item changes in the active inventory.
     ---@param handler fun(item: string, count: integer, previous: integer)
     onCount = function(handler)

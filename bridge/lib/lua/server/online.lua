@@ -40,6 +40,17 @@ return {
     ---@param src integer
     ---@return string?
     dutyJob = function(src) return core:GetDutyJob(src) end,
+    ---The server id of a loaded character by its citizenid, or nil.
+    ---@param citizenid string
+    ---@return integer?
+    sourceOf = function(citizenid) return core:GetSourceByCitizenId(tostring(citizenid)) end,
+    ---Every loaded character by server id.
+    ---@return table<integer, table>
+    characters = function()
+        local out = {}
+        for _, src in ipairs(core:GetLoadedSources() or {}) do out[src] = core:GetCharacter(src) end
+        return out
+    end,
     ---Server ids of every player with a loaded character.
     ---@return integer[]
     sources = function() return core:GetLoadedSources() or {} end,

@@ -1192,6 +1192,7 @@ var OnlineMirror = class {
 	onDuty = new Map();
 	jobIndex = new Map();
 	gangIndex = new Map();
+	byCitizenid = new Map();
 	started = !1;
 	start() {
 		if (this.started) return;
@@ -1204,7 +1205,7 @@ var OnlineMirror = class {
 				gangs: [],
 				gangNames: [],
 				duty: null
-			}), this.setJobs(source, core$24.GetJobs(source) ?? []), this.setGangs(source, core$24.GetGangs(source) ?? []), this.setDuty(source, core$24.GetDutyJob(source));
+			}), this.byCitizenid.set(character.citizenid, source), this.setJobs(source, core$24.GetJobs(source) ?? []), this.setGangs(source, core$24.GetGangs(source) ?? []), this.setDuty(source, core$24.GetDutyJob(source));
 		};
 		on(CORE.playerLoadedEvent, load), on(CORE.playerUnloadedEvent, (source) => this.drop(source)), on(CORE.jobsChangedEvent, (source, jobs) => this.setJobs(source, jobs)), on(CORE.gangsChangedEvent, (source, gangs) => this.setGangs(source, gangs)), on(CORE.dutyChangedEvent, (source, job) => this.setDuty(source, job));
 		for (let source of core$24.GetLoadedSources()) {
@@ -1214,7 +1215,7 @@ var OnlineMirror = class {
 	}
 	drop(source) {
 		let player = this.players.get(source);
-		player && (this.setDuty(source, null), reindex(this.jobIndex, source, player.jobNames, []), reindex(this.gangIndex, source, player.gangNames, []), this.players.delete(source));
+		player && (this.setDuty(source, null), reindex(this.jobIndex, source, player.jobNames, []), reindex(this.gangIndex, source, player.gangNames, []), this.byCitizenid.delete(player.character.citizenid), this.players.delete(source));
 	}
 	setJobs(source, jobs) {
 		let player = this.players.get(source);
@@ -1248,6 +1249,15 @@ var OnlineMirror = class {
 	}
 	character(source) {
 		return this.start(), this.players.get(source)?.character ?? null;
+	}
+	sourceOf(citizenid) {
+		return this.start(), this.byCitizenid.get(citizenid) ?? null;
+	}
+	characters() {
+		this.start();
+		let out = new Map();
+		for (let [source, player] of this.players) out.set(source, player.character);
+		return out;
 	}
 	charId(source) {
 		return this.start(), this.players.get(source)?.character.id;

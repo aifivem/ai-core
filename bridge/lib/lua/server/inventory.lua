@@ -8,6 +8,20 @@ return {
     hasItem = function(inv, item, count) return core:HasItem(inv, item, count or 1) end,
     canCarryItem = function(inv, item, count, metadata) return core:CanCarryItem(inv, item, count, metadata) end,
     getItems = function(inv) return core:GetItems(inv) end,
+    ---An inventory's stacks by slot.
+    ---@return table<integer, table>
+    itemsBySlot = function(inv)
+        local out = {}
+        for _, stack in ipairs(core:GetItems(inv) or {}) do out[stack.slot] = stack end
+        return out
+    end,
+    ---The first stack of an item in an inventory, or nil.
+    ---@return table?
+    firstStack = function(inv, item)
+        for _, stack in ipairs(core:GetItems(inv) or {}) do
+            if stack.name == item then return stack end
+        end
+    end,
     clearInventory = function(inv) return core:ClearInventory(inv) end,
     ---@param jobs? string[] only members of these jobs open it
     registerStash = function(name, label, slots, maxWeight, jobs) core:RegisterStash(name, label, slots, maxWeight, jobs) end,
