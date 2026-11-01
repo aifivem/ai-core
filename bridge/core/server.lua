@@ -598,19 +598,35 @@ function Bridge.itemDefinition(name)
     return cached or nil
 end
 
---- Every item definition of the active inventory in the QB item shape (one export call; fills the cache).
+--- The whole list, read once from the inventory (tgiann / ox `Items()` through ai-core) and kept until it changes.
+---@type table<string, table>|nil
+local allItems = nil
+
+--- Every item definition of the active inventory in the QB item shape: a fresh table each call (callers add to it),
+--- the inventory is asked only after a change.
 ---@return table<string, table>
 function Bridge.itemDefinitions()
-    local out = {}
-    for name, definition in pairs(core:GetItemDefinitions() or {}) do
-        out[name] = qbItem(name, definition)
-        itemCache[name] = out[name]
+    if not allItems then
+        allItems = {}
+        for name, definition in pairs(core:GetItemDefinitions() or {}) do
+            allItems[name] = qbItem(name, definition)
+            itemCache[name] = allItems[name]
+        end
     end
+    local out = {}
+    for name, item in pairs(allItems) do out[name] = item end
     return out
 end
 
-AddEventHandler('ai-core:inventoryChanged', function()
-    itemCache = {}
+local function dropItems()
+    itemCache, allItems = {}, nil
+end
+
+-- Another inventory, the same one restarted (its item files may have changed) or an edited definition.
+AddEventHandler('ai-core:inventoryChanged', dropItems)
+AddEventHandler('ai-core:itemDefinitionsChanged', dropItems)
+AddEventHandler('onResourceStart', function(resource)
+    if resource == GlobalState['ai:inventory'] then dropItems() end
 end)
 
 --- Runs the handler registered for an item (ESX `UseItem`, QB / Qbox `CanUseItem`); `...` may hold the item table.

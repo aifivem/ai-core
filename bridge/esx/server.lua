@@ -1289,8 +1289,11 @@ AddEventHandler('ai-core:definitionsChanged', function(file, name)
     else TriggerEvent('esx:jobRemoved', name, 'missing job') end
 end)
 
-AddEventHandler('ai-core:inventoryChanged', function()
-    ESX.RefreshItems()
+-- Another inventory, an edited definition or the same inventory restarted (core/server.lua drops its list first).
+AddEventHandler('ai-core:inventoryChanged', function() ESX.RefreshItems() end)
+AddEventHandler('ai-core:itemDefinitionsChanged', function() ESX.RefreshItems() end)
+AddEventHandler('onResourceStart', function(resource)
+    if resource == GlobalState['ai:inventory'] then ESX.RefreshItems() end
 end)
 
 CreateThread(function()
