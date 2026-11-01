@@ -64,16 +64,31 @@ function ledgerStatements(
   return out;
 }
 
+/** Whether one batch committed, made only when someone asks (the live path never does). */
+interface Outcome {
+  promise: Promise<boolean>;
+  resolve: (committed: boolean) => void;
+}
+
+function outcome(): Outcome {
+  let resolve: (committed: boolean) => void = () => undefined;
+  const promise = new Promise<boolean>((r) => (resolve = r));
+  return { promise, resolve };
+}
+
 /**
  * Every account's DB writes, batched: changes are collected for `FLUSH_MS`, then balances (summed per account) and
  * ledger rows go out in one transaction. Flushes run one after another, so writes land in the order they happened;
- * a crash can only lose the changes of the last `FLUSH_MS` and the flush in flight.
+ * a crash can only lose the changes of the last `FLUSH_MS` and the flush in flight. Pushing stays synchronous and
+ * answers nothing: a caller that must know whether its change landed (a stored character's write) asks `commit()`.
  */
 class MoneyWriter {
   private pending: LedgerEntry[] = [];
   private attached: Statement[] = [];
   private timer: ReturnType<typeof setTimeout> | null = null;
   private chain: Promise<void> = Promise.resolve();
+  /** The collecting batch's result, once someone asked for it. */
+  private asked: Outcome | null = null;
 
   push(entry: LedgerEntry): void {
     this.pending.push(entry);
@@ -89,18 +104,25 @@ class MoneyWriter {
     this.timer ??= setTimeout(() => this.flush(), FLUSH_MS);
   }
 
+  private collecting(): boolean {
+    return this.pending.length > 0 || this.attached.length > 0;
+  }
+
   private flush(): void {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;
+    if (!this.collecting()) return;
     const batch = this.pending;
     const attached = this.attached;
-    if (batch.length === 0 && attached.length === 0) return;
+    const asked = this.asked;
     this.pending = [];
     this.attached = [];
+    this.asked = null;
     this.chain = this.chain.then(async () => {
+      let committed = false;
       try {
         // mysql.transaction answers false (no throw) when the transaction rolled back.
-        const committed = await mysql.transaction([
+        committed = await mysql.transaction([
           ...balanceStatements(batch),
           ...ledgerStatements(batch),
           ...attached,
@@ -109,13 +131,36 @@ class MoneyWriter {
       } catch (error) {
         log.error(`money write of ${batch.length} changes failed`, error);
       }
+      asked?.resolve(committed);
     });
+  }
+
+  private result(): Promise<boolean> {
+    this.asked ??= outcome();
+    return this.asked.promise;
   }
 
   /** Resolves when every change made so far is in the DB (flushes what is still collecting). */
   idle(): Promise<void> {
     this.flush();
     return this.chain;
+  }
+
+  /**
+   * Sends the batch now collecting at once and resolves whether it committed (true when nothing was collecting, once
+   * earlier batches are done). Call it right after the change, in the same tick, so the change is in that batch.
+   */
+  commit(): Promise<boolean> {
+    if (!this.collecting()) return this.chain.then(() => true);
+    const result = this.result();
+    this.flush();
+    return result;
+  }
+
+  /** Resolves when every change made so far is in the DB, without sending the collecting batch early. */
+  settled(): Promise<void> {
+    if (!this.collecting()) return this.chain;
+    return this.result().then(() => undefined);
   }
 }
 
