@@ -76,6 +76,8 @@ onClientCallback(
   CORE.createCharacterCallback,
   { args: ([raw]) => [raw] },
   async (source, raw): Promise<CharacterActionResult> => {
+    // Under an external screen characters are made only through its login exports, never from ai-core's screen.
+    if (externalScreen()) return BUSY;
     const user = selecting.get(source);
     const input = toCreateCharacter(raw);
     if (!user) return BUSY;
@@ -140,7 +142,7 @@ onClientCallback(
   CORE.selectCharacterCallback,
   { args: charIdArg },
   async (source, charId): Promise<CharacterActionResult> => {
-    if (!selecting.has(source)) return BUSY;
+    if (externalScreen() || !selecting.has(source)) return BUSY;
     return lock.run(source, BUSY, () => loadCharacter(source, charId));
   },
 );
@@ -150,7 +152,7 @@ onClientCallback(
   { args: charIdArg },
   async (source, charId): Promise<CharacterActionResult> => {
     const user = selecting.get(source);
-    if (!user) return BUSY;
+    if (externalScreen() || !user) return BUSY;
     if (!settings.characters.canDelete)
       return { ok: false, error: "CHAR_ERR_NO_DELETE" };
     if (players.byCharacter(charId))

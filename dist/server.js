@@ -23092,6 +23092,7 @@ onClientCallback(CORE.charactersCallback, async (source) => players.get(source) 
 }));
 const charIdArg = ([charId]) => typeof charId == "number" && Number.isInteger(charId) && charId > 0 ? [charId] : null;
 onClientCallback(CORE.createCharacterCallback, { args: ([raw]) => [raw] }, async (source, raw) => {
+	if (externalScreen()) return BUSY$2;
 	let user = selecting.get(source), input = toCreateCharacter(raw);
 	return user ? "error" in input ? {
 		ok: !1,
@@ -23132,9 +23133,9 @@ function loginCharacterFor(source, find) {
 		} : loadCharacter(source, charId);
 	}) : Promise.resolve(BUSY$2);
 }
-onClientCallback(CORE.selectCharacterCallback, { args: charIdArg }, async (source, charId) => selecting.has(source) ? lock.run(source, BUSY$2, () => loadCharacter(source, charId)) : BUSY$2), onClientCallback(CORE.deleteCharacterCallback, { args: charIdArg }, async (source, charId) => {
+onClientCallback(CORE.selectCharacterCallback, { args: charIdArg }, async (source, charId) => externalScreen() || !selecting.has(source) ? BUSY$2 : lock.run(source, BUSY$2, () => loadCharacter(source, charId))), onClientCallback(CORE.deleteCharacterCallback, { args: charIdArg }, async (source, charId) => {
 	let user = selecting.get(source);
-	return user ? settings.characters.canDelete ? players.byCharacter(charId) ? {
+	return externalScreen() || !user ? BUSY$2 : settings.characters.canDelete ? players.byCharacter(charId) ? {
 		ok: !1,
 		error: "CHAR_ERR_ONLINE"
 	} : lock.run(source, BUSY$2, async () => await deleteCharacter(user.id, charId) ? (emit(CORE.characterDeletedEvent, charId, user.id), coreLog("characters", `deleted character #${charId}`, {
@@ -23147,7 +23148,7 @@ onClientCallback(CORE.selectCharacterCallback, { args: charIdArg }, async (sourc
 	}) : {
 		ok: !1,
 		error: "CHAR_ERR_NO_DELETE"
-	} : BUSY$2;
+	};
 });
 function loadCharacter(source, charId) {
 	return claims.run(charId, BUSY$2, () => loadNow(source, charId));
