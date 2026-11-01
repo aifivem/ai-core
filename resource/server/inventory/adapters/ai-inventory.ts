@@ -24,6 +24,7 @@ export const aiInventory: InventoryAdapter = {
     Number(inv.GetItemCount(ref, item, metadata)) || 0,
   canCarryItem: (ref, item, count, metadata) =>
     inv.CanCarryItem(ref, item, count, metadata) === true,
+  canCarryItems: (ref, items) => inv.CanCarryItems(ref, items) === true,
   getItems: (ref) => {
     const list: unknown = inv.GetItems(ref);
     return Array.isArray(list)

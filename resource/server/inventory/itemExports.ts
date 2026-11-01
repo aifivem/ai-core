@@ -1,4 +1,6 @@
 import { registerExport } from "@aicore-fivem/lib/server";
+import { isRecord } from "@aicore-fivem/lib/shared";
+import type { CarryItem } from "@aicore-fivem/shared";
 import { inventory } from "./active";
 import { amount, meta, name, ref, slot } from "./args";
 
@@ -79,6 +81,25 @@ registerExport(
     );
   },
 );
+registerExport("CanCarryItems", (inv: unknown, items: unknown) => {
+  const r = ref(inv);
+  if (r === null || !Array.isArray(items)) return false;
+  const list: CarryItem[] = [];
+  for (const raw of items) {
+    if (!isRecord(raw)) return false;
+    const [i, n] = [name(raw.name), amount(raw.count ?? raw.amount)];
+    if (i === null || n === null) return false;
+    list.push({ name: i, count: n, metadata: meta(raw.metadata ?? raw.info) });
+  }
+  return inventory.call(
+    "CanCarryItems",
+    (a) =>
+      a.canCarryItems
+        ? a.canCarryItems(r, list)
+        : list.every((it) => a.canCarryItem(r, it.name, it.count, it.metadata)),
+    false,
+  );
+});
 registerExport("GetItems", (inv: unknown) => {
   const r = ref(inv);
   return r === null ? [] : inventory.call("GetItems", (a) => a.getItems(r), []);

@@ -50,6 +50,8 @@ export const tgiannInventory: InventoryAdapter = {
     number(call("GetItemCount", ref, name, metadata)),
   canCarryItem: (ref, name, count) =>
     isTrue(call("CanCarryItem", ref, name, count)),
+  canCarryItems: (ref, items) =>
+    isTrue(call("CanCarryItems", ref, items.map((it) => ({ name: it.name, amount: it.count })))),
   getItems: (ref) => {
     const labels = new Map<string, string>();
     const labelOf = (name: string): string => {
