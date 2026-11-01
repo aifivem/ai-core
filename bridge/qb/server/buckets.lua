@@ -69,3 +69,19 @@ end
 AddEventHandler('entityRemoved', function(entity)
     QBCore.Entity_Buckets[entity] = nil
 end)
+
+-- A bucket set by any script (the routing bucket natives, tgiann-core, ai-core's allocator) keeps qb-core's
+-- bookkeeping and the player's `instance` state right, not only the ones set through these functions.
+AddEventHandler('onPlayerBucketChange', function(source, bucket)
+    local id, number = tonumber(source), tonumber(bucket)
+    if not id or not number then return end
+    local license = Bridge.license(id)
+    if license then QBCore.Player_Buckets[license] = { id = id, bucket = number } end
+    if Player(id).state.instance ~= number then Player(id).state:set('instance', number, true) end
+end)
+
+AddEventHandler('onEntityBucketChange', function(entity, bucket)
+    local number = tonumber(bucket)
+    if type(entity) ~= 'number' or not number then return end
+    QBCore.Entity_Buckets[entity] = { id = entity, bucket = number }
+end)
