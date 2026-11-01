@@ -1,5 +1,5 @@
--- ESX on ai-core, both sides: es_extended's shared helpers (ESX.Math, ESX.Table, ESX.SetTimeout and the small utility
--- functions), copied from es_extended 1.12.4 (GPL-3.0). Weapon lookups (ESX.GetWeapon*) are not answered.
+-- ESX on ai-core, both sides: es_extended's shared helpers (ESX.Math, ESX.Table, ESX.SetTimeout, the small utility
+-- functions, the weapon lookups and IsValidLocaleString), copied from es_extended 1.12.4 / 1.16.3 (GPL-3.0).
 
 local charset = {}
 for i = 48, 57 do charset[#charset + 1] = string.char(i) end
@@ -297,3 +297,130 @@ end
 
 ---@param id integer
 function ESX.ClearTimeout(id) cancelledTimeouts[id] = true end
+
+-- Weapons (es_extended shared/modules/weapons.lua) -----------------------------------------------------------------
+
+---@class ESXWeaponComponent
+---@field name string
+---@field label string
+---@field hash integer
+
+---@class ESXWeapon
+---@field name string
+---@field label string
+---@field components ESXWeaponComponent[]
+---@field ammo? { label: string, hash: integer }
+---@field tints? table<integer, string>
+---@field throwable? boolean
+
+---@class ESXWeaponConfig
+---@field Weapons ESXWeapon[]
+---@field DefaultWeaponTints table<integer, string>
+---@field MK2WeaponTints table<integer, string>
+
+---@type ESXWeaponConfig|nil
+local weaponConfig
+---@type table<string, integer>
+local weaponsByName = {}
+---@type table<integer, ESXWeapon>
+local weaponsByHash = {}
+
+--- ESX's weapon list with English labels (bridge/esx/weapons.lua), read on the first weapon lookup. Also the source of
+--- `Weapons`, `DefaultWeaponTints` and `MK2WeaponTints` in both sides' `ESX.GetConfig()`.
+---@return ESXWeaponConfig
+function BridgeESXWeapons()
+    if weaponConfig then return weaponConfig end
+    local path = 'bridge/esx/weapons.lua'
+    local chunk, err = load(LoadResourceFile(GetCurrentResourceName(), path) or 'return {}', ('@@ai-core/%s'):format(path))
+    if not chunk then error(err) end
+    local config = chunk() or {}
+    config.Weapons = config.Weapons or {}
+    for index, weapon in ipairs(config.Weapons) do
+        weaponsByName[weapon.name] = index
+        weaponsByHash[joaat(weapon.name)] = weapon
+    end
+    weaponConfig = config --[[@as ESXWeaponConfig]]
+    return weaponConfig
+end
+
+---@param weaponName string
+---@return integer
+local function weaponIndex(weaponName)
+    BridgeESXWeapons()
+    local index = weaponsByName[string.upper(weaponName)]
+    assert(index, 'Invalid weapon name!')
+    return index
+end
+
+---@param weaponName string
+---@return integer, ESXWeapon
+function ESX.GetWeapon(weaponName)
+    local index = weaponIndex(weaponName)
+    return index, BridgeESXWeapons().Weapons[index]
+end
+
+---@param weaponHash integer|string
+---@return ESXWeapon|nil
+function ESX.GetWeaponFromHash(weaponHash)
+    BridgeESXWeapons()
+    return weaponsByHash[type(weaponHash) == 'string' and joaat(weaponHash) or weaponHash]
+end
+
+---@param byHash? boolean
+---@return ESXWeapon[]|table<integer, ESXWeapon>
+function ESX.GetWeaponList(byHash)
+    local config = BridgeESXWeapons()
+    return byHash and weaponsByHash or config.Weapons
+end
+
+---@param weaponName string
+---@return string
+function ESX.GetWeaponLabel(weaponName)
+    return BridgeESXWeapons().Weapons[weaponIndex(weaponName)].label or ''
+end
+
+---@param weaponName string
+---@param weaponComponent string
+---@return ESXWeaponComponent|nil
+function ESX.GetWeaponComponent(weaponName, weaponComponent)
+    local weapon = BridgeESXWeapons().Weapons[weaponIndex(weaponName)]
+    for _, component in ipairs(weapon.components or {}) do
+        if component.name == weaponComponent then return component end
+    end
+end
+
+-- Names (es_extended shared/modules/validation.lua) -----------------------------------------------------------------
+
+---@type integer[][]
+local defaultRanges = { { 0x0041, 0x005A }, { 0x0061, 0x007A }, { 0x0020, 0x0020 }, { 0x002D, 0x002D }, { 0x00C0, 0x02AF } }
+---@type table<string, integer[][]>
+local localeRanges = {
+    el = { { 0x0370, 0x03FF } },
+    sr = { { 0x0400, 0x04FF } },
+    he = { { 0x05D0, 0x05EA } },
+    ar = { { 0x0620, 0x063F }, { 0x0641, 0x064A }, { 0x066E, 0x066F }, { 0x0671, 0x06D3 }, { 0x06D5, 0x06D5 }, { 0x0750, 0x077F }, { 0x08A0, 0x08BD } },
+    ['zh-cn'] = { { 0x4E00, 0x9FFF } },
+}
+
+--- Whether a name holds only letters of the server's language (ESX's `esx:locale`), spaces and dashes (and digits
+--- with `allowDigits`).
+---@param str string
+---@param allowDigits? boolean
+---@return boolean
+function ESX.IsValidLocaleString(str, allowDigits)
+    if type(str) ~= 'string' or not utf8.len(str) then return false end
+    local ranges = { table.unpack(defaultRanges) }
+    if allowDigits then ranges[#ranges + 1] = { 0x0030, 0x0039 } end
+    for _, range in ipairs(localeRanges[string.lower(ESX.GetConfig('Locale') or 'en')] or {}) do ranges[#ranges + 1] = range end
+    for _, code in utf8.codes(str) do
+        local valid = false
+        for i = 1, #ranges do
+            if code >= ranges[i][1] and code <= ranges[i][2] then
+                valid = true
+                break
+            end
+        end
+        if not valid then return false end
+    end
+    return true
+end

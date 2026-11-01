@@ -1,6 +1,6 @@
--- ESX on ai-core, client helpers: ESX.Game (entities and spawning, without vehicle properties), ESX.Streaming, the
--- points behind ESX.Point, ESX.RegisterInput and small utilities. Plain natives, copied from es_extended 1.12.4
--- (GPL-3.0).
+-- ESX on ai-core, client helpers: ESX.Game (entities, spawning, vehicle properties, raycasts), ESX.Streaming,
+-- ESX.Scaleform, the points behind ESX.Point, ESX.RegisterInput, player spawning and small utilities. Plain natives
+-- and ai-lib helpers, copied from es_extended 1.12.4 / 1.16.3 and esx_lib (GPL-3.0).
 
 ESX.playerId = PlayerId()
 ESX.serverId = GetPlayerServerId(ESX.playerId)
@@ -423,3 +423,204 @@ AddEventHandler('onClientResourceStop', function(resource)
         end
     end
 end)
+
+-- Vehicles -----------------------------------------------------------------------------------------------------------
+
+---@type table<string, boolean>
+local warnedNetworked = {}
+
+--- ESX spawns a networked vehicle from the client; ai-core's entity lockdown lets only the server create networked
+--- entities, so this is a local vehicle only this player sees (warned once per resource). Networked vehicles come from
+--- the server (`ESX.OneSync.SpawnVehicle`).
+---@param vehicleModel string|integer
+---@param coords vector3|vector4|table
+---@param heading number
+---@param cb? fun(vehicle: integer)
+---@param networked? boolean
+---@return integer|nil
+function ESX.Game.SpawnVehicle(vehicleModel, coords, heading, cb, networked)
+    local resource = GetInvokingResource() or GetCurrentResourceName()
+    if networked ~= false and not warnedNetworked[resource] then
+        warnedNetworked[resource] = true
+        print(('^3[ai-core bridge] %s spawns a networked vehicle with ESX.Game.SpawnVehicle: the server creates networked vehicles on ai-core (entity lockdown), so it is a local vehicle only this player sees. Use ESX.OneSync.SpawnVehicle on the server.^0'):format(resource))
+    end
+    return ESX.Game.SpawnLocalVehicle(vehicleModel, coords, heading, cb and function(vehicle) BridgeUI.call(cb, vehicle) end or nil)
+end
+
+---@param vehicle integer
+---@return VehicleProperties|nil
+function ESX.Game.GetVehicleProperties(vehicle)
+    return BridgeVehicleProps.get(vehicle)
+end
+
+---@param vehicle integer
+---@param props VehicleProperties
+function ESX.Game.SetVehicleProperties(vehicle, props)
+    BridgeVehicleProps.set(vehicle, props)
+end
+
+-- ESX's server spawn (`ESX.OneSync.SpawnVehicle`, ESX's vehicle class) puts the properties in the vehicle's
+-- `VehicleProperties` state bag; the client that owns the vehicle applies them (a new server vehicle gets its owner a
+-- moment after the bag arrives, so the owner is waited for). Only the server can write that bag.
+---@diagnostic disable-next-line: param-type-mismatch
+AddStateBagChangeHandler('VehicleProperties', nil, function(bagName, _, value, _, replicated)
+    if replicated or type(value) ~= 'table' or not bagName:find('^entity:') then return end
+    local netId = tonumber((bagName:gsub('^entity:', '')))
+    if not netId then return end
+    CreateThread(function()
+        local vehicle = aiLib.waitForEntity(netId, 4000)
+        if vehicle == 0 then return end
+        local me = PlayerId()
+        if not aiLib.waitFor(function() return NetworkGetEntityOwner(vehicle) == me or nil end, 3000, 100) then return end
+        BridgeVehicleProps.set(vehicle, value)
+    end)
+end)
+
+--- Game vehicle classes that are not cars, and models whose class says otherwise (txAdmin's list, via es_extended).
+local classTypes = { [8] = 'bike', [11] = 'trailer', [13] = 'bike', [14] = 'boat', [15] = 'heli', [16] = 'plane', [21] = 'train' }
+local mismatchedTypes = {
+    [`airtug`] = 'automobile', [`avisa`] = 'submarine', [`blimp`] = 'heli', [`blimp2`] = 'heli', [`blimp3`] = 'heli',
+    [`caddy`] = 'automobile', [`caddy2`] = 'automobile', [`caddy3`] = 'automobile', [`chimera`] = 'automobile',
+    [`docktug`] = 'automobile', [`forklift`] = 'automobile', [`kosatka`] = 'submarine', [`mower`] = 'automobile',
+    [`policeb`] = 'bike', [`ripley`] = 'automobile', [`rrocket`] = 'automobile', [`sadler`] = 'automobile',
+    [`sadler2`] = 'automobile', [`scrap`] = 'automobile', [`slamtruck`] = 'automobile', [`Stryder`] = 'automobile',
+    [`submersible`] = 'submarine', [`submersible2`] = 'submarine', [`thruster`] = 'heli', [`towtruck`] = 'automobile',
+    [`towtruck2`] = 'automobile', [`tractor`] = 'automobile', [`tractor2`] = 'automobile', [`tractor3`] = 'automobile',
+    [`trailersmall2`] = 'trailer', [`utillitruck`] = 'automobile', [`utillitruck2`] = 'automobile', [`utillitruck3`] = 'automobile',
+}
+
+--- The `CreateVehicleServerSetter` type of a model, false when the game has no such vehicle.
+---@param model string|integer
+---@return string|false
+function ESX.GetVehicleTypeClient(model)
+    model = type(model) == 'string' and joaat(model) or model
+    if not IsModelInCdimage(model) or not IsModelAVehicle(model) then return false end
+    return mismatchedTypes[model] or classTypes[GetVehicleClassFromName(model)] or 'automobile'
+end
+
+ESX.GetVehicleType = ESX.GetVehicleTypeClient
+
+-- Raycasts (ESX has no starter; these read an object with Stop / IsActive / result) ---------------------------------
+
+---@param raycast table|nil
+function ESX.Game.StopRaycasting(raycast)
+    if raycast and raycast.active then raycast:Stop() end
+end
+
+---@param raycast table|nil
+---@return boolean
+function ESX.Game.IsRaycastActive(raycast)
+    if raycast and raycast.active then return raycast:IsActive() end
+    return false
+end
+
+---@param raycast table|nil
+---@return table|nil
+function ESX.Game.GetRaycastResult(raycast)
+    if raycast and raycast.active then return raycast.result end
+end
+
+-- Scaleform (esx_lib scaleform) --------------------------------------------------------------------------------------
+
+ESX.Scaleform = { Utils = {} }
+
+--- Loads a scaleform movie; the handle once loaded (waits up to 5 s, ESX waits forever).
+---@param movie string
+---@return integer
+function ESX.Scaleform.Utils.RequestScaleformMovie(movie)
+    local scaleform = RequestScaleformMovie(movie)
+    aiLib.waitFor(function() return HasScaleformMovieLoaded(scaleform) or nil end, 5000)
+    return scaleform
+end
+
+--- Calls a method of a scaleform movie (loaded by name when a name is given). The caller frees the movie with
+--- `SetScaleformMovieAsNoLongerNeeded`.
+---@param scaleform integer|string
+---@param methodName string
+---@param returnValue? boolean
+---@param ... number|string|boolean
+---@return integer, integer?
+function ESX.Scaleform.Utils.RunMethod(scaleform, methodName, returnValue, ...)
+    if type(scaleform) ~= 'number' then scaleform = ESX.Scaleform.Utils.RequestScaleformMovie(scaleform) end
+    BeginScaleformMovieMethod(scaleform, methodName)
+    for _, arg in ipairs({ ... }) do
+        local kind = type(arg)
+        if kind == 'number' then
+            if math.type(arg) == 'float' then ScaleformMovieMethodAddParamFloat(arg) else ScaleformMovieMethodAddParamInt(arg) end
+        elseif kind == 'string' then
+            ScaleformMovieMethodAddParamTextureNameString(arg)
+        elseif kind == 'boolean' then
+            ScaleformMovieMethodAddParamBool(arg)
+        end
+    end
+    if returnValue then return scaleform, EndScaleformMovieMethodReturnValue() end
+    EndScaleformMovieMethod()
+    return scaleform
+end
+
+--- Draws a movie full screen for `sec` seconds from ai-lib's scheduler, then frees it; waits like ESX.
+---@param scaleform integer
+---@param sec number
+local function showFor(scaleform, sec)
+    local job = aiLib.every(0, function() DrawScaleformMovieFullscreen(scaleform, 255, 255, 255, 255, 0) end, { name = 'esxScaleform' })
+    Wait(math.floor((tonumber(sec) or 0) * 1000))
+    job:stop()
+    SetScaleformMovieAsNoLongerNeeded(scaleform)
+end
+
+---@param title string
+---@param msg string
+---@param sec number
+function ESX.Scaleform.ShowFreemodeMessage(title, msg, sec)
+    showFor(ESX.Scaleform.Utils.RunMethod('MP_BIG_MESSAGE_FREEMODE', 'SHOW_SHARD_WASTED_MP_MESSAGE', false, title, msg), sec)
+end
+
+---@param title string
+---@param msg string
+---@param bottom string
+---@param sec number
+function ESX.Scaleform.ShowBreakingNews(title, msg, bottom, sec)
+    local scaleform = ESX.Scaleform.Utils.RunMethod('BREAKING_NEWS', 'SET_TEXT', false, msg, bottom)
+    ESX.Scaleform.Utils.RunMethod(scaleform, 'SET_SCROLL_TEXT', false, 0, 0, title)
+    ESX.Scaleform.Utils.RunMethod(scaleform, 'DISPLAY_SCROLL_TEXT', false, 0, 0)
+    showFor(scaleform, sec)
+end
+
+---@param title string
+---@param msg string
+---@param bottom string
+---@param sec number
+function ESX.Scaleform.ShowPopupWarning(title, msg, bottom, sec)
+    showFor(ESX.Scaleform.Utils.RunMethod('POPUP_WARNING', 'SHOW_POPUP_WARNING', false, 500.0, title, msg, bottom, true), sec)
+end
+
+---@param sec number
+function ESX.Scaleform.ShowTrafficMovie(sec)
+    showFor(ESX.Scaleform.Utils.RunMethod('TRAFFIC_CAM', 'PLAY_CAM_MOVIE', false), sec)
+end
+
+-- Spawning -----------------------------------------------------------------------------------------------------------
+
+--- ai-core runs no spawnmanager; switches its auto spawn off when one runs anyway.
+function ESX.DisableSpawnManager()
+    if GetResourceState('spawnmanager') == 'started' then exports.spawnmanager:setAutoSpawn(false) end
+end
+
+--- ESX's SpawnPlayer: the skin through `skinchanger:loadSkin` (whatever clothing script answers it, up to 3 s), the
+--- player moved there by ai-lib's teleport and brought back to life, then `playerSpawned` and `cb`. ai-core spawns
+--- characters itself; this serves scripts that move or respawn the player with it.
+---@param skin? table
+---@param coords vector3|vector4|table
+---@param cb? function
+function ESX.SpawnPlayer(skin, coords, cb)
+    if type(skin) == 'table' then
+        local loaded = false
+        TriggerEvent('skinchanger:loadSkin', skin, function() loaded = true end)
+        aiLib.waitFor(function() return loaded or nil end, 3000)
+    end
+    local heading = (coords.heading or coords.w or 0.0) + 0.0
+    aiLib.player.teleport(coords, { heading = heading, fade = false })
+    NetworkResurrectLocalPlayer(coords.x + 0.0, coords.y + 0.0, coords.z + 0.0, heading, 0, true)
+    TriggerEvent('playerSpawned', coords)
+    if cb then BridgeUI.call(cb) end
+end

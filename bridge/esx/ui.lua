@@ -650,6 +650,14 @@ function ESX.DrawMissionText(msg, time)
     EndTextCommandPrint(time, true)
 end
 
+--- ESX's "+2 Bread" / "-1 Bread" item notice, as an ai-core notification.
+---@param add boolean
+---@param item string the item's label
+---@param count number
+function ESX.UI.ShowInventoryItemNotification(add, item, count)
+    BridgeClient.notify(('%s%s %s'):format(add and '+' or '-', math.abs(tonumber(count) or 1), clean(item)), add and 'success' or 'error')
+end
+
 -- Progress bar -------------------------------------------------------------------------------------------------------
 
 ---@class ProgressBarOptions
@@ -702,6 +710,10 @@ RegisterNetEvent('ESX:HideUI', function() ESX.HideUI() end)
 RegisterNetEvent('ESX:Notify', function(kind, length, message) BridgeClient.notify(message or '', kind, length) end)
 RegisterNetEvent('esx:showAdvancedNotification', function(...) ESX.ShowAdvancedNotification(...) end)
 RegisterNetEvent('esx:showHelpNotification', function(msg, thisFrame, beep, duration) ESX.ShowHelpNotification(msg, thisFrame, beep, duration) end)
+aiLib.onServerEvent('esx:showInventoryItemNotification', function(add, item, count)
+    if type(add) ~= 'boolean' or type(item) ~= 'string' then return end
+    ESX.UI.ShowInventoryItemNotification(add, item, tonumber(count) or 1)
+end)
 
 AddEventHandler('onClientResourceStop', function(resource)
     if context and context.owner == resource then context = nil end
