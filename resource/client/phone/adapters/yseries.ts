@@ -1,8 +1,11 @@
-import { callExport } from "@aifivem/lib/client";
+import { PlayerState, stateBoolean } from "@aifivem/lib/client";
 import type { PhoneClientAdapter } from "@aifivem/shared";
+import { onOwnOpen } from "../ownState";
 
-/** yseries (TeamsGG): client export `IsOpen()`, no client events (teamsgg.dev/docs/paid-scripts/phone/exports/client-side/general). */
+/** yseries (TeamsGG): player state bag `phoneOpen` (teamsgg.dev/docs/paid-scripts/phone/state-bags). */
+const open = new PlayerState("phoneOpen", stateBoolean);
+
 export const ySeries: PhoneClientAdapter = {
   resource: "yseries",
-  isOpen: () => callExport("yseries", "IsOpen") === true,
+  watch: (opened) => onOwnOpen(open, opened),
 };

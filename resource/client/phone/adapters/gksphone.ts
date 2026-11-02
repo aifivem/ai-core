@@ -1,8 +1,11 @@
-import { callExport } from "@aifivem/lib/client";
+import { PlayerState, stateBoolean } from "@aifivem/lib/client";
 import type { PhoneClientAdapter } from "@aifivem/shared";
+import { onOwnOpen } from "../ownState";
 
-/** gksphone (GKSPHONE V2): client export `isPhoneOpen()`, no open event (docs.gkshop.org/gksphone-v2/exports-and-events/client-exports). */
+/** gksphone (GKSPHONE V2): player state bag `phoneOpen` (docs.gkshop.org/gksphone-v2/exports-and-events/state-bags). */
+const open = new PlayerState("phoneOpen", stateBoolean);
+
 export const gksPhone: PhoneClientAdapter = {
   resource: "gksphone",
-  isOpen: () => callExport("gksphone", "isPhoneOpen") === true,
+  watch: (opened) => onOwnOpen(open, opened),
 };
