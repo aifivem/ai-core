@@ -13,6 +13,16 @@ return {
     ---@param record AiLibMdtRecord
     ---@return boolean
     record = function(record) return core:AddMdtRecord(record) end,
+    ---Whether a character (a loaded player's server id or a citizenid) has an active warrant in the active MDT; false
+    ---when not, no MDT runs or it exposes no warrants. Waits: call it from a thread.
+    ---@param target integer|string
+    ---@return boolean
+    hasWarrant = function(target)
+        local p = promise.new()
+        local ok = pcall(core.HasMdtWarrant, core, target, function(wanted) p:resolve(wanted == true) end)
+        if not ok then return false end
+        return Citizen.Await(p)
+    end,
     ---@return string?
     provider = function() return core:GetMdtSystem() end,
 }
