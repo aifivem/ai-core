@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.2](https://github.com/aifivem/ai-core/compare/v0.5.1...v0.5.2) (2026-11-02)
+
+
+### Documentation
+
+* install from the release zip ([281a937](https://github.com/aifivem/ai-core/commit/281a9372e8ab30e7adebd2041cac1c1468341dab))
+
+
+### Miscellaneous Chores
+
+* build files are no longer in git, the release zip carries them ([4d6c03a](https://github.com/aifivem/ai-core/commit/4d6c03a664cad2e4be09c1df76d1d5c29e1365f8))
+
 ## [0.5.1](https://github.com/aifivem/ai-core/compare/v0.5.0...v0.5.1) (2026-11-02)
 
 
