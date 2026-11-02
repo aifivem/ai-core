@@ -24,6 +24,7 @@ import "./world";
 import "./pvp";
 import "./medical";
 import "./mdt";
+import "./phone";
 import "./bills";
 import "./paycheckOffices";
 import "./fuel";

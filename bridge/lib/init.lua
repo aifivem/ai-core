@@ -112,7 +112,7 @@ end
 ---@field playersNearCoords fun(coords: vector3, radius: number, bucket?: integer): integer[] server: loaded players near a point (walks every loaded player)
 ---@field inventory table client `openInventory`, `hasItem`, `currentWeapon`, `itemCount`, `itemDefinition`, `itemDefinitions`, `items`, `itemsBySlot`, `firstStack`, `onCount`; server the item calls through ai-core (and `registerShop`, `openShop`, `setItemMetadata`, `setMaxWeight`, `usableItems`)
 ---@field vehicleKeys table server `give(source, vehicle, purpose?)`, `remove(source, vehicle)`, `has(source, vehicle)`; client `has(vehicle)` (entity or plate)
----@field phone table server
+---@field phone table server: `number`, `sourceOf`, `hasPhone`, `mail`, `message`, `notify`, `onUsed(fn)` (a player opened the phone)
 ---@field dispatch { alert: (fun(alert: AiLibDispatchAlert): boolean) } server: police alerts through ai-core's alert system
 ---@field billing { send: (fun(bill: AiLibBill): boolean), unpaid: (fun(src: integer): table[]?), pay: (fun(src: integer, id: string): boolean), provider: (fun(): string?) } server: bills through ai-core (`unpaid` waits)
 ---@field banking { open: (fun(src: integer): boolean), societyBalance: (fun(job: string): number?), provider: (fun(): string?) } server: the banking script through ai-core

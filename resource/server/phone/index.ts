@@ -1,13 +1,21 @@
-import { registerExport } from "@aifivem/lib/server";
+import {
+  GlobalKey,
+  hasCharacter,
+  onClientEvent,
+  registerExport,
+  stateString,
+} from "@aifivem/lib/server";
 import { isRecord } from "@aifivem/lib/shared";
-import type {
-  PhoneAdapter,
-  PhoneMail,
-  PhoneNotification,
+import {
+  CORE,
+  type PhoneAdapter,
+  type PhoneMail,
+  type PhoneNotification,
 } from "@aifivem/shared";
 import { AdapterPicker } from "common/adapters";
 import { log } from "../log";
 import { mov17Phone } from "./adapters/17mov_Phone";
+import { codemPhone } from "./adapters/codem-phone";
 import { gksPhone } from "./adapters/gksphone";
 import { highPhone } from "./adapters/high-phone";
 import { lbPhone } from "./adapters/lb-phone";
@@ -26,7 +34,11 @@ const PHONES: readonly PhoneAdapter[] = [
   highPhone,
   roadPhone,
   qsSmartphone,
+  codemPhone,
 ];
+
+/** The picked phone for the client half (`client/phone/`), which tells when the player opens it. */
+const activePhone = new GlobalKey(CORE.phoneStateKey, stateString);
 
 /**
  * ai-core's phone layer: scripts ask a player's number, send mails, texts and notifications through ai-core (lib
@@ -36,7 +48,18 @@ export const phones = new AdapterPicker({
   category: "phone",
   adapters: PHONES,
   log,
+  onSwitch: (next) => activePhone.set(next?.resource),
 });
+
+// The client sends one per opening, at most one per 10 s (`client/phone/index.ts`).
+onClientEvent(
+  CORE.phoneOpenedEvent,
+  (source) => {
+    const phone = phones.active?.resource;
+    if (phone) emit(CORE.phoneUsedEvent, source, phone);
+  },
+  { guards: [hasCharacter()], rate: { count: 1, windowMs: 5_000 } },
+);
 
 const toMail = (v: unknown): PhoneMail | null =>
   isRecord(v) && typeof v.subject === "string" && typeof v.message === "string"
