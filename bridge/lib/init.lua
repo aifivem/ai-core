@@ -116,7 +116,7 @@ end
 ---@field dispatch { alert: (fun(alert: AiLibDispatchAlert): boolean) } server: police alerts through ai-core's alert system
 ---@field billing { send: (fun(bill: AiLibBill): boolean), unpaid: (fun(src: integer): table[]?), pay: (fun(src: integer, id: string): boolean), provider: (fun(): string?) } server: bills through ai-core (`unpaid` waits)
 ---@field banking { open: (fun(src: integer): boolean), societyBalance: (fun(job: string): number?), provider: (fun(): string?) } server: the banking script through ai-core
----@field mdt table client `open()`; server `record(record)`, `provider()`: police MDT through ai-core
+---@field mdt table client `open()`; server `record(record)`, `hasWarrant(target)` (waits), `provider()`: police MDT through ai-core
 ---@field ems { available: (fun(jobs: string[]): integer), distress: (fun(src: integer, call: table): boolean), provider: (fun(): string?) } server: free medics and distress calls through ai-core
 ---@field world table client `pauseSync` / `resumeSync`; server time and weather
 ---@field money table server `get`, `add`, `remove`, `set` (a loaded player's account), `sharedGet` / `sharedAdd` / `sharedRemove` (job / gang accounts), `transfer(from, to, amount, reason?, fee?)`, `history(account, query?)` (ledger rows, waits)
@@ -131,6 +131,7 @@ end
 ---@field bans table server: `ban` (waits), `unban`, `edit`, `isBanned`, `list`, `history` / `search` (wait)
 ---@field isPrimeTime fun(job?: string): boolean server
 ---@field needs table server: `refill(src)` (hunger and thirst to full), `add(src, need, amount)`
+---@field illegal table server: `is(src)`, `of(citizenid | { charId })` (waits), `set(target, state)` (waits): a character's legal / illegal status through ai-core
 ---@field appearance table client `apply(ped, look)`, `read(ped)`, `openMenu(menu)`, `wearOutfit(outfit)`, `reloadSkin()`; server `get(charId)` (waits), `provider()`: looks through ai-core's appearance layer
 ---@diagnostic disable-next-line: lowercase-global
 aiLib = setmetatable({ side = side, loadPart = loadModule }, {

@@ -1,6 +1,6 @@
 import type { CharacterView, Position } from "common/adminPlayers";
 import { findCharacter } from "../../characters/repo";
-import { accountTypes } from "../../content";
+import { accountTypes, settings } from "../../content";
 import { loadGangs, loadJobs } from "../../jobs/repo";
 import { players } from "../../player/registry";
 import { storedBalances, userOf } from "./repo";
@@ -32,6 +32,7 @@ export async function loadView(charId: number): Promise<CharacterView | null> {
       name: user?.name ?? "",
     },
     lastPlayed: row.lastPlayed,
+    illegalFeature: settings.illegal.enabled,
   };
   // Looked up after the awaits: the character may have loaded meanwhile.
   const player = players.byCharacter(charId);

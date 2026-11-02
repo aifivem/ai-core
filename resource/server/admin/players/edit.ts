@@ -1,10 +1,7 @@
-import {
-  toBirthdate,
-  toName,
-  toNationality,
-  toSex,
-} from "@aifivem/shared";
+import { toBirthdate, toName, toNationality, toSex } from "@aifivem/shared";
 import type { MoneyMode } from "common/adminPlayers";
+import { changeIllegal } from "../../characters/illegal";
+import { toHeight } from "../../characters/manage";
 import { action, actorOf, logEdit, onCharacter, parse } from "./gate";
 import { changeError, fail, offline, OK } from "./offline";
 import { updateInfo } from "./repo";
@@ -28,16 +25,18 @@ action(
         birthdate: toBirthdate(input.birthdate),
         sex: toSex(input.sex),
         nationality: toNationality(input.nationality),
+        height: toHeight(input.height ?? 0),
       },
     ] as const;
   },
   async (source, charId, input) => {
-    const { firstname, lastname, birthdate, sex, nationality } = input;
+    const { firstname, lastname, birthdate, sex, nationality, height } = input;
     if (!firstname) return fail("CHAR_ERR_FIRSTNAME");
     if (!lastname) return fail("CHAR_ERR_LASTNAME");
     if (!birthdate) return fail("CHAR_ERR_BIRTHDATE");
     if (!sex) return fail("CHAR_ERR_SEX");
     if (!nationality) return fail("CHAR_ERR_NATIONALITY");
+    if (height === null) return fail("CHAR_ERR_HEIGHT");
     const info = { firstname, lastname, birthdate, sex, nationality };
     const result = await onCharacter(
       charId,
@@ -47,11 +46,20 @@ action(
           return fail("ADMIN_PLAYERS_ERR_SEX_ONLINE");
         await updateInfo(charId, info);
         player.setInfo(info);
+        if ((player.getMeta("height") ?? 0) !== height)
+          player.setMeta("height", height);
         return OK;
       },
-      () => offline.info(charId, info),
+      async () => {
+        const r = await offline.info(charId, info);
+        return r.ok ? offline.meta(charId, "height", height) : r;
+      },
     );
-    if (result.ok) logEdit(source, charId, "changed the character info", info);
+    if (result.ok)
+      logEdit(source, charId, "changed the character info", {
+        ...info,
+        height,
+      });
     return result;
   },
 );
@@ -125,6 +133,23 @@ action(
       () => offline.meta(charId, key, value),
     );
     if (result.ok) logEdit(source, charId, `metadata ${key}`, { key, value });
+    return result;
+  },
+);
+
+/** Legal / illegal status (metadata `illegal`) through the same path as the `SetIllegal` export. */
+action(
+  "illegal",
+  ([charId, illegal]) => {
+    const id = charArg(charId);
+    return id === null || typeof illegal !== "boolean"
+      ? null
+      : ([id, illegal] as const);
+  },
+  async (source, charId, illegal) => {
+    const result = await changeIllegal(charId, illegal, actorOf(source));
+    if (result.ok)
+      logEdit(source, charId, `illegal status ${illegal}`, { illegal });
     return result;
   },
 );

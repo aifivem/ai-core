@@ -18,15 +18,30 @@ function salaryOf(job: string, grade: number, offPrime: boolean): number {
   return Math.floor(def.salary * settings.primeTime.offPrimeMultiplier);
 }
 
+/** Salary waiting in the paycheck office (metadata `paycheck`, QB / Qbox's key), a whole number >= 0. */
+export function officeBalance(player: Player): number {
+  const value = player.getMeta("paycheck");
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? Math.floor(value)
+    : 0;
+}
+
+/** One salary to the player: the pay account (`account` mode) or the paycheck office (`office` mode). */
+function credit(player: Player, job: string, salary: number): void {
+  if (settings.paycheck.mode === "office")
+    player.setMeta("paycheck", officeBalance(player) + salary);
+  else player.wallet.change(settings.paycheck.account, salary, "PAYCHECK", job);
+}
+
 /**
- * Every `paycheck.intervalMinutes`, each character on duty gets its job grade's salary into the paycheck
- * account; with `fromJobAccount` it is paid from the job's own account and skipped when that account is short.
+ * Pays each of `list` on duty its job grade's salary (into the pay account, or the paycheck office in `office` mode);
+ * with `fromJobAccount` it is paid from the job's own account and skipped when that account is short.
  */
-async function payAll(): Promise<void> {
+async function pay(list: Iterable<Player>): Promise<void> {
   // One prime time answer per job and run (an alert script's export is asked once per job, not per player).
   const offPrime = new Map<string, boolean>();
   const due: Array<{ player: Player; job: string; salary: number }> = [];
-  for (const player of players.all()) {
+  for (const player of list) {
     if (!player.paycheck) continue;
     const job = player.jobs.onDuty();
     if (!job) continue;
@@ -60,8 +75,18 @@ async function payAll(): Promise<void> {
       )
         continue;
     }
-    player.wallet.change(settings.paycheck.account, salary, "PAYCHECK", job);
+    credit(player, job, salary);
   }
+}
+
+const payFailed = (error: unknown): void => log.error("paycheck failed", error);
+
+/** The paycheck for one loaded player now (export `ForcePaycheck`, admin commands); false when not loaded. */
+export function forcePaycheck(source: unknown): boolean {
+  const player = typeof source === "number" ? players.get(source) : undefined;
+  if (!player) return false;
+  pay([player]).catch(payFailed);
+  return true;
 }
 
 let job: Job | null = null;
@@ -77,9 +102,7 @@ function schedule(): void {
       ? every(
           interval * 60_000,
           () => {
-            payAll().catch((error: unknown) =>
-              log.error("paycheck failed", error),
-            );
+            pay(players.all()).catch(payFailed);
           },
           { name: "paycheck" },
         )

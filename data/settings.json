@@ -25,7 +25,8 @@
   "paycheck": {
     "intervalMinutes": 15,
     "account": "bank",
-    "fromJobAccount": false
+    "fromJobAccount": false,
+    "mode": "account"
   },
   "saveIntervalMinutes": 5,
   "spawn": {

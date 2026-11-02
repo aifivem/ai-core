@@ -32,6 +32,7 @@ export const PLAYERS_ACTIONS = [
   "removeGang",
   "activeGang",
   "meta",
+  "illegal",
   "goto",
   "bring",
   "kick",
@@ -113,6 +114,8 @@ export interface CharacterView {
   gangs: GangMembership[];
   activeGang: string | null;
   metadata: Record<string, unknown>;
+  /** The panel's legal / illegal switch (`illegal.enabled`): the status row shows only while on (value: metadata `illegal`). */
+  illegalFeature: boolean;
   /** As of the snapshot (online: the ped, offline: where the character spawns next). */
   position: Position | null;
   lastPlayed: number | null;

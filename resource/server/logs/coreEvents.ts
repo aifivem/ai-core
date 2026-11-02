@@ -5,6 +5,8 @@ import {
   type JobMembership,
   type UnloadReason,
 } from "@aifivem/shared";
+import { settings } from "../content";
+import { players } from "../player/registry";
 import { coreLog } from "./index";
 
 /** ai-core's own logs, taken from its local events so the mutators stay free of logging. */
@@ -18,6 +20,21 @@ on(CORE.playerLoadedEvent, (source: number, character: CharacterInfo) => {
       metadata: { charId: character.id, citizenid: character.citizenid },
     },
   );
+});
+
+// A login is the character in the world (after the spawn pick, or an external multichar's spawn); panel `loginLog`.
+on(CORE.playerSpawnedEvent, (source: number, charId: number) => {
+  const player = players.get(source);
+  if (!settings.loginLog || !player || player.charId !== charId) return;
+  coreLog("login", `logged in as ${player.fullName} (${player.citizenid})`, {
+    source,
+    metadata: {
+      charId,
+      citizenid: player.citizenid,
+      userId: player.user.id,
+      playTime: player.playTime(),
+    },
+  });
 });
 
 on(

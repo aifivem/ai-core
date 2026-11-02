@@ -4,7 +4,9 @@ import { storedBalances } from "../admin/players/repo";
 import { accountTypes } from "../content";
 import { loadGangs, loadJobs } from "../jobs/repo";
 import type { Player } from "../player/player";
+import { players } from "../player/registry";
 import {
+  charIdOfCitizen,
   findCharacter,
   listCharacters,
   listCharactersByLicense,
@@ -96,4 +98,18 @@ export async function getCharactersOfUser(
     if (license) rows = await listCharactersByLicense(license);
   }
   return rows.map((row) => ({ ...infoOf(row), lastPlayed: row.lastPlayed }));
+}
+
+/** Export `GetCharIdByCitizenId`: a loaded character from memory, a stored one by the unique `citizenid` key. */
+export async function charIdByCitizenId(
+  citizenid: unknown,
+): Promise<number | null> {
+  if (
+    typeof citizenid !== "string" ||
+    citizenid.length < 1 ||
+    citizenid.length > 16
+  )
+    return null;
+  const loaded = players.byCitizen(citizenid);
+  return loaded ? loaded.charId : charIdOfCitizen(citizenid);
 }

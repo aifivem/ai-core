@@ -1,7 +1,12 @@
 import { registerExport } from "@aifivem/lib/server";
 import { toCharId } from "../characters/edit";
+import { isIllegal, setIllegal } from "../characters/illegal";
 import { deleteCharacterBy, setCharacterInfo } from "../characters/manage";
-import { getCharactersOfUser, getOfflineCharacter } from "../characters/read";
+import {
+  charIdByCitizenId,
+  getCharactersOfUser,
+  getOfflineCharacter,
+} from "../characters/read";
 import { answer } from "../characters/answer";
 import { searchCharacters } from "../characters/search";
 import {
@@ -13,6 +18,12 @@ import {
   offlineRemoveJob,
 } from "../characters/writes";
 import { membersOf } from "../jobs/members";
+import { forcePaycheck } from "../jobs/paycheck";
+import {
+  getPaycheckBalance,
+  getPaycheckMode,
+  withdrawPaycheck,
+} from "../jobs/paycheckOffice";
 import {
   getPlayTime,
   isPaycheckEnabled,
@@ -33,6 +44,9 @@ registerExport(
       characters: [],
       next: null,
     }),
+);
+registerExport("GetCharIdByCitizenId", (citizenid: unknown, done: unknown) =>
+  answer("character id of a citizenid", charIdByCitizenId(citizenid), done, null),
 );
 registerExport("GetCharactersOfUser", (user: unknown, done: unknown) =>
   answer("characters of an account", getCharactersOfUser(user), done, []),
@@ -83,6 +97,12 @@ registerExport(
 // Player extras: `player/extras.ts`.
 registerExport("SetPaycheckEnabled", setPaycheckEnabled);
 registerExport("IsPaycheckEnabled", isPaycheckEnabled);
+registerExport("GetPaycheckBalance", getPaycheckBalance);
+registerExport("WithdrawPaycheck", withdrawPaycheck);
+registerExport("GetPaycheckMode", getPaycheckMode);
+registerExport("ForcePaycheck", forcePaycheck);
+registerExport("IsIllegal", isIllegal);
+registerExport("SetIllegal", setIllegal);
 registerExport("GetPlayTime", (target: unknown, done?: unknown) =>
   getPlayTime(target, done),
 );

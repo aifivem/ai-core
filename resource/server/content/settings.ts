@@ -20,7 +20,13 @@ export interface Settings {
     intervalMinutes: number;
     account: string;
     fromJobAccount: boolean;
+    /** `account`: paid straight into `account`; `office`: kept in metadata `paycheck` until withdrawn (`WithdrawPaycheck`). */
+    mode: "account" | "office";
   };
+  /** Legal / illegal status of characters (metadata `illegal`); off = everyone counts as legal. */
+  illegal: { enabled: boolean };
+  /** Log every character login (in the world) on channel `login`. */
+  loginLog: boolean;
   primeTime: PrimeTimeSettings;
   saveIntervalMinutes: number;
   /** `auto` or the resource name of the inventory ai-core's inventory layer uses. */
@@ -117,7 +123,10 @@ export function readSettings(raw: unknown): Settings {
       intervalMinutes: int(pay.intervalMinutes, 15, 0, 1440),
       account: str(pay.account, "bank", 32),
       fromJobAccount: bool(pay.fromJobAccount, false),
+      mode: pay.mode === "office" ? "office" : "account",
     },
+    illegal: { enabled: bool(record(s.illegal).enabled, true) },
+    loginLog: bool(s.loginLog, true),
     primeTime: readPrimeTime(s.primeTime),
     saveIntervalMinutes: int(s.saveIntervalMinutes, 5, 1, 60),
     inventory: str(s.inventory, "auto", 32),

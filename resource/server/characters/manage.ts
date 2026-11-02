@@ -70,11 +70,21 @@ export function deleteCharacterBy(
   answer(`delete character #${id}`, work, done, ERROR);
 }
 
-/** Each given field checked like the creation form; null = a field is wrong (its lang key). */
-function readPatch(raw: unknown): Partial<Info> | CharacterResult {
+/** Height in centimetres (metadata `height`), a whole number 0-300 (0 = not set); null when wrong. */
+export function toHeight(value: unknown): number | null {
+  const n = typeof value === "string" ? Number(value.trim()) : value;
+  return typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 300
+    ? Math.floor(n)
+    : null;
+}
+
+/** Each given field checked like the creation form; a refusal names the wrong field (its lang key). */
+function readPatch(
+  raw: unknown,
+): (Partial<Info> & { height?: number }) | CharacterResult {
   if (typeof raw !== "object" || raw === null) return INVALID;
   const input = raw as Record<string, unknown>;
-  const patch: Partial<Info> = {};
+  const patch: Partial<Info> & { height?: number } = {};
   if (input.firstname != null) {
     const v = toName(input.firstname);
     if (!v) return fail("CHAR_ERR_FIRSTNAME");
@@ -95,15 +105,31 @@ function readPatch(raw: unknown): Partial<Info> | CharacterResult {
     if (!v) return fail("CHAR_ERR_NATIONALITY");
     patch.nationality = v;
   }
-  if (input.sex != null) {
-    const v = toSex(input.sex);
+  // QB's `gender` (0 male, 1 female) when `sex` is not given.
+  const sex =
+    input.sex ??
+    (input.gender === 0
+      ? "male"
+      : input.gender === 1
+        ? "female"
+        : input.gender);
+  if (sex != null) {
+    const v = toSex(sex);
     if (!v) return fail("CHAR_ERR_SEX");
     patch.sex = v;
+  }
+  if (input.height != null) {
+    const v = toHeight(input.height);
+    if (v === null) return fail("CHAR_ERR_HEIGHT");
+    patch.height = v;
   }
   return patch;
 }
 
-/** Name, birth date, nationality and sex of a character; a loaded one gets the change as a `character` delta. */
+/**
+ * Name, birth date, nationality, sex and height (metadata `height`) of a character; a loaded one gets the change as
+ * `character` / `metadata` deltas.
+ */
 export function setCharacterInfo(
   charId: unknown,
   raw: unknown,
@@ -115,13 +141,16 @@ export function setCharacterInfo(
     const result = "ok" in patch ? patch : INVALID;
     return answer("character info", Promise.resolve(result), done, result);
   }
+  const { height, ...fields } = patch;
   const work = editCharacter(
     id,
     async (player) => {
-      const info: Info = { ...player.info(), ...patch };
+      const info: Info = { ...player.info(), ...fields };
       // The ped model follows the sex: only changed while the character is not loaded.
       if (info.sex !== player.info().sex)
         return fail("ADMIN_PLAYERS_ERR_SEX_ONLINE");
+      if (height !== undefined) player.setMeta("height", height);
+      if (Object.keys(fields).length === 0) return OK;
       await updateInfo(id, info);
       // The write took time: the character may have unloaded meanwhile (the row is right either way).
       if (players.byCharacter(id) === player) player.setInfo(info);
@@ -137,9 +166,13 @@ export function setCharacterInfo(
         birthdate,
         sex,
         nationality,
-        ...patch,
+        ...fields,
       };
-      return offline.info(id, info);
+      if (height !== undefined) {
+        const r = await offline.meta(id, "height", height);
+        if (!r.ok) return r;
+      }
+      return Object.keys(fields).length === 0 ? OK : offline.info(id, info);
     },
   );
   answer(`character info of #${id}`, work, done, ERROR);

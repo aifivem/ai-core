@@ -111,7 +111,10 @@ function view(charId: number): CharacterView | null {
       bloodtype: "A+",
       callsign: "2-ADAM-12",
       licences: { driver: true, weapon: false },
+      height: 182,
+      illegal: false,
     },
+    illegalFeature: true,
     position: { x: 215.76, y: -810.12, z: 30.73, heading: 157.5 },
     lastPlayed: row.lastPlayed,
   };

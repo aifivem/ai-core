@@ -31,3 +31,7 @@ provide('GetMoney', function(identifier, moneyType)
     if not balances or balances[moneyType] == nil then return false end
     return balances[moneyType]
 end)
+
+-- ForcePaycheck(source): the paycheck for one player now (not in upstream qbx_core; patched copies and admin menus call
+-- it), through ai-core's paycheck with the panel's rules (pay account or paycheck office).
+provide('ForcePaycheck', function(source) return core:ForcePaycheck(tonumber(source)) == true end)

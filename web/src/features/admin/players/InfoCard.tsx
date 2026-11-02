@@ -5,16 +5,25 @@ import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Select } from "../../../components/ui/select";
 import { runAction } from "./actions";
+import { IllegalRow } from "./IllegalRow";
 import { Note, PCard, Row, Rows, useAction, type T } from "./parts";
 
-/** Name, birth date, sex and nationality as one form (saved together, checked like the character creation form). */
+/** Metadata `height` as the form's text (empty = not set). */
+const heightOf = (view: CharacterView): string => {
+  const h = view.metadata.height;
+  return typeof h === "number" && h > 0 ? String(h) : "";
+};
+
+/** Name, birth date, sex, nationality and height as one form (saved together, checked like the character creation form). */
 export function InfoCard({ view, t }: { view: CharacterView; t: T }) {
+  const height = heightOf(view);
   const [form, setForm] = useState({
     firstname: view.firstname,
     lastname: view.lastname,
     birthdate: view.birthdate,
     sex: view.sex as string,
     nationality: view.nationality,
+    height,
   });
   // A change from elsewhere (another admin, a delta) replaces the form.
   useEffect(
@@ -25,8 +34,16 @@ export function InfoCard({ view, t }: { view: CharacterView; t: T }) {
         birthdate: view.birthdate,
         sex: view.sex,
         nationality: view.nationality,
+        height,
       }),
-    [view.firstname, view.lastname, view.birthdate, view.sex, view.nationality],
+    [
+      view.firstname,
+      view.lastname,
+      view.birthdate,
+      view.sex,
+      view.nationality,
+      height,
+    ],
   );
   const { busy, note, run } = useAction();
   const changed =
@@ -34,7 +51,13 @@ export function InfoCard({ view, t }: { view: CharacterView; t: T }) {
     form.lastname !== view.lastname ||
     form.birthdate !== view.birthdate ||
     form.sex !== view.sex ||
-    form.nationality !== view.nationality;
+    form.nationality !== view.nationality ||
+    form.height !== height;
+  const save = () =>
+    runAction("info", [
+      view.charId,
+      { ...form, height: form.height === "" ? 0 : Number(form.height) },
+    ]);
   const field = (
     key: "firstname" | "lastname" | "birthdate" | "nationality",
   ) => (
@@ -78,6 +101,23 @@ export function InfoCard({ view, t }: { view: CharacterView; t: T }) {
             />
           </div>
         </Row>
+        <Row label={t("ADMIN_PLAYERS_F_HEIGHT")}>
+          <Input
+            value={form.height}
+            inputMode="numeric"
+            aria-label={t("ADMIN_PLAYERS_F_HEIGHT")}
+            title={t("ADMIN_PLAYERS_H_HEIGHT")}
+            placeholder={t("ADMIN_PLAYERS_PH_HEIGHT")}
+            className="w-[24vh]"
+            onChange={(e) =>
+              setForm({
+                ...form,
+                height: e.target.value.replace(/[^\d]/g, "").slice(0, 3),
+              })
+            }
+          />
+        </Row>
+        {view.illegalFeature && <IllegalRow view={view} t={t} />}
       </Rows>
       <div className="flex items-center justify-end gap-[1.2vh]">
         <Note note={note} t={t} />
@@ -85,7 +125,7 @@ export function InfoCard({ view, t }: { view: CharacterView; t: T }) {
           variant="primary"
           disabled={!changed}
           busy={busy}
-          onClick={() => void run(() => runAction("info", [view.charId, form]))}
+          onClick={() => void run(save)}
         >
           {t("ADMIN_PLAYERS_SAVE_INFO")}
         </Button>

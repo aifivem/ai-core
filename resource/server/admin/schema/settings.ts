@@ -68,8 +68,15 @@ export function settingsFile({
           intervalMinutes: spec.int(0, 1440),
           account: { type: "text", max: 32, pattern: ID },
           fromJobAccount: bool,
+          mode: {
+            type: "enum",
+            values: ["account", "office"],
+            optional: true,
+          },
         },
       },
+      illegal: { type: "object", fields: { enabled: bool } },
+      loginLog: { type: "bool" },
       primeTime: {
         type: "object",
         fields: {
@@ -152,6 +159,8 @@ export function settingsFile({
       notify: "ai-lib",
       interaction: "prompt",
       pvp: true,
+      illegal: { enabled: true },
+      loginLog: true,
       refuseOnConflict: true,
       updates: { check: true, ignore: [] },
       recommendations: DEFAULT_RECOMMENDATIONS,

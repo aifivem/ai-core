@@ -80,6 +80,18 @@ export function generalTab(choices: LayerChoices): TabSpec {
             max: 99,
             unit: "ADMIN_U_YEARS",
           },
+          {
+            widget: "switch",
+            path: "illegal.enabled",
+            label: "ADMIN_F_ILLEGAL",
+            hint: "ADMIN_H_ILLEGAL",
+          },
+          {
+            widget: "switch",
+            path: "loginLog",
+            label: "ADMIN_F_LOGIN_LOG",
+            hint: "ADMIN_H_LOGIN_LOG",
+          },
         ],
       },
       characterScreenCard,

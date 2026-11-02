@@ -1,9 +1,5 @@
 import { isRecord } from "@aifivem/lib/shared";
-import type {
-  CharacterInfo,
-  CreateCharacterInput,
-  Sex,
-} from "@aifivem/shared";
+import type { CharacterInfo, CreateCharacterInput, Sex } from "@aifivem/shared";
 import { mysql } from "@aifivem/mysql";
 
 /** SQL of characters. Every function takes the account (user id) so one account never touches another's rows. */
@@ -121,6 +117,17 @@ export async function findCharacter(
     [charId],
   );
   return row ? toRow(row) : null;
+}
+
+/** The id of a character by its citizen id (unique key `citizenid`); null when unknown or deleted. */
+export async function charIdOfCitizen(
+  citizenid: string,
+): Promise<number | null> {
+  const row = await mysql.single<{ id: number }>(
+    "SELECT id FROM ai_core_characters WHERE citizenid = ? AND deleted_at IS NULL",
+    [citizenid],
+  );
+  return row?.id ?? null;
 }
 
 /**
