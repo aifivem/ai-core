@@ -23,7 +23,7 @@ import { isLoaded } from "./playerState";
 /**
  * Low hunger / thirst, one system on the client (it owns its ped's health): a notification below `lowAt` (the
  * critical text below `criticalAt`) at most every `notifyEvery` s; below `criticalAt` dizziness (fade out and in,
- * every `faintEvery` s) and health loss (`damage` every `hurtEvery` s), each switched on its own. Values come from
+ * every `faintEvery` s); at or below `hurtAt` health loss (`damage` every `hurtEvery` s); each switched on its own. Values come from
  * ai-core's player data (metadata snapshot + deltas), settings from the panel file `needs`. The 1 s job runs only
  * while a loaded character is below a level.
  */
@@ -65,7 +65,8 @@ class NeedWarningsJob {
     this.job.set(
       isLoaded() &&
         ((w.notify && low < w.lowAt) ||
-          ((w.faint || w.hurt) && low < w.criticalAt)),
+          (w.faint && low < w.criticalAt) ||
+          (w.hurt && low <= w.hurtAt)),
     );
   }
 
@@ -74,8 +75,9 @@ class NeedWarningsJob {
     const w = this.settings.value.warnings;
     const { hunger, thirst } = this.needs;
     const now = GetGameTimer();
-    const critical = Math.min(hunger, thirst) < w.criticalAt;
-    if (critical && w.hurt && now >= this.nextHurt) {
+    const low = Math.min(hunger, thirst);
+    const critical = low < w.criticalAt;
+    if (w.hurt && low <= w.hurtAt && now >= this.nextHurt) {
       this.nextHurt = now + w.hurtEvery * 1000;
       const ped = cache.ped;
       SetEntityHealth(ped, Math.max(0, GetEntityHealth(ped) - w.damage));

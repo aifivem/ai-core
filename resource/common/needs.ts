@@ -17,7 +17,7 @@ export interface NeedWarnings {
   notify: boolean;
   lowAt: number;
   notifyEvery: number;
-  /** Below this, dizziness and health loss (each switched on its own) and the critical notification. */
+  /** Below this, dizziness (when on) and the critical notification. */
   criticalAt: number;
   /** Dizziness: the screen fades out and in every `faintEvery` seconds. */
   faint: boolean;
@@ -25,8 +25,9 @@ export interface NeedWarnings {
   /** Seconds the fade out / in takes. */
   fadeOut: number;
   fadeIn: number;
-  /** Health loss: `damage` health every `hurtEvery` seconds. */
+  /** Health loss: while food or water is at or below `hurtAt`, `damage` health every `hurtEvery` seconds. */
   hurt: boolean;
+  hurtAt: number;
   damage: number;
   hurtEvery: number;
 }
@@ -52,6 +53,7 @@ export const NEEDS_DEFAULTS: NeedsSettings = {
     fadeOut: 4.5,
     fadeIn: 2.5,
     hurt: true,
+    hurtAt: 0,
     damage: 2,
     hurtEvery: 10,
   },
@@ -83,6 +85,7 @@ export function readNeedsSettings(raw: unknown): NeedsSettings {
       fadeOut: num(w.fadeOut, d.warnings.fadeOut, 0.5, 10),
       fadeIn: num(w.fadeIn, d.warnings.fadeIn, 0.5, 10),
       hurt: bool(w.hurt, d.warnings.hurt),
+      hurtAt: int(w.hurtAt, d.warnings.hurtAt, 0, 100),
       damage: num(w.damage, d.warnings.damage, 1, 50),
       hurtEvery: int(w.hurtEvery, d.warnings.hurtEvery, 5, 3600),
     },

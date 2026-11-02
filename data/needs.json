@@ -19,6 +19,7 @@
     "fadeOut": 4.5,
     "fadeIn": 2.5,
     "hurt": true,
+    "hurtAt": 0,
     "damage": 2,
     "hurtEvery": 10
   }

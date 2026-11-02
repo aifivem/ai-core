@@ -1,6 +1,7 @@
 import { spec } from "@aifivem/lib/shared";
 import type { DataSpec, FileSpec, TabSpec, WidgetSpec } from "@aifivem/shared";
 import { NEEDS_DEFAULTS } from "../../common/needs";
+import { HURT_CARD } from "./hurtCard";
 
 /**
  * `data/needs.json` (ai-core's panel, `sync: "all"`: the client's warnings read it): hunger and thirst decay, start
@@ -33,6 +34,7 @@ export const NEEDS_FILE: FileSpec = {
         fadeOut: { type: "number", min: 0.5, max: 10 },
         fadeIn: { type: "number", min: 0.5, max: 10 },
         hurt: bool,
+        hurtAt: level,
         damage: { type: "number", min: 1, max: 50 },
         hurtEvery: seconds(5),
       },
@@ -165,34 +167,8 @@ export const NEEDS_TAB: TabSpec = {
           unit: "ADMIN_U_SEC",
           showIf: { path: "warnings.faint", values: [true] },
         },
-        {
-          widget: "switch",
-          path: "warnings.hurt",
-          label: "ADMIN_F_WARN_HURT",
-          hint: "ADMIN_H_WARN_HURT",
-        },
-        {
-          widget: "number",
-          path: "warnings.damage",
-          label: "ADMIN_F_WARN_DAMAGE",
-          hint: "ADMIN_H_WARN_DAMAGE",
-          min: 1,
-          max: 50,
-          unit: "ADMIN_U_HP",
-          showIf: { path: "warnings.hurt", values: [true] },
-        },
-        {
-          widget: "number",
-          path: "warnings.hurtEvery",
-          label: "ADMIN_F_WARN_HURT_EVERY",
-          hint: "ADMIN_H_WARN_HURT_EVERY",
-          min: 5,
-          max: 3600,
-          step: 5,
-          unit: "ADMIN_U_SEC",
-          showIf: { path: "warnings.hurt", values: [true] },
-        },
       ],
     },
+    HURT_CARD,
   ],
 };
