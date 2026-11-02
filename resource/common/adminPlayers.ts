@@ -4,7 +4,12 @@
  * `PlayersResult`.
  */
 
-import type { GangMembership, JobMembership, Sex } from "@aifivem/shared";
+import type {
+  GangMembership,
+  JobMembership,
+  Sex,
+  Warrant,
+} from "@aifivem/shared";
 
 export const ADMIN_PLAYERS = {
   /** Server -> admin client: (PlayersDelta), forwarded to the NUI while the panel is open. */
@@ -41,6 +46,8 @@ export const PLAYERS_ACTIONS = [
   "item",
   "inventory",
   "delete",
+  "warrant",
+  "clearWarrant",
 ] as const;
 export type PlayersAction = (typeof PLAYERS_ACTIONS)[number];
 
@@ -116,6 +123,8 @@ export interface CharacterView {
   metadata: Record<string, unknown>;
   /** The panel's legal / illegal switch (`illegal.enabled`): the status row shows only while on (value: metadata `illegal`). */
   illegalFeature: boolean;
+  /** ai-core's own active warrants, newest first (the whole list again on each change). */
+  warrants: Warrant[];
   /** As of the snapshot (online: the ped, offline: where the character spawns next). */
   position: Position | null;
   lastPlayed: number | null;

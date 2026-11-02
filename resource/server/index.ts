@@ -32,6 +32,7 @@ import "./billing";
 import "./billing/builtin";
 import "./banking";
 import "./mdt";
+import "./warrants";
 import "./ems";
 import "./appearance";
 import "./stress";

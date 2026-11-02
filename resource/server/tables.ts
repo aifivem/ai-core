@@ -68,6 +68,16 @@ export type Tables = {
     amount: number;
     created_at: number;
   };
+  ai_core_warrants: {
+    id: number;
+    char_id: number;
+    reason: string;
+    issued_by: string;
+    created_at: number;
+    expires_at: number | null;
+    cleared_at: number | null;
+    cleared_by: string | null;
+  };
   ai_core_deleted_log: {
     char_id: number;
     user_id: number;
@@ -162,6 +172,16 @@ export type TableInserts = {
     label: string;
     amount: number;
     created_at?: number;
+  };
+  ai_core_warrants: {
+    id?: number;
+    char_id: number;
+    reason: string;
+    issued_by?: string;
+    created_at?: number;
+    expires_at?: number | null;
+    cleared_at?: number | null;
+    cleared_by?: string | null;
   };
   ai_core_deleted_log: {
     char_id: number;

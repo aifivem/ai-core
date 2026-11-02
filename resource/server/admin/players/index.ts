@@ -17,11 +17,13 @@ import "./edit";
 import "./memberships";
 import "./world";
 import "./inventoryActions";
+import "./warrants";
 
 /**
  * The admin panel's Players section: the online list and the search over stored characters, one character's
  * snapshot, and the deltas while the screen is open. Edits: `edit.ts` (character data),
- * `memberships.ts` (jobs and gangs), `world.ts` (the player), `inventoryActions.ts` (items).
+ * `memberships.ts` (jobs and gangs), `world.ts` (the player), `inventoryActions.ts` (items), `warrants.ts` (own
+ * warrants).
  */
 
 // The list itself follows as latent `rows` chunks (2,048 rows are ~240 KB).

@@ -3,6 +3,7 @@ import { findCharacter } from "../../characters/repo";
 import { accountTypes, settings } from "../../content";
 import { loadGangs, loadJobs } from "../../jobs/repo";
 import { players } from "../../player/registry";
+import { warrantStore } from "../../warrants/store";
 import { storedBalances, userOf } from "./repo";
 import { entityCoords } from "@aifivem/lib/server";
 
@@ -19,7 +20,10 @@ function pedPosition(source: number): Position | null {
 export async function loadView(charId: number): Promise<CharacterView | null> {
   const row = await findCharacter(charId);
   if (!row) return null;
-  const user = await userOf(row.userId);
+  const [user, warrants] = await Promise.all([
+    userOf(row.userId),
+    warrantStore.of(charId),
+  ]);
   const base = {
     charId,
     citizenid: row.citizenid,
@@ -33,6 +37,7 @@ export async function loadView(charId: number): Promise<CharacterView | null> {
     },
     lastPlayed: row.lastPlayed,
     illegalFeature: settings.illegal.enabled,
+    warrants,
   };
   // Looked up after the awaits: the character may have loaded meanwhile.
   const player = players.byCharacter(charId);

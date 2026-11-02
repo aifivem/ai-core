@@ -1,4 +1,4 @@
-import type { Branding, CharacterScene } from "@aifivem/shared";
+import type { Branding, CharacterScene, WarrantMode } from "@aifivem/shared";
 import { readVec4 } from "@aifivem/lib/shared";
 import { bool, int, record, str, vec4, type Vec4 } from "./parse";
 import { readScene } from "./scene";
@@ -45,6 +45,8 @@ export interface Settings {
   bankAccounts: "core" | "own";
   /** `auto` or the resource name of the MDT ai-core's MDT layer uses. */
   mdt: string;
+  /** Whose warrants `hasWarrant` reads: `auto` the MDT's while it answers warrant checks, else ai-core's own; `both`; `mdt`. */
+  warrants: WarrantMode;
   /** `auto` or the resource name of the EMS source ("ai-core" = its own duty counts) of ai-core's EMS layer. */
   ems: string;
   /** `auto` or the resource name of the fuel script ai-core's fuel layer uses. */
@@ -137,6 +139,8 @@ export function readSettings(raw: unknown): Settings {
     banking: str(s.banking, "auto", 32),
     bankAccounts: s.bankAccounts === "own" ? "own" : "core",
     mdt: str(s.mdt, "auto", 32),
+    warrants:
+      s.warrants === "both" || s.warrants === "mdt" ? s.warrants : "auto",
     ems: str(s.ems, "auto", 32),
     fuel: str(s.fuel, "auto", 32),
     doorlock: str(s.doorlock, "auto", 32),

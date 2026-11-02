@@ -115,6 +115,18 @@ function view(charId: number): CharacterView | null {
       illegal: false,
     },
     illegalFeature: true,
+    warrants: live
+      ? [
+          {
+            id: 12,
+            charId: row.charId,
+            reason: "Armed robbery at the Fleeca bank",
+            by: "Mike Ross (4)",
+            created: Date.now() - 3_600_000,
+            expires: null,
+          },
+        ]
+      : [],
     position: { x: 215.76, y: -810.12, z: 30.73, heading: 157.5 },
     lastPlayed: row.lastPlayed,
   };

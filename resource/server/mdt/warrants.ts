@@ -9,8 +9,9 @@ interface Kept {
 }
 
 /**
- * Warrant answers of the active MDT by citizenid, kept 30 s (a request in flight is shared, a failed one answers
- * false). Expired entries are swept as the map grows, at most once per keep time; `clear` on an MDT switch.
+ * Warrant answers by citizenid (the active MDT's, and ai-core's own for stored characters), kept 30 s (a request in
+ * flight is shared, a failed one answers false). Expired entries are swept as the map grows, at most once per keep
+ * time; `clear` on an MDT switch, `forget` when ai-core's own warrants of a citizen change.
  */
 export class WarrantCache {
   private readonly kept = new Map<string, Kept>();
@@ -32,6 +33,11 @@ export class WarrantCache {
 
   clear(): void {
     this.kept.clear();
+  }
+
+  /** Drops one citizen's answer (their warrants changed). */
+  forget(citizenid: string): void {
+    this.kept.delete(citizenid);
   }
 
   private async read(adapter: MdtAdapter, citizenid: string): Promise<boolean> {

@@ -23,6 +23,7 @@ import { Chip, type T } from "./parts";
 import { ActionsCard } from "./ActionsCard";
 import { ItemsCard, PositionCard } from "./PlayerCards";
 import { PlayersList } from "./PlayersList";
+import { WarrantsCard } from "./WarrantsCard";
 
 function CharacterPage({ t }: { t: T }) {
   const view = useAppSelector((state) => state.players.view);
@@ -78,6 +79,7 @@ function CharacterPage({ t }: { t: T }) {
               <ItemsCard view={view} t={t} />
               <ActionsCard view={view} t={t} />
               <BansCard view={view} t={t} />
+              <WarrantsCard view={view} t={t} />
               <MetaCard view={view} t={t} />
             </div>
           </div>

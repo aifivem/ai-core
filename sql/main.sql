@@ -94,6 +94,25 @@ CREATE TABLE IF NOT EXISTS `ai_core_bills` (
   KEY `char_id` (`char_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ai-core's own warrants (warrants/). Active = cleared_at IS NULL and not past expires_at (NULL = until cleared); a
+-- sweep closes expired rows (cleared_at = expires_at, cleared_by NULL), so `active` walks only live ones.
+-- Keys: `char_active` a character's active list and the warrant check, `active` the active list newest first
+-- (keyset on id), `expiry` the sweep.
+CREATE TABLE IF NOT EXISTS `ai_core_warrants` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `char_id` INT UNSIGNED NOT NULL,
+  `reason` VARCHAR(255) NOT NULL,
+  `issued_by` VARCHAR(64) NOT NULL DEFAULT '',
+  `created_at` DATETIME NOT NULL DEFAULT current_timestamp(),
+  `expires_at` DATETIME DEFAULT NULL,
+  `cleared_at` DATETIME DEFAULT NULL,
+  `cleared_by` VARCHAR(64) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `char_active` (`char_id`, `cleared_at`),
+  KEY `active` (`cleared_at`, `id`),
+  KEY `expiry` (`cleared_at`, `expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Characters soft-deleted through the framework projections (multichar/projection): the delete trigger adds a row,
 -- ai-core reads and removes an account's rows at its next projection refresh and fires `characterDeleted`. Holds only
 -- deletes not yet noticed.

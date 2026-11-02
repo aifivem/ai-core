@@ -12,8 +12,8 @@ const openOnly = (resource: string): MdtAdapter => ({ resource });
 
 /**
  * Every supported MDT in detection order: `auto` uses the first one running; there is no ai-* MDT, so with none
- * running records go nowhere and nobody is wanted. A new MDT = one adapter file and one line here (and a client half
- * when it opens).
+ * running records go nowhere and warrant checks read ai-core's own warrants (setting `warrants`). A new MDT = one
+ * adapter file and one line here (and a client half when it opens).
  */
 export const MDT_SYSTEMS: readonly MdtAdapter[] = [
   tgiannMdt,

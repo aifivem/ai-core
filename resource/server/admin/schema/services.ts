@@ -29,9 +29,22 @@ const MORE_FIELDS: Partial<Record<keyof ServiceChoices, WidgetSpec[]>> = {
       ],
     },
   ],
+  mdt: [
+    {
+      widget: "select",
+      path: "warrants",
+      label: "ADMIN_F_WARRANTS",
+      hint: "ADMIN_H_WARRANTS",
+      options: [
+        { value: "auto", label: "ADMIN_O_WARRANTS_AUTO" },
+        { value: "both", label: "ADMIN_O_WARRANTS_BOTH" },
+        { value: "mdt", label: "ADMIN_O_WARRANTS_MDT" },
+      ],
+    },
+  ],
 };
 
-/** Settings sections: `auto` or one adapter's resource name each, plus the banking account mode. */
+/** Settings sections: `auto` or one adapter's resource name each, plus the banking account mode and the warrant source. */
 export const servicesSections = (
   choices: ServiceChoices,
 ): Record<string, DataSpec> => ({
@@ -42,6 +55,7 @@ export const servicesSections = (
     ]),
   ),
   bankAccounts: { type: "enum", values: ["core", "own"] },
+  warrants: { type: "enum", values: ["auto", "both", "mdt"] },
 });
 
 export const SERVICES_DEFAULTS = {
@@ -49,6 +63,7 @@ export const SERVICES_DEFAULTS = {
   banking: "auto",
   bankAccounts: "core",
   mdt: "auto",
+  warrants: "auto",
   ems: "auto",
 };
 
