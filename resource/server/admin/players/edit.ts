@@ -41,9 +41,7 @@ action(
     const result = await onCharacter(
       charId,
       async (player) => {
-        // The ped model follows the sex: only changed while the character is offline.
-        if (player.info().sex !== sex)
-          return fail("ADMIN_PLAYERS_ERR_SEX_ONLINE");
+        // The sex is data only: the ped model stays the stored look's (owner decision).
         await updateInfo(charId, info);
         player.setInfo(info);
         if ((player.getMeta("height") ?? 0) !== height)

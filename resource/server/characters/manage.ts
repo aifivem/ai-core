@@ -146,9 +146,7 @@ export function setCharacterInfo(
     id,
     async (player) => {
       const info: Info = { ...player.info(), ...fields };
-      // The ped model follows the sex: only changed while the character is not loaded.
-      if (info.sex !== player.info().sex)
-        return fail("ADMIN_PLAYERS_ERR_SEX_ONLINE");
+      // The sex is data only: the ped model stays the stored look's (owner decision).
       if (height !== undefined) player.setMeta("height", height);
       if (Object.keys(fields).length === 0) return OK;
       await updateInfo(id, info);
