@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBox, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { formatWeight } from "@aicore-fivem/lib/shared";
-import type { PickerItem } from "@aicore-fivem/shared";
+import { formatWeight } from "@aifivem/lib/shared";
+import type { PickerItem } from "@aifivem/shared";
 import { VirtualList } from "../../components/VirtualList";
 import { cn } from "../../lib/utils";
 

@@ -1,4 +1,4 @@
-import { registerExport } from "@aicore-fivem/lib/server";
+import { registerExport } from "@aifivem/lib/server";
 import {
   accountTypes,
   gangs as gangDefs,

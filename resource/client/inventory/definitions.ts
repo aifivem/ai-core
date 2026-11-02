@@ -2,14 +2,14 @@ import {
   registerExport,
   onServerEvent,
   triggerServerCallback,
-} from "@aicore-fivem/lib/client";
-import { createLogger, isRecord, sleep } from "@aicore-fivem/lib/shared";
+} from "@aifivem/lib/client";
+import { createLogger, isRecord, sleep } from "@aifivem/lib/shared";
 import {
   CLIENT_ITEM_DEFINITIONS_EVENT,
   ITEM_DEFINITIONS_CALLBACK,
   ITEM_DEFINITIONS_EVENT,
   type ItemDefinition,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 
 /**
  * The active inventory's item definitions on this client (server side: `server/inventory/clientDefinitions.ts`): one

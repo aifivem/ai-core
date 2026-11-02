@@ -1,4 +1,4 @@
-import type { BankingAdapter } from "@aicore-fivem/shared";
+import type { BankingAdapter } from "@aifivem/shared";
 
 /**
  * ai-banking: its society accounts are ai-core's job accounts, so it keeps no balance of its own; its screen opens

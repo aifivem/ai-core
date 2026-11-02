@@ -1,4 +1,4 @@
-import type { DoorlockAdapter } from "@aicore-fivem/shared";
+import type { DoorlockAdapter } from "@aifivem/shared";
 import { carrier } from "./carrier";
 
 /**

@@ -1,6 +1,6 @@
-import { spec } from "@aicore-fivem/lib/shared";
-import { WEATHERS } from "@aicore-fivem/shared";
-import type { DataSpec } from "@aicore-fivem/shared";
+import { spec } from "@aifivem/lib/shared";
+import { WEATHERS } from "@aifivem/shared";
+import type { DataSpec } from "@aifivem/shared";
 
 /** Data spec of the character screen scene (settings section `characterScene`). */
 export const sceneSection: DataSpec = {

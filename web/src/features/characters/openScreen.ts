@@ -1,4 +1,4 @@
-import type { CharacterScreen } from "@aicore-fivem/shared";
+import type { CharacterScreen } from "@aifivem/shared";
 import { setTexts } from "../../lib/lang";
 import { selectCard } from "./actions";
 import { update } from "./store";

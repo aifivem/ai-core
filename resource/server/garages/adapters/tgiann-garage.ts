@@ -1,4 +1,4 @@
-import type { GarageAdapter } from "@aicore-fivem/shared";
+import type { GarageAdapter } from "@aifivem/shared";
 
 /**
  * tgiann-garage (`client/main.lua`): its client event `tgiann-garage:open` opens the menu of the garage zone the player

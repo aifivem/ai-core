@@ -1,5 +1,5 @@
-import { cache, callExport } from "@aicore-fivem/lib/client";
-import type { AppearanceClientAdapter } from "@aicore-fivem/shared";
+import { cache, callExport } from "@aifivem/lib/client";
+import type { AppearanceClientAdapter } from "@aifivem/shared";
 import { qbOutfit } from "../qbOutfit";
 
 const RESOURCE = "qb-clothing";

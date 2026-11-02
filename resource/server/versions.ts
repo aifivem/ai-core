@@ -1,6 +1,6 @@
-import { every, registerExport } from "@aicore-fivem/lib/server";
-import { isRecord } from "@aicore-fivem/lib/shared";
-import type { UpdateInfo } from "@aicore-fivem/shared";
+import { every, registerExport } from "@aifivem/lib/server";
+import { isRecord } from "@aifivem/lib/shared";
+import type { UpdateInfo } from "@aifivem/shared";
 import { panel, settings } from "./content";
 import { log } from "./log";
 

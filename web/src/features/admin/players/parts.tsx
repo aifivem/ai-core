@@ -9,7 +9,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import type { PlayersResult } from "../../../../../resource/common/adminPlayers";
 import { cn } from "../../../lib/utils";
-import { groupDigits } from "@aicore-fivem/lib/shared";
+import { groupDigits } from "@aifivem/lib/shared";
 
 export type T = (key: string, ...args: Array<string | number>) => string;
 

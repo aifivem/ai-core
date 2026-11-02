@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import type { CharacterScreen } from "@aicore-fivem/shared";
+import type { CharacterScreen } from "@aifivem/shared";
 
 /** The character screen's state: the server's snapshot plus what the player picked. */
 export type View =

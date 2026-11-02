@@ -1,4 +1,4 @@
-import type { AppearanceAdapter } from "@aicore-fivem/shared";
+import type { AppearanceAdapter } from "@aifivem/shared";
 import { aiAppearance } from "./adapters/ai-appearance";
 import { blAppearance } from "./adapters/bl_appearance";
 import { crmAppearance } from "./adapters/crm-appearance";

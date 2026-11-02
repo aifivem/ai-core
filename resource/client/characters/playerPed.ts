@@ -1,6 +1,6 @@
-import { requestModel } from "@aicore-fivem/lib/client";
-import { waitFor } from "@aicore-fivem/lib/shared";
-import type { SceneSpot, Sex, SpawnPoint } from "@aicore-fivem/shared";
+import { requestModel } from "@aifivem/lib/client";
+import { waitFor } from "@aifivem/lib/shared";
+import type { SceneSpot, Sex, SpawnPoint } from "@aifivem/shared";
 import { spawnArmour } from "../armour";
 
 /** The local player's ped around the character screen: its model, waiting under the scene, entering the world. */

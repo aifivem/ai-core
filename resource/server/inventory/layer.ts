@@ -1,4 +1,4 @@
-import { isRecord, type Logger } from "@aicore-fivem/lib/shared";
+import { isRecord, type Logger } from "@aifivem/lib/shared";
 import { AdapterPicker } from "common/adapters";
 import type {
   InventoryAdapter,
@@ -6,7 +6,7 @@ import type {
   StashDefinition,
   UsableItemHandler,
   UsedItem,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 
 /** The handler's item from any inventory's shape (`count` / `amount`, `metadata` / `info`). */
 function toUsedItem(name: string, raw: unknown): UsedItem {

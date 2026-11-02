@@ -1,4 +1,4 @@
-import { isRecord } from "@aicore-fivem/lib/shared";
+import { isRecord } from "@aifivem/lib/shared";
 import { players } from "../player/registry";
 import { sharedAccounts } from "./book";
 
@@ -8,7 +8,7 @@ interface Side {
   change(delta: number, reason: string): boolean;
 }
 
-/** A `MoneyRef` (`@aicore-fivem/shared`): a loaded character's account or a job's / gang's, when it exists. */
+/** A `MoneyRef` (`@aifivem/shared`): a loaded character's account or a job's / gang's, when it exists. */
 function sideOf(ref: unknown): Side | null {
   if (!isRecord(ref) || typeof ref.account !== "string") return null;
   const account = ref.account;

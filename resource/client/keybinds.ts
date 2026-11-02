@@ -1,6 +1,6 @@
-import { AdminWorld, registerExport } from "@aicore-fivem/lib/client";
-import { isRecord } from "@aicore-fivem/lib/shared";
-import { KEYBIND, type KeybindInfo } from "@aicore-fivem/shared";
+import { AdminWorld, registerExport } from "@aifivem/lib/client";
+import { isRecord } from "@aifivem/lib/shared";
+import { KEYBIND, type KeybindInfo } from "@aifivem/shared";
 
 /**
  * Every resource's keybinds on this client (the lib's `Keybind` announces each one) and their default keys: the

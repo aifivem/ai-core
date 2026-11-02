@@ -1,4 +1,4 @@
-import { every, type Job } from "@aicore-fivem/lib/server";
+import { every, type Job } from "@aifivem/lib/server";
 import { jobs as jobDefs, panel, settings } from "../content";
 import { log } from "../log";
 import { sharedAccounts } from "../money/book";

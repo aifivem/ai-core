@@ -1,6 +1,6 @@
-import { onClientEvent } from "@aicore-fivem/lib/server";
-import { logSafe } from "@aicore-fivem/lib/shared";
-import { CORE } from "@aicore-fivem/shared";
+import { onClientEvent } from "@aifivem/lib/server";
+import { logSafe } from "@aifivem/lib/shared";
+import { CORE } from "@aifivem/shared";
 import { coreLog } from "./logs";
 import { sourceMaps } from "./sourceMaps";
 

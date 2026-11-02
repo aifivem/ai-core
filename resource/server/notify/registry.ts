@@ -1,4 +1,4 @@
-import { LIB_UI } from "@aicore-fivem/shared";
+import { LIB_UI } from "@aifivem/shared";
 
 /**
  * Where ai-lib's notification cards can go (panel setting `notify`): ai-lib's own cards first (the default), then

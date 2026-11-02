@@ -1,4 +1,4 @@
-import type { Logger } from "@aicore-fivem/lib/shared";
+import type { Logger } from "@aifivem/lib/shared";
 
 /** What every integration adapter has: the resource it talks to and, optionally, the version it is written for. */
 export interface Adapter {

@@ -1,5 +1,5 @@
-import { readId } from "@aicore-fivem/lib/shared";
-import { CORE, type CharacterInfo } from "@aicore-fivem/shared";
+import { readId } from "@aifivem/lib/shared";
+import { CORE, type CharacterInfo } from "@aifivem/shared";
 import { log } from "../log";
 import { players } from "../player/registry";
 import { findCharacter } from "./repo";

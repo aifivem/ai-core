@@ -1,6 +1,6 @@
-import { onServerEvent } from "@aicore-fivem/lib/client";
-import { createLogger, waitFor } from "@aicore-fivem/lib/shared";
-import { CORE, NUI_LAYER } from "@aicore-fivem/shared";
+import { onServerEvent } from "@aifivem/lib/client";
+import { createLogger, waitFor } from "@aifivem/lib/shared";
+import { CORE, NUI_LAYER } from "@aifivem/shared";
 import { openCharacters } from "./characters";
 import { externalScreen } from "./multichar";
 import { announceUnloaded } from "./playerState";

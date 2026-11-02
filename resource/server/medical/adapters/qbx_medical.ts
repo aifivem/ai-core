@@ -1,5 +1,5 @@
-import { callExport, PlayerState, stateNumber } from "@aicore-fivem/lib/server";
-import type { MedicalAdapter } from "@aicore-fivem/shared";
+import { callExport, PlayerState, stateNumber } from "@aifivem/lib/server";
+import type { MedicalAdapter } from "@aifivem/shared";
 
 /** qbx_medical: its death state bag (1 alive, 2 last stand, 3 dead) and its Revive / Heal exports. */
 const deathState = new PlayerState("qbx_medical:deathState", stateNumber);

@@ -1,4 +1,4 @@
-import type { PanelSchema } from "@aicore-fivem/shared";
+import type { PanelSchema } from "@aifivem/shared";
 import { VRP_FILE } from "../../vrp/schema";
 import { VRP_TAB } from "../../vrp/tab";
 import { accountsFile, accountsTab } from "./accounts";

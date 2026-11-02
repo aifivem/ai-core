@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/client";
-import type { MedicalClientAdapter } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/client";
+import type { MedicalClientAdapter } from "@aifivem/shared";
 
 /** A death script that answers "down" through a client export and fires local events when the player goes down or up. */
 function exportAdapter(

@@ -4,8 +4,8 @@ import {
   GlobalKey,
   onServerEvent,
   stateString,
-} from "@aicore-fivem/lib/client";
-import { CORE } from "@aicore-fivem/shared";
+} from "@aifivem/lib/client";
+import { CORE } from "@aifivem/shared";
 import { spawnArmour } from "./armour";
 import { dropCharacters } from "./characters";
 import { announceLoaded, announceUnloaded } from "./playerState";

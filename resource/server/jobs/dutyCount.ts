@@ -1,5 +1,5 @@
-import { GlobalGroup, stateNumber } from "@aicore-fivem/lib/server";
-import { DUTY_COUNT_PREFIX } from "@aicore-fivem/shared";
+import { GlobalGroup, stateNumber } from "@aifivem/lib/server";
+import { DUTY_COUNT_PREFIX } from "@aifivem/shared";
 
 /** On-duty counts per job, published as per-key GlobalState (counts only, never member lists). */
 const counts = new Map<string, number>();

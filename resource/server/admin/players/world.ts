@@ -1,5 +1,5 @@
-import { entityCoords, notify } from "@aicore-fivem/lib/server";
-import { CORE } from "@aicore-fivem/shared";
+import { entityCoords, notify } from "@aifivem/lib/server";
+import { CORE } from "@aifivem/shared";
 import { ADMIN_PLAYERS, type Position } from "common/adminPlayers";
 import { Locale } from "common";
 import { findCharacter } from "../../characters/repo";

@@ -1,4 +1,4 @@
-import { mysql } from "@aicore-fivem/mysql";
+import { mysql } from "@aifivem/mysql";
 import { players } from "../player/registry";
 
 /** Helpers for clothing script adapters that key their rows by the framework id (the citizenid on ai-core's bridges). */

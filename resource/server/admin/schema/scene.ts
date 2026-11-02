@@ -1,5 +1,5 @@
-import type { TabSpec, WidgetSpec } from "@aicore-fivem/shared";
-import { WEATHERS } from "@aicore-fivem/shared";
+import type { TabSpec, WidgetSpec } from "@aifivem/shared";
+import { WEATHERS } from "@aifivem/shared";
 import { DEFAULT_SCENE } from "../../content/scene";
 
 /** Panel tab of the character screen scene (settings section `characterScene`, spec in `sceneSection.ts`). */

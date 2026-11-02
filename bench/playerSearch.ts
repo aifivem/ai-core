@@ -52,7 +52,7 @@ const g = globalThis as Record<string, unknown>;
 const convar = g.GetConvar as (name: string, fallback: string) => string;
 g.GetConvar = (name: string, fallback: string) =>
   name === "mysql_connection_string" ? connection(DB) : convar(name, fallback);
-const { mysql } = await import("@aicore-fivem/mysql");
+const { mysql } = await import("@aifivem/mysql");
 const { parseSearch, search, searchIds } =
   await import("../resource/server/admin/players/search");
 

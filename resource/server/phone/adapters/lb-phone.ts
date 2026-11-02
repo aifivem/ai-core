@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/server";
-import type { PhoneAdapter } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/server";
+import type { PhoneAdapter } from "@aifivem/shared";
 
 const phone = (name: string, ...args: unknown[]) =>
   callExport("lb-phone", name, ...args);

@@ -4,7 +4,7 @@ import {
   banStatus,
   type BanRecord,
   type BanStatus,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { Select } from "../../../components/ui/select";
 import { Chip, type T } from "../players/parts";
 import { clock } from "./actions";

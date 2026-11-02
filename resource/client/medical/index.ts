@@ -2,9 +2,9 @@ import {
   GlobalKey,
   registerExport,
   stateString,
-} from "@aicore-fivem/lib/client";
-import { createLogger } from "@aicore-fivem/lib/shared";
-import { CORE, type MedicalClientAdapter } from "@aicore-fivem/shared";
+} from "@aifivem/lib/client";
+import { createLogger } from "@aifivem/lib/shared";
+import { CORE, type MedicalClientAdapter } from "@aifivem/shared";
 import { AdapterFollower } from "common/adapterFollower";
 import { brutalAmbulance, ospAmbulance } from "./adapters/exports";
 import { qbAmbulance } from "./adapters/qb-ambulancejob";

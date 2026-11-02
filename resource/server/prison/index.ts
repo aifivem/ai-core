@@ -1,4 +1,4 @@
-import { registerExport } from "@aicore-fivem/lib/server";
+import { registerExport } from "@aifivem/lib/server";
 import { AdapterPicker } from "common/adapters";
 import { log } from "../log";
 import type { PrisonAdapter } from "./adapter";

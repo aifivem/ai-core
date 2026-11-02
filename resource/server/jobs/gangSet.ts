@@ -1,5 +1,5 @@
-import { sendPlayerData, type WriteQueue } from "@aicore-fivem/lib/server";
-import { CORE, type GangMembership } from "@aicore-fivem/shared";
+import { sendPlayerData, type WriteQueue } from "@aifivem/lib/server";
+import { CORE, type GangMembership } from "@aifivem/shared";
 import { gangs as gangDefs, settings } from "../content";
 import { addMembership, removeMembership } from "./principals";
 import { deleteGang, saveActiveGang, saveGang } from "./repo";

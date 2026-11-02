@@ -1,6 +1,6 @@
-import { callExport, Reasons, registerExport } from "@aicore-fivem/lib/client";
-import { createLogger } from "@aicore-fivem/lib/shared";
-import { CORE } from "@aicore-fivem/shared";
+import { callExport, Reasons, registerExport } from "@aifivem/lib/client";
+import { createLogger } from "@aifivem/lib/shared";
+import { CORE } from "@aifivem/shared";
 import { AdapterPicker } from "common/adapters";
 
 /**

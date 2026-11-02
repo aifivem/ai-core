@@ -1,5 +1,5 @@
-import { patchPlayerData } from "@aicore-fivem/lib/server";
-import { CORE } from "@aicore-fivem/shared";
+import { patchPlayerData } from "@aifivem/lib/server";
+import { CORE } from "@aifivem/shared";
 import type { Account, ChangeResult } from "../money/account";
 
 /** A loaded character's accounts; every change pushes only that account to its owner and tells other resources. */

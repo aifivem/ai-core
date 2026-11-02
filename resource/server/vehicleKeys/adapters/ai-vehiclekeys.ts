@@ -1,5 +1,5 @@
-import { resourceExport } from "@aicore-fivem/lib/server";
-import type { VehicleKeysAdapter } from "@aicore-fivem/shared";
+import { resourceExport } from "@aifivem/lib/server";
+import type { VehicleKeysAdapter } from "@aifivem/shared";
 
 /** ai-vehiclekeys: ai-core's own key script (it also `provide`s qbx_vehiclekeys). */
 const keys = resourceExport("ai-vehiclekeys");

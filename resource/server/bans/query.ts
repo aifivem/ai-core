@@ -5,8 +5,8 @@ import {
   type BanInfo,
   type BanListPage,
   type BanRecord,
-} from "@aicore-fivem/shared";
-import { mysql } from "@aicore-fivem/mysql";
+} from "@aifivem/shared";
+import { mysql } from "@aifivem/mysql";
 import type { Tables } from "../tables";
 import { FIRST, type Column, type ParsedBanQuery } from "./search";
 import { copyBan, type BanStore, type Identifiers } from "./store";

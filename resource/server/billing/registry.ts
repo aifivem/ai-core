@@ -1,4 +1,4 @@
-import type { BillingAdapter } from "@aicore-fivem/shared";
+import type { BillingAdapter } from "@aifivem/shared";
 import { codemBilling } from "./adapters/codem-billing";
 import { esxBilling } from "./adapters/esx_billing";
 import { okokBilling } from "./adapters/okokBilling";

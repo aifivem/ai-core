@@ -1,4 +1,4 @@
-import type { CardSpec, DataSpec, WidgetSpec } from "@aicore-fivem/shared";
+import type { CardSpec, DataSpec, WidgetSpec } from "@aifivem/shared";
 
 /** The adapter names of the billing, banking, MDT and EMS layers (panel selects next to dispatch and clothing). */
 export interface ServiceChoices {

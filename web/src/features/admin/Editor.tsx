@@ -1,4 +1,4 @@
-import type { TabSpec } from "@aicore-fivem/shared";
+import type { TabSpec } from "@aifivem/shared";
 import { ScrollArea } from "../../components/ui/scroll-area";
 import { Card } from "./Card";
 import { EditorCtx, type EditorContext } from "./context";

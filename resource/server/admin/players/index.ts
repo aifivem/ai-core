@@ -3,7 +3,7 @@ import {
   type CharacterInfo,
   type GangMembership,
   type JobMembership,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import type { SearchPage } from "common/adminPlayers";
 import { log } from "../../log";
 import { players } from "../../player/registry";

@@ -1,4 +1,4 @@
-import type { FileSpec, TabSpec } from "@aicore-fivem/shared";
+import type { FileSpec, TabSpec } from "@aifivem/shared";
 import { DEFAULT_PRIME_TIME } from "../../content/primeTime";
 import { jobPrimeCard } from "./primeTime";
 import { bool, gradeRows, grades, ID, optionalHour, text } from "./specs";

@@ -1,7 +1,7 @@
-import { caller } from "@aicore-fivem/lib/server";
-import { isRecord } from "@aicore-fivem/lib/shared";
-import { BAN_IDENTIFIERS, type BanInfo } from "@aicore-fivem/shared";
-import { mysql } from "@aicore-fivem/mysql";
+import { caller } from "@aifivem/lib/server";
+import { isRecord } from "@aifivem/lib/shared";
+import { BAN_IDENTIFIERS, type BanInfo } from "@aifivem/shared";
+import { mysql } from "@aifivem/mysql";
 import { actorName } from "../characters/manage";
 import { log } from "../log";
 import { coreLog } from "../logs";

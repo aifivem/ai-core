@@ -1,5 +1,5 @@
-import { spec } from "@aicore-fivem/lib/shared";
-import type { FileSpec, TabSpec } from "@aicore-fivem/shared";
+import { spec } from "@aifivem/lib/shared";
+import type { FileSpec, TabSpec } from "@aifivem/shared";
 import { bool, text } from "./specs";
 
 /** Money account types: their records file (`data/accounts.json`; `accounts` = the types at start, never deleted) and tab. */

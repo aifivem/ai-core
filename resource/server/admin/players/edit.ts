@@ -3,7 +3,7 @@ import {
   toName,
   toNationality,
   toSex,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import type { MoneyMode } from "common/adminPlayers";
 import { action, actorOf, logEdit, onCharacter, parse } from "./gate";
 import { changeError, fail, offline, OK } from "./offline";

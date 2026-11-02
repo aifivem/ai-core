@@ -3,9 +3,9 @@ import {
   EntityState,
   resourceExport,
   stateBoolean,
-} from "@aicore-fivem/lib/server";
-import { normalizePlate } from "@aicore-fivem/lib/shared";
-import { CORE, type VehicleKeysAdapter } from "@aicore-fivem/shared";
+} from "@aifivem/lib/server";
+import { normalizePlate } from "@aifivem/lib/shared";
+import { CORE, type VehicleKeysAdapter } from "@aifivem/shared";
 
 // ai-core's own inventory export: importing the inventory layer here would load it before the panel content.
 const core = resourceExport(CORE.resource);

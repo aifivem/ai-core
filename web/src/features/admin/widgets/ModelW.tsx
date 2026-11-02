@@ -1,7 +1,7 @@
 import { useEffect, useState, type KeyboardEvent } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCube } from "@fortawesome/free-solid-svg-icons";
-import type { WidgetSpec } from "@aicore-fivem/shared";
+import type { WidgetSpec } from "@aifivem/shared";
 import { Input } from "../../../components/ui/input";
 import { useEditor } from "../context";
 import { useField } from "./useField";

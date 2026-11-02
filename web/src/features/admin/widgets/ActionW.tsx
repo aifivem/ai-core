@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import type { WidgetSpec } from "@aicore-fivem/shared";
+import type { WidgetSpec } from "@aifivem/shared";
 import { Button } from "../../../components/ui/button";
 import { Dialog } from "../../../components/ui/dialog";
 import { useAppSelector } from "../../../store";

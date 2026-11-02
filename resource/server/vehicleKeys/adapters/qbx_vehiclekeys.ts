@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/server";
-import type { VehicleKeysAdapter } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/server";
+import type { VehicleKeysAdapter } from "@aifivem/shared";
 
 /** Qbox's qbx_vehiclekeys server exports `GiveKeys` / `RemoveKeys` / `HasKeys` (source, vehicle entity) (read from its source, 1.0.3; untested on ai-core). A plate alone counts as held. */
 export const qbxVehicleKeys: VehicleKeysAdapter = {

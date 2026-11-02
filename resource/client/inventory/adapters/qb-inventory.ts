@@ -1,5 +1,5 @@
-import type { InventoryClientAdapter } from "@aicore-fivem/shared";
-import { callExport } from "@aicore-fivem/lib/client";
+import type { InventoryClientAdapter } from "@aifivem/shared";
+import { callExport } from "@aifivem/lib/client";
 
 /** qb-inventory 2.2.3 (client/main.lua): the own inventory opens through its `inventory` command. */
 const RESOURCE = "qb-inventory";

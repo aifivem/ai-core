@@ -1,4 +1,4 @@
-import type { CharacterInfo } from "@aicore-fivem/shared";
+import type { CharacterInfo } from "@aifivem/shared";
 import type { MoneyMode, Position, PlayersResult } from "common/adminPlayers";
 import { findCharacter } from "../../characters/repo";
 import { gangs as gangDefs, jobs as jobDefs, settings } from "../../content";

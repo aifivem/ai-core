@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/server";
-import type { DispatchAdapter } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/server";
+import type { DispatchAdapter } from "@aifivem/shared";
 
 /**
  * Wasabi MDT (written from its docs, docs.wasabiscripts.com/advanced-series/wasabi-mdt/exports): server export

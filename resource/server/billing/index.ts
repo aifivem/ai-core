@@ -1,10 +1,10 @@
-import { registerExport } from "@aicore-fivem/lib/server";
+import { registerExport } from "@aifivem/lib/server";
 import {
   toBillRequest,
   type BillRequest,
   type BillSend,
   type UnpaidBill,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { AdapterPicker } from "common/adapters";
 import { jobs, panel, settings } from "../content";
 import { log } from "../log";

@@ -1,5 +1,5 @@
-import { spec } from "@aicore-fivem/lib/shared";
-import type { DataSpec, WidgetSpec } from "@aicore-fivem/shared";
+import { spec } from "@aifivem/lib/shared";
+import type { DataSpec, WidgetSpec } from "@aifivem/shared";
 
 /** Data specs and rows shared by several sections of ai-core's panel. */
 

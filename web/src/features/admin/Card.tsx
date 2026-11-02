@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import type { CardSpec } from "@aicore-fivem/shared";
+import type { CardSpec } from "@aifivem/shared";
 import { useEditor } from "./context";
 import { Field } from "./Field";
 import { iconOf } from "./icons";

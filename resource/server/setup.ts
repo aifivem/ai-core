@@ -1,4 +1,4 @@
-import { CORE } from "@aicore-fivem/shared";
+import { CORE } from "@aifivem/shared";
 import { SETUP_WELCOME_EVENT, type SetupWelcome } from "common/setup";
 import { settings } from "./content";
 

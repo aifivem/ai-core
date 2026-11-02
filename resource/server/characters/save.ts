@@ -1,4 +1,4 @@
-import { mysql } from "@aicore-fivem/mysql";
+import { mysql } from "@aifivem/mysql";
 
 /** The periodic save of loaded characters: position and metadata. */
 

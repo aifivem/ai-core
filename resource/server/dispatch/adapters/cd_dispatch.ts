@@ -1,4 +1,4 @@
-import type { DispatchAdapter } from "@aicore-fivem/shared";
+import type { DispatchAdapter } from "@aifivem/shared";
 
 /**
  * cd_dispatch (written from its docs, docs.codesign.pro/paid-scripts/dispatch): its documented server-side call is

@@ -1,10 +1,10 @@
-import { onClientCallback, registerExport } from "@aicore-fivem/lib/server";
+import { onClientCallback, registerExport } from "@aifivem/lib/server";
 import {
   CORE,
   toCreateCharacter,
   type CharacterActionResult,
   type CharacterScreen,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { Locale } from "common";
 import { deleteCharacter } from "../characters/repo";
 import { settings } from "../content";

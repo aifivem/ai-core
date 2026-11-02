@@ -5,7 +5,7 @@ import {
   faMagnifyingGlass,
   faPlus,
 } from "@fortawesome/free-solid-svg-icons";
-import type { AdminPanelSnapshot, TabSpec } from "@aicore-fivem/shared";
+import type { AdminPanelSnapshot, TabSpec } from "@aifivem/shared";
 import { Button } from "../../components/ui/button";
 import { Tooltip } from "../../components/ui/tooltip";
 import { VirtualList } from "../../components/VirtualList";

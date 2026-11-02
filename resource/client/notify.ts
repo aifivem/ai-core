@@ -3,14 +3,14 @@ import {
   GlobalKey,
   registerExport,
   stateString,
-} from "@aicore-fivem/lib/client";
-import { createLogger, logSafe } from "@aicore-fivem/lib/shared";
+} from "@aifivem/lib/client";
+import { createLogger, logSafe } from "@aifivem/lib/shared";
 import {
   CORE,
   type Notification,
   type NotificationKind,
   type NotifyClientAdapter,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { AdapterFollower } from "common/adapterFollower";
 
 /** A kind in a script's own words. */

@@ -1,5 +1,5 @@
-import { ByResource, caller, registerExport } from "@aicore-fivem/lib/server";
-import { ADMIN, type CommandInfo } from "@aicore-fivem/shared";
+import { ByResource, caller, registerExport } from "@aifivem/lib/server";
+import { ADMIN, type CommandInfo } from "@aifivem/shared";
 import { panel } from "../content";
 import { log } from "../log";
 import { readInfo } from "./commandInfo";

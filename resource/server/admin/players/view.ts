@@ -4,7 +4,7 @@ import { accountTypes } from "../../content";
 import { loadGangs, loadJobs } from "../../jobs/repo";
 import { players } from "../../player/registry";
 import { storedBalances, userOf } from "./repo";
-import { entityCoords } from "@aicore-fivem/lib/server";
+import { entityCoords } from "@aifivem/lib/server";
 
 function pedPosition(source: number): Position | null {
   const ped = GetPlayerPed(String(source));

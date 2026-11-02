@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/server";
-import type { VehicleKeysAdapter } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/server";
+import type { VehicleKeysAdapter } from "@aifivem/shared";
 
 /** mVehicle: `AddTemporalVehicle(source, vehicle)`; it has no way to take keys back (untested on ai-core). */
 export const mVehicle: VehicleKeysAdapter = {

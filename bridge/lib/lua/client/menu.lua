@@ -80,7 +80,7 @@ function menu.itemPicker(request)
     return type(list) == 'table' and list or nil
 end
 
--- Same presets as `SKILL_STAGES` / `LOCKPICK_AREAS` in @aicore-fivem/shared.
+-- Same presets as `SKILL_STAGES` / `LOCKPICK_AREAS` in @aifivem/shared.
 local SKILL_STAGES = {
     easy = { area = 50, speed = 0.6 },
     medium = { area = 40, speed = 0.85 },

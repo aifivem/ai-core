@@ -1,4 +1,4 @@
-import type { GarageAdapter } from "@aicore-fivem/shared";
+import type { GarageAdapter } from "@aifivem/shared";
 import { aiGarages } from "./adapters/ai-garages";
 import { clientGarage } from "./adapters/client";
 import { tgiannGarage } from "./adapters/tgiann-garage";

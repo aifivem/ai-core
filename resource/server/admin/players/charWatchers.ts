@@ -3,7 +3,7 @@ import {
   type CharacterView,
   type PlayersDelta,
 } from "common/adminPlayers";
-import { KeyWatchers } from "@aicore-fivem/lib/server";
+import { KeyWatchers } from "@aifivem/lib/server";
 
 /**
  * Admins with one character open in the Players screen: they get that character's changes. The `open` snapshot

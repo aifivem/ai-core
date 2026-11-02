@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { fetchNui, useNuiEvent } from "fivem-nui-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
-import type { PickerItem } from "@aicore-fivem/shared";
+import type { PickerItem } from "@aifivem/shared";
 import { NuiCallback, NuiMessage } from "../../../../resource/common/nui";
 import { Button } from "../../components/ui/button";
 import { ITEMS_MOCK } from "../../dev/dialogMock";

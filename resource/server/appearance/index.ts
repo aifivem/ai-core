@@ -2,14 +2,14 @@ import {
   GlobalKey,
   registerExport,
   stateString,
-} from "@aicore-fivem/lib/server";
-import { readId } from "@aicore-fivem/lib/shared";
+} from "@aifivem/lib/server";
+import { readId } from "@aifivem/lib/shared";
 import {
   APPEARANCE_STATE_KEY,
   CORE,
   toCharacterAppearance,
   type CharacterAppearance,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { AdapterPicker } from "common/adapters";
 import { panel, settings } from "../content";
 import { log } from "../log";

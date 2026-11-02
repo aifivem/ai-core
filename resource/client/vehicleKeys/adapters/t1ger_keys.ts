@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/client";
-import type { VehicleKeysClientAdapter } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/client";
+import type { VehicleKeysClientAdapter } from "@aifivem/shared";
 
 /**
  * T1GER Keys: temporary keys by plate and vehicle name (`GiveTemporaryKeys(plate, name, type)`, its docs); its owned

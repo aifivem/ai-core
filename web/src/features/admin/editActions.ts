@@ -1,5 +1,5 @@
 import { fetchNui } from "fivem-nui-react";
-import type { AdminPatch, AdminResult } from "@aicore-fivem/shared";
+import type { AdminPatch, AdminResult } from "@aifivem/shared";
 import { NuiCallback } from "../../../../resource/common/nui";
 import { mockAdminApply } from "../../dev/adminMock";
 import { store } from "../../store";

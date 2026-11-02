@@ -1,4 +1,4 @@
-import type { TabSpec } from "@aicore-fivem/shared";
+import type { TabSpec } from "@aifivem/shared";
 
 /** Spawn tab: the first spawn point and the places players pick from (settings `spawn`). */
 export const spawnTab: TabSpec = {

@@ -1,4 +1,4 @@
-import type { CharacterInfo } from "@aicore-fivem/shared";
+import type { CharacterInfo } from "@aifivem/shared";
 import type { CharacterRow } from "../characters/repo";
 
 /** Values a loaded character's row gives (`Player`): its info and what the saved metadata holds. */

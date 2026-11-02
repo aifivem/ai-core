@@ -3,7 +3,7 @@ import {
   type BanIdentifier,
   type BanInfo,
   type BansPage,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 
 export type Identifiers = Partial<Record<BanIdentifier, string>>;
 

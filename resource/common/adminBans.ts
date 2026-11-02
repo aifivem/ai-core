@@ -9,7 +9,7 @@ import type {
   BanFilter,
   BanIdentifier,
   BanRecord,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 
 export const ADMIN_BANS = {
   /** Server -> admin client: (BansDelta), forwarded to the NUI while the panel is open. */

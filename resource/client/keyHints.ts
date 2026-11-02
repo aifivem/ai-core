@@ -4,13 +4,13 @@ import {
   every,
   onCache,
   registerExport,
-} from "@aicore-fivem/lib/client";
-import { isRecord } from "@aicore-fivem/lib/shared";
+} from "@aifivem/lib/client";
+import { isRecord } from "@aifivem/lib/shared";
 import {
   KEY_HINTS,
   type KeyHintRequest,
   type KeyHintView,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { keybinds } from "./keybinds";
 
 const WHEN = new Set(["foot", "vehicle", "always", "never"]);

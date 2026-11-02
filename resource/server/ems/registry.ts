@@ -1,4 +1,4 @@
-import type { EmsAdapter } from "@aicore-fivem/shared";
+import type { EmsAdapter } from "@aifivem/shared";
 import { tgiannPoliceAlertEms } from "./adapters/tgiann-policealert";
 import { wasabiAmbulanceV2Ems } from "./adapters/wasabi_ambulance_v2";
 

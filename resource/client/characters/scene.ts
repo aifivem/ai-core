@@ -1,12 +1,12 @@
-import { fadeIn, fadeOut } from "@aicore-fivem/lib/client";
-import { createLogger } from "@aicore-fivem/lib/shared";
+import { fadeIn, fadeOut } from "@aifivem/lib/client";
+import { createLogger } from "@aifivem/lib/shared";
 import {
   CORE,
   type CharacterAppearance,
   type CharacterCard,
   type CharacterScene,
   type SceneSpot,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { applyLook, sameModel } from "../appearance";
 import { hudHidden } from "../hud";
 import {

@@ -57,7 +57,7 @@ plugin({
       exports: common,
       loader: "object",
     }));
-    build.module("@aicore-fivem/lib/server", () => ({
+    build.module("@aifivem/lib/server", () => ({
       exports: {
         online: onlineMirror,
         registerExport: () => undefined,

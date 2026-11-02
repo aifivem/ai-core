@@ -7,8 +7,8 @@ import {
   onClientEvent,
   PlayerMap,
   registerExport,
-} from "@aicore-fivem/lib/server";
-import { isRecord } from "@aicore-fivem/lib/shared";
+} from "@aifivem/lib/server";
+import { isRecord } from "@aifivem/lib/shared";
 import {
   ADMIN,
   type AdminDelta,
@@ -17,7 +17,7 @@ import {
   type AdminPanelSnapshot,
   type AdminResult,
   type RecommendationDelta,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { Locale } from "common";
 import { coreLog } from "../logs";
 import { commandRegistry } from "./commands";

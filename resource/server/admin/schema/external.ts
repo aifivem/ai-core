@@ -1,4 +1,4 @@
-import type { FileSpec, TabSpec } from "@aicore-fivem/shared";
+import type { FileSpec, TabSpec } from "@aifivem/shared";
 
 /** Other scripts' panels: the owner's list (`data/externalPanels.json`) and its tab. */
 

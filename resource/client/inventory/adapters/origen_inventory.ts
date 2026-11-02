@@ -1,5 +1,5 @@
-import type { InventoryClientAdapter } from "@aicore-fivem/shared";
-import { callExport } from "@aicore-fivem/lib/client";
+import type { InventoryClientAdapter } from "@aifivem/shared";
+import { callExport } from "@aifivem/lib/client";
 
 /**
  * origen_inventory (from envi-bridge, prp-bridge, codem-lib): `Search("count", item)` counts an item; no export is

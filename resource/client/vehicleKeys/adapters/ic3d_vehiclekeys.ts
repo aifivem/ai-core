@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/client";
-import type { VehicleKeysClientAdapter } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/client";
+import type { VehicleKeysClientAdapter } from "@aifivem/shared";
 
 /** ic3d_vehiclekeys key items by plate (untested on ai-core). */
 export const ic3dVehicleKeys: VehicleKeysClientAdapter = {

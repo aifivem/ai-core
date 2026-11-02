@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
-import type { WidgetSpec } from "@aicore-fivem/shared";
+import type { WidgetSpec } from "@aifivem/shared";
 import { Button } from "../../../components/ui/button";
 import { useEditor } from "../context";
 import { getAt } from "../path";

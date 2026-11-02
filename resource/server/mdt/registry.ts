@@ -1,4 +1,4 @@
-import type { MdtAdapter } from "@aicore-fivem/shared";
+import type { MdtAdapter } from "@aifivem/shared";
 import { lbTablet } from "./adapters/lb-tablet";
 
 /**

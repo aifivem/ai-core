@@ -3,14 +3,14 @@ import {
   caller,
   onStop,
   registerExport,
-} from "@aicore-fivem/lib/server";
-import { isRecord } from "@aicore-fivem/lib/shared";
+} from "@aifivem/lib/server";
+import { isRecord } from "@aifivem/lib/shared";
 import type {
   LogChannel,
   LogEntry,
   LogOptions,
   LogPlayer,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { ResourceName } from "common";
 import { players } from "../player/registry";
 import { sendToDiscord } from "./discord";

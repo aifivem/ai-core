@@ -1,10 +1,10 @@
-import { registerExport } from "@aicore-fivem/lib/server";
-import { isRecord } from "@aicore-fivem/lib/shared";
+import { registerExport } from "@aifivem/lib/server";
+import { isRecord } from "@aifivem/lib/shared";
 import type {
   PhoneAdapter,
   PhoneMail,
   PhoneNotification,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { AdapterPicker } from "common/adapters";
 import { log } from "../log";
 import { mov17Phone } from "./adapters/17mov_Phone";

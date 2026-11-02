@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/server";
-import type { DispatchAdapter } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/server";
+import type { DispatchAdapter } from "@aifivem/shared";
 
 const RESOURCE = "tgiann-policealert";
 /** tgiann-policealert's `config.duration` default; its client multiplies the duration without a fallback. */

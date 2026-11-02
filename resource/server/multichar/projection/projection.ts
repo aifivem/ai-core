@@ -1,5 +1,5 @@
-import { PlayerMap } from "@aicore-fivem/lib/server";
-import type { UnloadReason } from "@aicore-fivem/shared";
+import { PlayerMap } from "@aifivem/lib/server";
+import type { UnloadReason } from "@aifivem/shared";
 import { jobs as jobDefs, settings } from "../../content";
 import { databaseReady } from "../../database";
 import { log } from "../../log";

@@ -1,4 +1,4 @@
-import type { CardSpec } from "@aicore-fivem/shared";
+import type { CardSpec } from "@aifivem/shared";
 import { PRIME_TIME_SYSTEM_NAMES } from "../../jobs/primeTime/names";
 
 /** Prime time cards: the rules (Job rules tab, settings `primeTime`) and a job's own hours (Jobs tab). */

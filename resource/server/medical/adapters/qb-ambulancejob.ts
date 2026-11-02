@@ -1,4 +1,4 @@
-import type { MedicalAdapter } from "@aicore-fivem/shared";
+import type { MedicalAdapter } from "@aifivem/shared";
 import { players } from "../../player/registry";
 
 /** qb-ambulancejob: QB's `isdead` / `inlaststand` metadata (ai-core keeps it) and its client revive / heal events. */

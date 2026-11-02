@@ -1,5 +1,5 @@
-import { EntityState, stateNumber } from "@aicore-fivem/lib/server";
-import { FUEL_PENDING_BAG, VEHICLE_BAGS } from "@aicore-fivem/shared";
+import { EntityState, stateNumber } from "@aifivem/lib/server";
+import { FUEL_PENDING_BAG, VEHICLE_BAGS } from "@aifivem/shared";
 
 /** The `fuel` bag (0-100): kept by ai-fuel, ox_fuel and others; a mirror for fuel scripts that keep fuel on clients. */
 export const fuelBag = new EntityState(VEHICLE_BAGS.fuel, stateNumber);

@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/server";
-import type { BankingAdapter } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/server";
+import type { BankingAdapter } from "@aifivem/shared";
 import { balanceOf } from "../answer";
 
 /** A banking script read only for a job's society balance: `exportName(job, ...extra)`. */

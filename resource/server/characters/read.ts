@@ -1,5 +1,5 @@
-import { coordsOf } from "@aicore-fivem/lib/server";
-import type { OfflineCharacter, StoredCharacter } from "@aicore-fivem/shared";
+import { coordsOf } from "@aifivem/lib/server";
+import type { OfflineCharacter, StoredCharacter } from "@aifivem/shared";
 import { storedBalances } from "../admin/players/repo";
 import { accountTypes } from "../content";
 import { loadGangs, loadJobs } from "../jobs/repo";

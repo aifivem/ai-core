@@ -3,7 +3,7 @@ import type {
   BanListPage,
   BanRecord,
   BansPage,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { activeBans } from "./active";
 import { historyOf, listBans } from "./query";
 import { readBanQuery, type ParsedBanQuery } from "./search";

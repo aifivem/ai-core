@@ -1,5 +1,5 @@
-import type { GroupMember, MembersPage } from "@aicore-fivem/shared";
-import { mysql } from "@aicore-fivem/mysql";
+import type { GroupMember, MembersPage } from "@aifivem/shared";
+import { mysql } from "@aifivem/mysql";
 import { players } from "../player/registry";
 
 /** Members per page by default and at most. */

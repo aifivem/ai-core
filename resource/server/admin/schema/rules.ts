@@ -1,4 +1,4 @@
-import type { TabSpec } from "@aicore-fivem/shared";
+import type { TabSpec } from "@aifivem/shared";
 import { primeTimeCard } from "./primeTime";
 
 /** Job and gang rules tab: multi-job, multi-gang, paycheck and prime time; `accounts`: the account types at start (pay account). */

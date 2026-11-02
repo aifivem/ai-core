@@ -1,5 +1,5 @@
-import { registerExport } from "@aicore-fivem/lib/client";
-import { CORE } from "@aicore-fivem/shared";
+import { registerExport } from "@aifivem/lib/client";
+import { CORE } from "@aifivem/shared";
 import { Locale } from "common";
 import { NuiCallback, NuiMessage, type KeyboardBind } from "common/nui";
 import { hudHidden } from "./hud";

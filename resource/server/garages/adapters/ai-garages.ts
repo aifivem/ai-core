@@ -1,5 +1,5 @@
-import { resourceExport } from "@aicore-fivem/lib/server";
-import { toGaragedVehicles, type GarageAdapter } from "@aicore-fivem/shared";
+import { resourceExport } from "@aifivem/lib/server";
+import { toGaragedVehicles, type GarageAdapter } from "@aifivem/shared";
 
 /** ai-garages: owned vehicles live in ai-vehicles; its exports impound, store and list them. */
 const garages = resourceExport("ai-garages");

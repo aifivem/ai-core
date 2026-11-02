@@ -1,4 +1,4 @@
-import type { VehicleKeysAdapter } from "@aicore-fivem/shared";
+import type { VehicleKeysAdapter } from "@aifivem/shared";
 import { aiVehicleKeys } from "./adapters/ai-vehiclekeys";
 import { cdGarage } from "./adapters/cd_garage";
 import { clientKeys } from "./adapters/client";

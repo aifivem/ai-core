@@ -1,5 +1,5 @@
-import { callExport, PlayerState, stateNumber } from "@aicore-fivem/lib/server";
-import type { MedicalAdapter } from "@aicore-fivem/shared";
+import { callExport, PlayerState, stateNumber } from "@aifivem/lib/server";
+import type { MedicalAdapter } from "@aifivem/shared";
 
 /**
  * wasabi_ambulance_v2: its `wasabi:deathState` player state (0 alive, 1 last stand, 2 dead; the key is its default,

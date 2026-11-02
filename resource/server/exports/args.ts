@@ -1,4 +1,4 @@
-import { caller } from "@aicore-fivem/lib/server";
+import { caller } from "@aifivem/lib/server";
 
 /** Argument readers of the money exports. Amounts are whole numbers; `reason` is a short lang key or tag. */
 

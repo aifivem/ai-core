@@ -1,6 +1,6 @@
-import { notify, onClientCallback } from "@aicore-fivem/lib/server";
-import { fail, oneArg, readText } from "@aicore-fivem/lib/shared";
-import { CORE, type BillingAdapter, type BillSend } from "@aicore-fivem/shared";
+import { notify, onClientCallback } from "@aifivem/lib/server";
+import { fail, oneArg, readText } from "@aifivem/lib/shared";
+import { CORE, type BillingAdapter, type BillSend } from "@aifivem/shared";
 import { Locale } from "common";
 import { transferMoney } from "../money/transfer";
 import { moneyWriter } from "../money/writer";

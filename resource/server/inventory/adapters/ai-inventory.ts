@@ -1,13 +1,13 @@
-import { resourceExport } from "@aicore-fivem/lib/server";
-import { isRecord } from "@aicore-fivem/lib/shared";
+import { resourceExport } from "@aifivem/lib/server";
+import { isRecord } from "@aifivem/lib/shared";
 import {
   CORE,
   ITEM_DEFINITIONS_CHANGED_EVENT,
   type InventoryAdapter,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { definition, definitions, stack, type ImageOf } from "../parse";
 
-/** ai-inventory, the default inventory (own exports, `@aicore-fivem/shared` `AiInventoryServerExports`). */
+/** ai-inventory, the default inventory (own exports, `@aifivem/shared` `AiInventoryServerExports`). */
 
 const RESOURCE = "ai-inventory";
 const inv = resourceExport(RESOURCE);

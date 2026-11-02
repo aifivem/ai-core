@@ -1,6 +1,6 @@
-import { callAction, menu, onServerEvent } from "@aicore-fivem/lib/client";
-import { isRecord } from "@aicore-fivem/lib/shared";
-import { CORE, type UnpaidBill } from "@aicore-fivem/shared";
+import { callAction, menu, onServerEvent } from "@aifivem/lib/client";
+import { isRecord } from "@aifivem/lib/shared";
+import { CORE, type UnpaidBill } from "@aifivem/shared";
 import { Locale } from "common";
 
 const toBills = (raw: unknown): [UnpaidBill[]] | null =>

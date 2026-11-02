@@ -1,7 +1,7 @@
 import {
   VEHICLE_KEYS_CLIENT_EVENT,
   type VehicleKeysAdapter,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 
 /**
  * A key system with only a client API: the server half forwards to the player's client, where ai-core's client adapter

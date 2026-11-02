@@ -4,7 +4,7 @@ import {
   type GangMembership,
   type JobMembership,
   type UnloadReason,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { coreLog } from "./index";
 
 /** ai-core's own logs, taken from its local events so the mutators stay free of logging. */

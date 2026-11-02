@@ -1,5 +1,5 @@
-import { PlayerState, stateBoolean } from "@aicore-fivem/lib/server";
-import type { MedicalAdapter } from "@aicore-fivem/shared";
+import { PlayerState, stateBoolean } from "@aifivem/lib/server";
+import type { MedicalAdapter } from "@aifivem/shared";
 
 /** ars_ambulancejob: its `dead` player state and its `healPlayer` client event. */
 const dead = new PlayerState("dead", stateBoolean);

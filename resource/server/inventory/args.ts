@@ -1,5 +1,5 @@
-import { isRecord } from "@aicore-fivem/lib/shared";
-import type { InventoryRef, ShopProduct } from "@aicore-fivem/shared";
+import { isRecord } from "@aifivem/lib/shared";
+import type { InventoryRef, ShopProduct } from "@aifivem/shared";
 
 /** Arguments of the inventory exports, from other resources. */
 

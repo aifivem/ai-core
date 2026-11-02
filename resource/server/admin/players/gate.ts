@@ -1,4 +1,4 @@
-import { isAdmin, onClientCallback } from "@aicore-fivem/lib/server";
+import { isAdmin, onClientCallback } from "@aifivem/lib/server";
 import {
   ADMIN_PLAYERS,
   type PlayersAction,

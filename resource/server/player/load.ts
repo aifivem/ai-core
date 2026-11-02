@@ -2,7 +2,7 @@ import {
   CORE,
   type CharacterActionResult,
   type UnloadReason,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { getCharacter } from "../characters/repo";
 import { saveCharacters } from "../characters/save";
 import { log } from "../log";

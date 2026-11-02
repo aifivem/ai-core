@@ -1,5 +1,5 @@
-import { BAN_IDENTIFIERS } from "@aicore-fivem/shared";
-import { mysql } from "@aicore-fivem/mysql";
+import { BAN_IDENTIFIERS } from "@aifivem/shared";
+import { mysql } from "@aifivem/mysql";
 import { Locale } from "common";
 import { gate } from "../connection";
 import { databaseReady } from "../database";

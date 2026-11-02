@@ -1,4 +1,4 @@
-import type { TabSpec } from "@aicore-fivem/shared";
+import type { TabSpec } from "@aifivem/shared";
 import { groupsCard, rulesCard, VRP_NEW_RULE } from "./mappingCards";
 
 /** The vRP tab of ai-core's panel (`data/vrp.json`). */

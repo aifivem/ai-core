@@ -1,10 +1,10 @@
-import { coordsOf, registerExport } from "@aicore-fivem/lib/server";
+import { coordsOf, registerExport } from "@aifivem/lib/server";
 import {
   cellKey,
   flatDistance,
   gridCell,
   type Vec3,
-} from "@aicore-fivem/lib/shared";
+} from "@aifivem/lib/shared";
 
 /**
  * Who is in whose OneSync scope (~424 m), from `playerEnteredScope` / `playerLeftScope`. These events cost per player

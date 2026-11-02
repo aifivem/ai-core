@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/server";
-import type { BillingAdapter } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/server";
+import type { BillingAdapter } from "@aifivem/shared";
 import { accepted } from "../answer";
 
 const RESOURCE = "qs-billing";

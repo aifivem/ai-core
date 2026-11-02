@@ -3,8 +3,8 @@ import {
   isOnline,
   registerExport,
   stateString,
-} from "@aicore-fivem/lib/server";
-import { CORE, type MedicalAdapter } from "@aicore-fivem/shared";
+} from "@aifivem/lib/server";
+import { CORE, type MedicalAdapter } from "@aifivem/shared";
 import { AdapterPicker } from "common/adapters";
 import { log } from "../log";
 import { aiDeath } from "./adapters/ai-death";

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
-import type { WidgetSpec } from "@aicore-fivem/shared";
+import type { WidgetSpec } from "@aifivem/shared";
 import { useEditor } from "../context";
 import { useField } from "./useField";
 import { LookupBox, useLookup } from "./lookup";

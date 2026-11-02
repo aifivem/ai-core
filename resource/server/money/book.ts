@@ -1,4 +1,4 @@
-import { mysql } from "@aicore-fivem/mysql";
+import { mysql } from "@aifivem/mysql";
 import { accountTypes } from "../content";
 import { Account, type OwnerType } from "./account";
 

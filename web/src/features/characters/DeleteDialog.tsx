@@ -1,6 +1,6 @@
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { faTrashCan } from "@fortawesome/free-solid-svg-icons";
-import type { CharacterCard } from "@aicore-fivem/shared";
+import type { CharacterCard } from "@aifivem/shared";
 import { PillBar, PillButton } from "../../components/Screen";
 import { useLang } from "../../lib/lang";
 import { remove } from "./actions";

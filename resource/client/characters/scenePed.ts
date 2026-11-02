@@ -1,6 +1,6 @@
-import { requestAnimDict, requestModel } from "@aicore-fivem/lib/client";
-import { createLogger } from "@aicore-fivem/lib/shared";
-import type { SceneSpot } from "@aicore-fivem/shared";
+import { requestAnimDict, requestModel } from "@aifivem/lib/client";
+import { createLogger } from "@aifivem/lib/shared";
+import type { SceneSpot } from "@aifivem/shared";
 
 const log = createLogger("ai-core");
 

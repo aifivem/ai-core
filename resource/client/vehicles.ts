@@ -4,13 +4,13 @@ import {
   setVehicleProps,
   setVehicleSetup,
   waitForEntity,
-} from "@aicore-fivem/lib/client";
+} from "@aifivem/lib/client";
 import {
   toVehicleProps,
   toVehicleSetup,
   vehicleTypeOfClass,
-} from "@aicore-fivem/lib/shared";
-import { CORE, VEHICLE_BAGS } from "@aicore-fivem/shared";
+} from "@aifivem/lib/shared";
+import { CORE, VEHICLE_BAGS } from "@aifivem/shared";
 
 /** Lib `spawnVehicle` of any resource asks here which `CreateVehicleServerSetter` type a model (name or hash) is (null: no such vehicle). */
 onServerCallback(CORE.vehicleTypeCallback, (model) => {

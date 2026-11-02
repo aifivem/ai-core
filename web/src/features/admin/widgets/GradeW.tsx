@@ -1,6 +1,6 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
-import type { WidgetSpec } from "@aicore-fivem/shared";
+import type { WidgetSpec } from "@aifivem/shared";
 import { Select } from "../../../components/ui/select";
 import { useAppSelector } from "../../../store";
 import { useEditor } from "../context";

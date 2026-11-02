@@ -1,7 +1,7 @@
 import type {
   CharacterActionResult,
   CreateCharacterInput,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { insertCharacter, listCharacters } from "../characters/repo";
 import { coreLog } from "../logs";
 import { BUSY, lock } from "./actionLock";

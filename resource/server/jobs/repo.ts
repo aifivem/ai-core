@@ -1,5 +1,5 @@
-import type { GangMembership, JobMembership } from "@aicore-fivem/shared";
-import { mysql } from "@aicore-fivem/mysql";
+import type { GangMembership, JobMembership } from "@aifivem/shared";
+import { mysql } from "@aifivem/mysql";
 import { db } from "../db";
 
 /** SQL of job and gang memberships. Writes are single-row upserts/deletes queued by the owner. */

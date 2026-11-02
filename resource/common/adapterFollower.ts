@@ -1,4 +1,4 @@
-import type { Logger } from "@aicore-fivem/lib/shared";
+import type { Logger } from "@aifivem/lib/shared";
 import { guarded, type Adapter } from "./adapter";
 
 /** A GlobalKey mirror holding the server's pick (client `GlobalKey<string>`). */

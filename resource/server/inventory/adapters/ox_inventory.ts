@@ -1,6 +1,6 @@
-import { callExport } from "@aicore-fivem/lib/server";
-import { isRecord } from "@aicore-fivem/lib/shared";
-import type { InventoryAdapter } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/server";
+import { isRecord } from "@aifivem/lib/shared";
+import type { InventoryAdapter } from "@aifivem/shared";
 import {
   type ImageOf,
   definition,

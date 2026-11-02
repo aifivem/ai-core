@@ -2,8 +2,8 @@ import {
   GlobalKey,
   registerExport,
   stateString,
-} from "@aicore-fivem/lib/server";
-import { CORE, toMdtRecord, type MdtRecord } from "@aicore-fivem/shared";
+} from "@aifivem/lib/server";
+import { CORE, toMdtRecord, type MdtRecord } from "@aifivem/shared";
 import { AdapterPicker } from "common/adapters";
 import { panel, settings } from "../content";
 import { log } from "../log";

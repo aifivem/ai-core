@@ -1,6 +1,6 @@
-import { PlayerState, stateBoolean } from "@aicore-fivem/lib/server";
-import { isRecord } from "@aicore-fivem/lib/shared";
-import type { MedicalAdapter } from "@aicore-fivem/shared";
+import { PlayerState, stateBoolean } from "@aifivem/lib/server";
+import { isRecord } from "@aifivem/lib/shared";
+import type { MedicalAdapter } from "@aifivem/shared";
 
 /**
  * osp_ambulance: down = its `BodyDamage` player state (`isDead` / `inLastStand`) or the `isDead` state its server sets

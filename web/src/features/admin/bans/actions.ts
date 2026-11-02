@@ -1,11 +1,11 @@
 import { fetchNui } from "fivem-nui-react";
-import { ServerClock } from "@aicore-fivem/lib/shared";
+import { ServerClock } from "@aifivem/lib/shared";
 import type {
   BanCursor,
   BanFilter,
   BanIdentifier,
   BanRecord,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import type {
   BansAction,
   BansResult,

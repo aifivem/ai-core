@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import type { CharacterCard as Card } from "@aicore-fivem/shared";
+import type { CharacterCard as Card } from "@aifivem/shared";
 import { Tooltip } from "../../components/ui/tooltip";
 import { useLang } from "../../lib/lang";
 import { cn } from "../../lib/utils";

@@ -1,4 +1,4 @@
-import type { LogEntry } from "@aicore-fivem/shared";
+import type { LogEntry } from "@aifivem/shared";
 import { log } from "../log";
 import { fivemanageKey, logSettings } from "./settings";
 

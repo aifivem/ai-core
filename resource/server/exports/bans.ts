@@ -1,4 +1,4 @@
-import { registerExport } from "@aicore-fivem/lib/server";
+import { registerExport } from "@aifivem/lib/server";
 import { banPlayer, editBan, unbanPlayer } from "../bans/changes";
 import { banHistory, findBans, getBans, isBanned } from "../bans/lookup";
 import { answer } from "../characters/answer";

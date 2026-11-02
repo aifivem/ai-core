@@ -1,4 +1,4 @@
-import { mysql, type TransactionQuery } from "@aicore-fivem/mysql";
+import { mysql, type TransactionQuery } from "@aifivem/mysql";
 import { log } from "../../log";
 import type { ProjectionTable } from "./ddl";
 import { readCharacters, type CharacterState } from "./read";

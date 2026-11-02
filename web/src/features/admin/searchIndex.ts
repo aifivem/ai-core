@@ -1,4 +1,4 @@
-import type { AdminPanelSnapshot, TabSpec } from "@aicore-fivem/shared";
+import type { AdminPanelSnapshot, TabSpec } from "@aifivem/shared";
 
 /** One thing the global search can jump to. */
 export interface SearchEntry {

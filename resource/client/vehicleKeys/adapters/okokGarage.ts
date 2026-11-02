@@ -1,4 +1,4 @@
-import type { VehicleKeysClientAdapter } from "@aicore-fivem/shared";
+import type { VehicleKeysClientAdapter } from "@aifivem/shared";
 
 /** okokGarage keys through its server events by plate (untested on ai-core). */
 export const okokGarage: VehicleKeysClientAdapter = {

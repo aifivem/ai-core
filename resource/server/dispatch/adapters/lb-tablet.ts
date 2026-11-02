@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/server";
-import type { DispatchAdapter } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/server";
+import type { DispatchAdapter } from "@aifivem/shared";
 
 /**
  * LB Tablet's police dispatch (written from its docs, docs.lbscripts.com/tablet/script-integration/server-exports):

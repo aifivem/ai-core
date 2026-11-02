@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
-import type { LookupOption, WidgetSpec } from "@aicore-fivem/shared";
+import type { LookupOption, WidgetSpec } from "@aifivem/shared";
 import { Input } from "../../../components/ui/input";
 import { useAppSelector } from "../../../store";
 import { useEditor } from "../context";

@@ -1,4 +1,4 @@
-import { ByResource } from "@aicore-fivem/lib/fivem";
+import { ByResource } from "@aifivem/lib/fivem";
 
 /** Bucket 0 is the world; ids below this stay free for scripts that still pick their own fixed bucket. */
 export const FIRST_BUCKET = 1000;

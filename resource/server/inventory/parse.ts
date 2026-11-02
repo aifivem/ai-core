@@ -1,9 +1,9 @@
-import { isRecord } from "@aicore-fivem/lib/shared";
+import { isRecord } from "@aifivem/lib/shared";
 import type {
   InventoryStack,
   ItemDefinition,
   ItemMetadata,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 
 /** Readers for what inventory exports answer (adapters parse every result at the boundary). */
 

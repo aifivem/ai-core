@@ -1,5 +1,5 @@
-import { ByResource, controls } from "@aicore-fivem/lib/client";
-import { MENU_EVENTS } from "@aicore-fivem/shared";
+import { ByResource, controls } from "@aifivem/lib/client";
+import { MENU_EVENTS } from "@aifivem/shared";
 import { NuiCallback, NuiMessage } from "common/nui";
 
 /**

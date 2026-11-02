@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/client";
-import type { RadialAdapter, RadialItem } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/client";
+import type { RadialAdapter, RadialItem } from "@aifivem/shared";
 
 const RESOURCE = "ox_lib";
 /** Sub menus this adapter registered (ox_lib only adds into a menu registered with `registerRadial`). */

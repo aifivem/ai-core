@@ -4,7 +4,7 @@
  * `PlayersResult`.
  */
 
-import type { GangMembership, JobMembership, Sex } from "@aicore-fivem/shared";
+import type { GangMembership, JobMembership, Sex } from "@aifivem/shared";
 
 export const ADMIN_PLAYERS = {
   /** Server -> admin client: (PlayersDelta), forwarded to the NUI while the panel is open. */

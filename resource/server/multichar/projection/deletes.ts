@@ -1,5 +1,5 @@
-import { CORE } from "@aicore-fivem/shared";
-import { mysql } from "@aicore-fivem/mysql";
+import { CORE } from "@aifivem/shared";
+import { mysql } from "@aifivem/mysql";
 import { log } from "../../log";
 import { coreLog } from "../../logs";
 import type { Tables } from "../../tables";

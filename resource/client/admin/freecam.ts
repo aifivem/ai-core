@@ -4,7 +4,7 @@ import {
   raycast,
   ScriptCamera,
   TickLoop,
-} from "@aicore-fivem/lib/client";
+} from "@aifivem/lib/client";
 
 // Controls (disabled while the camera flies, read with the Disabled* natives).
 const C = {

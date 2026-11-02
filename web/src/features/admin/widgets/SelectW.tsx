@@ -1,4 +1,4 @@
-import type { WidgetSpec } from "@aicore-fivem/shared";
+import type { WidgetSpec } from "@aifivem/shared";
 import { Select } from "../../../components/ui/select";
 import { useEditor } from "../context";
 import { useField } from "./useField";

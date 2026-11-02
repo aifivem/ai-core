@@ -5,7 +5,7 @@ import {
   BAN_IDENTIFIERS,
   banStatus,
   type BanRecord,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { Button } from "../../../components/ui/button";
 import { Dialog } from "../../../components/ui/dialog";
 import { Input } from "../../../components/ui/input";

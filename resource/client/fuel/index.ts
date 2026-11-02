@@ -7,14 +7,14 @@ import {
   stateNumber,
   stateString,
   waitForEntity,
-} from "@aicore-fivem/lib/client";
-import { createLogger, round } from "@aicore-fivem/lib/shared";
+} from "@aifivem/lib/client";
+import { createLogger, round } from "@aifivem/lib/shared";
 import {
   FUEL_PENDING_BAG,
   FUEL_REPORT_EVENT,
   FUEL_STATE_KEY,
   type FuelClientAdapter,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { AdapterFollower } from "common/adapterFollower";
 import {
   cdnFuel,

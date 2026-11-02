@@ -1,4 +1,4 @@
-import type { DispatchAdapter } from "@aicore-fivem/shared";
+import type { DispatchAdapter } from "@aifivem/shared";
 import { aiPoliceAlert } from "./adapters/ai-policealert";
 import { cdDispatch } from "./adapters/cd_dispatch";
 import { coreDispatch } from "./adapters/core_dispatch";

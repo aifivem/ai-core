@@ -1,5 +1,5 @@
-import type { InventoryClientAdapter } from "@aicore-fivem/shared";
-import { callExport } from "@aicore-fivem/lib/client";
+import type { InventoryClientAdapter } from "@aifivem/shared";
+import { callExport } from "@aifivem/lib/client";
 import { toHeldWeapon } from "../heldWeapon";
 
 /** qs-inventory (quasar-store.com/docs/inventory): the own inventory opens through its `inventory` command. */

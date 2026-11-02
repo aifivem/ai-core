@@ -1,6 +1,6 @@
-import { ByResource, caller, GlobalGroup } from "@aicore-fivem/lib/server";
-import { isRecord } from "@aicore-fivem/lib/shared";
-import { CORE, type CharacterResult } from "@aicore-fivem/shared";
+import { ByResource, caller, GlobalGroup } from "@aifivem/lib/server";
+import { isRecord } from "@aifivem/lib/shared";
+import { CORE, type CharacterResult } from "@aifivem/shared";
 import { gangs, jobs, panel } from "../content";
 import {
   readGang,

@@ -1,4 +1,4 @@
-import type { VehicleKeysAdapter } from "@aicore-fivem/shared";
+import type { VehicleKeysAdapter } from "@aifivem/shared";
 
 /** cd_garage keys: its client event `cd_garage:AddKeys (plate)`; it has no way to take keys back (untested on ai-core). */
 export const cdGarage: VehicleKeysAdapter = {

@@ -4,7 +4,7 @@ import {
   faLocationArrow,
   faVideo,
 } from "@fortawesome/free-solid-svg-icons";
-import type { WidgetSpec } from "@aicore-fivem/shared";
+import type { WidgetSpec } from "@aifivem/shared";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Tooltip } from "../../../components/ui/tooltip";

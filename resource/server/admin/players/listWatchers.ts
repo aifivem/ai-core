@@ -5,7 +5,7 @@ import {
 } from "common/adminPlayers";
 import type { Player } from "../../player/player";
 import { players } from "../../player/registry";
-import { PlayerMap } from "@aicore-fivem/lib/server";
+import { PlayerMap } from "@aifivem/lib/server";
 
 /** One row of the online list. */
 export function onlineRow(player: Player): OnlineRow {

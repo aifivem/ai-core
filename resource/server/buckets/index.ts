@@ -1,5 +1,5 @@
-import { caller, registerExport } from "@aicore-fivem/lib/server";
-import { CORE } from "@aicore-fivem/shared";
+import { caller, registerExport } from "@aifivem/lib/server";
+import { CORE } from "@aifivem/shared";
 import { log } from "../log";
 import { BucketPool } from "./pool";
 

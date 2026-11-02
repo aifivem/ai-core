@@ -1,10 +1,10 @@
-import { isRecord } from "@aicore-fivem/lib/shared";
+import { isRecord } from "@aifivem/lib/shared";
 import type {
   CharacterInfo,
   CreateCharacterInput,
   Sex,
-} from "@aicore-fivem/shared";
-import { mysql } from "@aicore-fivem/mysql";
+} from "@aifivem/shared";
+import { mysql } from "@aifivem/mysql";
 
 /** SQL of characters. Every function takes the account (user id) so one account never touches another's rows. */
 

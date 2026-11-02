@@ -8,7 +8,7 @@ import type {
   AdminPanelSnapshot,
   ExternalPanel,
   UpdateInfo,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { goTo, openExternal } from "./actions";
 import { iconOf } from "./icons";
 import { openRecommendationPage } from "./recommendationActions";

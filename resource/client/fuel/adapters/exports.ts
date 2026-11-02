@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/client";
-import type { FuelClientAdapter } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/client";
+import type { FuelClientAdapter } from "@aifivem/shared";
 
 /** A level from a client export: a number, or the first value of a Lua pair (`fuel, fuelType`). */
 function level(raw: unknown): number | null {

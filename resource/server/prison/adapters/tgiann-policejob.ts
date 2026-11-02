@@ -1,4 +1,4 @@
-import { callExport } from "@aicore-fivem/lib/server";
+import { callExport } from "@aifivem/lib/server";
 import type { PrisonAdapter } from "../adapter";
 
 /**

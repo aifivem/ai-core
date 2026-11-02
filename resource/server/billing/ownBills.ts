@@ -1,5 +1,5 @@
-import { mysql } from "@aicore-fivem/mysql";
-import { CORE, type BillSend, type UnpaidBill } from "@aicore-fivem/shared";
+import { mysql } from "@aifivem/mysql";
+import { CORE, type BillSend, type UnpaidBill } from "@aifivem/shared";
 import { db } from "../db";
 import { log } from "../log";
 import { players } from "../player/registry";

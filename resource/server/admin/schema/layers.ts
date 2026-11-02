@@ -1,4 +1,4 @@
-import type { CardSpec } from "@aicore-fivem/shared";
+import type { CardSpec } from "@aifivem/shared";
 import { NOTIFY_SYSTEMS } from "../../notify/registry";
 import { servicesCards, type ServiceChoices } from "./services";
 

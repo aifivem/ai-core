@@ -1,4 +1,4 @@
-import { callExport } from "@aicore-fivem/lib/server";
+import { callExport } from "@aifivem/lib/server";
 import type { PrisonAdapter } from "../adapter";
 
 /** ai-prison: ai-core's own prison script. */

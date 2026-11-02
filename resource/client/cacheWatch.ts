@@ -3,8 +3,8 @@ import {
   every,
   readPlayerState,
   readWeapon,
-} from "@aicore-fivem/lib/client";
-import { CORE, type PlayerCache } from "@aicore-fivem/shared";
+} from "@aifivem/lib/client";
+import { CORE, type PlayerCache } from "@aifivem/shared";
 
 /** How often the ped, weapon and (in a vehicle) seat are read. */
 const INTERVAL = 100;

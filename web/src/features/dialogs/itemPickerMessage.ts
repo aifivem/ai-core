@@ -1,4 +1,4 @@
-import type { ItemPickerData } from "@aicore-fivem/shared";
+import type { ItemPickerData } from "@aifivem/shared";
 
 /** The item picker's open message (`itemsOpen`): the inventory's items, the target's room and the texts. */
 export interface ItemPickerMessage extends ItemPickerData {

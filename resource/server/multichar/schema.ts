@@ -1,4 +1,4 @@
-import type { CardSpec, DataSpec } from "@aicore-fivem/shared";
+import type { CardSpec, DataSpec } from "@aifivem/shared";
 import { MULTICHARS } from "./registry";
 
 /** Settings sections and the General tab card of the character screen pick (no FiveM code: the web preview imports it). */

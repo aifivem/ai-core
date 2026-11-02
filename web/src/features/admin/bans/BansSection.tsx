@@ -11,7 +11,7 @@ import {
   faUnlock,
 } from "@fortawesome/free-solid-svg-icons";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
-import type { BanFilter, BanRecord } from "@aicore-fivem/shared";
+import type { BanFilter, BanRecord } from "@aifivem/shared";
 import { NuiMessage } from "../../../../../resource/common/nui";
 import { Button } from "../../../components/ui/button";
 import { TabBar } from "../../../components/ui/tabs";

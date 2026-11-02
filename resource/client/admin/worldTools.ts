@@ -1,5 +1,5 @@
-import { cache, locationName, player } from "@aicore-fivem/lib/client";
-import { isRecord, round as roundTo } from "@aicore-fivem/lib/shared";
+import { cache, locationName, player } from "@aifivem/lib/client";
+import { isRecord, round as roundTo } from "@aifivem/lib/shared";
 import { NuiCallback } from "common/nui";
 import { pickEntity, pickPoint } from "./picks";
 import { panel } from "./panel";

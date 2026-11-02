@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/server";
-import type { InventoryAdapter, InventoryRef } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/server";
+import type { InventoryAdapter, InventoryRef } from "@aifivem/shared";
 import { definition, definitions, isTrue, number, rows, stack } from "../parse";
 
 /**

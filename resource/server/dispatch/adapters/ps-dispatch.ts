@@ -1,4 +1,4 @@
-import type { DispatchAdapter } from "@aicore-fivem/shared";
+import type { DispatchAdapter } from "@aifivem/shared";
 
 /**
  * ps-dispatch (written from its 2.2.2 source): the server event `ps-dispatch:server:notify` with a built call, sent to

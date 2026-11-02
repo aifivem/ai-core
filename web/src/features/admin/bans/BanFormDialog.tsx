@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGavel } from "@fortawesome/free-solid-svg-icons";
-import { BAN_IDENTIFIERS, type BanIdentifier } from "@aicore-fivem/shared";
+import { BAN_IDENTIFIERS, type BanIdentifier } from "@aifivem/shared";
 import { Button } from "../../../components/ui/button";
 import { Dialog } from "../../../components/ui/dialog";
 import { Input } from "../../../components/ui/input";

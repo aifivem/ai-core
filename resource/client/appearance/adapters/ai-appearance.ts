@@ -1,5 +1,5 @@
-import { resourceExport } from "@aicore-fivem/lib/client";
-import type { AppearanceClientAdapter } from "@aicore-fivem/shared";
+import { resourceExport } from "@aifivem/lib/client";
+import type { AppearanceClientAdapter } from "@aifivem/shared";
 
 const appearance = resourceExport("ai-appearance");
 

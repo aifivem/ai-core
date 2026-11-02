@@ -5,7 +5,7 @@ import {
   type ExternalPanel,
   type Lookups,
   type UpdateInfo,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { mockAdminOpen } from "../../dev/adminMock";
 import { store } from "../../store";
 import { changed } from "../../store/admin";

@@ -1,4 +1,4 @@
-import type { ValueLabels, WidgetSpec } from "@aicore-fivem/shared";
+import type { ValueLabels, WidgetSpec } from "@aifivem/shared";
 import { cn } from "../../../lib/utils";
 import { useEditor } from "../context";
 import { useField } from "./useField";

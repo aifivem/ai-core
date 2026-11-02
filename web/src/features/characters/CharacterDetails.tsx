@@ -8,9 +8,9 @@ import {
   faVenusMars,
   type IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
-import type { CharacterCard } from "@aicore-fivem/shared";
+import type { CharacterCard } from "@aifivem/shared";
 import { useLang } from "../../lib/lang";
-import { groupDigits } from "@aicore-fivem/lib/shared";
+import { groupDigits } from "@aifivem/lib/shared";
 
 const money = (value: number): string => `$${groupDigits(value)}`;
 /** "1994-05-12" -> "12/05/1994". */

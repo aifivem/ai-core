@@ -1,10 +1,10 @@
-import { callExport } from "@aicore-fivem/lib/server";
-import { isRecord } from "@aicore-fivem/lib/shared";
+import { callExport } from "@aifivem/lib/server";
+import { isRecord } from "@aifivem/lib/shared";
 import type {
   InventoryAdapter,
   InventoryRef,
   InventoryStack,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { definition, definitions, isTrue, number, stack } from "../parse";
 
 /**

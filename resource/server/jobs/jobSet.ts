@@ -1,5 +1,5 @@
-import { sendPlayerData, WriteQueue } from "@aicore-fivem/lib/server";
-import { CORE, type JobMembership } from "@aicore-fivem/shared";
+import { sendPlayerData, WriteQueue } from "@aifivem/lib/server";
+import { CORE, type JobMembership } from "@aifivem/shared";
 import { jobs as jobDefs, settings } from "../content";
 import { log } from "../log";
 import { changeDutyCount } from "./dutyCount";

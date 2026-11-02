@@ -1,4 +1,4 @@
-import { onCache } from "@aicore-fivem/lib/client";
+import { onCache } from "@aifivem/lib/client";
 
 /** A clothing script may swap the player model right after the spawn (a new ped starts with full health, no armour). */
 const REAPPLY_MS = 15_000;

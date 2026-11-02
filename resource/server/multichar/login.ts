@@ -1,5 +1,5 @@
-import { PlayerMap, registerExport } from "@aicore-fivem/lib/server";
-import { isRecord, readInt } from "@aicore-fivem/lib/shared";
+import { PlayerMap, registerExport } from "@aifivem/lib/server";
+import { isRecord, readInt } from "@aifivem/lib/shared";
 import {
   CORE,
   toBirthdate,
@@ -8,7 +8,7 @@ import {
   toSex,
   type CharacterActionResult,
   type CreateCharacterInput,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { listCharacters } from "../characters/repo";
 import { answer } from "../characters/answer";
 import { databaseReady } from "../database";

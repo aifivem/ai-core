@@ -1,4 +1,4 @@
-import { mysql } from "@aicore-fivem/mysql";
+import { mysql } from "@aifivem/mysql";
 import { SEARCH_PAGE, type SearchPage } from "../../../common/adminPlayers";
 
 /**

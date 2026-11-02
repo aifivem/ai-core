@@ -1,10 +1,10 @@
-import { round } from "@aicore-fivem/lib/shared";
+import { round } from "@aifivem/lib/shared";
 import {
   CORE,
   type DeathCause,
   type DeathInfo,
   type DeathPoint,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { players } from "./registry";
 
 /** The player whose ped this is: a player always owns its own ped, so the owner is checked instead of scanning 10k players. */

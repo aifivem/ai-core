@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/client";
-import type { AppearanceClientAdapter } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/client";
+import type { AppearanceClientAdapter } from "@aifivem/shared";
 
 const RESOURCE = "rcore_clothing";
 

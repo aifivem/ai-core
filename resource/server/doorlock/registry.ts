@@ -1,4 +1,4 @@
-import type { DoorlockAdapter } from "@aicore-fivem/shared";
+import type { DoorlockAdapter } from "@aifivem/shared";
 import { aiDoorlock } from "./adapters/ai-doorlock";
 import { cdDoorlock } from "./adapters/cd_doorlock";
 import { oxDoorlock } from "./adapters/ox_doorlock";

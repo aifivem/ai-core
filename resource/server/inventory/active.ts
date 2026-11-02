@@ -1,9 +1,9 @@
-import { GlobalKey, stateString } from "@aicore-fivem/lib/server";
+import { GlobalKey, stateString } from "@aifivem/lib/server";
 import {
   CORE,
   INVENTORY_STATE_KEY,
   ITEM_DEFINITIONS_CHANGED_EVENT,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 import { panel, settings } from "../content";
 import { log } from "../log";
 import { ClientItemDefinitions } from "./clientDefinitions";

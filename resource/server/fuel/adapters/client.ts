@@ -1,4 +1,4 @@
-import type { FuelAdapter } from "@aicore-fivem/shared";
+import type { FuelAdapter } from "@aifivem/shared";
 import { fuelBag, pendingBag } from "../bags";
 
 /**

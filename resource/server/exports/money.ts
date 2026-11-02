@@ -1,4 +1,4 @@
-import { registerExport } from "@aicore-fivem/lib/server";
+import { registerExport } from "@aifivem/lib/server";
 import { answer } from "../characters/answer";
 import { sharedAccounts } from "../money/book";
 import { accountHistory } from "../money/history";

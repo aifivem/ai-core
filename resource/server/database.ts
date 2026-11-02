@@ -1,5 +1,5 @@
-import { createDatabaseTables } from "@aicore-fivem/lib/server";
-import { mysql } from "@aicore-fivem/mysql";
+import { createDatabaseTables } from "@aifivem/lib/server";
+import { mysql } from "@aifivem/mysql";
 import { ResourceName } from "common";
 import { log } from "./log";
 

@@ -1,4 +1,4 @@
-import { registerExport } from "@aicore-fivem/lib/server";
+import { registerExport } from "@aifivem/lib/server";
 import { toCharId } from "../characters/edit";
 import { deleteCharacterBy, setCharacterInfo } from "../characters/manage";
 import { getCharactersOfUser, getOfflineCharacter } from "../characters/read";

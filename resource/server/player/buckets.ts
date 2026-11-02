@@ -1,4 +1,4 @@
-import { CORE } from "@aicore-fivem/shared";
+import { CORE } from "@aifivem/shared";
 import { acquireBucket, buckets } from "../buckets";
 
 /** The character screen: one private, empty bucket per player (from the allocator) so nobody sees anyone else. */

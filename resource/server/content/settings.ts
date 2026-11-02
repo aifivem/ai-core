@@ -1,5 +1,5 @@
-import type { Branding, CharacterScene } from "@aicore-fivem/shared";
-import { readVec4 } from "@aicore-fivem/lib/shared";
+import type { Branding, CharacterScene } from "@aifivem/shared";
+import { readVec4 } from "@aifivem/lib/shared";
 import { bool, int, record, str, vec4, type Vec4 } from "./parse";
 import { readScene } from "./scene";
 import { readPrimeTime, type PrimeTimeSettings } from "./primeTime";

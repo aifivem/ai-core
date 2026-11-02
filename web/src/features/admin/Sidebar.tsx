@@ -8,7 +8,7 @@ import {
   faShieldHalved,
   faUsers,
 } from "@fortawesome/free-solid-svg-icons";
-import type { AdminPanelSnapshot } from "@aicore-fivem/shared";
+import type { AdminPanelSnapshot } from "@aifivem/shared";
 import { ScrollArea } from "../../components/ui/scroll-area";
 import { useAppSelector } from "../../store";
 import { goDashboard, goTo } from "./actions";

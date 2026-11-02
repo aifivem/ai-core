@@ -1,4 +1,4 @@
-import type { AdminPanelSnapshot, WidgetSpec } from "@aicore-fivem/shared";
+import type { AdminPanelSnapshot, WidgetSpec } from "@aifivem/shared";
 
 /** A field of some script's panel the setup guide shows (a record's field when `key` is set). */
 export interface SetupField {

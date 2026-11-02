@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/server";
-import type { VehicleKeysAdapter } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/server";
+import type { VehicleKeysAdapter } from "@aifivem/shared";
 
 /** MrNewbVehicleKeys server exports `GiveKeysByPlate(source, plate)` / `RemoveKeysByPlate(source, plate)` (untested on ai-core). */
 export const mrNewbVehicleKeys: VehicleKeysAdapter = {

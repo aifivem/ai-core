@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { WidgetSpec } from "@aicore-fivem/shared";
+import type { WidgetSpec } from "@aifivem/shared";
 import { Input } from "../../../components/ui/input";
 import { Popover } from "../../../components/ui/popover";
 import { cn } from "../../../lib/utils";

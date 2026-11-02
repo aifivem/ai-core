@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
-import type { AdminPanelSnapshot, TableSpec } from "@aicore-fivem/shared";
+import type { AdminPanelSnapshot, TableSpec } from "@aifivem/shared";
 import { VirtualList } from "../../components/VirtualList";
 import { cn } from "../../lib/utils";
 import { getAt } from "./path";

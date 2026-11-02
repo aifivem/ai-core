@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/server";
-import type { FuelAdapter } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/server";
+import type { FuelAdapter } from "@aifivem/shared";
 import { fuelBag } from "../bags";
 
 /**

@@ -1,4 +1,4 @@
-import { mysql } from "@aicore-fivem/mysql";
+import { mysql } from "@aifivem/mysql";
 import { databaseReady } from "../../database";
 import { log } from "../../log";
 

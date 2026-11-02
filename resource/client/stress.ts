@@ -1,6 +1,6 @@
-import { onServerEvent } from "@aicore-fivem/lib/client";
-import { asArgs, readFinite } from "@aicore-fivem/lib/shared";
-import { CORE } from "@aicore-fivem/shared";
+import { onServerEvent } from "@aifivem/lib/client";
+import { asArgs, readFinite } from "@aifivem/lib/shared";
+import { CORE } from "@aifivem/shared";
 
 /**
  * Stress for HUDs with QB's API (qb-hud, ps-hud, TGIANN HUDs): they take the player from the event's source, so the

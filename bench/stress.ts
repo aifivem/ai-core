@@ -1,5 +1,5 @@
 // `bun bench/stress.ts [pool]` in ai-core, after `bun bench/seed.ts`: ai-core's DB paths at 1M players with 10k
-// online, through the real engine (`@aicore-fivem/mysql`) and pool. Login: account upsert, character screen, load.
+// online, through the real engine (`@aifivem/mysql`) and pool. Login: account upsert, character screen, load.
 // Then the periodic save of 10k characters and one paycheck for 10k players.
 import { fmt, time } from "./stubs";
 
@@ -11,7 +11,7 @@ const g = globalThis as Record<string, unknown>;
 const convarInt = g.GetConvarInt as (name: string, fallback: number) => number;
 g.GetConvarInt = (name: string, fallback: number) =>
   name === "ai_mysql_pool_size" ? POOL : convarInt(name, fallback);
-const { mysql } = await import("@aicore-fivem/mysql");
+const { mysql } = await import("@aifivem/mysql");
 await mysql.awaitConnection();
 const { upsertUser } = await import("../resource/server/player/users");
 const { listCharacters, getCharacter } =

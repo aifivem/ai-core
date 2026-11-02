@@ -1,4 +1,4 @@
-import { isResourceStarted, registerExport } from "@aicore-fivem/lib/server";
+import { isResourceStarted, registerExport } from "@aifivem/lib/server";
 import { jobs as jobDefs, panel, settings } from "../../content";
 import type { PrimeHours } from "../../content/primeTime";
 import { log } from "../../log";

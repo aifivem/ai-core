@@ -1,5 +1,5 @@
-import { PlayerMap } from "@aicore-fivem/lib/server";
-import { BAN_IDENTIFIERS, type BanRecord } from "@aicore-fivem/shared";
+import { PlayerMap } from "@aifivem/lib/server";
+import { BAN_IDENTIFIERS, type BanRecord } from "@aifivem/shared";
 import { ADMIN_BANS, type BansDelta } from "common/adminBans";
 import type { Identifiers } from "./store";
 

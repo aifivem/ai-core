@@ -10,7 +10,7 @@ import {
   faUser,
   faVenus,
 } from "@fortawesome/free-solid-svg-icons";
-import { toCreateCharacter, type Sex } from "@aicore-fivem/shared";
+import { toCreateCharacter, type Sex } from "@aifivem/shared";
 import {
   PillBar,
   PillButton,

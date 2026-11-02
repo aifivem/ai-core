@@ -1,4 +1,4 @@
-import { registerExport } from "@aicore-fivem/lib/server";
+import { registerExport } from "@aifivem/lib/server";
 import { dutyCount } from "../jobs/dutyCount";
 import { players, selecting } from "../player/registry";
 import { positive, reasonOf } from "./args";

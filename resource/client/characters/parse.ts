@@ -1,10 +1,10 @@
-import { isRecord, readId } from "@aicore-fivem/lib/shared";
+import { isRecord, readId } from "@aifivem/lib/shared";
 import {
   toCharacterAppearance,
   type CharacterActionResult,
   type CharacterAppearance,
   type SpawnPoint,
-} from "@aicore-fivem/shared";
+} from "@aifivem/shared";
 
 /** What the server sends the character screen, read into the shapes the screen accepts. */
 

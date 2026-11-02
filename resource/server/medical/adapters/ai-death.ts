@@ -1,5 +1,5 @@
-import { resourceExport } from "@aicore-fivem/lib/server";
-import type { MedicalAdapter } from "@aicore-fivem/shared";
+import { resourceExport } from "@aifivem/lib/server";
+import type { MedicalAdapter } from "@aifivem/shared";
 
 /** ai-death: ai-core's own death and hospital script (it also `provide`s qbx_medical). */
 const death = resourceExport("ai-death");

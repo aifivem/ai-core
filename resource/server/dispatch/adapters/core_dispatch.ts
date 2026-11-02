@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/server";
-import type { DispatchAdapter } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/server";
+import type { DispatchAdapter } from "@aifivem/shared";
 
 /**
  * core_dispatch (written from its docs, docs.c8re.store/core-dispatch/exports): server export

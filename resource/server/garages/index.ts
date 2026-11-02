@@ -4,9 +4,9 @@ import {
   plateOf,
   registerExport,
   stateString,
-} from "@aicore-fivem/lib/server";
-import { readText } from "@aicore-fivem/lib/shared";
-import { GARAGES_STATE_KEY, type GaragedVehicle } from "@aicore-fivem/shared";
+} from "@aifivem/lib/server";
+import { readText } from "@aifivem/lib/shared";
+import { GARAGES_STATE_KEY, type GaragedVehicle } from "@aifivem/shared";
 import { AdapterPicker } from "common/adapters";
 import { panel, settings } from "../content";
 import { log } from "../log";

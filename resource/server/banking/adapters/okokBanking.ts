@@ -1,5 +1,5 @@
-import { callExport } from "@aicore-fivem/lib/server";
-import type { BankingAdapter } from "@aicore-fivem/shared";
+import { callExport } from "@aifivem/lib/server";
+import type { BankingAdapter } from "@aifivem/shared";
 import { balanceOf, firstOf } from "../answer";
 
 const RESOURCE = "okokBanking";

@@ -1,4 +1,4 @@
-import type { InventoryAdapter } from "@aicore-fivem/shared";
+import type { InventoryAdapter } from "@aifivem/shared";
 import { aiInventory } from "./adapters/ai-inventory";
 import { codemInventory } from "./adapters/codem-inventory";
 import { coreInventory } from "./adapters/core_inventory";
