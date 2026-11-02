@@ -211,7 +211,17 @@ export function mockAdminOpen():
     resource: "ai-core",
     schema: coreSchema(Object.keys(accounts)),
     texts: en,
-    data: { settings, jobs, gangs, accounts, keybinds, commands, vrp },
+    // `local` is git-ignored on servers; the preview opens on the dashboard (`#/admin/setup` shows the guide).
+    data: {
+      settings,
+      local: { setupDone: true },
+      jobs,
+      gangs,
+      accounts,
+      keybinds,
+      commands,
+      vrp,
+    },
   };
   return {
     panels: [panel],

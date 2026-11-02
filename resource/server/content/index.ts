@@ -14,7 +14,7 @@ import { BANKING_SYSTEMS } from "../banking/registry";
 import { MDT_SYSTEMS } from "../mdt/registry";
 import { EMS_CHOICES } from "../ems/registry";
 import { log } from "../log";
-import { ID_PATTERN, record } from "./parse";
+import { bool, ID_PATTERN, record } from "./parse";
 import { readSettings, type Settings } from "./settings";
 import { readAccount, readGang, readGrades, readJob } from "./definitions";
 
@@ -77,6 +77,11 @@ export const settings: Settings = readSettings(panel.get("settings"));
 panel.onChange("settings", (_key, value) =>
   Object.assign(settings, readSettings(value)),
 );
+
+/** This server's own state (`data/local.json`, git-ignored, never in a release). */
+export const local = panel.view("local", (raw) => ({
+  setupDone: bool(record(raw).setupDone, false),
+}));
 
 export const accountTypes = entries(panel.get("accounts"), readAccount);
 export const jobs = entries(panel.get("jobs"), readJob);

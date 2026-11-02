@@ -1,10 +1,10 @@
 import { CORE } from "@aifivem/shared";
 import { SETUP_WELCOME_EVENT, type SetupWelcome } from "common/setup";
-import { settings } from "./content";
+import { local } from "./content";
 
 /** Until the setup guide is finished, every player who spawns is told how to start it (admins open it from there). */
 on(CORE.playerLoadedEvent, (source: number) => {
-  if (settings.setupDone) return;
+  if (local.value.setupDone) return;
   const fivem = getPlayerIdentifiers(String(source)).find((id) =>
     id.startsWith("fivem:"),
   );

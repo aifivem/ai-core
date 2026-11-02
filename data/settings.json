@@ -188,7 +188,6 @@
     "check": true,
     "ignore": []
   },
-  "setupDone": true,
   "dispatch": "auto",
   "primeTime": {
     "enabled": true,

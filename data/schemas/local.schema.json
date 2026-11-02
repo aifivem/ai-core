@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ai-core/data/local.json",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "This file's JSON Schema (for editors)."
+    },
+    "setupDone": {
+      "description": "Setup finished: Off: every player sees the setup notice after spawning and the panel opens on the setup guide.",
+      "type": "boolean"
+    }
+  },
+  "required": []
+}

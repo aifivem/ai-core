@@ -108,12 +108,12 @@ export function widgetOf(
   return null;
 }
 
-/** Whether the setup guide is finished (ai-core's `setupDone` setting). */
+/** Whether the setup guide is finished (`setupDone` in ai-core's server-local file `data/local.json`). */
 export function setupDone(panels: AdminPanelSnapshot[]): boolean {
-  const settings = panels.find((p) => p.resource === "ai-core")?.data.settings;
+  const local = panels.find((p) => p.resource === "ai-core")?.data.local;
   return (
-    typeof settings === "object" &&
-    settings !== null &&
-    Reflect.get(settings, "setupDone") === true
+    typeof local === "object" &&
+    local !== null &&
+    Reflect.get(local, "setupDone") === true
   );
 }

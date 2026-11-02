@@ -5,6 +5,8 @@ data/*.json.bak
 data/*.json.tmp
 # Panel-edited secrets (webhook urls, API keys): never in git
 data/secrets.json
+# State of this one server (setup finished): never part of a release
+data/local.json
 # Built by `bun run build`; every release zip carries them
 dist/
 fxmanifest.lua

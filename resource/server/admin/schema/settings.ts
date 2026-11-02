@@ -102,7 +102,6 @@ export function settingsFile({
       interaction: { type: "enum", values: ["prompt", "target"] },
       pvp: { type: "bool" },
       refuseOnConflict: { type: "bool" },
-      setupDone: { type: "bool" },
       updates: {
         type: "object",
         fields: {
@@ -154,7 +153,6 @@ export function settingsFile({
       interaction: "prompt",
       pvp: true,
       refuseOnConflict: true,
-      setupDone: false,
       updates: { check: true, ignore: [] },
       recommendations: DEFAULT_RECOMMENDATIONS,
     },

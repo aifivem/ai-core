@@ -7,6 +7,7 @@ import { externalPanelsFile, externalTab } from "./external";
 import { generalTab } from "./general";
 import { gangsFile, gangsTab, jobsFile, jobsTab } from "./jobs";
 import { keybindsFile, keybindsTab } from "./keybinds";
+import { localFile, localTab } from "./local";
 import { rulesTab } from "./rules";
 import { sceneTab } from "./scene";
 import type { ServiceChoices } from "./services";
@@ -42,6 +43,7 @@ export function coreSchema(
     icon: "server",
     files: {
       settings: settingsFile(choices),
+      local: localFile,
       jobs: jobsFile,
       gangs: gangsFile,
       accounts: accountsFile(accounts),
@@ -62,6 +64,7 @@ export function coreSchema(
       keybindsTab,
       commandsTab,
       VRP_TAB,
+      localTab,
     ],
   };
 }

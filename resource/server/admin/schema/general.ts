@@ -162,12 +162,6 @@ export function generalTab(choices: LayerChoices): TabSpec {
             label: "ADMIN_F_REFUSE_ON_CONFLICT",
             hint: "ADMIN_H_REFUSE_ON_CONFLICT",
           },
-          {
-            widget: "switch",
-            path: "setupDone",
-            label: "ADMIN_F_SETUP_DONE",
-            hint: "ADMIN_H_SETUP_DONE",
-          },
         ],
       },
     ],

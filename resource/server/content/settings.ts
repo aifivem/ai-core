@@ -57,8 +57,6 @@ export interface Settings {
   refuseOnConflict: boolean;
   /** GitHub release check of every script with a `repository` line; `ignore` = resources never checked. */
   updates: { check: boolean; ignore: string[] };
-  /** The admin finished the setup guide; until then every player sees how to start it after spawning. */
-  setupDone: boolean;
   /** `choose`: after picking a character the player picks the last location or one of `points`. */
   spawn: {
     default: Vec4;
@@ -139,7 +137,6 @@ export function readSettings(raw: unknown): Settings {
     pvp: bool(s.pvp, true),
     refuseOnConflict: bool(s.refuseOnConflict, true),
     updates: readUpdates(record(s.updates)),
-    setupDone: bool(s.setupDone, false),
     spawn: {
       default: vec4(spawn.default, {
         x: -1035.71,

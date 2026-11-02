@@ -92,7 +92,7 @@ export function goSetup(): void {
 
 /** The last step of the setup guide: the server is set up, the welcome card stops showing. */
 export async function finishSetup(): Promise<void> {
-  await saveField("ai-core", "settings", undefined, "setupDone", true);
+  await saveField("ai-core", "local", undefined, "setupDone", true);
   goDashboard();
 }
 
