@@ -32,8 +32,8 @@ Owner decision (ported from the owner's Qbox server): salaries can drop outside 
 
 Owner decision (ported from the owner's Qbox paycheck office): panel `paycheck.mode` (Job and gang rules tab).
 
-- `account` (default): each paycheck goes straight into `paycheck.account`.
-- `office`: each paycheck adds to metadata `paycheck` (whole dollars, QB / Qbox's key) instead; with `fromJobAccount` the job account is still charged at payday. The player takes it out at an office another script runs (ai-banking's NPC) through `WithdrawPaycheck(source, amount?)` into `paycheck.account`: the wallet change and the metadata change are both synchronous, so nothing is paid twice. Withdrawing works in both modes (a balance left after switching back stays reachable).
+- `account`: each paycheck goes straight into `paycheck.account`.
+- `office` (default, owner decision): each paycheck adds to metadata `paycheck` (whole dollars, QB / Qbox's key) instead; with `fromJobAccount` the job account is still charged at payday. The player takes it out at an office another script runs (ai-banking's NPC) through `WithdrawPaycheck(source, amount?)` into `paycheck.account`: the wallet change and the metadata change are both synchronous, so nothing is paid twice. Withdrawing works in both modes (a balance left after switching back stays reachable).
 - Office scripts read the mode with `GetPaycheckMode()` (server) or GlobalState `CORE.paycheckModeStateKey` (clients, `paycheckOffice.ts` writes it only on a change), so their places show only in office mode.
 - `ForcePaycheck(source)` runs the same `pay()` for one player (admin commands); the timer runs it for every loaded player.
 

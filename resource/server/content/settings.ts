@@ -123,7 +123,7 @@ export function readSettings(raw: unknown): Settings {
       intervalMinutes: int(pay.intervalMinutes, 15, 0, 1440),
       account: str(pay.account, "bank", 32),
       fromJobAccount: bool(pay.fromJobAccount, false),
-      mode: pay.mode === "office" ? "office" : "account",
+      mode: pay.mode === "account" ? "account" : "office",
     },
     illegal: { enabled: bool(record(s.illegal).enabled, true) },
     loginLog: bool(s.loginLog, true),

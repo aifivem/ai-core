@@ -26,7 +26,7 @@
     "intervalMinutes": 15,
     "account": "bank",
     "fromJobAccount": false,
-    "mode": "account"
+    "mode": "office"
   },
   "saveIntervalMinutes": 5,
   "spawn": {
