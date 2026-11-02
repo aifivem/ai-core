@@ -22,8 +22,10 @@ const ADAPTERS: readonly PhoneClientAdapter[] = [
   highPhone,
   roadPhone,
   qsSmartphone,
-  codemPhone,
 ];
+
+/** Phones that only tell when they are opened (not part of the layer; the server checks they run). */
+const SIGNAL_ONLY: readonly PhoneClientAdapter[] = [codemPhone];
 
 /** Openings closer than this count once: a phone opened and closed again and again is one use. */
 const USED_GAP_MS = 10_000;
@@ -53,6 +55,9 @@ class PhoneUse {
       adapter.watch?.(() => {
         if (this.layer.active === adapter) this.used(adapter.resource);
       });
+    // Their event fires only while that phone runs.
+    for (const adapter of SIGNAL_ONLY)
+      adapter.watch?.(() => this.used(adapter.resource));
     // The follower listens first, so its new pick is in place here.
     this.pick.onChange(() => this.follow());
     this.follow();
@@ -76,7 +81,7 @@ class PhoneUse {
     if (now - this.last < USED_GAP_MS) return;
     this.last = now;
     emit(CORE.clientPhoneUsedEvent, phone);
-    emitNet(CORE.phoneOpenedEvent);
+    emitNet(CORE.phoneOpenedEvent, phone);
   }
 }
 

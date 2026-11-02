@@ -15,7 +15,6 @@ import {
 import { AdapterPicker } from "common/adapters";
 import { log } from "../log";
 import { mov17Phone } from "./adapters/17mov_Phone";
-import { codemPhone } from "./adapters/codem-phone";
 import { gksPhone } from "./adapters/gksphone";
 import { highPhone } from "./adapters/high-phone";
 import { lbPhone } from "./adapters/lb-phone";
@@ -34,7 +33,6 @@ const PHONES: readonly PhoneAdapter[] = [
   highPhone,
   roadPhone,
   qsSmartphone,
-  codemPhone,
 ];
 
 /** The picked phone for the client half (`client/phone/`), which tells when the player opens it. */
@@ -51,14 +49,27 @@ export const phones = new AdapterPicker({
   onSwitch: (next) => activePhone.set(next?.resource),
 });
 
-// The client sends one per opening, at most one per 10 s (`client/phone/index.ts`).
+/**
+ * Phones that only tell when they are opened and are not part of the layer (owner decision: no number, mail or
+ * notification calls for them, so the layer and the tgiann-phone recommendation stay as they were).
+ */
+const SIGNAL_ONLY = new Set(["codem-phone"]);
+
+// The client sends one per opening, at most one per 10 s (`client/phone/index.ts`): the active phone, or a running
+// signal-only phone.
 onClientEvent(
   CORE.phoneOpenedEvent,
-  (source) => {
-    const phone = phones.active?.resource;
-    if (phone) emit(CORE.phoneUsedEvent, source, phone);
+  {
+    args: ([phone]) => (typeof phone === "string" ? [phone] : null),
+    guards: [hasCharacter()],
+    rate: { count: 1, windowMs: 5_000 },
   },
-  { guards: [hasCharacter()], rate: { count: 1, windowMs: 5_000 } },
+  (source, phone) => {
+    const active = phones.active?.resource;
+    if (phone === active) return void emit(CORE.phoneUsedEvent, source, phone);
+    if (SIGNAL_ONLY.has(phone) && GetResourceState(phone) === "started")
+      emit(CORE.phoneUsedEvent, source, phone);
+  },
 );
 
 const toMail = (v: unknown): PhoneMail | null =>
