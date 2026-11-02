@@ -135,7 +135,7 @@
           "maximum": 1440
         },
         "account": {
-          "description": "Paid into",
+          "description": "Account salaries go to: Straight into the account: every salary lands in this account the moment it is paid. Collected at a paycheck office: the salary a player collects at an office lands in this account.",
           "type": "string",
           "maxLength": 32,
           "pattern": "^[a-z0-9_]{2,32}$"
@@ -145,7 +145,7 @@
           "type": "boolean"
         },
         "mode": {
-          "description": "Where salaries go: Pay account: straight into the account above. Paycheck office: salaries add up and players take them out at an office (a script such as ai-banking runs it) into the account above.",
+          "description": "Where salaries go: Straight into the account: each salary is added to the player's account at once, the player does nothing. Collected at a paycheck office: salaries add up, and the player walks to a paycheck office (Paycheck offices tab) to take them out into the account.",
           "enum": [
             "account",
             "office"
@@ -333,7 +333,7 @@
       ]
     },
     "mdt": {
-      "description": "MDT script: Automatic uses the first one that runs; without one nothing is written.",
+      "description": "MDT script: Automatic uses the first one that runs; without one nothing is written and ai-core's own warrants answer the warrant checks.",
       "enum": [
         "auto",
         "tgiann-mdt",
@@ -357,6 +357,14 @@
       "enum": [
         "core",
         "own"
+      ]
+    },
+    "warrants": {
+      "description": "Warrants that count: Which warrants make a player wanted (wanted sightings, every script that asks). ai-core's own warrants are set on a character's Players page and in the police job menu.",
+      "enum": [
+        "auto",
+        "both",
+        "mdt"
       ]
     },
     "fuel": {

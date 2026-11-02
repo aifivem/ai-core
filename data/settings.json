@@ -218,5 +218,6 @@
   "illegal": {
     "enabled": true
   },
-  "loginLog": true
+  "loginLog": true,
+  "warrants": "auto"
 }
