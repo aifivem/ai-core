@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.3](https://github.com/aifivem/ai-core/compare/v0.5.2...v0.5.3) (2026-11-02)
+
+
+### Bug Fixes
+
+* **setup:** new servers start on the setup guide again ([3129f58](https://github.com/aifivem/ai-core/commit/3129f58256dbc8e147e0210d98e374cbb4be62b2))
+
 ## [0.5.2](https://github.com/aifivem/ai-core/compare/v0.5.1...v0.5.2) (2026-11-02)
 
 
