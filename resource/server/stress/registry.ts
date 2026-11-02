@@ -12,6 +12,8 @@ export interface StressAdapter {
   refill(source: number): void;
   /** Adds hunger or thirst (0-100 scale; a negative amount takes it away). */
   addNeed(source: number, need: Need, amount: number): void;
+  /** Sets hunger or thirst to a value (0-100). */
+  setNeed(source: number, need: Need, value: number): void;
 }
 
 export type Need = "hunger" | "thirst";
@@ -37,13 +39,30 @@ export function addMetadataNeed(
   need: Need,
   amount: number,
 ): boolean {
+  return changeMetadataNeed(source, need, (current) => current + amount);
+}
+
+/** QB's way of setting one need (`consumables:server:setHunger`): the metadata key, then `hud:client:UpdateNeeds`. */
+export function setMetadataNeed(
+  source: number,
+  need: Need,
+  value: number,
+): boolean {
+  return changeMetadataNeed(source, need, () => value);
+}
+
+function changeMetadataNeed(
+  source: number,
+  need: Need,
+  next: (current: number) => number,
+): boolean {
   const player = players.get(source);
   if (!player) return false;
   const value = (key: Need): number => {
     const v = player.getMeta(key);
     return typeof v === "number" && Number.isFinite(v) ? v : 100;
   };
-  player.setMeta(need, Math.min(100, Math.max(0, value(need) + amount)));
+  player.setMeta(need, Math.min(100, Math.max(0, next(value(need)))));
   TriggerClientEvent(
     "hud:client:UpdateNeeds",
     source,
@@ -64,6 +83,7 @@ const qbEvents = (resource: string, version?: string): StressAdapter => ({
     TriggerClientEvent(CORE.stressRelayEvent, source, amount),
   refill: (source) => void refillMetadata(source),
   addNeed: (source, need, amount) => void addMetadataNeed(source, need, amount),
+  setNeed: (source, need, value) => void setMetadataNeed(source, need, value),
 });
 
 /**
@@ -85,5 +105,6 @@ export const STRESS_SYSTEMS: readonly StressAdapter[] = [
       hud.SetNeed(source, "thirst", 100);
     },
     addNeed: (source, need, amount) => hud.AddNeed(source, need, amount),
+    setNeed: (source, need, value) => hud.SetNeed(source, need, value),
   },
 ];

@@ -77,6 +77,7 @@ const NEVER_NEXT_TO: Record<string, string[]> = {
     "es_extended",
     "qb-core",
     "qbx_core",
+    "qbx_smallresources",
     "esx_context",
     "esx_textui",
     "esx_notify",
