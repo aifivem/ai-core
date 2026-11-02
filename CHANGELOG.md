@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.6.0](https://github.com/aifivem/ai-core/compare/v0.5.3...v0.6.0) (2026-11-02)
+
+
+### New Features
+
+* **bridge:** answer qbx_smallresources exports and the consumables need events ([e10f945](https://github.com/aifivem/ai-core/commit/e10f9451d0ff05cfbea1666993475b2ae150f6a8))
+* **bridge:** answer qbx_smallresources SendWantedAlert and hand it to ai-police ([ba1f0c7](https://github.com/aifivem/ai-core/commit/ba1f0c7ae4363377e0b8357666ff39b14bcaa945))
+* **characters:** add illegal status, paycheck office mode, login log and info editing ([9058402](https://github.com/aifivem/ai-core/commit/905840261db7d6aafba95c876fab92cd8d25604f))
+* **characters:** let admins change a loaded character's sex as data only ([7f97951](https://github.com/aifivem/ai-core/commit/7f97951387755b9b967c33395e0a3230be84aeb2))
+* **mdt:** ask tgiann-mdt, ps-mdt and codem-mdtv2 for active warrants ([370fe1a](https://github.com/aifivem/ai-core/commit/370fe1abf70cef1c07f5607fac64cab8d5e92672))
+* **needs:** give health loss its own level, starting when food or water runs out ([fb24e65](https://github.com/aifivem/ai-core/commit/fb24e651afa27dfd94cb348048efa17ae790b7d0))
+* **needs:** own hunger and thirst in ai-core with every value in the panel ([76438c1](https://github.com/aifivem/ai-core/commit/76438c170f9bf03db35b6637f11f8c8ad4dbc543))
+* **paycheck:** make the paycheck office the default salary mode ([ed5b6c2](https://github.com/aifivem/ai-core/commit/ed5b6c2206482ece93bc1577668141fe9c219caa))
+* **paycheck:** run paycheck offices in ai-core and ask where salaries go in the setup guide ([6260d6d](https://github.com/aifivem/ai-core/commit/6260d6dc1077f03764f5908b2bd9e1bd782671d8))
+* **phone:** put codem-phone back into the phone layer ([0f8da32](https://github.com/aifivem/ai-core/commit/0f8da3210c7661f5b7d46dcc33afe69d13db00c7))
+* **phone:** read every phone's open signal from its event or state bag, no polling ([b948898](https://github.com/aifivem/ai-core/commit/b9488986f929ea434d5781d1bd8812c78b23e7a8))
+* **phone:** signal when a player opens the phone, for every supported phone ([f8f23ca](https://github.com/aifivem/ai-core/commit/f8f23ca0562af38c0d9f22b901482b5c309d86df))
+* **warrants:** add ai-core's own warrants for when no MDT answers ([2e7bd4d](https://github.com/aifivem/ai-core/commit/2e7bd4d5e573fddf79a238c726f26d929d3b8e7c))
+
+
+### Bug Fixes
+
+* **phone:** keep codem-phone out of the phone layer, only its phone used signal ([0c41f5c](https://github.com/aifivem/ai-core/commit/0c41f5cbc01416752d66337ff46a558fec306099))
+
+
+### Documentation
+
+* **phone:** shorten the signal-only phones comment ([b168e9b](https://github.com/aifivem/ai-core/commit/b168e9b894b216f08b946cc48902d135fbeb1392))
+
+
+### Miscellaneous Chores
+
+* **data:** write the new settings defaults and panel schemas ([497cac6](https://github.com/aifivem/ai-core/commit/497cac63186ab55b368593e2f5e54274b09cc5de))
+
 ## [0.5.3](https://github.com/aifivem/ai-core/compare/v0.5.2...v0.5.3) (2026-11-02)
 
 
