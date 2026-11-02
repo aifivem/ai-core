@@ -49,10 +49,7 @@ export const phones = new AdapterPicker({
   onSwitch: (next) => activePhone.set(next?.resource),
 });
 
-/**
- * Phones that only tell when they are opened and are not part of the layer (owner decision: no number, mail or
- * notification calls for them, so the layer and the tgiann-phone recommendation stay as they were).
- */
+/** Phones supported only for the phone used signal (not part of the layer). */
 const SIGNAL_ONLY = new Set(["codem-phone"]);
 
 // The client sends one per opening, at most one per 10 s (`client/phone/index.ts`): the active phone, or a running
