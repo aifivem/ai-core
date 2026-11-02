@@ -1,6 +1,6 @@
 {
   "name": "ai-core",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "private": true,
   "description": "ai-core framework: players, characters, money, jobs, permissions, admin panel",
   "license": "GPL-3.0-only",
