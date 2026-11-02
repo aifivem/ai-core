@@ -1,6 +1,6 @@
 -- qbx_smallresources' server side (ai-core provides the name): the hunger / thirst exports and the consumables net
--- events QB / Qbox food scripts and inventories send, onto ai-core's needs layer (the HUD that keeps them, metadata
--- without one). Qbox's meaning: `add*` adds, `set*` sets; ox_inventory's old QB bridge sends the new value to `add*`.
+-- events QB / Qbox food scripts and inventories send, onto ai-core's needs (ai-core keeps hunger and thirst, any HUD
+-- draws them). Qbox's meaning: `add*` adds, `set*` sets; ox_inventory's old QB bridge sends the new value to `add*`.
 
 local core = Bridge.core
 local RESOURCE = 'qbx_smallresources'

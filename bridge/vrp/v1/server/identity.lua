@@ -1,7 +1,7 @@
 -- vRP 1 server API on ai-core, identity and survival. Signatures: vRP 1.0 `vrp/modules/identity.lua` and
 -- `vrp/modules/survival.lua` (same names in vRPex, Zirix, Dunko). Identity = the ai-core character (registration =
--- citizenid, phone from ai-core's phone layer); hunger / thirst = ai-hud's needs on vRP's inverted scale
--- (vRP 0-100 with 100 = starving, ai-hud 0-100 with 100 = full).
+-- citizenid, phone from ai-core's phone layer); hunger / thirst = ai-core's needs on vRP's inverted scale
+-- (vRP 0-100 with 100 = starving, ai-core 0-100 with 100 = full).
 
 local core = Bridge.core
 local vRP = BridgeVRP.proxy
@@ -83,20 +83,13 @@ local function getNeed(user_id, need)
     return 100 - clamp(value == nil and 100 or value)
 end
 
----@param source integer
----@return boolean
-local function hudRuns(source)
-    return source ~= nil and GetResourceState('ai-hud') == 'started'
-end
-
 ---@param user_id any
 ---@param need 'hunger'|'thirst'
 ---@param value any vRP scale
 local function setNeed(user_id, need, value)
     local _, source = BridgeVRP.mirror(user_id)
     if not source or tonumber(value) == nil then return end
-    local full = 100 - clamp(value)
-    if hudRuns(source) then exports['ai-hud']:SetNeed(source, need, full) else core:SetMeta(source, need, math.floor(full + 0.5)) end
+    core:SetNeed(source, need, 100 - clamp(value))
 end
 
 ---@param user_id any
@@ -106,11 +99,7 @@ local function varyNeed(user_id, need, variation)
     local _, source = BridgeVRP.mirror(user_id)
     local delta = tonumber(variation)
     if not source or not delta or delta ~= delta then return end
-    if hudRuns(source) then
-        exports['ai-hud']:AddNeed(source, need, -delta)
-    else
-        setNeed(user_id, need, getNeed(user_id, need) + delta)
-    end
+    core:AddNeed(source, need, math.max(-100, math.min(100, -delta)))
 end
 
 ---@param user_id any

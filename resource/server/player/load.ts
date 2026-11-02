@@ -7,6 +7,7 @@ import { getCharacter } from "../characters/repo";
 import { saveCharacters } from "../characters/save";
 import { log } from "../log";
 import { moneyWriter } from "../money/writer";
+import { needsStore } from "../needs/store";
 import { BUSY, lock } from "./actionLock";
 import { Player } from "./player";
 import { claims, players, selecting } from "./registry";
@@ -47,6 +48,7 @@ async function loadNow(
   try {
     const row = await getCharacter(user.id, charId);
     if (!row) return { ok: false, error: "CHAR_ERR_GONE" };
+    needsStore.seed(row.metadata);
     const player = await Player.load(source, user, row);
     // The player may have left while the rows were loading.
     if (!GetPlayerName(String(source)) || !selecting.has(source)) {

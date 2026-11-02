@@ -130,7 +130,7 @@ end
 ---@field buckets table server: `acquire(tag)`, `release(id)` (ai-core's routing bucket allocator)
 ---@field bans table server: `ban` (waits), `unban`, `edit`, `isBanned`, `list`, `history` / `search` (wait)
 ---@field isPrimeTime fun(job?: string): boolean server
----@field needs table server: `refill(src)` (hunger and thirst to full), `add(src, need, amount)`
+---@field needs table server: `refill(src)` (hunger and thirst to full), `add(src, need, amount)`, `set(src, need, value)`
 ---@field illegal table server: `is(src)`, `of(citizenid | { charId })` (waits), `set(target, state)` (waits): a character's legal / illegal status through ai-core
 ---@field appearance table client `apply(ped, look)`, `read(ped)`, `openMenu(menu)`, `wearOutfit(outfit)`, `reloadSkin()`; server `get(charId)` (waits), `provider()`: looks through ai-core's appearance layer
 ---@diagnostic disable-next-line: lowercase-global

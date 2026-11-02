@@ -2,7 +2,7 @@ local V = BridgeVRP2
 local vRP = V.vRP
 local v1, coreExtension = V.v1, V.coreExtension
 
--- Survival: vitals 0-1 (1 = full); `food` / `water` are ai-hud's hunger / thirst (vRP 1 functions, 0-100 with
+-- Survival: vitals 0-1 (1 = full); `food` / `water` are ai-core's hunger / thirst (vRP 1 functions, 0-100 with
 -- 100 = starving), vitals other extensions register live in the character's data.
 local SurvivalUser = {}
 local needs = { food = { 'getHunger', 'setHunger' }, water = { 'getThirst', 'setThirst' } }

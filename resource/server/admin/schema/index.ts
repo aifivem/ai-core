@@ -1,6 +1,7 @@
 import type { PanelSchema } from "@aifivem/shared";
 import { VRP_FILE } from "../../vrp/schema";
 import { VRP_TAB } from "../../vrp/tab";
+import { NEEDS_FILE, NEEDS_TAB } from "../../needs/schema";
 import { accountsFile, accountsTab } from "./accounts";
 import { commandsFile, commandsTab } from "./commands";
 import { externalPanelsFile, externalTab } from "./external";
@@ -14,7 +15,7 @@ import type { ServiceChoices } from "./services";
 import { settingsFile } from "./settings";
 import { spawnTab } from "./spawn";
 
-/** ai-core's own panel: server settings, spawn points, character screen scene, job rules, jobs, gangs and money accounts (`data/*.json`). */
+/** ai-core's own panel: server settings, spawn points, character screen scene, job rules, hunger and thirst, jobs, gangs and money accounts (`data/*.json`). */
 
 /** `accounts`: the account types at start, offered where an account is picked; `inventories` / `keySystems` / `alertSystems`: the adapters. */
 export function coreSchema(
@@ -51,12 +52,14 @@ export function coreSchema(
       commands: commandsFile,
       externalPanels: externalPanelsFile,
       vrp: VRP_FILE,
+      needs: NEEDS_FILE,
     },
     tabs: [
       generalTab(choices),
       spawnTab,
       sceneTab,
       rulesTab(accounts),
+      NEEDS_TAB,
       jobsTab,
       gangsTab,
       accountsTab,

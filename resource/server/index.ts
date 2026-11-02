@@ -34,6 +34,7 @@ import "./mdt";
 import "./ems";
 import "./appearance";
 import "./stress";
+import "./needs";
 import "./notify";
 import "./fuel";
 import "./doorlock";

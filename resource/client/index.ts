@@ -16,6 +16,7 @@ import "./hud";
 import "./gestures";
 import "./seatbelt";
 import "./stress";
+import "./needs";
 import "./notify";
 import "./appearance";
 import "./radial";

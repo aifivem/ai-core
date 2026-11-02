@@ -1,75 +1,25 @@
 import { resourceExport } from "@aifivem/lib/server";
 import { CORE } from "@aifivem/shared";
+import { needsStore } from "../needs/store";
 import { players } from "../player/registry";
 
-/** One HUD that keeps players' stress, hunger and thirst (ai-core's stress layer). */
+/** One HUD: it keeps players' stress and draws the hunger and thirst ai-core keeps (ai-core's HUD layer). */
 export interface StressAdapter {
   resource: string;
   version?: string;
   /** Adds stress (a negative amount relieves it). */
   add(source: number, amount: number): void;
-  /** Hunger and thirst to full. */
-  refill(source: number): void;
-  /** Adds hunger or thirst (0-100 scale; a negative amount takes it away). */
-  addNeed(source: number, need: Need, amount: number): void;
-  /** Sets hunger or thirst to a value (0-100). */
-  setNeed(source: number, need: Need, value: number): void;
+  /** Draws hunger and thirst after ai-core changed one (0-100). */
+  showNeeds(source: number, hunger: number, thirst: number): void;
+  /** Stress points that fade per minute, applied by ai-core's needs pass (asked once per pass); none = the HUD fades it. */
+  relief?(): number;
 }
-
-export type Need = "hunger" | "thirst";
 
 const hud = resourceExport("ai-hud");
 
-/**
- * QB's way (qb-ambulancejob's revive): the metadata keys, then `hud:client:UpdateNeeds` for the HUD on the client.
- * Also the fallback without any HUD, so the next HUD reads full needs.
- */
-export function refillMetadata(source: number): boolean {
-  const player = players.get(source);
-  if (!player) return false;
-  player.setMeta("hunger", 100);
-  player.setMeta("thirst", 100);
-  TriggerClientEvent("hud:client:UpdateNeeds", source, 100, 100);
-  return true;
-}
-
-/** QB's way for one need: the metadata key (0-100), then `hud:client:UpdateNeeds` with both values. Also the fallback without a HUD. */
-export function addMetadataNeed(
-  source: number,
-  need: Need,
-  amount: number,
-): boolean {
-  return changeMetadataNeed(source, need, (current) => current + amount);
-}
-
-/** QB's way of setting one need (`consumables:server:setHunger`): the metadata key, then `hud:client:UpdateNeeds`. */
-export function setMetadataNeed(
-  source: number,
-  need: Need,
-  value: number,
-): boolean {
-  return changeMetadataNeed(source, need, () => value);
-}
-
-function changeMetadataNeed(
-  source: number,
-  need: Need,
-  next: (current: number) => number,
-): boolean {
-  const player = players.get(source);
-  if (!player) return false;
-  const value = (key: Need): number => {
-    const v = player.getMeta(key);
-    return typeof v === "number" && Number.isFinite(v) ? v : 100;
-  };
-  player.setMeta(need, Math.min(100, Math.max(0, next(value(need)))));
-  TriggerClientEvent(
-    "hud:client:UpdateNeeds",
-    source,
-    value("hunger"),
-    value("thirst"),
-  );
-  return true;
+/** QB's way (qb-core's needs loop, qb-ambulancejob's revive): the HUD's client event with both values. */
+export function qbShowNeeds(source: number, hunger: number, thirst: number) {
+  TriggerClientEvent("hud:client:UpdateNeeds", source, hunger, thirst);
 }
 
 /**
@@ -81,9 +31,7 @@ const qbEvents = (resource: string, version?: string): StressAdapter => ({
   version,
   add: (source, amount) =>
     TriggerClientEvent(CORE.stressRelayEvent, source, amount),
-  refill: (source) => void refillMetadata(source),
-  addNeed: (source, need, amount) => void addMetadataNeed(source, need, amount),
-  setNeed: (source, need, value) => void setMetadataNeed(source, need, value),
+  showNeeds: qbShowNeeds,
 });
 
 /**
@@ -98,13 +46,19 @@ export const STRESS_SYSTEMS: readonly StressAdapter[] = [
   qbEvents("qb-hud", "2.2.0"),
   qbEvents("ps-hud", "2.1.2"),
   {
+    // ai-hud keeps the stress rules (sources, relief rate); ai-core writes the value with the other needs.
     resource: "ai-hud",
-    add: (source, amount) => hud.AddNeed(source, "stress", amount),
-    refill: (source) => {
-      hud.SetNeed(source, "hunger", 100);
-      hud.SetNeed(source, "thirst", 100);
+    add: (source, amount) => {
+      const player = players.get(source);
+      if (player) needsStore.add(player, "stress", amount);
     },
-    addNeed: (source, need, amount) => hud.AddNeed(source, need, amount),
-    setNeed: (source, need, value) => hud.SetNeed(source, need, value),
+    // ai-hud draws from ai-core's player data (metadata deltas).
+    showNeeds: () => undefined,
+    relief: () => {
+      const rate: unknown = hud.GetStressRelief();
+      return typeof rate === "number" && Number.isFinite(rate)
+        ? Math.min(10, Math.max(0, rate))
+        : 0;
+    },
   },
 ];

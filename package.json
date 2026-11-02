@@ -275,6 +275,7 @@
     "data/keybinds.json",
     "data/jobs.json",
     "data/gangs.json",
+    "data/needs.json",
     "modules/*.lua",
     "shared/vehicles.lua",
     "shared/weapons.lua",

@@ -1,0 +1,25 @@
+{
+  "$schema": "./schemas/needs.schema.json",
+  "decay": {
+    "enabled": true,
+    "hunger": 0.25,
+    "thirst": 0.35
+  },
+  "start": {
+    "hunger": 100,
+    "thirst": 100
+  },
+  "warnings": {
+    "notify": true,
+    "lowAt": 15,
+    "notifyEvery": 60,
+    "faint": true,
+    "criticalAt": 5,
+    "faintEvery": 20,
+    "fadeOut": 4.5,
+    "fadeIn": 2.5,
+    "hurt": true,
+    "damage": 2,
+    "hurtEvery": 10
+  }
+}

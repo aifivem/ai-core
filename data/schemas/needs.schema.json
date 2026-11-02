@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ai-core/data/needs.json",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "This file's JSON Schema (for editors)."
+    },
+    "decay": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Drop over time: Off: hunger and thirst only change through items, scripts and admins.",
+          "type": "boolean"
+        },
+        "hunger": {
+          "description": "Hunger drop: Points lost every minute of play, out of 100. 0.25 empties in about 6.5 hours.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "thirst": {
+          "description": "Thirst drop: Points lost every minute of play, out of 100. 0.25 empties in about 6.5 hours.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        }
+      },
+      "required": [
+        "enabled",
+        "hunger",
+        "thirst"
+      ]
+    },
+    "start": {
+      "type": "object",
+      "properties": {
+        "hunger": {
+          "description": "Starting hunger: What a new character starts with, out of 100 (100 = full).",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "thirst": {
+          "description": "Starting thirst: What a new character starts with, out of 100 (100 = full).",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "hunger",
+        "thirst"
+      ]
+    },
+    "warnings": {
+      "type": "object",
+      "properties": {
+        "notify": {
+          "description": "Low warning: A notification when food or water falls below the warning level (hungry, thirsty or both).",
+          "type": "boolean"
+        },
+        "lowAt": {
+          "description": "Warning level: Food or water below this (out of 100) shows the warning.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "notifyEvery": {
+          "description": "Warning every: Seconds between two warnings while food or water stays low.",
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 3600
+        },
+        "faint": {
+          "description": "Dizziness: Below the critical level the screen fades out and back in.",
+          "type": "boolean"
+        },
+        "criticalAt": {
+          "description": "Critical level: Food or water below this (out of 100) starts dizziness and health loss (whichever is on) and shows the critical warning. Keep it under the warning level.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "faintEvery": {
+          "description": "Dizziness every: Seconds between two dizzy spells while food or water stays critical.",
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 3600
+        },
+        "fadeOut": {
+          "description": "Fade out: Seconds the screen takes to go dark or come back.",
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 10
+        },
+        "fadeIn": {
+          "description": "Fade in: Seconds the screen takes to go dark or come back.",
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 10
+        },
+        "hurt": {
+          "description": "Health loss: Below the critical level the player loses health over time.",
+          "type": "boolean"
+        },
+        "damage": {
+          "description": "Health lost: Health taken each time.",
+          "type": "number",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "hurtEvery": {
+          "description": "Health loss every: Seconds between two health losses while food or water stays critical.",
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 3600
+        }
+      },
+      "required": [
+        "notify",
+        "lowAt",
+        "notifyEvery",
+        "faint",
+        "criticalAt",
+        "faintEvery",
+        "fadeOut",
+        "fadeIn",
+        "hurt",
+        "damage",
+        "hurtEvery"
+      ]
+    }
+  },
+  "required": []
+}
