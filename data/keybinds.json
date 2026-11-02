@@ -368,5 +368,41 @@
     "key": "",
     "hintWhen": "",
     "hint": ""
+  },
+  "smallresources_shuffle": {
+    "resource": "ai-smallresources",
+    "description": "Switch to the other front seat",
+    "defaultKey": "O",
+    "mapper": "keyboard",
+    "key": "",
+    "hintWhen": "",
+    "hint": ""
+  },
+  "smallresources_push": {
+    "resource": "ai-smallresources",
+    "description": "Push a vehicle (with the hold key)",
+    "defaultKey": "E",
+    "mapper": "keyboard",
+    "key": "",
+    "hintWhen": "",
+    "hint": ""
+  },
+  "smallresources_push_hold": {
+    "resource": "ai-smallresources",
+    "description": "Push a vehicle: hold",
+    "defaultKey": "LSHIFT",
+    "mapper": "keyboard",
+    "key": "",
+    "hintWhen": "",
+    "hint": ""
+  },
+  "smallresources_view": {
+    "resource": "ai-smallresources",
+    "description": "First / third person view",
+    "defaultKey": "V",
+    "mapper": "keyboard",
+    "key": "",
+    "hintWhen": "",
+    "hint": ""
   }
 }

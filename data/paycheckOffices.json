@@ -1,0 +1,27 @@
+{
+  "$schema": "./schemas/paycheckOffices.schema.json",
+  "pacific_paycheck": {
+    "label": "Paycheck office",
+    "coords": {
+      "x": 247.19,
+      "y": 209.86,
+      "z": 106.29
+    },
+    "radius": 2,
+    "blip": true,
+    "blipStyle": {
+      "sprite": 500,
+      "color": 2,
+      "scale": 0.7
+    },
+    "ped": {
+      "model": "a_m_y_business_02",
+      "coords": {
+        "x": 247.19,
+        "y": 209.86,
+        "z": 106.29,
+        "heading": 341.83
+      }
+    }
+  }
+}

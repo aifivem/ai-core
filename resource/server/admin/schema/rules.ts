@@ -72,18 +72,6 @@ export function rulesTab(accounts: string[]): TabSpec {
           },
           {
             widget: "select",
-            path: "paycheck.account",
-            label: "ADMIN_F_PAY_ACCOUNT",
-            options: accountOptions,
-          },
-          {
-            widget: "switch",
-            path: "paycheck.fromJobAccount",
-            label: "ADMIN_F_FROM_JOB_ACCOUNT",
-            hint: "ADMIN_H_FROM_JOB_ACCOUNT",
-          },
-          {
-            widget: "select",
             path: "paycheck.mode",
             label: "ADMIN_F_PAY_MODE",
             hint: "ADMIN_H_PAY_MODE",
@@ -91,6 +79,19 @@ export function rulesTab(accounts: string[]): TabSpec {
               { value: "account", label: "ADMIN_O_PAY_ACCOUNT" },
               { value: "office", label: "ADMIN_O_PAY_OFFICE" },
             ],
+          },
+          {
+            widget: "select",
+            path: "paycheck.account",
+            label: "ADMIN_F_PAY_ACCOUNT",
+            hint: "ADMIN_H_PAY_ACCOUNT",
+            options: accountOptions,
+          },
+          {
+            widget: "switch",
+            path: "paycheck.fromJobAccount",
+            label: "ADMIN_F_FROM_JOB_ACCOUNT",
+            hint: "ADMIN_H_FROM_JOB_ACCOUNT",
           },
         ],
       },

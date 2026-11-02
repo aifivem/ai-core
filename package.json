@@ -276,6 +276,7 @@
     "data/jobs.json",
     "data/gangs.json",
     "data/needs.json",
+    "data/paycheckOffices.json",
     "modules/*.lua",
     "shared/vehicles.lua",
     "shared/weapons.lua",

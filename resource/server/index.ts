@@ -13,6 +13,7 @@ import "./player/deaths";
 import "./player/offlinePosition";
 import "./persistence";
 import "./jobs/paycheck";
+import "./jobs/paycheckOffice";
 import "./exports";
 import "./inventory";
 import "./vehicleKeys";

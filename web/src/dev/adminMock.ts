@@ -10,6 +10,7 @@ import { VRP_NEW_RULE } from "../../../resource/server/vrp/mappingCards";
 import accountsFile from "../../../data/accounts.json";
 import gangsFile from "../../../data/gangs.json";
 import jobsFile from "../../../data/jobs.json";
+import paycheckOfficesFile from "../../../data/paycheckOffices.json";
 import settingsFile from "../../../data/settings.json";
 import en from "../../../locales/en.json";
 
@@ -21,6 +22,7 @@ function data<T extends { $schema?: string }>(file: T): Omit<T, "$schema"> {
 const accounts = data(accountsFile);
 const gangs = data(gangsFile);
 const jobs = data(jobsFile);
+const paycheckOffices = data(paycheckOfficesFile);
 const settings = data(settingsFile);
 
 /**
@@ -218,6 +220,7 @@ export function mockAdminOpen():
       jobs,
       gangs,
       accounts,
+      paycheckOffices,
       keybinds,
       commands,
       vrp,

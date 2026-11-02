@@ -1,4 +1,5 @@
 import type { AdminPanelSnapshot, WidgetSpec } from "@aifivem/shared";
+import { getAt } from "./path";
 
 /** A field of some script's panel the setup guide shows (a record's field when `key` is set). */
 export interface SetupField {
@@ -6,6 +7,8 @@ export interface SetupField {
   file: string;
   key?: string;
   path: string;
+  /** Shown only while another field (of any script) holds one of `values`. */
+  showIf?: { field: SetupField; values: unknown[] };
 }
 
 export interface SetupStep {
@@ -21,6 +24,14 @@ const core = (path: string): SetupField => ({
   resource: "ai-core",
   file: "settings",
   path,
+});
+/** A field of the shipped paycheck office, shown while salaries are collected at an office. */
+const office = (path: string): SetupField => ({
+  resource: "ai-core",
+  file: "paycheckOffices",
+  key: "pacific_paycheck",
+  path,
+  showIf: { field: core("paycheck.mode"), values: ["office"] },
 });
 const small = (path: string): SetupField => ({
   resource: "ai-smallresources",
@@ -58,7 +69,10 @@ export const SETUP_STEPS: SetupStep[] = [
       { resource: "ai-core", file: "accounts", key: "cash", path: "start" },
       { resource: "ai-core", file: "accounts", key: "bank", path: "start" },
       core("paycheck.intervalMinutes"),
+      core("paycheck.mode"),
       core("paycheck.account"),
+      office("coords"),
+      office("ped.coords"),
     ],
   },
   {
@@ -106,6 +120,18 @@ export function widgetOf(
         for (const spec of card.fields)
           if (spec.path === field.path) return { panel, spec };
   return null;
+}
+
+/** A field's current value in its script's open data (a record's field when `key` is set). */
+export function valueOf(
+  panels: AdminPanelSnapshot[],
+  field: SetupField,
+): unknown {
+  const data = panels.find((p) => p.resource === field.resource)?.data[
+    field.file
+  ];
+  const record = field.key === undefined ? data : getAt(data, field.key);
+  return getAt(record, field.path);
 }
 
 /** Whether the setup guide is finished (`setupDone` in ai-core's server-local file `data/local.json`). */

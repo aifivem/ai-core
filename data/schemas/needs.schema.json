@@ -78,7 +78,7 @@
           "type": "boolean"
         },
         "criticalAt": {
-          "description": "Critical level: Food or water below this (out of 100) starts dizziness and health loss (whichever is on) and shows the critical warning. Keep it under the warning level.",
+          "description": "Critical level: Food or water below this (out of 100) makes the player dizzy (when on) and shows the critical warning. Keep it under the warning level.",
           "type": "integer",
           "minimum": 1,
           "maximum": 100
@@ -102,8 +102,14 @@
           "maximum": 10
         },
         "hurt": {
-          "description": "Health loss: Below the critical level the player loses health over time.",
+          "description": "Health loss: The player loses health while food or water is at or below the health loss level.",
           "type": "boolean"
+        },
+        "hurtAt": {
+          "description": "Health loss level: Health starts going once food or water is at or below this (out of 100). 0 = only when it runs out.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
         },
         "damage": {
           "description": "Health lost: Health taken each time.",
@@ -112,7 +118,7 @@
           "maximum": 50
         },
         "hurtEvery": {
-          "description": "Health loss every: Seconds between two health losses while food or water stays critical.",
+          "description": "Health loss every: Seconds between two health losses while food or water stays at or below the health loss level.",
           "type": "integer",
           "minimum": 5,
           "maximum": 3600
@@ -128,6 +134,7 @@
         "fadeOut",
         "fadeIn",
         "hurt",
+        "hurtAt",
         "damage",
         "hurtEvery"
       ]

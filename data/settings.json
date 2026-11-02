@@ -214,5 +214,9 @@
   "bankAccounts": "core",
   "characterScreen": "auto",
   "frameworkTables": "auto",
-  "characterScreenActive": "ai-core"
+  "characterScreenActive": "ai-core",
+  "illegal": {
+    "enabled": true
+  },
+  "loginLog": true
 }

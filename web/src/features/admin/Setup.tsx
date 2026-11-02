@@ -11,7 +11,7 @@ import { Field } from "./Field";
 import { iconOf } from "./icons";
 import { usePanelLang } from "./lang";
 import { getAt } from "./path";
-import { SETUP_STEPS, widgetOf, type SetupField } from "./setupSteps";
+import { SETUP_STEPS, valueOf, widgetOf, type SetupField } from "./setupSteps";
 
 /** One field of a script's panel inside the guide: the same live-saving control as on its own tab. */
 function GuideField({ field }: { field: SetupField }) {
@@ -24,6 +24,9 @@ function GuideField({ field }: { field: SetupField }) {
     if (unloaded) void loadPanelData(field.resource);
   }, [unloaded, field.resource]);
   if (!found) return null;
+  const when = field.showIf;
+  if (when && !when.values.some((v) => v === valueOf(panels, when.field)))
+    return null;
   const data = found.panel.data[field.file];
   const record = field.key === undefined ? data : getAt(data, field.key);
   if (record === undefined) return null;

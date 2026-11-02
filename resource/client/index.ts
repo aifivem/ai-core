@@ -25,6 +25,7 @@ import "./pvp";
 import "./medical";
 import "./mdt";
 import "./bills";
+import "./paycheckOffices";
 import "./fuel";
 import "./garages";
 import "./setup";

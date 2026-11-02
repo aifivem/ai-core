@@ -9,13 +9,14 @@ import { generalTab } from "./general";
 import { gangsFile, gangsTab, jobsFile, jobsTab } from "./jobs";
 import { keybindsFile, keybindsTab } from "./keybinds";
 import { localFile, localTab } from "./local";
+import { paycheckOfficesFile, paycheckOfficesTab } from "./paycheckOffices";
 import { rulesTab } from "./rules";
 import { sceneTab } from "./scene";
 import type { ServiceChoices } from "./services";
 import { settingsFile } from "./settings";
 import { spawnTab } from "./spawn";
 
-/** ai-core's own panel: server settings, spawn points, character screen scene, job rules, hunger and thirst, jobs, gangs and money accounts (`data/*.json`). */
+/** ai-core's own panel: server settings, spawn points, character screen scene, job rules, paycheck offices, hunger and thirst, jobs, gangs and money accounts (`data/*.json`). */
 
 /** `accounts`: the account types at start, offered where an account is picked; `inventories` / `keySystems` / `alertSystems`: the adapters. */
 export function coreSchema(
@@ -48,6 +49,7 @@ export function coreSchema(
       jobs: jobsFile,
       gangs: gangsFile,
       accounts: accountsFile(accounts),
+      paycheckOffices: paycheckOfficesFile,
       keybinds: keybindsFile,
       commands: commandsFile,
       externalPanels: externalPanelsFile,
@@ -59,6 +61,7 @@ export function coreSchema(
       spawnTab,
       sceneTab,
       rulesTab(accounts),
+      paycheckOfficesTab,
       NEEDS_TAB,
       jobsTab,
       gangsTab,

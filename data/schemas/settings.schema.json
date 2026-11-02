@@ -143,6 +143,13 @@
         "fromJobAccount": {
           "description": "Pay from the job's own money: Off: the server pays. On: the job account pays, and nobody is paid when it is empty.",
           "type": "boolean"
+        },
+        "mode": {
+          "description": "Where salaries go: Pay account: straight into the account above. Paycheck office: salaries add up and players take them out at an office (a script such as ai-banking runs it) into the account above.",
+          "enum": [
+            "account",
+            "office"
+          ]
         }
       },
       "required": [
@@ -150,6 +157,22 @@
         "account",
         "fromJobAccount"
       ]
+    },
+    "illegal": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Legal / illegal status: Each character can be marked illegal on its Players page; scripts ask it before illegal content. Off: everyone counts as legal.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled"
+      ]
+    },
+    "loginLog": {
+      "description": "Log logins: Each character that enters the world is logged on the login channel.",
+      "type": "boolean"
     },
     "primeTime": {
       "type": "object",
@@ -316,7 +339,8 @@
         "tgiann-mdt",
         "lb-tablet",
         "ps-mdt",
-        "wasabi_mdt"
+        "wasabi_mdt",
+        "codem-mdtv2"
       ]
     },
     "ems": {
