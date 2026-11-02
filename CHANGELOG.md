@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.1](https://github.com/aifivem/ai-core/compare/v0.5.0...v0.5.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **build:** keep the web build in dist/ so release zips have the admin panel and the build ends in seconds ([ef29bb0](https://github.com/aifivem/ai-core/commit/ef29bb0a5d6a5401a8558ed4918a7b65f837a9a5))
+
+
+### Code Refactoring
+
+* import the shared packages from [@aifivem](https://github.com/aifivem) ([7e76194](https://github.com/aifivem/ai-core/commit/7e761943d99df593b2a5cd7d1e59cd461509395c))
+
 ## [0.5.0](https://github.com/aifivem/ai-core/compare/v0.4.0...v0.5.0) (2026-11-01)
 
 
