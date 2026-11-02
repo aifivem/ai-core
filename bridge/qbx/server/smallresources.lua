@@ -59,3 +59,36 @@ for need, name in pairs({ hunger = 'Hunger', thirst = 'Thirst' }) do
         end
     end)
 end
+
+-- `SendWantedAlert` (the owner's qbx_smallresources): a script tells that a player used an ATM, a shop, a garage...;
+-- ai-police decides (warrant through ai-core's MDT layer, chance per place, cooldown) and alerts the police.
+-- Place names of those scripts map onto ai-police's panel places; others pass through.
+local PLACES = {
+    atm = 'atm',
+    market = 'shop',
+    tgiann_clothing = 'clothing',
+    garageVehicleSpawn = 'garage',
+    phone = 'phone',
+}
+
+---@param source integer
+---@param place any
+local function sighting(source, place)
+    if type(place) ~= 'string' or #place > 32 or not place:match('^[%w_]+$') then return end
+    if not Bridge.players[source] or GetResourceState('ai-police') ~= 'started' then return end
+    local ok, err = pcall(function()
+        exports['ai-police']:ReportSighting(source, PLACES[place] or place:lower())
+    end)
+    if not ok then print(('^3[ai-core] qbx_smallresources SendWantedAlert: %s^7'):format(err)) end
+end
+
+Bridge.provideExport(RESOURCE, 'SendWantedAlert', function(source, place)
+    sighting(tonumber(source) or 0, place)
+end)
+
+-- The client export's way in: only the player's own client, through the bridge's rate gate.
+RegisterNetEvent('qbx_smallresources:isWanted:sighting', function(place)
+    local src = source
+    if GetInvokingResource() or not Bridge.allow(src) then return end
+    sighting(src, place)
+end)

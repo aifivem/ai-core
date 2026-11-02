@@ -207,6 +207,7 @@
     "bridge/qbx/client/definitions.lua",
     "bridge/qbx/client/player.lua",
     "bridge/qbx/client/hudcomponents.lua",
+    "bridge/qbx/client/wanted.lua",
     "bridge/esx/client/esx.lua",
     "bridge/esx/client/playerdata.lua",
     "bridge/esx/client/inventory.lua",
