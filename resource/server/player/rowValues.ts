@@ -63,5 +63,5 @@ export function savedLastDuty(
 /** The character fields the admin panel edits on a loaded player (`Player.setInfo`). */
 export type InfoEdit = Pick<
   CharacterInfo,
-  "firstname" | "lastname" | "birthdate" | "nationality"
+  "firstname" | "lastname" | "birthdate" | "sex" | "nationality"
 >;

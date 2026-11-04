@@ -110,11 +110,12 @@ export class Player {
     return { ...this.row.metadata };
   }
 
-  /** Name, birth date and nationality from the admin panel (the caller writes the row); scripts that copied them see the change after the next load. */
+  /** Name, birth date, sex and nationality from the admin panel (the caller writes the row); scripts that copied them see the change after the next load. */
   setInfo(info: InfoEdit): void {
     this.row.firstname = info.firstname;
     this.row.lastname = info.lastname;
     this.row.birthdate = info.birthdate;
+    this.row.sex = info.sex;
     this.row.nationality = info.nationality;
     sendPlayerData(this.source, "character", this.info());
     charWatchers.char(this.row.id, info);
