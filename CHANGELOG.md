@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.1](https://github.com/aifivem/ai-core/compare/v0.6.0...v0.6.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* **characters:** carry an admin's sex change onto the loaded character ([0f54fdc](https://github.com/aifivem/ai-core/commit/0f54fdc4e68858e4e55588b5629235427da02d8b))
+* **phone:** count only an app opening as a 17mov_Phone use, not its closing ([04e411e](https://github.com/aifivem/ai-core/commit/04e411e08c0f67ad4fd6636350dc87a2cdf81a11))
+
 ## [0.6.0](https://github.com/aifivem/ai-core/compare/v0.5.3...v0.6.0) (2026-11-02)
 
 
